@@ -614,16 +614,19 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
 
       <main className="library-reader" ref={readerBox}>
         {!source.snapshot ? (
-          <Empty
-            title="Nothing fetched yet"
-            action={
-              <Button variant="primary" busy={refresh.isPending} onClick={() => refresh.mutate(source.id)}>
-                Fetch the library
-              </Button>
-            }
-          >
-            Fetching copies the library into Habi's cache. It never changes your projects.
-          </Empty>
+          <>
+            <Empty
+              title="Nothing fetched yet"
+              action={
+                <Button variant="primary" busy={refresh.isPending} onClick={() => refresh.mutate(source.id)}>
+                  Fetch the library
+                </Button>
+              }
+            >
+              Fetching copies the library into Habi's cache. It never changes your projects.
+            </Empty>
+            {refresh.error ? <ErrorNotice error={refresh.error} title="The library was not fetched" /> : null}
+          </>
         ) : selected ? (
           <SkillReader
             key={selected.id}

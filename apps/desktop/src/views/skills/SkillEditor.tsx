@@ -22,6 +22,7 @@ import { api } from "../../lib/api";
 import { NO_RULES_PHRASE, plural, relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, keys, useRecentProjects } from "../../lib/queries";
+import { useSafeInvoke } from "../../lib/safeInvoke";
 import { identifierProblem, originShort, originText, slugify } from "../../lib/skills";
 import { type SaveState, useAutosave } from "../../lib/useAutosave";
 import { ApplicabilityPreview } from "./ApplicabilityPreview";
@@ -97,6 +98,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
   const { openProject } = useActions();
   const client = useQueryClient();
   const toast = useToast();
+  const safely = useSafeInvoke();
   const projects = useRecentProjects();
   const [skill, setSkill] = useState(initial);
   const [title, setTitle] = useState(initial.summary.title);
@@ -590,7 +592,11 @@ function Loaded({ initial }: { initial: LocalSkill }) {
                   <dt>Stored in</dt>
                   <dd>
                     <span className="mono">{skill.location}</span>{" "}
-                    <button type="button" className="link-btn" onClick={() => void api.revealSkill(id)}>
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => safely(() => api.revealSkill(id), "The folder was not shown")}
+                    >
                       Show
                     </button>
                   </dd>
