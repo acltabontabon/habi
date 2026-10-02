@@ -108,6 +108,7 @@ pub fn run() {
             commands::contribution,
             commands::list_contributions,
             commands::update_contribution,
+            commands::select_contribution_files,
             commands::commit_contribution,
             commands::revise_contribution,
             commands::cancel_contribution_revision,

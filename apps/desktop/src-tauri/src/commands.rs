@@ -615,6 +615,20 @@ pub async fn update_contribution(
     .await
 }
 
+/// Leaves changed files out of a contribution (or puts them back).
+#[tauri::command]
+pub async fn select_contribution_files(
+    state: State<'_, AppState>,
+    id: String,
+    excluded: Vec<String>,
+) -> CmdResult<Contribution> {
+    if excluded.len() > 200 {
+        return Err(HabiError::invalid("too many files").to_info());
+    }
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.select_contribution_files(&id, &excluded)).await
+}
+
 #[tauri::command]
 pub async fn commit_contribution(
     state: State<'_, AppState>,
