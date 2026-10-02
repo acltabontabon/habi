@@ -39,5 +39,11 @@ which.workspace = true
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
 
+[features]
+# Failure injection for the crate's own tests (install::apply::Fault).
+testing = []
+
 [dev-dependencies]
 tempfile.workspace = true
+# The integration tests in tests/ need the `testing` feature.
+habi-core = { workspace = true, features = ["testing"] }

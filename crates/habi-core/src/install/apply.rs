@@ -98,7 +98,8 @@ impl From<&Journal> for OperationSummary {
     }
 }
 
-/// Test hook for simulating failures. Production code passes `Fault::None`.
+/// Test hook for simulating failures (only with the `testing` feature).
+#[cfg(any(test, feature = "testing"))]
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Fault {
@@ -109,14 +110,47 @@ pub enum Fault {
     CrashBefore(usize),
 }
 
+/// Without the `testing` feature no failure can be injected.
+#[cfg(not(any(test, feature = "testing")))]
+#[derive(Debug, Clone, Copy)]
+enum Fault {
+    None,
+}
+
 /// Stable identifier for a project directory.
 pub fn project_id(root: &Path) -> String {
     let digest = sha256(root.to_string_lossy().as_bytes());
     digest["sha256:".len().."sha256:".len() + 16].to_string()
 }
 
-fn journal_dir(paths: &AppPaths, project_id: &str) -> PathBuf {
+pub(crate) fn journal_dir(paths: &AppPaths, project_id: &str) -> PathBuf {
     paths.journal().join(project_id)
+}
+
+/// Index of operations that may be unfinished: one empty file per journal
+/// written in state `applying`, removed once the journal records how it
+/// ended. Recovery reads only these journals instead of every journal the
+/// project ever had. A project without this folder has journals from before
+/// the index existed; they are scanned once.
+fn unfinished_dir(paths: &AppPaths, project_id: &str) -> PathBuf {
+    journal_dir(paths, project_id).join("unfinished")
+}
+
+fn mark_unfinished(paths: &AppPaths, journal: &Journal) -> Result<()> {
+    atomic_write(
+        &unfinished_dir(paths, &journal.project_id).join(&journal.id),
+        b"",
+    )
+}
+
+fn clear_unfinished(paths: &AppPaths, project_id: &str, id: &str) {
+    let marker = unfinished_dir(paths, project_id).join(id);
+    if let Err(e) = std::fs::remove_file(&marker)
+        && e.kind() != std::io::ErrorKind::NotFound
+    {
+        // Harmless: recovery reads the journal, sees it finished and retries.
+        tracing::warn!(error = %e, "could not clear an unfinished-operation marker");
+    }
 }
 
 fn save(paths: &AppPaths, journal: &Journal) -> Result<()> {
@@ -124,6 +158,97 @@ fn save(paths: &AppPaths, journal: &Journal) -> Result<()> {
     let bytes =
         serde_json::to_vec_pretty(journal).map_err(|e| HabiError::Internal(e.to_string()))?;
     atomic_write(&path, &bytes)
+}
+
+/// `action` of a journal file that could not be read.
+const UNREADABLE: &str = "unreadable";
+
+/// Reads one journal. A journal that exists but cannot be read is reported
+/// as an operation that needs attention, never skipped silently: it may
+/// describe files Habi changed.
+fn load(project_id: &str, path: &Path) -> Journal {
+    match std::fs::read(path)
+        .map_err(|e| e.to_string())
+        .and_then(|b| serde_json::from_slice::<Journal>(&b).map_err(|e| e.to_string()))
+    {
+        Ok(j) => j,
+        Err(e) => {
+            tracing::warn!(path = %path.display(), error = %e, "unreadable journal");
+            let created_at = std::fs::metadata(path)
+                .and_then(|m| m.modified())
+                .map(|t| crate::time::format(t.into()))
+                .unwrap_or_default();
+            Journal {
+                version: 1,
+                id: path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                project_id: project_id.to_string(),
+                project_root: PathBuf::new(),
+                title: "Unreadable operation record".into(),
+                action: UNREADABLE.into(),
+                created_at,
+                finished_at: None,
+                state: JournalState::NeedsAttention,
+                steps: Vec::new(),
+                problems: vec![format!(
+                    "Habi could not read the record of this operation ({e}). Files it changed may need checking by hand; the record is kept at {}.",
+                    crate::paths::display_path(path)
+                )],
+            }
+        }
+    }
+}
+
+/// Every journal of a project, newest first.
+pub(crate) fn load_all(paths: &AppPaths, project_id: &str) -> Vec<Journal> {
+    let mut out = Vec::new();
+    let Ok(entries) = std::fs::read_dir(journal_dir(paths, project_id)) else {
+        return out;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|e| e == "json") {
+            out.push(load(project_id, &path));
+        }
+    }
+    out.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    out
+}
+
+/// Journals that may be unfinished, from the index (or, for journals from
+/// before it, by reading them all once).
+fn load_unfinished(paths: &AppPaths, project_id: &str) -> Result<Vec<Journal>> {
+    let index = unfinished_dir(paths, project_id);
+    if !index.is_dir() {
+        let all = load_all(paths, project_id);
+        std::fs::create_dir_all(&index)
+            .map_err(|e| HabiError::io("creating the unfinished-operation index", e))?;
+        return Ok(all
+            .into_iter()
+            .filter(|j| j.state == JournalState::Applying)
+            .collect());
+    }
+    let mut out = Vec::new();
+    let entries = std::fs::read_dir(&index)
+        .map_err(|e| HabiError::io("reading the unfinished-operation index", e))?;
+    for entry in entries.flatten() {
+        let id = entry.file_name().to_string_lossy().into_owned();
+        if id.starts_with('.') {
+            continue;
+        }
+        let path = journal_dir(paths, project_id).join(format!("{id}.json"));
+        if path.is_file() {
+            out.push(load(project_id, &path));
+        } else {
+            // Marked, but the process stopped before writing the journal:
+            // nothing was changed yet.
+            clear_unfinished(paths, project_id, &id);
+        }
+    }
+    out.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    Ok(out)
 }
 
 fn digest_on_disk(root: &Path, rel: &str) -> Result<Option<String>> {
@@ -165,12 +290,14 @@ fn write_step(
     let target = resolve_for_write(root, &rel)?;
     match content {
         Some(bytes) => {
-            atomic_write_mode(&target, bytes, executable)?;
-            if sha256(bytes) != step.after.clone().unwrap_or_default() {
+            // Checked before writing: content that is not what the journal
+            // records must never reach the project.
+            if step.after.as_deref() != Some(sha256(bytes).as_str()) {
                 return Err(HabiError::Internal(format!(
                     "content for {rel} does not match the plan"
                 )));
             }
+            atomic_write_mode(&target, bytes, executable)?;
         }
         None => {
             match std::fs::remove_file(&target) {
@@ -219,9 +346,10 @@ fn undo(root: &Path, blobs: &Blobs, steps: &[JournalStep]) -> Vec<String> {
         };
         if current == step.before {
             // Content is as before. A step that changed only the executable
-            // bit is undone by restoring the bit.
-            if step.done
-                && step.before == step.after
+            // bit is undone by restoring the bit, whether or not the journal
+            // recorded it as done: the process may have died between the
+            // change and the journal update.
+            if step.before == step.after
                 && let Some(executable) = step.before_executable
                 && let Err(e) = set_mode(root, &step.path, executable)
             {
@@ -280,11 +408,17 @@ impl<'a> Applier<'a> {
 
     /// Applies a plan. Returns the committed operation.
     pub fn apply(&self, plan: &Plan) -> Result<OperationSummary> {
-        self.apply_with(plan, Fault::None)
+        self.apply_inner(plan, Fault::None)
     }
 
+    /// `apply` with a simulated failure (tests only).
+    #[cfg(any(test, feature = "testing"))]
     #[doc(hidden)]
     pub fn apply_with(&self, plan: &Plan, fault: Fault) -> Result<OperationSummary> {
+        self.apply_inner(plan, fault)
+    }
+
+    fn apply_inner(&self, plan: &Plan, fault: Fault) -> Result<OperationSummary> {
         if plan.is_blocked() {
             return Err(HabiError::Conflict(
                 "resolve the listed conflicts before applying".into(),
@@ -360,6 +494,9 @@ impl<'a> Applier<'a> {
                 .collect(),
             problems: Vec::new(),
         };
+        // Marked before the journal exists, so a crash at any point after
+        // this is found by recovery.
+        mark_unfinished(self.paths, &journal)?;
         save(self.paths, &journal)?;
         self.record(&journal, &pid);
 
@@ -369,9 +506,11 @@ impl<'a> Applier<'a> {
         let mut produced: std::collections::HashMap<String, Option<String>> = Default::default();
         for (index, change) in plan.changes.iter().enumerate() {
             match fault {
+                #[cfg(any(test, feature = "testing"))]
                 Fault::CrashBefore(n) if n == index => {
                     return Err(HabiError::Internal("simulated crash".into()));
                 }
+                #[cfg(any(test, feature = "testing"))]
                 Fault::FailBefore(n) if n == index => {
                     return Err(self.roll_back(
                         root,
@@ -419,6 +558,7 @@ impl<'a> Applier<'a> {
             // operation; undo it now and say so instead.
             return Err(self.roll_back(root, &mut journal, e));
         }
+        clear_unfinished(self.paths, &pid, &journal.id);
         self.record(&journal, &pid);
         tracing::info!(operation = %journal.id, files = journal.steps.len(), "applied plan");
         Ok(OperationSummary::from(&journal))
@@ -433,7 +573,11 @@ impl<'a> Applier<'a> {
         };
         journal.problems = problems;
         journal.finished_at = Some(crate::time::now());
-        let _ = save(self.paths, journal);
+        // If the journal cannot be saved it still reads `applying`, and its
+        // marker stays so that recovery looks at it again.
+        if save(self.paths, journal).is_ok() {
+            clear_unfinished(self.paths, &journal.project_id, &journal.id);
+        }
         self.record(journal, &journal.project_id.clone());
         HabiError::Conflict(format!(
             "applying failed and was rolled back{}: {cause}",
@@ -469,26 +613,7 @@ impl<'a> Applier<'a> {
     }
 
     fn journals(&self, root: &Path) -> Result<Vec<Journal>> {
-        let dir = journal_dir(self.paths, &project_id(root));
-        let mut out = Vec::new();
-        let Ok(entries) = std::fs::read_dir(&dir) else {
-            return Ok(out);
-        };
-        for entry in entries.flatten() {
-            if entry.path().extension().is_some_and(|e| e == "json") {
-                match std::fs::read(entry.path())
-                    .ok()
-                    .and_then(|b| serde_json::from_slice::<Journal>(&b).ok())
-                {
-                    Some(j) => out.push(j),
-                    None => {
-                        tracing::warn!(path = %entry.path().display(), "unreadable journal skipped")
-                    }
-                }
-            }
-        }
-        out.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-        Ok(out)
+        Ok(load_all(self.paths, &project_id(root)))
     }
 
     /// Rolls back operations a crash left unfinished. Takes the project lock.
@@ -499,8 +624,15 @@ impl<'a> Applier<'a> {
 
     fn recover_locked(&self, root: &Path) -> Result<Vec<OperationSummary>> {
         let mut recovered = Vec::new();
-        for mut journal in self.journals(root)? {
+        let pid = project_id(root);
+        for mut journal in load_unfinished(self.paths, &pid)? {
             if journal.state != JournalState::Applying {
+                // Finished after all (the marker outlived it), or unreadable:
+                // reported once here, and listed in the history from now on.
+                if journal.action == UNREADABLE {
+                    recovered.push(OperationSummary::from(&journal));
+                }
+                clear_unfinished(self.paths, &pid, &journal.id);
                 continue;
             }
             let problems = undo(root, &self.blobs(), &journal.steps);
