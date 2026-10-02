@@ -64,10 +64,15 @@ pub fn tree_digest<'a>(entries: impl IntoIterator<Item = (&'a str, &'a str)>) ->
     format!("sha256:{}", hex::encode(h.finalize()))
 }
 
-/// Short form of a digest or commit for display.
+/// Short form of a digest or commit for display: its first ten characters.
+/// Ids may come from hand-edited files, so the cut is on a character
+/// boundary, never in the middle of one.
 pub fn short(id: &str) -> &str {
     let id = id.strip_prefix("sha256:").unwrap_or(id);
-    &id[..id.len().min(10)]
+    match id.char_indices().nth(10) {
+        Some((end, _)) => id.get(..end).unwrap_or(id),
+        None => id,
+    }
 }
 
 pub enum Bounded {
@@ -214,6 +219,14 @@ pub fn is_probably_text(bytes: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn short_ids_cut_on_character_boundaries() {
+        assert_eq!(short("sha256:0123456789abcdef"), "0123456789");
+        assert_eq!(short("abc"), "abc");
+        assert_eq!(short("ééééééééééééé"), "éééééééééé");
+        assert_eq!(short("a€€€€€€€€€€€"), "a€€€€€€€€€");
+    }
 
     #[test]
     fn tree_digest_is_order_independent() {

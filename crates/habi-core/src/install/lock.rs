@@ -141,6 +141,15 @@ impl LockFile {
             ))
         };
         for item in &lock.items {
+            // A commit id or content digest (empty for Habi's own entries).
+            // It is shown and compared, so anything else is refused here.
+            if item.snapshot.len() > 128 || !item.snapshot.chars().all(|c| c.is_ascii_graphic()) {
+                return Err(HabiError::Conflict(format!(
+                    "{} lists a snapshot for `{}` that is not a commit or content digest. Fix or remove the lock file.",
+                    crate::brand::LOCK_FILE,
+                    item.id
+                )));
+            }
             for f in &item.files {
                 let rel = crate::paths::RelPath::new(&f.path)?;
                 let under_skills = [
@@ -210,11 +219,15 @@ mod tests {
     use super::*;
 
     fn lock_with_file(path: &str) -> Vec<u8> {
+        lock_with(path, "s")
+    }
+
+    fn lock_with(path: &str, snapshot: &str) -> Vec<u8> {
         serde_json::to_vec(&serde_json::json!({
             "habiLock": 1,
             "items": [{
                 "source": { "identity": "x", "name": "x", "subdir": null },
-                "id": "a", "kind": "skill", "title": "A", "snapshot": "s",
+                "id": "a", "kind": "skill", "title": "A", "snapshot": snapshot,
                 "contentDigest": "d", "installedAt": "t", "clients": ["codex"],
                 "files": [{ "path": path, "digest": "sha256:00", "clients": ["codex"] }]
             }]
@@ -228,5 +241,18 @@ mod tests {
         assert!(LockFile::parse(&lock_with_file("README.md")).is_err());
         assert!(LockFile::parse(&lock_with_file(".agents/skills/SKILL.md")).is_err());
         assert!(LockFile::parse(&lock_with_file("../outside")).is_err());
+    }
+
+    #[test]
+    fn snapshots_must_be_commit_ids_or_digests() {
+        let file = ".agents/skills/a/SKILL.md";
+        let commit = "0123456789abcdef0123456789abcdef01234567";
+        assert!(LockFile::parse(&lock_with(file, commit)).is_ok());
+        assert!(LockFile::parse(&lock_with(file, &crate::fsutil::sha256(b"x"))).is_ok());
+        assert!(LockFile::parse(&lock_with(file, "")).is_ok());
+        // Non-ASCII text once crashed display (`short` cut inside a character).
+        assert!(LockFile::parse(&lock_with(file, "ééééééééééé")).is_err());
+        assert!(LockFile::parse(&lock_with(file, "a b")).is_err());
+        assert!(LockFile::parse(&lock_with(file, &"a".repeat(200))).is_err());
     }
 }
