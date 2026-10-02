@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import type { Source } from "../bindings/Source";
 import { Icon, Mark } from "../components/Icon";
 import { useToast } from "../components/Toasts";
@@ -10,15 +10,14 @@ import { api } from "../lib/api";
 import { type Dye, useDyes } from "../lib/dye";
 import { freshnessText } from "../lib/format";
 import { useNav } from "../lib/nav";
-import { keys, useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
+import { keys, useContributions, useRecentProjects, useSources } from "../lib/queries";
 import { type ThemeChoice, useTheme } from "../lib/theme";
 
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const { route, navigate } = useNav();
-  const { openProject, newSkill } = useActions();
+  const { openProject } = useActions();
   const recent = useRecentProjects();
   const sources = useSources();
-  const skills = useSkills();
   const contributions = useContributions();
   const [theme, setTheme] = useTheme();
   const [allProjects, setAllProjects] = useState(false);
@@ -46,7 +45,10 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const team = libraries.filter((l) => l.role === "team");
   const community = libraries.filter((l) => l.role === "community");
   const dyes = useDyes();
-  const skillCount = (skills.data ?? []).filter((s) => s.deletedAt === null).length;
+  const activeLibrary = route.name === "sources" ? route.sourceId : undefined;
+  const connecting =
+    route.name === "sources" && (!route.sourceId || ["git", "folder", "community"].includes(route.sourceId));
+  const openLibrary = (id: string) => navigate({ name: "sources", sourceId: id });
   const nextTheme: Record<ThemeChoice, ThemeChoice> = { system: "dark", dark: "light", light: "system" };
 
   return (
@@ -69,7 +71,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           {projects.length > 0 ? (
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn sidebar-reveal"
               aria-label="Open a project"
               title="Open a project (⌘O)"
               onClick={() => void openProject()}
@@ -140,64 +142,69 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
       </div>
 
       <div className="sidebar-group">
-        <div className="sidebar-row">
-          <button
-            type="button"
-            className={`sidebar-item${route.name === "skills" ? " is-active" : ""}`}
-            aria-current={route.name === "skills" ? "page" : undefined}
-            onClick={() => navigate({ name: "skills" })}
-          >
-            <Icon name="pencil" />
-            <span className="sidebar-item-text">My skills</span>
-            {skillCount > 0 ? (
-              <span className="sidebar-num">
-                {skillCount}
-                <span className="visually-hidden"> skills</span>
-              </span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Create a skill"
-            title="Create a skill (⌘N)"
-            onClick={() => newSkill()}
-          >
-            <Icon name="plus" />
-          </button>
-        </div>
+        <button
+          type="button"
+          className={`sidebar-item${route.name === "skills" ? " is-active" : ""}`}
+          aria-current={route.name === "skills" ? "page" : undefined}
+          onClick={() => navigate({ name: "skills" })}
+        >
+          <Icon name="pencil" />
+          <span className="sidebar-item-text">My skills</span>
+        </button>
       </div>
 
-      <LibraryGroup
-        title="Team libraries"
-        libraries={team}
-        dyes={dyes}
-        activeId={route.name === "sources" ? route.sourceId : undefined}
-        onOpen={(id) => navigate({ name: "sources", sourceId: id })}
-        empty={
-          libraries.length === 0 ? (
-            <button
-              type="button"
-              className={`sidebar-item sidebar-item-quiet${route.name === "sources" ? " is-active" : ""}`}
-              onClick={() => navigate({ name: "sources", sourceId: "new" })}
-            >
-              <Icon name="library" />
-              <span className="sidebar-item-text">Connect a library…</span>
-            </button>
-          ) : null
-        }
-        onAdd={() => navigate({ name: "sources", sourceId: "new" })}
-      />
-      {community.length > 0 ? (
-        <LibraryGroup
-          title="Community"
-          hint="Published by others — not reviewed by your team"
-          libraries={community}
-          dyes={dyes}
-          activeId={route.name === "sources" ? route.sourceId : undefined}
-          onOpen={(id) => navigate({ name: "sources", sourceId: id })}
-        />
-      ) : null}
+      <div className="sidebar-group">
+        <div className="sidebar-heading">
+          <button
+            type="button"
+            className="sidebar-heading-link"
+            aria-current={route.name === "sources" && !route.sourceId ? "page" : undefined}
+            onClick={() => navigate({ name: "sources" })}
+          >
+            Libraries
+          </button>
+        </div>
+        <ul className="sidebar-list">
+          {team.map((s) => (
+            <LibraryItem
+              key={s.id}
+              source={s}
+              dye={dyes(s.id)}
+              active={activeLibrary === s.id}
+              onOpen={openLibrary}
+            />
+          ))}
+        </ul>
+        {community.length > 0 ? (
+          <>
+            <p className="sidebar-subheading" title="Published by others — not reviewed by your team">
+              community
+            </p>
+            <ul className="sidebar-list">
+              {community.map((s) => (
+                <LibraryItem
+                  key={s.id}
+                  source={s}
+                  dye={dyes(s.id)}
+                  active={activeLibrary === s.id}
+                  onOpen={openLibrary}
+                />
+              ))}
+            </ul>
+          </>
+        ) : null}
+        <button
+          type="button"
+          className={`sidebar-item sidebar-item-quiet${connecting ? " is-active" : ""}`}
+          aria-current={connecting ? "page" : undefined}
+          onClick={() => navigate({ name: "sources" })}
+        >
+          <Icon name={libraries.length === 0 ? "library" : "search"} />
+          <span className="sidebar-item-text">
+            {libraries.length === 0 ? "Connect a library…" : "Browse & connect…"}
+          </span>
+        </button>
+      </div>
 
       {hasSharing ? (
         <div className="sidebar-group">
@@ -243,70 +250,35 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   );
 }
 
-function LibraryGroup({
-  title,
-  hint,
-  libraries,
-  dyes,
-  activeId,
+function LibraryItem({
+  source,
+  dye,
+  active,
   onOpen,
-  onAdd,
-  empty,
 }: {
-  title: string;
-  hint?: string;
-  libraries: Source[];
-  dyes: (sourceId: string) => Dye;
-  activeId?: string;
+  source: Source;
+  dye: Dye;
+  active: boolean;
   onOpen: (id: string) => void;
-  onAdd?: () => void;
-  empty?: ReactNode;
 }) {
+  const fresh = freshnessText(source);
   return (
-    <div className="sidebar-group">
-      <div className="sidebar-heading" title={hint}>
-        <span>{title}</span>
-        {onAdd && !empty ? (
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Connect a library"
-            title="Connect a library"
-            onClick={onAdd}
-          >
-            <Icon name="plus" />
-          </button>
+    <li>
+      <button
+        type="button"
+        className={`sidebar-item${active ? " is-active" : ""}`}
+        aria-current={active ? "page" : undefined}
+        title={fresh.tone !== "muted" ? `${source.name} — ${fresh.text}` : source.name}
+        onClick={() => onOpen(source.id)}
+      >
+        <Strand dye={dye} />
+        <span className="sidebar-item-text">{source.name}</span>
+        {fresh.tone !== "muted" ? (
+          <span className={`sidebar-dot tone-${fresh.tone}`}>
+            <span className="visually-hidden">{fresh.text}</span>
+          </span>
         ) : null}
-      </div>
-      {libraries.length === 0 ? (
-        (empty ?? null)
-      ) : (
-        <ul className="sidebar-list">
-          {libraries.map((s) => {
-            const active = activeId === s.id;
-            const fresh = freshnessText(s);
-            return (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  className={`sidebar-item${active ? " is-active" : ""}`}
-                  aria-current={active ? "page" : undefined}
-                  title={fresh.tone !== "muted" ? `${s.name} — ${fresh.text}` : s.name}
-                  onClick={() => onOpen(s.id)}
-                >
-                  <Strand dye={dyes(s.id)} />
-                  <span className="sidebar-item-text">{s.name}</span>
-                  {fresh.tone !== "muted" ? (
-                    <span className={`sidebar-dot tone-${fresh.tone}`}>
-                      <span className="visually-hidden">{fresh.text}</span>
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+      </button>
+    </li>
   );
 }

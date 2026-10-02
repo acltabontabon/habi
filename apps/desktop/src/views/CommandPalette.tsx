@@ -161,10 +161,22 @@ export function CommandPalette({
                   <Icon name="pencil" /> <span>My skills</span>
                 </Command.Item>
                 <Command.Item
-                  value="connect library source git team"
-                  onSelect={() => run(() => navigate({ name: "sources", sourceId: "new" }))}
+                  value="libraries browse connect discover community"
+                  onSelect={() => run(() => navigate({ name: "sources" }))}
                 >
-                  <Icon name="library" /> <span>Connect a team library…</span>
+                  <Icon name="library" /> <span>Browse & connect libraries…</span>
+                </Command.Item>
+                <Command.Item
+                  value="connect git repository library team url"
+                  onSelect={() => run(() => navigate({ name: "sources", sourceId: "git" }))}
+                >
+                  <Icon name="branch" /> <span>Connect a Git repository…</span>
+                </Command.Item>
+                <Command.Item
+                  value="use folder local library directory"
+                  onSelect={() => run(() => navigate({ name: "sources", sourceId: "folder" }))}
+                >
+                  <Icon name="folder" /> <span>Use a folder as a library…</span>
                 </Command.Item>
                 <Command.Item value="refresh all libraries" onSelect={() => run(() => void refreshAll())}>
                   <Icon name="refresh" /> <span>Refresh all libraries</span>

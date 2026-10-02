@@ -172,7 +172,13 @@ export function ProjectView({
           </ul>
         </div>
         <div className="project-actions">
-          <Button size="sm" icon="refresh" onClick={rescan} busy={overview.isFetching}>
+          <Button
+            size="sm"
+            icon="refresh"
+            onClick={rescan}
+            busy={overview.isFetching}
+            title="Look at the project again"
+          >
             Rescan
           </Button>
           <Button
@@ -180,6 +186,7 @@ export function ProjectView({
             icon="external"
             variant="quiet"
             onClick={() => void api.revealProjectPath(projectId, null)}
+            title="Show the folder"
           >
             Reveal
           </Button>

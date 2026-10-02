@@ -1,5 +1,5 @@
 /** List-and-detail workbench of recommendations. */
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Group } from "../../bindings/Group";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Recommendation } from "../../bindings/Recommendation";
@@ -9,6 +9,7 @@ import { Strand } from "../../components/Weave";
 import { useDyes } from "../../lib/dye";
 import { groupHint, groupLabel, installLabel, installTone, kindLabel } from "../../lib/format";
 import { useNav } from "../../lib/nav";
+import { useMedia } from "../../lib/useMedia";
 import { ItemDetailPane } from "./ItemDetailPane";
 
 const GROUPS: Group[] = ["required", "relevant", "needsInformation", "available", "notApplicable"];
@@ -31,6 +32,20 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
   const listRef = useRef<HTMLDivElement>(null);
   const projectId = overview.project.id;
   const dyes = useDyes();
+  // Narrow windows show the list or one item, not both squeezed side by side.
+  const narrow = useMedia("(max-width: 1020px)");
+  const mode = narrow ? (itemKey ? " is-narrow is-detail" : " is-narrow is-list") : "";
+  const toList = () => navigate({ name: "project", projectId, tab: "recommendations" });
+  useEffect(() => {
+    if (!narrow || !itemKey) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (e.key !== "Escape" || target?.closest("input, textarea, [role=dialog]")) return;
+      navigate({ name: "project", projectId, tab: "recommendations" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [narrow, itemKey, navigate, projectId]);
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -87,7 +102,7 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
   ) as Record<Group, number>;
 
   return (
-    <div className="workbench">
+    <div className={`workbench${mode}`}>
       <div className="workbench-list" ref={listRef}>
         <div className="list-filter">
           <Icon name="search" />
@@ -180,6 +195,12 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
         )}
       </div>
       <div className="workbench-detail">
+        {narrow && itemKey ? (
+          <button type="button" className="reader-back workbench-back" onClick={toList}>
+            <Icon name="arrowLeft" size={14} />
+            Recommendations
+          </button>
+        ) : null}
         {selected ? (
           <ItemDetailPane key={selected.item.key} overview={overview} recommendation={selected} />
         ) : (

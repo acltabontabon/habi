@@ -56,7 +56,9 @@ its one signature — used only where it carries meaning.
   its evidence in the preview.
 - **Add skills** — three sources as rows, then an inspection list with origin, problems and
   duplicate handling before anything is copied.
-- **Project home** — the project's swatch, identity (name, path, branch), the recognized
+- **Project home** — below 1020 px the header compacts (icon actions on the title row) and the
+  workbench shows the list or one item with "← Recommendations", never both squeezed. The
+  wide layout: the project's swatch, identity (name, path, branch), the recognized
   stack as mono tokens, the composition strip (which libraries fit, how much), and a
   list-and-detail workbench grouped by *Team requirements → Fits this project → Needs
   information → Available → Does not apply*. *Available* (no applicability rules) and *Does
@@ -69,6 +71,15 @@ its one signature — used only where it carries meaning.
 - **Review** — clients and scope, every file with an expandable diff and plain explanation,
   conflicts with explicit choices, notes, the recovery promise, and a final button that names
   the action ("Install for Cursor in this project").
+- **Sidebar** — navigation first: projects, My skills, one *Libraries* section (team
+  libraries, then community ones under a faint label, then *Browse & connect…* in words) and
+  Contributions when there are any. Management actions are not permanent: opening a project
+  appears on hover or focus of its heading (and ⌘O), creating a skill is ⌘N and the My skills
+  page. Below 720 px the sidebar becomes a rail of icons and threads.
+- **Libraries** — a destination of its own: *Connected* (team · local · community, with
+  freshness), *Discover* (a short curated list of community libraries not yet connected, each
+  previewed — what it covers, about how many skills, licence, trust — before *Connect
+  library*), and *Your own* (connect a Git repository, use a folder; each a focused page).
 - **Library** — two areas. The index: the library's identity in a few lines (kind, name,
   repository, "15 skills · 5 with scripts · updated 4 h ago", "not reviewed by your team" for
   community) over a scannable list of skills (title, one line of purpose, quiet mono marks for

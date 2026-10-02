@@ -1,7 +1,9 @@
 /**
- * Connect a team library: the repository URL (or a folder) first, a derived
- * name, and everything else — subfolder, branch or tag — under advanced
- * options. Habi uses the Git credentials already set up on this machine.
+ * Connect your own library: a Git repository by URL, or a folder on this
+ * machine. A derived name, whose library it is, and everything else —
+ * subfolder, branch or tag — under advanced options. Habi uses the Git
+ * credentials already set up on this machine. Community libraries are
+ * discovered and previewed elsewhere (CommunityPreview).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -9,9 +11,7 @@ import type { Source } from "../../bindings/Source";
 import type { SourceRole } from "../../bindings/SourceRole";
 import type { TrackedRef } from "../../bindings/TrackedRef";
 import { Button, ErrorNotice, Working } from "../../components/ui";
-import { Strand } from "../../components/Weave";
 import { api, HabiError, newJobId } from "../../lib/api";
-import { COMMUNITY_LIBRARIES } from "../../lib/community";
 import { invalidateProjectData, keys } from "../../lib/queries";
 
 /** "git@github.com:acme/team-skills.git" -> "team-skills". */
@@ -29,10 +29,13 @@ export function ConnectLibrary({
   onConnected,
   onCancel,
   compact = false,
+  mode = "git",
 }: {
   onConnected: (source: Source, itemCount: number) => void;
   onCancel?: () => void;
   compact?: boolean;
+  /** A Git repository (by URL) or a folder on this machine (picked). */
+  mode?: "git" | "folder";
 }) {
   const client = useQueryClient();
   const [location, setLocation] = useState("");
@@ -138,48 +141,27 @@ export function ConnectLibrary({
         if (valid && !busy) void submit();
       }}
     >
-      {!compact && !location.trim() ? (
-        <section className="well-known" aria-labelledby="well-known-title">
-          <h2 id="well-known-title" className="well-known-title">
-            Start from a community library
-          </h2>
-          <ul className="well-known-list">
-            {COMMUNITY_LIBRARIES.map((lib, i) => (
-              <li key={lib.url}>
-                <button
-                  type="button"
-                  className="well-known-row"
-                  onClick={() => {
-                    setLocation(lib.url);
-                    setName(lib.name);
-                    setNameEdited(true);
-                    setRole("community");
-                  }}
-                >
-                  <Strand dye={{ color: `var(--dye-${i % 8})`, community: true }} size={20} />
-                  <span className="well-known-text">
-                    <span className="well-known-name">
-                      {lib.name}{" "}
-                      <span className="mono muted">{lib.url.replace("https://github.com/", "")}</span>
-                    </span>
-                    <span className="well-known-summary">{lib.summary}</span>
-                    <span className="well-known-note">{lib.note}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="field-hint">
-            Published by others and not reviewed by your team. Habi lists their skills; it does not match them
-            to projects until someone adds rules.
-          </p>
-        </section>
-      ) : null}
-      <div className="field">
-        <label className="field-label" htmlFor="connect-location">
-          Repository URL
-        </label>
-        <div className="input-row">
+      {mode === "folder" ? (
+        <div className="field">
+          <span className="field-label">Folder</span>
+          <div className="input-row">
+            <span className={`connect-folder mono${location ? "" : " muted"}`}>
+              {location || "No folder chosen yet"}
+            </span>
+            <Button icon="folder" onClick={() => void chooseFolder()} disabled={busy}>
+              {location ? "Choose another…" : "Choose a folder…"}
+            </Button>
+          </div>
+          <span className="field-hint">
+            Habi reads skill folders from it and never writes there. Edits you make elsewhere show up when you
+            refresh.
+          </span>
+        </div>
+      ) : (
+        <div className="field">
+          <label className="field-label" htmlFor="connect-location">
+            Repository URL
+          </label>
           <input
             id="connect-location"
             className="input mono"
@@ -193,16 +175,12 @@ export function ConnectLibrary({
             autoComplete="off"
             disabled={busy}
           />
-          <Button icon="folder" onClick={() => void chooseFolder()} disabled={busy}>
-            Use a folder…
-          </Button>
+          <span className="field-hint">
+            Read with the Git access you already have — your credential helper or SSH agent. Nothing in the
+            repository is changed, and Habi never asks for a password.
+          </span>
         </div>
-        <span className="field-hint">
-          {isLocal
-            ? "A folder on this machine. Connecting and refreshing only read it."
-            : "Read with the Git access you already have. Nothing in the repository is changed."}
-        </span>
-      </div>
+      )}
 
       {location.trim() ? (
         <label className="field">
@@ -253,34 +231,36 @@ export function ConnectLibrary({
               disabled={busy || Boolean(registered)}
             />
           </label>
-          <fieldset className="field" disabled={busy || Boolean(registered) || isLocal}>
-            <legend className="field-label">Follow</legend>
-            <div className="segmented">
-              {(["default", "branch", "tag"] as const).map((k) => (
-                <label key={k} className="radio">
-                  <input
-                    type="radio"
-                    name="track"
-                    checked={trackKind === k}
-                    onChange={() => setTrackKind(k)}
-                  />
-                  {k === "default" ? "The default branch" : k === "branch" ? "A branch" : "A tag"}
-                </label>
-              ))}
-            </div>
-            {trackKind !== "default" ? (
-              <input
-                className="input mono"
-                value={refName}
-                onChange={(e) => setRefName(e.target.value)}
-                placeholder={trackKind === "branch" ? "main" : "v1.4.0"}
-                aria-label={`${trackKind} name`}
-              />
-            ) : null}
-            <span className="field-hint">
-              Whatever you follow, each refresh is pinned to the exact commit it fetched.
-            </span>
-          </fieldset>
+          {mode === "git" ? (
+            <fieldset className="field" disabled={busy || Boolean(registered) || isLocal}>
+              <legend className="field-label">Follow</legend>
+              <div className="segmented">
+                {(["default", "branch", "tag"] as const).map((k) => (
+                  <label key={k} className="radio">
+                    <input
+                      type="radio"
+                      name="track"
+                      checked={trackKind === k}
+                      onChange={() => setTrackKind(k)}
+                    />
+                    {k === "default" ? "The default branch" : k === "branch" ? "A branch" : "A tag"}
+                  </label>
+                ))}
+              </div>
+              {trackKind !== "default" ? (
+                <input
+                  className="input mono"
+                  value={refName}
+                  onChange={(e) => setRefName(e.target.value)}
+                  placeholder={trackKind === "branch" ? "main" : "v1.4.0"}
+                  aria-label={`${trackKind} name`}
+                />
+              ) : null}
+              <span className="field-hint">
+                Whatever you follow, each refresh is pinned to the exact commit it fetched.
+              </span>
+            </fieldset>
+          ) : null}
         </div>
       </details>
 

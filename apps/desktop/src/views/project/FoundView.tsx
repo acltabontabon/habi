@@ -348,12 +348,8 @@ export function FoundView({ project, lead }: { project: ProjectRecord; lead?: bo
             <Button icon="plus" onClick={() => addSkills()}>
               Add existing skills…
             </Button>
-            <Button
-              variant="quiet"
-              icon="library"
-              onClick={() => navigate({ name: "sources", sourceId: "new" })}
-            >
-              Connect a team library…
+            <Button variant="quiet" icon="library" onClick={() => navigate({ name: "sources" })}>
+              Browse & connect libraries…
             </Button>
           </div>
         </header>
