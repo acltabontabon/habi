@@ -79,6 +79,14 @@ changed it too. Habi recomputes it instead:
 - A malformed `.habi/lock.json` blocks install/update with a clear message instead of being
   overwritten.
 
+## Freeing space
+
+Habi keeps each project's newest 20 operations, so they can be restored, and each library's
+newest 20 earlier snapshots, and tidies up after installs. **Settings → Free up space** (or
+`habi gc`) removes anything older at once, along with stored file versions nothing refers to.
+Unfinished operations and ones that need attention are always kept, and a project or library
+another operation is using is skipped until the next run.
+
 ## Destructive resets are not the default
 
 No recovery path in Habi asks the user to delete their data. The data folder can be removed

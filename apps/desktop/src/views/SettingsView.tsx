@@ -7,7 +7,7 @@ import type { Settings } from "../bindings/Settings";
 import { useToast } from "../components/Toasts";
 import { Button, ErrorNotice, Section, Status, Working } from "../components/ui";
 import { api } from "../lib/api";
-import { ALL_CLIENTS, clientLabel } from "../lib/format";
+import { ALL_CLIENTS, clientLabel, pruneSummary } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { useOpenExternal } from "../lib/safeInvoke";
 import { type ThemeChoice, useTheme } from "../lib/theme";
@@ -27,6 +27,7 @@ export function SettingsView() {
   const [error, setError] = useState<unknown>(null);
   const hasSample = useHasSample();
   const [removingSample, setRemovingSample] = useState(false);
+  const [freeing, setFreeing] = useState(false);
   // Writes go one after another, each built on the latest settings, so two
   // quick toggles cannot overwrite each other with a stale copy.
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -47,6 +48,18 @@ export function SettingsView() {
         void client.invalidateQueries({ queryKey: keys.settings });
       }
     });
+  };
+
+  const freeUpSpace = async () => {
+    setFreeing(true);
+    try {
+      toast.show(pruneSummary(await api.freeUpSpace()));
+      void client.invalidateQueries({ queryKey: ["history"] });
+    } catch (e) {
+      toast.show(`Space was not freed: ${e instanceof Error ? e.message : String(e)}`, "danger");
+    } finally {
+      setFreeing(false);
+    }
   };
 
   const toggleClient = (c: ClientId) =>
@@ -118,17 +131,27 @@ export function SettingsView() {
         </fieldset>
       </Section>
 
-      {hasSample ? (
-        <Section title="Data" id="data">
+      <Section title="Data and space" id="data">
+        <div className="settings-row">
+          <p className="muted">
+            Habi keeps each project's newest 20 operations, so they can be restored, and each library's newest
+            20 earlier snapshots. Free up space removes anything older, and stored file versions nothing
+            refers to. Unfinished operations and ones that need attention are always kept.
+          </p>
+          <Button busy={freeing} onClick={() => void freeUpSpace()}>
+            Free up space
+          </Button>
+        </div>
+        {hasSample ? (
           <div className="settings-row">
             <p className="muted">
               The sample workspace is here: example libraries and projects, labeled "sample".
             </p>
             <Button onClick={() => setRemovingSample(true)}>Remove sample workspace…</Button>
           </div>
-          <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
-        </Section>
-      ) : null}
+        ) : null}
+        <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
+      </Section>
 
       <Section title="Diagnostics" id="diagnostics">
         <p className="muted">

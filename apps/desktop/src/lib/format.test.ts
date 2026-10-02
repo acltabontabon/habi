@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientsPhrase, relativeTime, shortId } from "./format";
+import { clientsPhrase, pruneSummary, relativeTime, shortId } from "./format";
 
 describe("format helpers", () => {
   it("phrases client lists naturally", () => {
@@ -20,5 +20,22 @@ describe("format helpers", () => {
     expect(relativeTime("2026-10-02T09:00:00Z", now)).toBe("3 h ago");
     expect(relativeTime("2026-09-30T12:00:00Z", now)).toBe("2 days ago");
     expect(relativeTime(null, now)).toBe("never");
+  });
+
+  it("says what Free up space did, plainly", () => {
+    const none = {
+      operationsRemoved: 0,
+      snapshotsRemoved: 0,
+      objectsRemoved: 0,
+      bytesFreed: 0,
+      skippedBusy: 0,
+    };
+    expect(pruneSummary(none)).toBe("Nothing to clean up.");
+    expect(pruneSummary({ ...none, operationsRemoved: 3, objectsRemoved: 12, bytesFreed: 3_565_158 })).toBe(
+      "Removed 3 old operation records and 12 stored file versions, freed 3.4 MB.",
+    );
+    expect(pruneSummary({ ...none, skippedBusy: 1 })).toBe(
+      "Nothing to clean up. 1 project or library was in use and skipped; try again later.",
+    );
   });
 });

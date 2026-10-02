@@ -37,6 +37,7 @@ import type { PreviewRequest } from "../bindings/PreviewRequest";
 import type { ProjectKnowledge } from "../bindings/ProjectKnowledge";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
 import type { ProjectRecord } from "../bindings/ProjectRecord";
+import type { PruneReport } from "../bindings/PruneReport";
 import type { PublishOutcome } from "../bindings/PublishOutcome";
 import type { RefreshOutcome } from "../bindings/RefreshOutcome";
 import type { Rehearsal } from "../bindings/Rehearsal";
@@ -245,6 +246,8 @@ export const api = {
   createSampleWorkspace: () => call<SampleWorkspace>("create_sample_workspace"),
   /** Removes the sample libraries, the sample projects and their folder; nothing else. */
   removeSampleWorkspace: () => call<void>("remove_sample_workspace"),
+  /** Removes old operation records and library snapshots, and stored file versions nothing refers to. */
+  freeUpSpace: () => call<PruneReport>("free_up_space"),
 };
 
 export type Api = typeof api;
