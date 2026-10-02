@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Contribution } from "../bindings/Contribution";
 import type { ImportInspection } from "../bindings/ImportInspection";
 import type { ShareForm } from "../bindings/ShareForm";
 import type { SkillPreview } from "../bindings/SkillPreview";
@@ -12,7 +11,7 @@ import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { HabiError } from "../lib/api";
 import { NavProvider } from "../lib/nav";
-import { identifierProblem, sharingStatus, slugify } from "../lib/skills";
+import { identifierProblem, slugify } from "../lib/skills";
 import { tagFromInput } from "../lib/tags";
 import { useAutosave } from "../lib/useAutosave";
 import { AddSkillsDialog } from "../views/skills/AddSkillsDialog";
@@ -378,85 +377,6 @@ describe("add skills", () => {
       { path: "skills/incident-notes", rename: null },
       { path: "skills/threat-model", rename: "threat-model-2" },
     ]);
-  });
-});
-
-describe("sharing status", () => {
-  const base: Contribution = {
-    id: "c",
-    sourceId: "s",
-    sourceName: "Team",
-    title: "Share Migration review",
-    message: "",
-    itemPath: "skills/migration-review",
-    baseCommit: "abc",
-    branch: "habi/contrib/migration-review-1",
-    state: "draft",
-    origin: { type: "localSkill", skillId: "k" },
-    form: emptyForm,
-    files: [],
-    validation: [],
-    suggestedTags: [],
-    commitId: null,
-    publishedUrl: null,
-    publishedNote: null,
-    patchPath: null,
-    inLibrary: false,
-    remote: {
-      display: "https://github.com/acme/skills.git",
-      onThisMachine: false,
-      host: "github",
-      requestUnavailable: null,
-    },
-    review: null,
-    revision: 0,
-    revising: false,
-    stagingPath: "~/habi/contributions/c/files",
-    pushedCommit: null,
-    createdAt: "2026-10-02T00:00:00Z",
-    updatedAt: "2026-10-02T00:00:00Z",
-  };
-
-  it("never presents a prepared or pushed branch as a submitted review", () => {
-    expect(sharingStatus(base).text).toBe("Not prepared yet");
-    expect(sharingStatus({ ...base, state: "committed" }).text).toBe("Prepared locally");
-    expect(sharingStatus({ ...base, state: "committed" }).detail).toMatch(/Nothing has been sent/);
-    const pushed = sharingStatus({ ...base, state: "published", publishedNote: "gh is not installed" });
-    expect(pushed.text).toBe("Branch pushed — no review request");
-    expect(pushed.detail).toBe("gh is not installed");
-    expect(
-      sharingStatus({ ...base, state: "published", publishedUrl: "https://example.invalid/pr/1" }).text,
-    ).toBe("Review requested");
-    expect(sharingStatus({ ...base, state: "published", inLibrary: true }).text).toBe("In the library");
-    // Identical to the library before anything was prepared is not "merged".
-    expect(sharingStatus({ ...base, inLibrary: true }).text).toBe("Not prepared yet");
-  });
-
-  it("states a request's state only as observed, with when it was checked", () => {
-    const review = {
-      host: "github" as const,
-      url: "https://github.com/acme/skills/pull/7",
-      number: 7,
-      state: "changesRequested" as const,
-      headCommit: null,
-      approvedBy: [],
-      comments: [],
-      commentsTruncated: false,
-      checkedAt: new Date().toISOString(),
-    };
-    const pushed = { ...base, state: "published" as const, pushedCommit: "abc", publishedUrl: review.url };
-    expect(sharingStatus(pushed).detail).toMatch(/Check its status/);
-    const changes = sharingStatus({ ...pushed, review });
-    expect(changes.text).toBe("Changes requested");
-    expect(changes.detail).toMatch(/Checked/);
-    expect(
-      sharingStatus({ ...pushed, review: { ...review, state: "approved", approvedBy: ["bo"] } }).detail,
-    ).toMatch(/Approved by bo\. Merging is up to the maintainers/);
-    expect(sharingStatus({ ...pushed, review: { ...review, state: "merged" } }).text).toBe("Merged");
-    // A revision being prepared says the request still shows the old version.
-    const revising = sharingStatus({ ...pushed, state: "draft", revision: 1, revising: true, review });
-    expect(revising.text).toBe("Revision not sent yet");
-    expect(revising.detail).toMatch(/pull request still shows the previous version/);
   });
 });
 

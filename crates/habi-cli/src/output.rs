@@ -134,6 +134,7 @@ fn draft_file_status(s: DraftFileStatus) -> &'static str {
     match s {
         DraftFileStatus::Added => "added",
         DraftFileStatus::Modified => "changed",
+        DraftFileStatus::Renamed => "renamed",
         DraftFileStatus::Unchanged => "unchanged",
         DraftFileStatus::Removed => "removed",
     }
@@ -902,25 +903,63 @@ pub fn contribution(c: &Contribution, staging: &str) {
     if !c.message.is_empty() {
         println!("\n{}", c.message);
     }
-    println!("\nFiles that would leave this machine:");
+    println!(
+        "\nTo {} ({}), branch {}",
+        c.source_name,
+        c.remote
+            .as_ref()
+            .map(|r| r.display.as_str())
+            .unwrap_or("remote unknown"),
+        c.branch
+    );
+    println!("\nChanged files (only included ones leave this machine):");
     let mut any = false;
     for f in &c.files {
-        if f.status != DraftFileStatus::Unchanged {
-            any = true;
-            println!(
-                "  {} {} (+{} −{})",
-                draft_file_status(f.status),
-                f.path,
-                f.diff.added,
-                f.diff.removed
-            );
+        if f.status == DraftFileStatus::Unchanged {
+            continue;
         }
+        any = true;
+        let what = match (&f.previous_path, f.status) {
+            (Some(prev), DraftFileStatus::Renamed) => format!("{prev} → {}", f.path),
+            _ => format!("{} (+{} −{})", f.path, f.diff.added, f.diff.removed),
+        };
+        println!(
+            "  {} {:<9} {what}",
+            if f.included { "[x]" } else { "[ ]" },
+            draft_file_status(f.status),
+        );
     }
     if !any {
         println!("  (none yet: nothing differs from the library)");
     }
-    for d in &c.validation {
-        println!("  {}: {}", diagnostic_level(d.level), d.message);
+    let unchanged = c
+        .files
+        .iter()
+        .filter(|f| f.status == DraftFileStatus::Unchanged)
+        .count();
+    if unchanged > 0 {
+        println!("  … and {unchanged} unchanged file(s)");
+    }
+    let (errors, warnings): (Vec<_>, Vec<_>) = c
+        .validation
+        .iter()
+        .partition(|d| d.level == habi_core::library::model::DiagnosticLevel::Error);
+    if errors.is_empty() && warnings.is_empty() {
+        println!(
+            "\nChecked: package format, Habi metadata, file references, secrets — nothing to fix.\nThis does not test what the skill does."
+        );
+    }
+    if !errors.is_empty() {
+        println!("\nBlocking (fix before preparing a branch):");
+        for d in errors {
+            println!("  {}", d.message);
+        }
+    }
+    if !warnings.is_empty() {
+        println!("\nWarnings (do not block):");
+        for d in warnings {
+            println!("  {}: {}", diagnostic_level(d.level), d.message);
+        }
     }
     println!("\nEdit files in: {staging}");
 }

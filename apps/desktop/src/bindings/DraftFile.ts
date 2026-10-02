@@ -2,8 +2,25 @@
 import type { DraftFileStatus } from "./DraftFileStatus";
 import type { TextDiff } from "./TextDiff";
 
+/**
+ * One file of the package, compared with the library. Changed files come
+ * first; unchanged files follow.
+ */
 export type DraftFile = { 
 /**
- * Path in the library repository.
+ * Path in the library repository (the new path of a renamed file).
  */
-path: string, status: DraftFileStatus, size: number, diff: TextDiff, };
+path: string, 
+/**
+ * The path a renamed file had in the library.
+ */
+previousPath: string | null, status: DraftFileStatus, size: number, diff: TextDiff, 
+/**
+ * Part of what is shared. A changed file the author leaves out keeps the
+ * library's version (an added file is not added, a removed one stays).
+ */
+included: boolean, 
+/**
+ * Why this file cannot be left out, if so.
+ */
+required: string | null, };

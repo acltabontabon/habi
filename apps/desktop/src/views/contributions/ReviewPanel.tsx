@@ -7,11 +7,10 @@
  */
 import type { Contribution } from "../../bindings/Contribution";
 import type { ReviewComment } from "../../bindings/ReviewComment";
-import { Icon } from "../../components/Icon";
 import { Button, Section, Status } from "../../components/ui";
 import { api } from "../../lib/api";
 import { relativeTime } from "../../lib/format";
-import { hostName, requestWord } from "../../lib/skills";
+import { hostName, requestWord } from "../../lib/sharing";
 
 export function CommentItem({ comment }: { comment: ReviewComment }) {
   return (
@@ -64,7 +63,7 @@ export function ReviewPanel({
   const url = review?.url ?? c.publishedUrl;
   const canAsk = !c.remote?.onThisMachine && !c.remote?.requestUnavailable;
   const general = (review?.comments ?? []).filter((x) => x.kind !== "inline");
-  const inline = (review?.comments ?? []).filter((x) => x.kind === "inline");
+  const inline = (review?.comments ?? []).filter((x) => x.kind === "inline").length;
 
   return (
     <Section
@@ -82,6 +81,17 @@ export function ReviewPanel({
               Check status
             </Button>
           ) : null}
+          {c.state !== "draft" && !finished ? (
+            <Button
+              size="sm"
+              variant={review?.state === "changesRequested" ? "primary" : "secondary"}
+              icon="pencil"
+              busy={busy === "revise"}
+              onClick={onRevise}
+            >
+              Revise…
+            </Button>
+          ) : null}
         </div>
       }
     >
@@ -93,71 +103,44 @@ export function ReviewPanel({
       ) : review ? (
         <>
           <p className="muted">
-            {host} {word} #{review.number}, checked {relativeTime(review.checkedAt)}. Habi reads this only
-            when you ask.
+            {host} {word} #{review.number}, checked {relativeTime(review.checkedAt)}. Habi asks only when you
+            check.
+            {review.approvedBy.length > 0 ? ` Approved by ${review.approvedBy.join(", ")}.` : ""}
+            {inline > 0 ? ` ${inline} comment${inline === 1 ? "" : "s"} on lines appear with the files.` : ""}
           </p>
-          {review.approvedBy.length > 0 ? (
-            <p>
-              <Status tone="ok">Approved</Status> by {review.approvedBy.join(", ")}
-            </p>
-          ) : null}
-          {review.comments.length === 0 ? (
+          {general.length > 0 ? (
+            <ul className="review-comments" aria-label="Review comments">
+              {general.map((x, i) => (
+                <CommentItem key={i} comment={x} />
+              ))}
+            </ul>
+          ) : review.comments.length === 0 ? (
             <p className="muted">No comments yet.</p>
-          ) : (
-            <>
-              <p className="muted">Comments are shown as plain text, exactly as written. Reply on {host}.</p>
-              {general.length > 0 ? (
-                <ul className="review-comments" aria-label="Review comments">
-                  {general.map((x, i) => (
-                    <CommentItem key={i} comment={x} />
-                  ))}
-                </ul>
-              ) : null}
-              {inline.length > 0 ? (
-                <p className="muted">
-                  <Icon name="file" size={13} /> {inline.length} comment{inline.length === 1 ? "" : "s"} on
-                  specific lines — shown with the files below.
-                </p>
-              ) : null}
-              {review.commentsTruncated ? (
-                <p className="muted">More comments exist than Habi shows; open the request to see all.</p>
-              ) : null}
-            </>
-          )}
+          ) : null}
+          {review.commentsTruncated ? (
+            <p className="muted">More comments exist than Habi shows; open the request to see all.</p>
+          ) : null}
         </>
       ) : (
         <p className="muted">
-          Habi has not asked {host} about this {word} yet. {c.publishedNote ? `${c.publishedNote} ` : ""}
-          Checking reads its state and comments with your{" "}
-          {host === "GitLab" ? "glab" : host === "GitHub" ? "gh" : "gh or glab"} sign-in; nothing is sent.
+          Not checked yet. {c.publishedNote ? `${c.publishedNote} ` : ""}Checking reads the {word}'s state and
+          comments with your {host === "GitLab" ? "glab" : host === "GitHub" ? "gh" : "gh or glab"} sign-in;
+          nothing is sent.
         </p>
       )}
-
-      {c.state !== "draft" && !finished ? (
-        <div className="review-revise">
-          <p>
-            Need to change something after review?{" "}
-            {c.origin.type === "localSkill"
-              ? "Edit the skill in My skills first; revising copies it again."
-              : c.origin.type === "projectSkill"
-                ? "Edit the skill in the project first; revising copies it again."
-                : "Revising reopens the form below."}{" "}
-            The new version goes to the same branch{url ? ` and the same ${word}` : ""}.
-          </p>
-          <Button
-            variant={review?.state === "changesRequested" ? "primary" : "secondary"}
-            icon="pencil"
-            busy={busy === "revise"}
-            onClick={onRevise}
-          >
-            Revise…
-          </Button>
-        </div>
-      ) : null}
       {finished ? (
         <p className="muted">
           This {word} is {review?.state === "merged" ? "merged" : "closed"}. To change the skill further,
           share it again as a new contribution.
+        </p>
+      ) : c.state !== "draft" ? (
+        <p className="muted">
+          Revise sends a new commit to the same branch{url ? ` and ${word}` : ""}.{" "}
+          {c.origin.type === "localSkill"
+            ? "Edit the skill in My skills first; revising copies it again."
+            : c.origin.type === "projectSkill"
+              ? "Edit the skill in its project first; revising copies it again."
+              : "Revising reopens the files and form here."}
         </p>
       ) : null}
     </Section>
