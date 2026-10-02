@@ -25,7 +25,7 @@ const MAX_PROJECT_FILE: u64 = 4 * 1024 * 1024;
 pub const BRIDGE_ID: &str = "claude-code-agents-import";
 const BRIDGE_IDENTITY: &str = "habi:internal";
 const INSTRUCTIONS_FILE: &str = "AGENTS.md";
-/// Codex's default `project_doc_max_bytes` (see `docs/compatibility.md`).
+/// Codex's default `project_doc_max_bytes` (see `docs/dev/compatibility-research.md`).
 const CODEX_INSTRUCTIONS_LIMIT: usize = 32 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -1000,7 +1000,7 @@ impl<'a> Planner<'a> {
 
     /// Accounts for skill folders that are symbolic links inside the project.
     /// A link from one skills folder to the other (the layout in
-    /// `docs/compatibility.md`, e.g. `.claude/skills -> ../.agents/skills`)
+    /// `docs/guide/agent-tools.md`, e.g. `.claude/skills -> ../.agents/skills`)
     /// means one copy serves both, so Habi writes it once, in the real
     /// folder. Any other link is a conflict that says how to proceed.
     fn resolve_skill_dirs(

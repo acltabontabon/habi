@@ -1,5 +1,9 @@
 name: Release
 
+# Pushing a tag vX.Y.Z runs every CI check, confirms the tag matches the version in each
+# manifest, builds the installers and the `habi` command-line tool for macOS (one universal
+# build) and Windows, and creates a draft release. See docs/dev/release.md.
+
 on:
   push:
     tags: ["v*"]
@@ -8,47 +12,66 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Tests before release
-    timeout-minutes: 60
+  checks:
+    name: CI checks
+    uses: ./.github/workflows/ci.yml
+    with:
+      skip-installers: true
+    permissions:
+      contents: read
+
+  version:
+    name: Tag matches the version
+    timeout-minutes: 5
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master, 2026-10
-        with:
-          toolchain: "1.98.1"
-          components: rustfmt, clippy
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
-        with:
-          package_json_file: apps/desktop/package.json
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: apps/desktop/pnpm-lock.yaml
-      - name: Linux system libraries
+      - name: Compare the tag with every manifest
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-          git config --global user.name "CI"
-          git config --global user.email "ci@example.invalid"
-      - run: scripts/check.sh
+          tag="${GITHUB_REF_NAME#v}"
+          cargo=$(sed -n '/^\[workspace\.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          desktop=$(node -p 'require("./apps/desktop/package.json").version')
+          tauri=$(node -p 'require("./apps/desktop/src-tauri/tauri.conf.json").version')
+          website=$(node -p 'require("./website/package.json").version')
+          status=0
+          for entry in "Cargo.toml=$cargo" "apps/desktop/package.json=$desktop" \
+                       "apps/desktop/src-tauri/tauri.conf.json=$tauri" "website/package.json=$website"; do
+            if [ "${entry#*=}" != "$tag" ]; then
+              echo "::error::${entry%%=*} has version '${entry#*=}', but the tag is v$tag"
+              status=1
+            fi
+          done
+          exit "$status"
 
   build:
-    name: Build (${{ matrix.os }})
-    needs: test
+    name: Build (${{ matrix.platform }})
+    needs: [checks, version]
     timeout-minutes: 90
     # Habi ships for macOS and Windows; Linux is not a release target.
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-2025]
+        include:
+          - platform: macos
+            os: macos-15
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            tauri-args: --target universal-apple-darwin
+          - platform: windows
+            os: windows-2025
+            rust-targets: ""
+            tauri-args: ""
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write # build provenance attestations
+      attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master, 2026-10
         with:
           toolchain: "1.98.1"
+          targets: ${{ matrix.rust-targets }}
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           package_json_file: apps/desktop/package.json
@@ -60,7 +83,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
       # Signing and notarization are configured only when the secrets exist; otherwise the
-      # artifacts are unsigned and the draft release says so. See docs/release.md.
+      # artifacts are unsigned and the draft release says so. See docs/dev/release.md.
       - name: macOS signing credentials (only when configured)
         if: runner.os == 'macOS'
         shell: bash
@@ -89,33 +112,58 @@ jobs:
             } >> "$GITHUB_ENV"
           fi
       - name: Build desktop installers
-        run: pnpm tauri build
+        shell: bash
+        env:
+          TAURI_ARGS: ${{ matrix.tauri-args }}
+        run: |
+          read -ra args <<< "$TAURI_ARGS"
+          pnpm tauri build "${args[@]}"
         working-directory: apps/desktop
-      - name: Build command-line tool
-        run: cargo build --release --locked -p habi-cli
+      - name: Build command-line tool (macOS, universal)
+        if: runner.os == 'macOS'
+        run: |
+          cargo build --release --locked -p habi-cli --target aarch64-apple-darwin
+          cargo build --release --locked -p habi-cli --target x86_64-apple-darwin
+          mkdir -p target/cli
+          lipo -create -output target/cli/habi \
+            target/aarch64-apple-darwin/release/habi target/x86_64-apple-darwin/release/habi
+          echo "CLI_TARGET=universal-apple-darwin" >> "$GITHUB_ENV"
+      - name: Build command-line tool (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cargo build --release --locked -p habi-cli
+          mkdir -p target/cli
+          cp target/release/habi.exe target/cli/
+          echo "CLI_TARGET=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_ENV"
       - name: Collect artifacts and checksums
         shell: bash
         run: |
+          # The globs below only match file names this job wrote, none starting with a dash.
           mkdir -p dist
-          find target/release/bundle -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*-setup.exe" \) -exec cp {} dist/ \;
-          case "${{ runner.os }}" in
-            Windows) cli=habi.exe ;;
-            *) cli=habi ;;
-          esac
-          target=$(rustc -vV | sed -n 's/^host: //p')
-          (cd target/release && tar -czf "../../dist/habi-cli-${GITHUB_REF_NAME}-$target.tar.gz" "$cli")
+          find target -type f -path '*/release/bundle/*' \
+            \( -name "*.dmg" -o -name "*.msi" -o -name "*-setup.exe" \) -exec cp {} dist/ \;
+          # shellcheck disable=SC2035
+          (cd target/cli && tar -czf "../../dist/habi-cli-${GITHUB_REF_NAME}-${CLI_TARGET}.tar.gz" *)
           cd dist
           if command -v sha256sum >/dev/null; then sum="sha256sum"; else sum="shasum -a 256"; fi
-          $sum * > "SHA256SUMS-${{ matrix.os }}.txt"
+          # shellcheck disable=SC2035
+          $sum * > "SHA256SUMS-${{ matrix.platform }}.txt"
+          cat "SHA256SUMS-${{ matrix.platform }}.txt"
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: release-${{ matrix.os }}
+          name: release-${{ matrix.platform }}
           path: dist/*
           if-no-files-found: error
 
   publish:
     name: Draft GitHub release
     needs: build
+    timeout-minutes: 10
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -128,6 +176,8 @@ jobs:
         with:
           draft: true
           body: |
-            Draft release. Check docs/release.md before publishing.
+            Draft release. Check docs/dev/release.md before publishing.
             Artifacts are UNSIGNED unless signing secrets were configured for this run.
+            Checksums: SHA256SUMS-macos.txt and SHA256SUMS-windows.txt. Verify provenance with
+            `gh attestation verify <file> --repo acltabontabon/habi`.
           files: dist/*

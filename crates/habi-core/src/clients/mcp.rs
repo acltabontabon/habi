@@ -4,7 +4,7 @@
 //! that is unchanged since Habi added it. Unrelated keys and formatting are
 //! preserved (JSON key order via `preserve_order`; TOML via `toml_edit`).
 //! Secrets are never written: environment values are references that each
-//! client resolves itself, using its own syntax (see `docs/compatibility.md`):
+//! client resolves itself, using its own syntax (see `docs/dev/compatibility-research.md`):
 //! - Claude Code `.mcp.json`: `${VAR}`
 //! - Cursor `.cursor/mcp.json`: `${env:VAR}`
 //! - Codex `.codex/config.toml`: `env_vars = ["VAR"]` / `bearer_token_env_var`

@@ -1,18 +1,24 @@
 # Security policy
 
 Habi installs files into developers' repositories, runs Git with their credentials and can
-push branches on their behalf, so we take security reports seriously.
+push branches on their behalf, so security reports come before any other work.
+
+Habi is maintained by one developer, Alvin Cris Tabontabon, who reads and handles every
+report.
 
 ## Reporting a vulnerability
 
-Please **do not open a public issue.** Report privately through GitHub:
-**Security → Report a vulnerability** on
-[github.com/acltabontabon/habi](https://github.com/acltabontabon/habi/security/advisories/new),
-or email **me@acltabontabon.com** with "Habi security" in the subject.
+Please **do not open a public issue.** Report privately:
+
+1. Email **me@acltabontabon.com** with "Habi security" in the subject.
+2. Or use GitHub's private reporting, **Security → Report a vulnerability** on
+   [github.com/acltabontabon/habi](https://github.com/acltabontabon/habi/security/advisories/new),
+   once it is enabled for the repository.
 
 Include what you found, how to reproduce it (a minimal library or repository helps), and
-the impact you expect. You will get an acknowledgement within 3 working days and a plan
-within 10. We will credit you in the release notes unless you prefer otherwise.
+the impact you expect. The maintainer aims to acknowledge a report within 3 working days
+and to share a plan within 10. You will be credited in the release notes unless you prefer
+otherwise.
 
 ## Supported versions
 
@@ -32,7 +38,7 @@ For example:
   links in the desktop app.
 - Bypassing the desktop app's content security policy or command allow-list.
 
-The intended boundaries are described in [docs/security.md](docs/security.md).
+The intended boundaries are described in the [security model](docs/project/security-model.md).
 
 ## Out of scope
 

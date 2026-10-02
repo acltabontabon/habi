@@ -75,13 +75,30 @@ folder. The defining demonstration — one library, three structurally different
 meaningfully different and explainable recommendations — is automated in
 `crates/habi-core/tests/matching_fixtures.rs` and `acceptance.rs`.
 
-## Known gaps
+Known gaps and what is not verified yet are listed in one place:
+[Project status](status.md#known-limitations).
 
-- Contributing to a community library usually needs push access (or a fork) that the developer
-  does not have. Habi prepares the branch and offers *Export patch*; it does not create forks.
+## Out of scope by design
 
-## Out of scope for this release
+A workflow execution engine, model routing or proxies, a marketplace, conversation
+monitoring, autonomous agents, LLM-generated applicability presented as fact, and
+effectiveness scores without evidence.
 
-Generic workflow execution, marketplaces, model routing or proxies, centralized backends,
-autonomous agents, semantic consolidation of similar skills, organization-wide adoption
-reporting. See `docs/future.md`.
+## Future direction
+
+Not in this release. Habi keeps provenance and evidence so these can be built later without
+reworking the core:
+
+- **Similar contributions.** Compare incoming contributions with existing items (content
+  digests, shared conditions) to suggest consolidation — always as a suggestion to
+  maintainers, never an automatic merge.
+- **Repeated corrections.** Surface skills that are frequently edited locally in the same way
+  (lock-file drift across projects a team chooses to share), as candidates for upstream fixes.
+- **Rehearsal.** Evaluate a new skill's conditions against a set of representative
+  repositories before publishing, showing where it would and would not apply.
+- **Centralized evaluations and adoption reporting** — only with explicit, opt-in team
+  infrastructure; never background collection from developers' machines.
+- **More detectors** (Python, Go, .NET, Terraform) using the same coverage discipline.
+- **User-scope installation** (`~/.claude/skills`, `~/.agents/skills`) behind an explicit
+  scope choice, with the same plan/journal guarantees.
+- **Cursor `.mdc` rules** for glob-scoped instructions where AGENTS.md is too coarse.

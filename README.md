@@ -47,16 +47,24 @@ Principles:
 
 A repository and an idea are enough to start; libraries are optional.
 
-> **Status: pre-release (0.1.0).** There are no prebuilt downloads yet — build from source
-> (below). See [what is verified](docs/implementation-status.md) and the
-> [release blockers](docs/release.md#release-blockers-current).
+## Status and platforms
 
-## Try it
+**Pre-release (0.1.0).** There are no prebuilt downloads yet; build from source (below).
+[Project status](docs/project/status.md) lists what is verified, the known limitations and
+the release blockers.
+
+| Platform | |
+|---|---|
+| macOS 11 or later | Supported, Apple Silicon and Intel (one universal build) |
+| Windows | Supported |
+| Linux | Not supported |
+
+## Build from source
 
 You need [Rust](https://rustup.rs) (the exact version installs itself from
 `rust-toolchain.toml`), [Node.js](https://nodejs.org) 24 or newer, Git, and the
-[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system (on macOS:
-`xcode-select --install`).
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system: on macOS,
+`xcode-select --install`; on Windows, the Microsoft C++ Build Tools and WebView2.
 
 ```sh
 git clone https://github.com/acltabontabon/habi.git
@@ -66,10 +74,8 @@ pnpm install
 pnpm tauri dev           # the first build takes a few minutes
 ```
 
-When the window opens, choose **Explore a sample workspace** to see two example libraries
-matched against seven example projects (all labeled as samples), or **Open a project…** to
-start with your own repository. Nothing in your project changes until you review and confirm
-a plan.
+[Getting started](docs/guide/getting-started.md) walks through the sample workspace and your
+first project. Nothing in your project changes until you review and confirm a plan.
 
 ### Command line
 
@@ -116,7 +122,7 @@ habi contribute commit <id>                          # a branch in Habi's cache;
 habi contribute publish <id> --open-request          # push and open a pull/merge request
 ```
 
-## For library maintainers
+## For library authors
 
 A library is a Git repository (or a subfolder of one) containing skill folders with
 `SKILL.md`. To make a skill match projects, add an optional `habi.yaml` next to it:
@@ -136,32 +142,52 @@ requires:
       commands: [./mvnw, mvn]
 ```
 
-Validate with `habi validate path/to/library`. See [Habi metadata](docs/metadata-schema.md)
+Validate with `habi validate path/to/library`. See [Habi metadata](docs/library-authors/metadata-schema.md)
 and the [example library](fixtures/libraries/example-team-library).
 
 ## Documentation
 
-| | |
-|---|---|
-| [Product contract](docs/product.md) | Principles and what Habi is not |
-| [My skills](docs/local-skills.md) | Creating, importing, previewing, using and sharing skills |
-| [Architecture](docs/architecture.md) | Crates, modules, data locations |
-| [Metadata schema](docs/metadata-schema.md) | `habi.yaml`, `habi-library.yaml`, conditions, versioning |
-| [Detectors](docs/detectors.md) | What inspection recognizes and its limits |
-| [Client compatibility](docs/compatibility.md) | Claude Code, Cursor, Codex paths, and smoke tests |
-| [Contribution flow](docs/contribution-flow.md) | Sharing improvements for review |
-| [Security](docs/security.md) | Threat boundaries and residual trust |
-| [Recovery](docs/recovery.md) | Journals, rollback, stale caches |
-| [Design](docs/design.md) | Visual direction and accessibility |
-| [Release](docs/release.md) | Builds, signing, versioning, blockers |
-| [Reuse assessment](docs/reuse-assessment.md) | Dependencies and why custom logic exists |
-| [Test data](docs/test-data.md) | Fixtures, the sample workspace and the seed script |
-| [Website](website/) | The site at acltabontabon.com/habi: `pnpm dev` in `website/`; data from `pnpm snapshot` and `scripts/journey.sh` |
+**Using Habi** ([docs/guide](docs/guide))
+
+- [Getting started](docs/guide/getting-started.md): the sample workspace, your first project, what Habi changes
+- [My skills](docs/guide/my-skills.md): creating, importing, previewing and using your own skills
+- [Sharing](docs/guide/sharing.md): sending improvements to a library for review
+- [Agent tools](docs/guide/agent-tools.md): what Habi writes for Claude Code, Cursor and Codex
+- [Recovery](docs/guide/recovery.md): journals, rollback, restore, stale caches
+
+**Writing libraries** ([docs/library-authors](docs/library-authors))
+
+- [Metadata schema](docs/library-authors/metadata-schema.md): `habi.yaml`, `habi-library.yaml`, conditions, versioning
+- [Detectors](docs/library-authors/detectors.md): what inspection recognizes, and its limits
+
+**The project** ([docs/project](docs/project))
+
+- [Product contract](docs/project/product.md): principles, what Habi is not, future direction
+- [Status](docs/project/status.md): what is verified, known limitations, release blockers
+- [Security model](docs/project/security-model.md): threat boundaries and residual trust
+
+**Working on Habi** ([docs/dev](docs/dev))
+
+- [Architecture](docs/dev/architecture.md): crates, modules, data locations, the development bridge
+- [Release](docs/dev/release.md): versioning, signing, the release procedure
+- [Test data](docs/dev/test-data.md): fixtures, the sample workspace, the seed script
+- [Design](docs/dev/design.md): visual direction and accessibility
+- [Reuse assessment](docs/dev/reuse-assessment.md): dependencies, and why custom logic exists
+- [Compatibility research](docs/dev/compatibility-research.md): client documentation and smoke tests
+- [Website](website/): the site at acltabontabon.com/habi. `pnpm dev` in `website/`; its data
+  comes from `pnpm snapshot` and `website/scripts/journey.sh`
 
 ## Contributing
 
 Bug reports, ideas and pull requests are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md).
-Please report security problems privately as described in [SECURITY.md](SECURITY.md).
+Questions go to [SUPPORT.md](SUPPORT.md). Please report security problems privately as
+described in [SECURITY.md](SECURITY.md).
+
+## Maintenance
+
+Habi is maintained by one developer (Alvin Cris Tabontabon) in their own time. Issues and
+pull requests are read, but responses are best effort; security reports come first. See
+[SUPPORT.md](SUPPORT.md).
 
 ## License
 

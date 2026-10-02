@@ -133,7 +133,7 @@ do with it; "Applies" does not mean tried or verified.
 3. **From a Git repository** — connects it as a team library (it stays current when you
    refresh). To edit one of its skills, copy it to My skills.
 
-The inspection lists each package with its origin, files, licence, whether it has
+The inspection lists each package with its origin, files, license, whether it has
 applicability rules, and any problems. Importing copies packages byte for byte — references,
 scripts (with their executable bit), assets and unknown frontmatter included — and records
 where each came from. Originals are never changed.
@@ -185,7 +185,7 @@ Contributions reports what actually happened: *Prepared locally*, *Patch exporte
 pushed — no review request*, *Review requested*, and *In the library* once a refresh shows the
 library contains those files. Habi never merges and never reports a submission it did not make.
 
-See also [Contribution flow](contribution-flow.md).
+See also [Sharing](sharing.md).
 
 ## Not included
 
