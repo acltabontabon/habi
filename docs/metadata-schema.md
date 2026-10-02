@@ -98,6 +98,23 @@ instructions:                  # Markdown installed as managed sections of AGENT
     applies_when: { tag: lang:java }
 ```
 
+## Lineage
+
+When a copy of a library skill is shared into a *different* library, Habi records where it was
+refined from in the shared SKILL.md, under the Agent Skills `metadata` map (which agents
+ignore):
+
+```yaml
+metadata:
+  based-on: "github.com/obra/superpowers#brainstorming@8ca22db"
+```
+
+The value is `<library identity>#<item id>@<version>` and names the immediate parent only.
+It is shown in the contribution review, where the author can leave it out. Habi never records
+machine-local sources, never writes a team library's address into a contribution to a
+community library, and edits only that line (the rest of SKILL.md keeps its bytes). Who refined
+it is in the Git commit's author, not in the file.
+
 ## Identity
 
 An item is identified by its source plus its declared `id` (or path when ids collide), and

@@ -266,11 +266,31 @@ function Validation({ c }: { c: Contribution }) {
 }
 
 /** Where the contribution goes, stated only as far as Habi knows it. */
-function Destination({ c }: { c: Contribution }) {
+function Destination({ c, onLineage }: { c: Contribution; onLineage?: (record: boolean) => void }) {
   return (
     <dl className="meta-grid destination">
       <dt>Library</dt>
       <dd>{c.sourceName}</dd>
+      {c.basedOn ? (
+        <>
+          <dt>Based on</dt>
+          <dd className="lineage">
+            <span className="mono">{c.basedOn}</span>
+            {onLineage ? (
+              <label className="check-inline" title="Written as metadata.based-on in the shared SKILL.md">
+                <input
+                  type="checkbox"
+                  checked={c.basedOnRecorded}
+                  onChange={(e) => onLineage(e.target.checked)}
+                />
+                Record in SKILL.md
+              </label>
+            ) : (
+              <span className="muted">{c.basedOnRecorded ? "recorded in SKILL.md" : "not recorded"}</span>
+            )}
+          </dd>
+        </>
+      ) : null}
       <dt>Repository</dt>
       <dd className="mono">{c.remote?.display ?? "unknown"}</dd>
       <dt>Host</dt>
@@ -591,6 +611,12 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
       await api.commitContribution(id, newJobId(), buildOnRemote);
     });
 
+  const lineage = (record: boolean) =>
+    act("lineage", async () => {
+      const updated = await api.recordContributionLineage(id, record);
+      client.setQueryData(keys.contribution(id), updated);
+    });
+
   const include = (path: string, included: boolean) =>
     act("select", async () => {
       const excluded = changed
@@ -850,7 +876,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
 
       <Section title="Send" id="send">
         <div className="send-layout">
-          <Destination c={c} />
+          <Destination c={c} onLineage={editable ? (record) => lineage(record) : undefined} />
           <div className="send-main">
             {editable ? (
               <fieldset className="form contribution-form">

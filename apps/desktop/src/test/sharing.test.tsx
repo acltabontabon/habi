@@ -105,6 +105,8 @@ const base: Contribution = {
   pushedCommit: null,
   attention: null,
   publishedAt: null,
+  basedOn: null,
+  basedOnRecorded: false,
   createdAt: "2026-10-02T00:00:00Z",
   updatedAt: "2026-10-02T00:00:00Z",
 };
@@ -142,6 +144,8 @@ const sent: Contribution = {
   pushedCommit: "c0ffee",
   publishedUrl: review.url,
   publishedAt: new Date().toISOString(),
+  basedOn: null,
+  basedOnRecorded: false,
 };
 
 describe("sharing state", () => {

@@ -42,7 +42,12 @@ licenseFile: string | null,
  * The author declared the item proprietary (in `license`). Copying or
  * sharing it may not be permitted.
  */
-licenseRestricted: boolean, compatibility: string | null, requirement: Requirement, priority: number, scope: Scope, appliesWhen: Condition | null, excludes: Condition | null, tools: Array<ToolRequirement>, mcp: Array<McpRequirement>, 
+licenseRestricted: boolean, 
+/**
+ * What this skill was refined from (`metadata.based-on`):
+ * `<library>#<item>@<version>`. Recorded by Habi when sharing a copy.
+ */
+basedOn: string | null, compatibility: string | null, requirement: Requirement, priority: number, scope: Scope, appliesWhen: Condition | null, excludes: Condition | null, tools: Array<ToolRequirement>, mcp: Array<McpRequirement>, 
 /**
  * `None` when not restricted.
  */

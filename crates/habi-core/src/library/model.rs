@@ -243,6 +243,10 @@ pub struct LibraryItem {
     /// sharing it may not be permitted.
     #[serde(default)]
     pub license_restricted: bool,
+    /// What this skill was refined from (`metadata.based-on`):
+    /// `<library>#<item>@<version>`. Recorded by Habi when sharing a copy.
+    #[serde(default)]
+    pub based_on: Option<String>,
     pub compatibility: Option<String>,
     pub requirement: Requirement,
     pub priority: i32,
