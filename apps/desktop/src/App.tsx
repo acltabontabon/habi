@@ -99,6 +99,13 @@ function Startup() {
   );
 }
 
+function isTextEntry(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('input, textarea, select, [contenteditable="true"], .cm-editor') !== null
+  );
+}
+
 function Shell() {
   const { route, navigate, back } = useNav();
   const client = useQueryClient();
@@ -188,7 +195,8 @@ function Shell() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
+      // A focused control (the code editor's ⌘[ outdent) handled it already.
+      if (!mod || e.defaultPrevented) return;
       // While a dialog is open, global shortcuts would act behind it (and
       // could open a second dialog on top). ⌘K still closes the palette.
       const otherDialog = document.querySelector('[role="dialog"]:not(.palette), [role="alertdialog"]');
@@ -201,6 +209,8 @@ function Shell() {
       }
       if (anyDialog) return;
       if (e.key === "[") {
+        // In text, ⌘[ belongs to the field (outdent), not to Back.
+        if (isTextEntry(e.target)) return;
         e.preventDefault();
         back();
       } else if (mod && e.key === ",") {
