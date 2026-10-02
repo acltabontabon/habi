@@ -403,7 +403,8 @@ describe("welcome", () => {
     const { container } = wrap(<Welcome />);
     const open = screen.getByRole("button", { name: "Open a project…" });
     expect(open).toHaveClass("btn-primary");
-    expect(screen.queryByText(/Connect/)).toBeNull();
+    // A library is optional: offered as a quiet link, never as the main action.
+    expect(screen.getByRole("button", { name: "Connect a library" })).toHaveClass("link-quiet");
     await user.click(open);
     expect(actions.openProject).toHaveBeenCalled();
     // One primary action; creating and adding skills live in the sidebar,
