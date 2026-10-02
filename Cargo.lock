@@ -1812,6 +1812,7 @@ name = "habi-desktop"
 version = "0.1.0"
 dependencies = [
  "habi-core",
+ "ignore",
  "notify-debouncer-mini",
  "serde",
  "serde_json",

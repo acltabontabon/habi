@@ -84,6 +84,7 @@ function answer(cmd: string, args: Args): unknown {
     case "watch_project":
     case "unwatch_project":
     case "cancel_job":
+    case "log_ui_error":
       return null;
     case "plugin:event|listen":
       return 1;

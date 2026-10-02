@@ -83,7 +83,7 @@ describe("skill reader", () => {
       "page",
     );
 
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
 
     // Esc: back to the skill, with the package still open…

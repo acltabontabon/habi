@@ -95,6 +95,8 @@ export function useOverview(projectId: string | undefined) {
     };
   }, []);
   const rescan = () => {
+    // The inspection already running is superseded; stop it rather than let it finish unseen.
+    if (jobRef.current) void api.cancelJob(jobRef.current);
     rescanRef.current = true;
     return query.refetch();
   };

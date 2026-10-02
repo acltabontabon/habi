@@ -1,6 +1,6 @@
 /** Project home: identity, a concise understanding, and the workbench. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, useEffect, useMemo } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
@@ -10,6 +10,7 @@ import { useDyes } from "../../lib/dye";
 import { plural } from "../../lib/format";
 import { type ProjectTab, useNav } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
+import { useSafeInvoke } from "../../lib/safeInvoke";
 import { tabKeyHandler } from "../../lib/tabs";
 import { tagLabel } from "../../lib/tags";
 
@@ -19,7 +20,7 @@ import { useOverview } from "../../lib/queries";
 import { EvidenceView } from "./EvidenceView";
 import { FoundView } from "./FoundView";
 import { InstalledView } from "./InstalledView";
-import { Workbench } from "./Workbench";
+import { fitsProject, Workbench } from "./Workbench";
 
 export function understanding(overview: ProjectOverview): string[] {
   const { inspection } = overview;
@@ -48,6 +49,7 @@ export function ProjectView({
   const { navigate } = useNav();
   const overview = useOverview(projectId);
   const client = useQueryClient();
+  const safely = useSafeInvoke();
   const changed = useQuery<string[] | null>({
     queryKey: staleKey(projectId),
     queryFn: () => null,
@@ -56,10 +58,16 @@ export function ProjectView({
   });
 
   // Watch this project for changes while it is open.
+  const [watchError, setWatchError] = useState<unknown>(null);
   useEffect(() => {
-    void api.watchProject(projectId).catch(() => undefined);
+    let live = true;
+    setWatchError(null);
+    api.watchProject(projectId).catch((e: unknown) => {
+      if (live) setWatchError(e);
+    });
     return () => {
-      void api.unwatchProject().catch(() => undefined);
+      live = false;
+      void api.unwatchProject(projectId).catch(() => undefined);
     };
   }, [projectId]);
 
@@ -185,7 +193,7 @@ export function ProjectView({
             size="sm"
             icon="external"
             variant="quiet"
-            onClick={() => void api.revealProjectPath(projectId, null)}
+            onClick={() => safely(() => api.revealProjectPath(projectId, null), "The folder was not shown")}
             title="Show the folder"
           >
             Reveal
@@ -235,6 +243,13 @@ export function ProjectView({
         </Notice>
       ) : null}
 
+      {watchError ? (
+        <Notice tone="unknown" title="Habi is not following changes in this project">
+          Use Rescan after you change files.
+          {watchError instanceof Error ? <span className="muted"> ({watchError.message})</span> : null}
+        </Notice>
+      ) : null}
+
       {inspection.scan.truncated ? (
         <Notice tone="warn" title="The scan stopped early">
           {inspection.scan.limitsHit.join(" ")} File-pattern conditions are treated as not established.
@@ -264,7 +279,7 @@ export function ProjectView({
       </div>
 
       <div className="project-body" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {data.recommendations.length === 0 && tab === "recommendations" ? (
+        {tab === "recommendations" && !itemKey && !data.recommendations.some(fitsProject) ? (
           // Nothing to recommend is not a dead end: show what is already here
           // and what can be done with only this project.
           <FoundView project={project} lead />

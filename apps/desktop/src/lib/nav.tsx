@@ -1,5 +1,8 @@
 /** Minimal in-app navigation: a typed route plus back history. */
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { Dialog } from "../components/Dialog";
+import { Button } from "../components/ui";
+import { hasUnsavedEdits } from "./useAutosave";
 
 export type ProjectTab = "recommendations" | "found" | "evidence" | "installed";
 
@@ -44,8 +47,17 @@ export function lastProject(): string | null {
 export function NavProvider({ initial, children }: { initial: Route; children: ReactNode }) {
   const [stack, setStack] = useState<Route[]>([initial]);
   const route = stack[stack.length - 1] ?? initial;
+  // Leaving a screen whose edits could not be saved would lose them: the
+  // move waits for the author's answer, and the editor stays open meanwhile.
+  const [held, setHeld] = useState<(() => void) | null>(null);
+  const top = useRef(route);
+  top.current = route;
+  const guarded = useCallback((go: () => void) => {
+    if (hasUnsavedEdits()) setHeld(() => go);
+    else go();
+  }, []);
 
-  const navigate = useCallback((next: Route) => {
+  const go = useCallback((next: Route) => {
     if (next.name === "project") rememberProject(next.projectId);
     setStack((s) => {
       const top = s[s.length - 1];
@@ -64,7 +76,18 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
     });
   }, []);
 
-  const back = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
+  const navigate = useCallback(
+    (next: Route) => {
+      if (JSON.stringify(top.current) === JSON.stringify(next)) return;
+      guarded(() => go(next));
+    },
+    [guarded, go],
+  );
+
+  const back = useCallback(
+    () => guarded(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))),
+    [guarded],
+  );
 
   const value = useMemo(
     () => ({
@@ -76,7 +99,37 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
     }),
     [route, navigate, back, stack],
   );
-  return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
+  return (
+    <NavContext.Provider value={value}>
+      {children}
+      <Dialog
+        open={held !== null}
+        onOpenChange={(open) => {
+          if (!open) setHeld(null);
+        }}
+        title="Unsaved edits"
+        description="Some edits on this screen are not saved: the file changed outside Habi, or writing it failed. Leaving now loses them."
+        footer={
+          <>
+            <Button
+              variant="danger"
+              onClick={() => {
+                held?.();
+                setHeld(null);
+              }}
+            >
+              Leave without them
+            </Button>
+            <Button variant="primary" onClick={() => setHeld(null)}>
+              Stay and fix
+            </Button>
+          </>
+        }
+      >
+        <p className="muted">Stay to keep them; the screen explains how to save them.</p>
+      </Dialog>
+    </NavContext.Provider>
+  );
 }
 
 export function useNav(): Nav {

@@ -26,7 +26,7 @@
   --ink: #16161a;
   --ink-soft: #34343b;
   --ink-muted: #5f5f68; /* 5.9:1 on --paper, 5.4:1 on --paper-sunken */
-  --ink-faint: #8d8d95; /* 3.2:1: decorative (line numbers) and disabled only */
+  --ink-faint: #68686f; /* quietest text: 4.6:1 on every surface and wash (5.1:1 on --paper) */
   --hairline: #e2e0d9;
   --hairline-strong: #cdcac1;
 
@@ -126,7 +126,7 @@
   --ink: #ececef;
   --ink-soft: #cacad2;
   --ink-muted: #94949f; /* 6.6:1 on --paper, 6.1:1 on --paper-raised */
-  --ink-faint: #5e5e68;
+  --ink-faint: #888891; /* 4.5:1 on every surface and wash (5.5:1 on --paper) */
   --hairline: #232328;
   --hairline-strong: #34343c;
 
