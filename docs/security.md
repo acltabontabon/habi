@@ -99,6 +99,15 @@ and it is what makes authentication work without Habi handling secrets.
 - Instruction files are read only if inspection recognized them as agent instructions, never
   by arbitrary path, and files with secret-like names are not read.
 - Draft Markdown is previewed through the same sanitizing renderer as library content.
+- Images in a package (PNG, JPEG, GIF, WebP, SVG up to 2 MB) are previewed as `data:` URLs
+  inside an `<img>`, where SVG scripts and external references never load.
+- *Open in text editor* opens a package file explicitly in a text editor (`open -t` on macOS,
+  Notepad on Windows) — never with the file's default application, which for a script could
+  be a terminal that runs it. Where no text editor can be named (Linux), the file is revealed
+  in the file manager instead.
+- Renaming, moving, replacing and removing package files go through `RelPath` and
+  `resolve_for_write`/`resolve_for_read`: nothing can leave the package, follow a link, or
+  replace an existing file by renaming onto it. SKILL.md keeps its name and place.
 - Deleting a draft moves it to the trash (a flag); its files are removed only by an explicit,
   separate "Delete permanently".
 - Sharing a local skill goes through the contribution pipeline unchanged: explicit file list,
