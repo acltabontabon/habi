@@ -673,15 +673,24 @@ impl Sources {
                         short(&commit)
                     ));
                 }
-                _ => {
-                    if !git.is_ancestor(&cache, previous, &commit, cancel)? {
+                _ => match git.is_ancestor(&cache, previous, &commit, cancel) {
+                    Ok(true) => {}
+                    Ok(false) => {
                         warning = Some(format!(
                             "History was rewritten: the previously fetched commit {} is not an ancestor of {}.",
                             short(previous),
                             short(&commit)
                         ));
                     }
-                }
+                    Err(HabiError::Cancelled) => return Err(HabiError::Cancelled),
+                    // The new content is still valid; say what could not be checked.
+                    Err(e) => {
+                        warning = Some(format!(
+                            "Habi could not check whether history was rewritten since commit {} ({e}). Review the update before adopting it.",
+                            short(previous)
+                        ));
+                    }
+                },
             }
         }
 
