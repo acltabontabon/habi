@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
-# Runs every check CI runs. Usage: scripts/check.sh
+# Runs the checks CI runs, on this machine. CI also runs them on macOS, Windows and Linux,
+# and builds the desktop installers. Usage: scripts/check.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== Rust format";   cargo fmt --all --check
 echo "== Rust lint";     cargo clippy --workspace --all-targets -- -D warnings
+# The bindings are generated; regenerating them from scratch catches files for removed types.
+rm -rf apps/desktop/src/bindings
 echo "== Rust tests";    cargo test --workspace
 echo "== Bindings are up to date"
-if [ -n "$(git status --porcelain -- apps/desktop/src/bindings)" ]; then
+if [ -n "$(git status --porcelain --untracked-files=all -- apps/desktop/src/bindings)" ]; then
   git status --short -- apps/desktop/src/bindings
   echo "TypeScript bindings changed: commit apps/desktop/src/bindings"; exit 1
+fi
+echo "== Dependency licenses, advisories and sources"
+if cargo deny --version >/dev/null 2>&1; then
+  cargo deny check licenses advisories sources
+else
+  echo "cargo-deny is not installed; skipped (CI runs it). Install: cargo install --locked cargo-deny"
 fi
 
 cd apps/desktop
@@ -20,4 +29,10 @@ echo "== Frontend tests";   pnpm test
 echo "== Frontend build";   pnpm build
 cd ../..
 echo "== Third-party notices are up to date"; node scripts/third-party-notices.mjs --check
+echo "== Documentation links";                node scripts/check-links.mjs
+
+cd website
+echo "== Website install"; pnpm install --frozen-lockfile
+echo "== Website build";   pnpm build
+cd ..
 echo "All checks passed."
