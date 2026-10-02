@@ -17,6 +17,7 @@ import { useAutosave } from "../lib/useAutosave";
 import { AddSkillsDialog } from "../views/skills/AddSkillsDialog";
 import { ApplicabilityPreview } from "../views/skills/ApplicabilityPreview";
 import { ConditionBuilder } from "../views/skills/ConditionBuilder";
+import { SkillsEmpty } from "../views/skills/SkillsEmpty";
 import { Welcome } from "../views/Welcome";
 
 const invoke = vi.fn();
@@ -394,6 +395,30 @@ describe("identifiers and technologies", () => {
     expect(tagFromInput("lang:kotlin")).toBe("lang:kotlin");
     expect(tagFromInput("team:payments")).toBe("team:payments");
     expect(tagFromInput("anything else")).toBeNull();
+  });
+});
+
+describe("my skills, before the first skill", () => {
+  it("explains what a skill is and offers both ways in", async () => {
+    const user = userEvent.setup();
+    const { container } = wrap(<SkillsEmpty />);
+    await user.click(screen.getByRole("button", { name: /Create a skill/ }));
+    expect(actions.newSkill).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /A folder/ }));
+    expect(actions.addSkills).toHaveBeenLastCalledWith({ source: "folder" });
+    await user.click(screen.getByRole("button", { name: /A Git repository/ }));
+    expect(actions.addSkills).toHaveBeenLastCalledWith({ source: "git" });
+    // An idea opens the dialog already filled in.
+    await user.click(screen.getByRole("button", { name: /Ship a release/ }));
+    expect(actions.newSkill).toHaveBeenLastCalledWith({
+      title: "Ship a release",
+      template: "implementationGuide",
+    });
+    // Pointing at a note lights the lines of the specimen it explains.
+    await user.hover(screen.getByRole("button", { name: /Steps/ }));
+    expect(container.querySelectorAll(".specimen-line.is-lit")).toHaveLength(5);
+    const results = await axe.run(container);
+    expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 });
 

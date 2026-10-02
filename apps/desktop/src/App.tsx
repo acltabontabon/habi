@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { ErrorNotice, Working } from "./components/ui";
-import { type Actions, ActionsContext } from "./lib/actions";
+import { type Actions, ActionsContext, type NewSkillContext } from "./lib/actions";
 import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
 import { lastProject, NavProvider, type Route, useNav } from "./lib/nav";
@@ -111,7 +111,7 @@ function Shell() {
   const client = useQueryClient();
   const toast = useToast();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [creating, setCreating] = useState<{ projectId?: string; projectName?: string } | null>(null);
+  const [creating, setCreating] = useState<NewSkillContext | null>(null);
   const [adding, setAdding] = useState<AddSkillsStart | null>(null);
   useScheduledRefresh();
 
@@ -260,6 +260,8 @@ function Shell() {
           <NewSkillDialog
             projectId={creating.projectId}
             projectName={creating.projectName}
+            initialTitle={creating.title}
+            initialTemplate={creating.template}
             onClose={() => setCreating(null)}
           />
         ) : null}

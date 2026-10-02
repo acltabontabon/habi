@@ -3,12 +3,21 @@
  * project views): opening a project, creating a skill, adding skills.
  */
 import { createContext, useContext } from "react";
+import type { SkillTemplate } from "../bindings/SkillTemplate";
 import type { AddSkillsStart } from "../views/skills/AddSkillsDialog";
+
+/** Where a new skill starts: for a project, or from an idea with a title and layout filled in. */
+export type NewSkillContext = {
+  projectId?: string;
+  projectName?: string;
+  title?: string;
+  template?: SkillTemplate;
+};
 
 export type Actions = {
   /** Picks a folder and registers it; goes to the project unless `stay`. */
   openProject: (options?: { stay?: boolean }) => Promise<void>;
-  newSkill: (context?: { projectId: string; projectName: string }) => void;
+  newSkill: (context?: NewSkillContext) => void;
   addSkills: (start?: AddSkillsStart) => void;
 };
 

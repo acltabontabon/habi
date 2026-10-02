@@ -11,6 +11,7 @@ import { NO_RULES_PHRASE, plural, relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useSkills } from "../../lib/queries";
 import { originShort } from "../../lib/skills";
+import { SkillsEmpty } from "./SkillsEmpty";
 
 const SkillEditor = lazy(() => import("./SkillEditor").then((m) => ({ default: m.SkillEditor })));
 
@@ -70,7 +71,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
   const total = all.length - trash.length;
 
   return (
-    <div className="page skills">
+    <div className={`page skills${total === 0 ? " is-empty" : ""}`}>
       <header className="skills-head">
         <div>
           <h1 className="page-title">My skills</h1>
@@ -92,31 +93,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
       {error ? <ErrorNotice error={error} /> : null}
 
       {total === 0 ? (
-        <ul className="welcome-paths skills-start" aria-label="Start your first skill">
-          <li>
-            <button type="button" className="welcome-path" onClick={() => newSkill()}>
-              <Icon name="pencil" />
-              <span>
-                <span className="welcome-path-title">Create a skill</span>
-                <span className="welcome-path-detail">
-                  Write down something your team keeps explaining — a review routine, a migration recipe. A
-                  title is enough to start.
-                </span>
-              </span>
-            </button>
-          </li>
-          <li>
-            <button type="button" className="welcome-path" onClick={() => addSkills()}>
-              <Icon name="plus" />
-              <span>
-                <span className="welcome-path-title">Add existing skills</span>
-                <span className="welcome-path-detail">
-                  From a project, a folder, or a Git repository — inspected before anything is copied.
-                </span>
-              </span>
-            </button>
-          </li>
-        </ul>
+        <SkillsEmpty />
       ) : (
         <>
           {total > 6 ? (

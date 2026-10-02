@@ -303,9 +303,553 @@
   flex: none;
 }
 
-.skills-start {
+/* ---------- My skills: before the first skill ---------- */
+
+/* Empty, the page opens up: it uses the whole width and the loom fills what is left. */
+.skills.is-empty {
+  container: skills / inline-size;
+  max-width: none;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.skills-empty {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(min(320px, 100%), 1fr);
+  grid-template-rows: auto auto minmax(160px, 1fr);
+  gap: clamp(var(--s4), 3cqi, var(--s6));
   margin-top: var(--s5);
-  max-width: 720px;
+  align-items: stretch;
+}
+
+.skills-empty > .skills-ideas,
+.skills-empty > .skills-unwoven {
+  grid-column: 1 / -1;
+}
+
+/* The stage: a sheet of dotted paper with the specimen on it. */
+.skills-stage {
+  container: stage / inline-size;
+  display: grid;
+  gap: var(--s3);
+  padding: clamp(var(--s4), 4cqi, var(--s6));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background-color: var(--paper-sunken);
+  background-image: radial-gradient(var(--hairline-strong) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+  background-position: -4px -4px;
+}
+
+.skills-stage-title {
+  font-size: clamp(var(--text-lg), 2.4cqi, 26px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  max-width: 24ch;
+  text-wrap: balance;
+}
+
+.skills-stage-title em {
+  font-style: normal;
+  color: var(--thread-strong);
+}
+
+/* The specimen: a SKILL.md in miniature, with two ghost sheets behind it. */
+.specimen {
+  position: relative;
+  margin: var(--s3) var(--s4) var(--s4) 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.specimen::before,
+.specimen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius);
+}
+
+.specimen::before {
+  transform: translate(8px, 8px);
+  background: var(--paper);
+}
+
+.specimen::after {
+  transform: translate(16px, 16px);
+  opacity: 0.6;
+}
+
+/* The selvedge: the dyes, as a woven edge. */
+.specimen-selvedge {
+  height: 5px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(
+    90deg,
+    var(--dye-0) 0 12.5%,
+    var(--dye-1) 0 25%,
+    var(--dye-2) 0 37.5%,
+    var(--dye-3) 0 50%,
+    var(--dye-4) 0 62.5%,
+    var(--dye-5) 0 75%,
+    var(--dye-6) 0 87.5%,
+    var(--dye-7) 0
+  );
+  opacity: 0.85;
+}
+
+.specimen-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
+.specimen-tag {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.specimen-body {
+  margin: 0;
+  padding: var(--s2) 0 var(--s3);
+  display: grid;
+  font-family: var(--font-mono);
+  font-size: clamp(var(--text-xs), 3.2cqi, var(--text-md));
+  line-height: 1.75;
+  color: var(--ink);
+  overflow-x: auto;
+}
+
+.specimen-line {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 2px solid transparent;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    opacity var(--duration) var(--ease);
+}
+
+.specimen-gutter {
+  padding-right: var(--s3);
+  text-align: right;
+  color: var(--ink-faint);
+  user-select: none;
+}
+
+.specimen-line.is-lit {
+  background: var(--thread-wash);
+  border-left-color: var(--thread);
+}
+
+.specimen-line.is-dim {
+  opacity: 0.45;
+}
+
+.tok-key {
+  color: var(--thread-strong);
+}
+
+.tok-punct {
+  color: var(--ink-faint);
+}
+
+.tok-head {
+  font-weight: 600;
+}
+
+/* The legend: three notes that light the lines they explain. */
+.skills-notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.skills-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "n label"
+    "text text";
+  align-items: center;
+  gap: var(--s1) var(--s2);
+  width: 100%;
+  height: 100%;
+  padding: var(--s2) var(--s3) var(--s3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--paper);
+  text-align: left;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.skills-note.is-lit {
+  border-color: var(--thread);
+  background: var(--paper-raised);
+}
+
+.skills-note-n {
+  grid-area: n;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+.skills-note.is-lit .skills-note-n {
+  background: var(--thread);
+  color: var(--ink);
+}
+
+.skills-note-label {
+  grid-area: label;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.skills-note-text {
+  grid-area: text;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+/* The two ways in. */
+.skills-ways {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: var(--s3);
+}
+
+.skills-way {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4) var(--s5) var(--s5);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+}
+
+.skills-way.is-primary {
+  border-color: var(--thread);
+  box-shadow: inset 0 3px 0 var(--thread);
+}
+
+.skills-way-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.skills-way-text {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  max-width: 44ch;
+}
+
+.skills-way-act {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+}
+
+.skills-or {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.skills-or::before,
+.skills-or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--hairline-strong);
+}
+
+.skills-sources {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: grid;
+  border-top: 1px solid var(--hairline);
+}
+
+.skills-source {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: 10px var(--s1);
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: transparent;
+  text-align: left;
+  font-weight: 560;
+  transition:
+    background var(--duration) var(--ease),
+    padding var(--duration) var(--ease);
+}
+
+.skills-source > svg:first-child {
+  color: var(--thread-strong);
+}
+
+.skills-source-go {
+  margin-left: auto;
+  color: var(--ink-faint);
+  transition:
+    transform var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.skills-source:hover {
+  background: var(--paper);
+  padding-left: var(--s2);
+}
+
+.skills-source:hover .skills-source-go {
+  color: var(--thread-strong);
+  transform: translateX(3px);
+}
+
+/* Starter ideas: four common things to write down. */
+.skills-ideas {
+  display: grid;
+  gap: var(--s3);
+}
+
+.skills-idea-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+/* Columns follow the room the page has, not the window: 2, then 3, then one row of 6. */
+@container skills (min-width: 640px) {
+  .skills-idea-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container skills (min-width: 1320px) {
+  .skills-idea-list {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container skills (max-width: 400px) {
+  .skills-idea-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.skills-idea {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: var(--s4);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  text-align: left;
+  transition:
+    border-color var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+
+.skills-idea:hover {
+  border-color: var(--thread);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-raised);
+}
+
+/* A few woven bars: the shape of a skill, in the dyes. */
+.skills-idea-bars {
+  display: grid;
+  gap: 3px;
+  margin-bottom: var(--s3);
+}
+
+.skills-idea-bars span {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  opacity: 0.8;
+  transition: width 260ms var(--ease);
+}
+
+.skills-idea:hover .skills-idea-bars span {
+  width: 100% !important;
+}
+
+.skills-idea-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.skills-idea-slug {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--thread-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-idea-kind {
+  margin-top: var(--s2);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* The unwoven stretch: warp threads waiting, fading out below one saffron weft. */
+.skills-unwoven {
+  position: relative;
+  min-height: 160px;
+  margin-top: calc(var(--s3) * -1);
+}
+
+.skills-unwoven::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, var(--dye-0) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-1) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-2) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-3) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-4) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-5) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-6) 0 2px, transparent 2px),
+    linear-gradient(90deg, var(--dye-7) 0 2px, transparent 2px);
+  background-size: 192px 100%;
+  background-repeat: repeat-x;
+  background-position:
+    0 0,
+    24px 0,
+    48px 0,
+    72px 0,
+    96px 0,
+    120px 0,
+    144px 0,
+    168px 0;
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 0, transparent 92%);
+}
+
+.skills-unwoven-weft {
+  position: absolute;
+  inset: 22px 0 auto;
+  border-top: 2px dashed var(--thread);
+}
+
+.skills-unwoven-note {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  padding: 2px var(--s2) 2px 0;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .specimen-line {
+    animation: specimen-in 420ms var(--ease) both;
+    animation-delay: calc(var(--i) * 45ms + 80ms);
+  }
+
+  .specimen-selvedge {
+    transform-origin: left;
+    animation: selvedge-in 700ms var(--ease) both;
+  }
+
+  @keyframes specimen-in {
+    from {
+      opacity: 0;
+      transform: translateX(-6px);
+    }
+  }
+
+  @keyframes selvedge-in {
+    from {
+      transform: scaleX(0);
+    }
+  }
+}
+
+@container skills (max-width: 740px) {
+  .skills-empty {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+}
+
+@container stage (max-width: 520px) {
+  .skills-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skills-note {
+    grid-template-columns: auto auto 1fr;
+    grid-template-areas: "n label text";
+  }
+}
+
+/* Short windows: the loom gives up its room first. */
+@media (max-height: 760px) {
+  .skills-unwoven {
+    min-height: 96px;
+  }
 }
 
 .skills-filter {
