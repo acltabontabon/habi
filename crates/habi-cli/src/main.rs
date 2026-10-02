@@ -25,8 +25,8 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 const QUICK_START: &str = "\
 Quick start:
@@ -129,7 +129,8 @@ Examples:
         #[command(flatten)]
         apply: ApplyArgs,
     },
-    /// Finish or roll back operations that were interrupted (crash, Ctrl-C).
+    /// Roll back operations that were interrupted (a crash, or the process
+    /// being killed); files changed since are left as they are and reported.
     Recover(ProjectArg),
     /// Correct a detected fact for a project (reversible with `habi undeclare`).
     #[command(after_help = "\
@@ -203,6 +204,10 @@ Examples:
         #[arg(long)]
         output: Option<PathBuf>,
     },
+    /// Free disk space: remove operation records and library snapshots
+    /// beyond the newest 20 of each, and stored file versions nothing kept
+    /// refers to. Unfinished operations and ones needing attention are kept.
+    Gc,
 }
 
 #[derive(Args, Clone)]
@@ -477,21 +482,25 @@ fn print_json(value: &Value) {
 
 // ----- entry point ------------------------------------------------------------------
 
-/// Set while an operation is being applied, so Ctrl-C can say how to recover.
+/// Set while an operation is being applied. Ctrl-C then waits for it to
+/// finish: stopping part-way would leave the project half changed until the
+/// next `habi recover`.
 static APPLYING: AtomicBool = AtomicBool::new(false);
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
-/// ` -C <project>` for follow-up commands printed by the interrupt handler.
-static PROJECT_FLAG: OnceLock<String> = OnceLock::new();
+/// Projects registered only for the running command (see `ProjectHandle`).
+/// They are forgotten when the command ends, after Ctrl-C too.
+static TEMPORARY: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 fn install_interrupt_handler(cancel: CancelToken) {
     let _ = ctrlc::set_handler(move || {
-        let flag = PROJECT_FLAG.get().map(String::as_str).unwrap_or("");
         if APPLYING.load(Ordering::SeqCst) {
-            eprintln!("\nInterrupted. Run `habi recover{flag}` to finish or roll back safely.");
-            std::process::exit(130);
+            eprintln!(
+                "\nFinishing the change in progress first: stopping part-way would leave the project half changed."
+            );
+            return;
         }
         if INTERRUPTED.swap(true, Ordering::SeqCst) {
-            std::process::exit(130);
+            exit_interrupted();
         }
         eprintln!("\nInterrupted.");
         cancel.cancel();
@@ -499,9 +508,26 @@ fn install_interrupt_handler(cancel: CancelToken) {
         // a blocking read) is ended shortly after.
         std::thread::spawn(|| {
             std::thread::sleep(std::time::Duration::from_millis(1500));
-            std::process::exit(130);
+            exit_interrupted();
         });
     });
+}
+
+/// Ends the process after Ctrl-C: once a change being applied is complete,
+/// and after forgetting projects registered only for this command.
+fn exit_interrupted() -> ! {
+    while APPLYING.load(Ordering::SeqCst) {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let ids = std::mem::take(&mut *TEMPORARY.lock().unwrap_or_else(PoisonError::into_inner));
+    if !ids.is_empty()
+        && let Ok(habi) = Habi::from_env()
+    {
+        for id in ids {
+            let _ = habi.forget_project(&id);
+        }
+    }
+    std::process::exit(130);
 }
 
 fn init_logging() {
@@ -640,6 +666,7 @@ impl Drop for ProjectHandle<'_> {
     fn drop(&mut self) {
         if self.temporary {
             let _ = self.habi.forget_project(&self.record.id);
+            self.keep();
         }
     }
 }
@@ -648,6 +675,15 @@ impl ProjectHandle<'_> {
     /// ` -C <path>` for follow-up commands.
     fn flag(&self) -> String {
         c_flag(&self.record.root)
+    }
+
+    /// Keeps the project in Habi's project list after the command.
+    fn keep(&mut self) {
+        self.temporary = false;
+        TEMPORARY
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .retain(|id| *id != self.record.id);
     }
 }
 
@@ -670,7 +706,12 @@ fn project<'a>(ctx: &'a Ctx, arg: &ProjectArg, register: bool) -> Result<Project
         Some(p) => (p, false),
         None => (ctx.habi.open_project(&root)?, !register),
     };
-    let _ = PROJECT_FLAG.set(c_flag(&record.root));
+    if temporary {
+        TEMPORARY
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(record.id.clone());
+    }
     Ok(ProjectHandle {
         habi: &ctx.habi,
         record,
@@ -1046,7 +1087,9 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
                 );
             }
             // Applying changes the project: keep it in Habi's project list.
-            project.temporary &= apply.dry_run;
+            if !apply.dry_run {
+                project.keep();
+            }
             let plan = habi.plan_update(&project.id, &keys, &decisions(&apply))?;
             review_and_apply(ctx, plan, &apply, &project, "update")
         }
@@ -1281,6 +1324,10 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
                 }
                 None => emit(ctx, &bundle, || print!("{}", bundle.text)),
             }
+        }
+        Command::Gc => {
+            let report = habi.prune()?;
+            emit(ctx, &report, || output::prune_report(&report))
         }
     }
 }
