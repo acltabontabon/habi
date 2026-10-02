@@ -1,0 +1,53 @@
+habi: 1
+title: Liquibase migration review
+kind: workflow
+owner: Platform Guild (example)
+priority: 20
+scope: module
+applies_when:
+  all:
+    - tag: framework:spring-boot
+    - any:
+        - dependency: { name: "org.liquibase:liquibase-core", ecosystem: jvm }
+        - tag: db:liquibase
+requires:
+  tools:
+    - name: Maven or Gradle wrapper
+      commands: [./mvnw, mvn, ./gradlew, gradle]
+      purpose: Runs Liquibase validation through the build.
+  clients: [claude-code, cursor, codex]
+workflow:
+  steps:
+    - title: Locate the master changelog
+      detail: Find db.changelog-master.* and confirm new changesets are included from it.
+    - title: Review each new changeset
+      detail: Apply the checklist to every changeset added or modified by the change.
+      references: [references/checklist.md]
+    - title: Assess locking and rollback risk
+      detail: Flag NOT NULL additions without defaults, large index builds, renames and missing rollbacks.
+    - title: Validate the changelog
+      detail: Run the validation check below when a database-independent validation is available.
+      expected: The validate goal exits successfully.
+  artifacts:
+    - Review comment listing blocking issues, risks and suggestions with changeset ids
+bindings:
+  - name: changelog
+    kind: file
+    glob: "**/db/changelog/db.changelog-master.*"
+    description: The master changelog to validate.
+checks:
+  - id: changelog-is-wellformed
+    title: Changelog parses as XML/YAML
+    description: Confirms the master changelog is readable by Liquibase's parser via the Maven plugin (no database connection).
+    run: ["./mvnw", "-q", "-DskipTests", "liquibase:validate"]
+    cwd: module
+    timeout_seconds: 600
+evidence:
+  - date: 2026-08-14
+    result: passed
+    environment: Spring Boot 3.3, Liquibase 4.29, Claude Code
+    summary: Used on three billing-service migrations; caught one missing rollback.
+    by: Platform Guild (example)
+examples:
+  - title: Adding a nullable column with a backfill
+    description: Two changesets — add the column, then backfill in batches.

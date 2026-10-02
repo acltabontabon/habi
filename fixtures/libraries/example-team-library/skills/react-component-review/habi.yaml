@@ -1,0 +1,14 @@
+habi: 1
+title: React component review
+kind: skill
+owner: Web Guild (example)
+priority: 15
+applies_when:
+  tag: framework:react
+requires:
+  clients: [claude-code, cursor, codex]
+evidence:
+  - date: 2026-09-03
+    result: partial
+    environment: React 18 + Vite, Cursor
+    summary: Helpful on accessibility; rendering advice was too generic in one review.

@@ -1,0 +1,192 @@
+/** Plain-language labels and small formatting helpers. */
+import type { Applicability } from "../bindings/Applicability";
+import type { CheckStatus } from "../bindings/CheckStatus";
+import type { ClientId } from "../bindings/ClientId";
+import type { EvidenceState } from "../bindings/EvidenceState";
+import type { Freshness } from "../bindings/Freshness";
+import type { Group } from "../bindings/Group";
+import type { InstallState } from "../bindings/InstallState";
+import type { ItemKind } from "../bindings/ItemKind";
+import type { PrerequisiteStatus } from "../bindings/PrerequisiteStatus";
+import type { ReadinessState } from "../bindings/ReadinessState";
+import type { Source } from "../bindings/Source";
+
+export type Tone = "ok" | "unknown" | "warn" | "danger" | "muted" | "thread";
+
+export const applicabilityLabel: Record<Applicability, string> = {
+  applies: "Applies",
+  doesNotApply: "Does not apply",
+  needsInformation: "Needs information",
+  undeclared: "No applicability rules",
+};
+
+export const applicabilityTone: Record<Applicability, Tone> = {
+  applies: "ok",
+  doesNotApply: "muted",
+  needsInformation: "unknown",
+  undeclared: "muted",
+};
+
+/** One phrase, everywhere, for an item whose author declared no applicability rules. */
+export const NO_RULES_PHRASE = "No applicability rules — use it deliberately";
+
+export const checkStatusLabel: Record<CheckStatus, string> = {
+  passed: "Passed",
+  failed: "Failed",
+  timedOut: "Timed out",
+  cancelled: "Cancelled",
+  error: "Could not run",
+};
+
+export const checkStatusTone: Record<CheckStatus, Tone> = {
+  passed: "ok",
+  failed: "danger",
+  timedOut: "warn",
+  cancelled: "muted",
+  error: "danger",
+};
+
+/** Validator diagnostic levels in plain words. */
+export function levelLabel(level: string): string {
+  if (level === "error") return "Error";
+  if (level === "warning" || level === "warn") return "Warning";
+  return "Note";
+}
+
+export const readinessLabel: Record<ReadinessState, string> = {
+  ready: "Ready",
+  missing: "Prerequisite missing",
+  unknown: "Not established",
+  noRequirements: "No prerequisites",
+};
+
+export const readinessTone: Record<ReadinessState, Tone> = {
+  ready: "ok",
+  missing: "warn",
+  unknown: "unknown",
+  noRequirements: "muted",
+};
+
+export const installLabel: Record<InstallState, string> = {
+  notInstalled: "Not installed",
+  current: "Installed",
+  updateAvailable: "Update available",
+  locallyModified: "Edited locally",
+  conflict: "Edited · update conflicts",
+  sourceUnavailable: "Library not connected",
+};
+
+export const installTone: Record<InstallState, Tone> = {
+  notInstalled: "muted",
+  current: "ok",
+  updateAvailable: "thread",
+  locallyModified: "unknown",
+  conflict: "danger",
+  sourceUnavailable: "warn",
+};
+
+export const evidenceLabel: Record<EvidenceState, string> = {
+  authorDeclared: "Declared by author",
+  locallyChecked: "Checked here",
+  failed: "Check failed",
+  stale: "Check out of date",
+  notEvaluated: "Not evaluated",
+};
+
+export const evidenceTone: Record<EvidenceState, Tone> = {
+  authorDeclared: "muted",
+  locallyChecked: "ok",
+  failed: "danger",
+  stale: "warn",
+  notEvaluated: "muted",
+};
+
+export const prerequisiteLabel: Record<PrerequisiteStatus, string> = {
+  present: "Found",
+  missing: "Missing",
+  configured: "Configured",
+  notConfigured: "Not configured here",
+  unknown: "Not established",
+};
+
+export const prerequisiteTone: Record<PrerequisiteStatus, Tone> = {
+  present: "ok",
+  missing: "warn",
+  configured: "ok",
+  notConfigured: "warn",
+  unknown: "unknown",
+};
+
+export const groupLabel: Record<Group, string> = {
+  required: "Team requirements",
+  relevant: "Fits this project",
+  needsInformation: "Needs information",
+  available: "Available to use manually",
+  notApplicable: "Does not apply",
+};
+
+export const groupHint: Record<Group, string> = {
+  required: "Designated required by the team. Always listed, whatever the match.",
+  relevant: "Conditions declared by the author hold for this project.",
+  needsInformation: "Habi could not establish everything a condition needs.",
+  available: "No applicability rules — use them deliberately. Habi does not match these.",
+  notApplicable: "Conditions do not hold, or an exclusion applies.",
+};
+
+export const kindLabel: Record<ItemKind, string> = {
+  skill: "Skill",
+  workflow: "Workflow",
+  instructions: "Project instructions",
+};
+
+export const clientLabel: Record<ClientId, string> = {
+  "claude-code": "Claude Code",
+  cursor: "Cursor",
+  codex: "Codex",
+};
+
+export const ALL_CLIENTS: ClientId[] = ["claude-code", "cursor", "codex"];
+
+export function clientsPhrase(clients: ClientId[]): string {
+  const names = clients.map((c) => clientLabel[c]);
+  if (names.length <= 1) return names[0] ?? "no client";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+export function shortId(id: string): string {
+  const s = id.startsWith("sha256:") ? id.slice(7) : id;
+  return s.slice(0, 10);
+}
+
+export function relativeTime(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "never";
+  const then = new Date(iso);
+  const seconds = Math.round((now.getTime() - then.getTime()) / 1000);
+  if (Number.isNaN(seconds)) return iso;
+  if (seconds < 45) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return then.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+export function freshnessText(source: Source): { text: string; tone: Tone } {
+  const map: Record<Freshness, { text: string; tone: Tone }> = {
+    neverFetched: { text: "Not fetched yet", tone: "unknown" },
+    fetchFailed: { text: "First fetch failed", tone: "danger" },
+    current: { text: `Refreshed ${relativeTime(source.snapshotAt)}`, tone: "muted" },
+    stale: { text: `Offline copy from ${relativeTime(source.snapshotAt)}`, tone: "warn" },
+  };
+  return map[source.freshness];
+}
+
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+export function moduleLabel(id: string, name: string): string {
+  return id === "." || id === "*" ? name : `${name}`;
+}

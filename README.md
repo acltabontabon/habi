@@ -1,0 +1,149 @@
+# Habi
+
+**Your team's know-how, matched to your codebase.**
+
+[![CI](https://github.com/acltabontabon/habi/actions/workflows/ci.yml/badge.svg)](https://github.com/acltabontabon/habi/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+Open a repository and Habi shows which skills and instructions apply to it and *why* — down
+to the file and line. Turn what you know into a skill, preview where it applies across your
+projects, install it for the agent tools you already use (Claude Code, Cursor, Codex) with a
+preview of every change, and share it with your team when it is ready.
+
+A repository and an idea are enough to start; a team library is optional.
+
+![Habi showing which team skills fit a Spring Boot service, and why, down to the file and line](docs/screenshots/02-project-recommendations.jpg)
+
+- **Create and improve.** Write skills in Habi, import the ones you already have, or turn part
+  of an `AGENTS.md` into a draft. Drafts are plain Agent Skills folders on your machine.
+- **See where it applies.** A live preview evaluates a skill's rules against your projects and
+  shows the evidence — or says what could not be established.
+- **Share and iterate.** Send a skill to your team's library as a pull/merge request (GitHub or
+  GitLab), read reviewers' comments in Habi, and revise on the same request.
+- **Repository first.** Habi reads your build files and structure (read-only; nothing is
+  built or run) and matches them against your team's library.
+- **Honest about evidence.** "Applies", "needs information" and "does not apply" are kept
+  apart, and so are readiness, installation and evidence. Unknown is a valid answer.
+- **Standard formats.** Skills are ordinary [Agent Skills](https://agentskills.io) folders;
+  shared instructions go into `AGENTS.md`. Everything keeps working without Habi.
+- **Safe changes.** Every install, update or removal is a reviewed plan. Your edits are never
+  overwritten silently, and every operation can be restored.
+- **Local.** No account, no telemetry, no cloud service. Git uses your existing credentials.
+
+> **Status: pre-release (0.1.0).** There are no prebuilt downloads yet — build from source
+> (below). See [what is verified](docs/implementation-status.md) and the
+> [release blockers](docs/release.md#release-blockers-current).
+
+## Try it
+
+You need [Rust](https://rustup.rs) (the exact version installs itself from
+`rust-toolchain.toml`), [Node.js](https://nodejs.org) 24 or newer, Git, and the
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system (on macOS:
+`xcode-select --install`).
+
+```sh
+git clone https://github.com/acltabontabon/habi.git
+cd habi/apps/desktop
+corepack enable          # provides the pinned pnpm version
+pnpm install
+pnpm tauri dev           # the first build takes a few minutes
+```
+
+When the window opens, choose **Explore a sample workspace** to see two example libraries
+matched against seven example projects (all labeled as samples), or **Open a project…** to
+start with your own repository. Nothing in your project changes until you review and confirm
+a plan.
+
+### Command line
+
+```sh
+cargo install --path crates/habi-cli       # puts `habi` on your PATH
+
+habi source add Team git@github.com:your-team/skills.git --branch main
+# …or a library folder on this machine (relative paths are fine):
+habi source add Local ./fixtures/libraries/example-team-library
+habi source refresh
+
+cd path/to/project                         # any folder inside it works
+habi recommend                             # what fits, and why in one line
+habi explain liquibase-migration-review    # the full reasoning, and its checks
+habi install liquibase-migration-review --client claude-code,cursor
+habi status                                # local edits, updates
+habi update                                # three-way, previewed
+```
+
+Commands find the project from the current folder (nearest `.habi/lock.json`, else the Git
+root); `-C <folder>` names it explicitly. Every change is previewed and asks first; `--yes`
+skips the question and `--dry-run` only previews. With `--json`, each command prints exactly
+one JSON document (errors as `{"error": {"code", "message"}}` with a nonzero exit) and
+changes need `--yes`.
+
+Correct what Habi detected, and verify an item with its own check:
+
+```sh
+habi declare tag db:jooq --absent --note "migrated away"   # reversible
+habi declarations                                          # ids for `habi undeclare <id>`
+habi check liquibase-migration-review changelog-is-wellformed        # preview the command
+habi check liquibase-migration-review changelog-is-wellformed --run  # run it (asks first)
+```
+
+Share an improvement with the library's maintainers:
+
+```sh
+habi contribute start Team .claude/skills/my-skill   # or: --item <library item>
+habi contribute show <id>                            # what would leave this machine, where to edit
+habi contribute describe <id> --title "…" --message "…"
+habi contribute commit <id>                          # a branch in Habi's cache; nothing is pushed
+habi contribute publish <id> --open-request          # push and open a pull/merge request
+```
+
+## For library maintainers
+
+A library is a Git repository (or a subfolder of one) containing skill folders with
+`SKILL.md`. To make a skill match projects, add an optional `habi.yaml` next to it:
+
+```yaml
+habi: 1
+title: Liquibase migration review
+applies_when:
+  all:
+    - tag: framework:spring-boot
+    - dependency: org.liquibase:liquibase-core
+excludes:
+  tag: db:jooq
+requires:
+  tools:
+    - name: Maven
+      commands: [./mvnw, mvn]
+```
+
+Validate with `habi validate path/to/library`. See [Habi metadata](docs/metadata-schema.md)
+and the [example library](fixtures/libraries/example-team-library).
+
+## Documentation
+
+| | |
+|---|---|
+| [Product contract](docs/product.md) | Principles and what Habi is not |
+| [My skills](docs/local-skills.md) | Creating, importing, previewing, using and sharing skills |
+| [Architecture](docs/architecture.md) | Crates, modules, data locations |
+| [Metadata schema](docs/metadata-schema.md) | `habi.yaml`, `habi-library.yaml`, conditions, versioning |
+| [Detectors](docs/detectors.md) | What inspection recognizes and its limits |
+| [Client compatibility](docs/compatibility.md) | Claude Code, Cursor, Codex paths, and smoke tests |
+| [Contribution flow](docs/contribution-flow.md) | Sharing improvements for review |
+| [Security](docs/security.md) | Threat boundaries and residual trust |
+| [Recovery](docs/recovery.md) | Journals, rollback, stale caches |
+| [Design](docs/design.md) | Visual direction and accessibility |
+| [Release](docs/release.md) | Builds, signing, versioning, blockers |
+| [Reuse assessment](docs/reuse-assessment.md) | Dependencies and why custom logic exists |
+| [Test data](docs/test-data.md) | Fixtures, the sample workspace and the seed script |
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md).
+Please report security problems privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+Habi is licensed under the [Apache License 2.0](LICENSE). It bundles third-party software and
+fonts under their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

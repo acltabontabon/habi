@@ -1,0 +1,17 @@
+habi: 1
+title: Front-end test practices
+owner: Web Guild (example)
+priority: 5
+applies_when:
+  all:
+    - any:
+        - tag: framework:react
+        - tag: framework:vue
+    - tag: test:vitest
+checks:
+  - id: unit-tests
+    title: Run the unit tests
+    description: Runs the project's own test script. This executes repository code.
+    run: ["npm", "test", "--", "--run"]
+    cwd: module
+    timeout_seconds: 600

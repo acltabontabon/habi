@@ -1,0 +1,7 @@
+habi: 1
+title: Service observability
+owner: SRE (example)
+requirement: required
+priority: 0
+applies_when:
+  tag: framework:spring-boot

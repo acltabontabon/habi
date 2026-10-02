@@ -1,0 +1,19 @@
+habi: 1
+name: Security guild library (example)
+owner: Security Guild (example)
+description: A second, independent library used to test multiple sources, name collisions and invalid metadata.
+skills_root: skills
+instructions:
+  - id: secure-defaults
+    title: Secure defaults
+    description: Baseline security expectations for every service and web app.
+    path: instructions/secure-defaults.md
+    owner: Security Guild (example)
+    requirement: required
+    scope: repository
+    applies_when:
+      any:
+        - tag: lang:java
+        - tag: lang:kotlin
+        - tag: lang:typescript
+        - tag: lang:javascript

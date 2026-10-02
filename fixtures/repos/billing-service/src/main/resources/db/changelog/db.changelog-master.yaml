@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: changes/001-create-invoice.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/002-add-invoice-due-date.yaml
+      relativeToChangelogFile: true

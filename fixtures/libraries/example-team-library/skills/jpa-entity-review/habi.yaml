@@ -1,0 +1,9 @@
+habi: 1
+title: JPA entity review
+owner: Platform Guild (example)
+priority: 10
+scope: module
+applies_when:
+  tag: orm:jpa
+excludes:
+  tag: db:jooq

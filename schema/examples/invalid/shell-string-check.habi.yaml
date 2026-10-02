@@ -1,0 +1,6 @@
+# Invalid: checks are argument arrays, never shell strings.
+habi: 1
+checks:
+  - id: test
+    title: Run tests
+    run: "npm test && rm -rf build"

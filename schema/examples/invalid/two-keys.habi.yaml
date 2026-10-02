@@ -1,0 +1,5 @@
+# Invalid: each condition object has exactly one key.
+habi: 1
+applies_when:
+  tag: lang:java
+  dependency: org.liquibase:liquibase-core

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- The company parent POM is published to an internal repository. -->
+    <parent>
+        <groupId>com.example.platform</groupId>
+        <artifactId>corp-parent</artifactId>
+        <version>7</version>
+    </parent>
+    <artifactId>catalog-service</artifactId>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+            <version>${jooq.version}</version>
+        </dependency>
+    </dependencies>
+</project>

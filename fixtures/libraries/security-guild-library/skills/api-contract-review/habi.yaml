@@ -1,0 +1,5 @@
+habi: 1
+title: API contract review (security)
+owner: Security Guild (example)
+applies_when:
+  tag: api:openapi

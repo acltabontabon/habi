@@ -1,0 +1,19 @@
+habi: 1
+title: GitHub PR summary
+owner: Developer Experience (example)
+scope: repository
+applies_when:
+  tag: ci:github-actions
+requires:
+  tools:
+    - name: GitHub CLI
+      commands: [gh]
+      purpose: Optional; used to open the PR locally.
+  mcp:
+    - name: github
+      purpose: Read pull requests, files and review comments.
+      server:
+        command: npx
+        args: ["-y", "@modelcontextprotocol/server-github"]
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN}"

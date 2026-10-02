@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@example/postgres-mcp"],
+      "env": { "DATABASE_URL": "${DATABASE_URL}" }
+    }
+  }
+}

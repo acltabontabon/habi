@@ -1,0 +1,6 @@
+---
+description: Java style for the accounts team
+globs: src/**/*.java
+alwaysApply: false
+---
+Use records for DTOs.

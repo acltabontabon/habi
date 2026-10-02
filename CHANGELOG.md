@@ -1,0 +1,85 @@
+# Changelog
+
+All notable changes to Habi. Versions follow [semantic versioning](docs/release.md#versioning).
+
+## 0.1.0 — unreleased
+
+First working version.
+
+### Create, add and share skills
+- **My skills:** write a skill in Habi — purpose, Markdown instructions, supporting files — or
+  bring in the ones you already have. No project, library, account or model is needed, and a
+  draft is an ordinary Agent Skills folder.
+- **Applicability without YAML:** build "applies when / never applies when" conditions from
+  technologies, dependencies and file patterns, with suggestions taken one by one from facts
+  observed in a project. A YAML view keeps unknown keys and complex rules as written.
+- **Where it applies:** a live preview evaluates the rules against every opened project and
+  shows the evidence, keeping "does not apply" apart from "could not be established".
+- **Already in this project:** opening a repository lists the skills and instruction files it
+  already contains. Copy a skill to edit it, or turn a selected part of `AGENTS.md`/`CLAUDE.md`
+  into a draft; the originals are never changed.
+- **Add skills:** from a project, a folder or a Git repository, inspected before anything is
+  copied, with duplicates and identifier collisions resolved without losing either version.
+- **Use in a project:** pick the project and agents at the point of use; installation goes
+  through the same reviewed plan as team items.
+- **Share with team** from the skill itself; connect a library on the spot or export a plain
+  folder. Sharing activity distinguishes a prepared branch, a pushed branch, an opened review
+  request and content that reached the library.
+- Drafts autosave with an honest save state, detect edits made outside Habi, and can be
+  restored from the trash.
+- Simpler first run: one primary action (*Open a project*), a shorter library connection form
+  (URL first, name derived, branch and subfolder under advanced options).
+
+### Discover
+- Open a project folder; Habi reads Maven, Gradle (including version catalogs) and npm
+  manifests and lockfiles, recognizes OpenAPI specs, Liquibase changelogs, CI and agent
+  instruction files, and understands monorepos module by module.
+- Recommendations grouped as team requirements, fits this project, needs information,
+  available, and does not apply — each with the reasons and the exact files behind them.
+- Tell Habi what it could not establish (for example, a dependency inherited from a company
+  parent POM). Your answers are labeled as yours and can be undone.
+
+### Adopt
+- Install skills and workflows for Claude Code, Cursor and Codex into the current project,
+  with a preview of every file and a diff.
+- Team instructions go into a managed section of `AGENTS.md`; Claude Code is pointed at them
+  with an `@AGENTS.md` import.
+- Optional MCP server configuration for each client, without secrets.
+- Updates are compared three ways, so your local edits are kept and conflicts are explained.
+- Every operation can be restored. Interrupted operations are rolled back automatically.
+
+### Team knowledge
+- Connect a Git repository (or a subfolder, branch or tag) using your existing Git
+  credentials, or a local folder. Refreshing never changes projects.
+- Works offline from the last fetched copy and says how old it is. Warns when a tag moved or
+  history was rewritten.
+
+### Share
+- Turn an improved skill into a contribution: describe where it applies, preview exactly what
+  would be shared, then export a patch or push a branch for review (and open a pull request
+  with `gh` or `glab` if installed).
+- After sending: check the request's status and read reviewers' comments (plain text, next to
+  the file they are about), then revise on the same branch — the open pull/merge request
+  updates instead of a new one being opened. Habi will not overwrite commits someone else
+  pushed to the branch unless you choose to build on them. GitHub and GitLab (including
+  self-hosted instances and nested GitLab groups).
+- Optionally add "where it applies" to the message for reviewers: the rules evaluated against
+  your own projects, by name.
+- Faster and more accurate matching on monorepos: repository-level facts (CI, agent files,
+  Dockerfiles) count for every module; Gradle one-line blocks, `-jre`-style versions and
+  unreadable folders are handled; results refresh when manifests change.
+- Safer installs: line-ending differences (Windows `autocrlf`) are no longer reported as
+  edits; shared MCP servers and same-named instructions from two libraries are handled; a
+  restore keeps the lock file consistent; in-project symbolic links (`CLAUDE.md -> AGENTS.md`)
+  are understood instead of refused.
+- Command line: works from any subfolder of a project, `--json` always prints one JSON
+  document, `install` defaults to the agent tools the project already uses, every command has
+  help and examples, Ctrl-C cancels safely.
+- Plainer questions when Habi cannot establish something ("Does api use jOOQ?"), and blocked
+  install/share dialogs that say what to fix and take you there.
+
+### Also
+- `habi` command-line tool with the same capabilities.
+- Verification checks you can preview and run explicitly.
+- Light and dark themes, keyboard navigation and a command palette (⌘K).
+- Redacted diagnostic report you can review before saving.

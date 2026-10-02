@@ -1,0 +1,27 @@
+openapi: 3.1.0
+info:
+  title: Orders API
+  version: 0.9.0
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      responses:
+        "200":
+          description: A page of orders
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The order
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema: { type: object }

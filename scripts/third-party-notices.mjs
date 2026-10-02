@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+// Generates THIRD_PARTY_NOTICES.md: every third-party component shipped in
+// Habi's binaries, with its license and the license/notice files it carries.
+//
+//   node scripts/third-party-notices.mjs            # writes THIRD_PARTY_NOTICES.md
+//   node scripts/third-party-notices.mjs --check    # fails if the file is out of date
+//
+// Rust: the normal (non-dev, non-build) dependency graph of the shipped
+// binaries, from `cargo metadata`. JavaScript: production dependencies of the
+// desktop app, from `pnpm list --prod`. Identical license texts are printed
+// once and shared by every component that carries them.
+
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const out = join(root, "THIRD_PARTY_NOTICES.md");
+const SHIPPED = new Set(["habi-cli", "habi-desktop"]);
+const LICENSE_FILE = /^(licen[cs]e|copying|notice|unlicense|copyright)([-._].*)?$/i;
+
+function run(cmd, args, cwd) {
+  return execFileSync(cmd, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+}
+
+function licenseTexts(dir) {
+  if (!dir || !existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && LICENSE_FILE.test(e.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((e) => readFileSync(join(dir, e.name), "utf8").replace(/\r\n/g, "\n").trim());
+}
+
+// ----- Rust ---------------------------------------------------------------------------------
+
+const meta = JSON.parse(run("cargo", ["metadata", "--format-version", "1", "--locked"], root));
+const packages = new Map(meta.packages.map((p) => [p.id, p]));
+const nodes = new Map(meta.resolve.nodes.map((n) => [n.id, n]));
+const workspace = new Set(meta.workspace_members);
+const seen = new Set();
+const stack = meta.workspace_members.filter((id) => SHIPPED.has(packages.get(id).name));
+while (stack.length > 0) {
+  const id = stack.pop();
+  if (seen.has(id)) continue;
+  seen.add(id);
+  for (const dep of nodes.get(id)?.deps ?? []) {
+    if (dep.dep_kinds.some((k) => k.kind === null)) stack.push(dep.pkg);
+  }
+}
+const rust = [...seen]
+  .filter((id) => !workspace.has(id))
+  .map((id) => packages.get(id))
+  .map((p) => ({
+    name: p.name,
+    version: p.version,
+    license: p.license ?? (p.license_file ? `see ${p.license_file}` : "UNKNOWN"),
+    url: p.repository ?? p.homepage ?? `https://crates.io/crates/${p.name}`,
+    texts: licenseTexts(dirname(p.manifest_path)),
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
+
+// ----- JavaScript -----------------------------------------------------------------------------
+
+const desktop = join(root, "apps/desktop");
+const tree = JSON.parse(run("pnpm", ["list", "--prod", "--depth", "Infinity", "--json"], desktop))[0];
+const js = new Map();
+(function walk(deps) {
+  for (const [name, d] of Object.entries(deps ?? {})) {
+    const key = `${name}@${d.version}`;
+    if (js.has(key)) continue;
+    const pkg = d.path ? JSON.parse(readFileSync(join(d.path, "package.json"), "utf8")) : {};
+    const repo = typeof pkg.repository === "string" ? pkg.repository : pkg.repository?.url;
+    js.set(key, {
+      name,
+      version: d.version,
+      license: typeof pkg.license === "string" ? pkg.license : (pkg.license?.type ?? "UNKNOWN"),
+      url: (repo ?? pkg.homepage ?? `https://www.npmjs.com/package/${name}`).replace(/^git\+/, ""),
+      texts: licenseTexts(d.path),
+    });
+    walk(d.dependencies);
+  }
+})(tree.dependencies);
+const javascript = [...js.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+// ----- Output -----------------------------------------------------------------------------------
+
+const unknown = [...rust, ...javascript].filter((c) => c.license === "UNKNOWN");
+const textIds = new Map();
+const appendix = [];
+function textRef(text) {
+  if (!textIds.has(text)) {
+    textIds.set(text, textIds.size + 1);
+    appendix.push(text);
+  }
+  return `[T${textIds.get(text)}](#t${textIds.get(text)})`;
+}
+function table(components) {
+  const rows = components.map((c) => {
+    // Some packages ship no license file; their license is the standard SPDX text.
+    const refs =
+      c.texts.map(textRef).join(" ") ||
+      `standard text: ${c.license
+        .split(/\s+(?:OR|AND|WITH)\s+|[()/]/)
+        .filter(Boolean)
+        .map((id) => `[${id}](https://spdx.org/licenses/${id}.html)`)
+        .join(", ")}`;
+    return `| ${c.name} | ${c.version} | ${c.license} | ${c.url} | ${refs} |`;
+  });
+  return ["| Component | Version | License | Source | Texts |", "|---|---|---|---|---|", ...rows].join("\n");
+}
+
+const doc = `# Third-party notices
+
+Habi is licensed under the Apache License 2.0 (see \`LICENSE\`). It includes the
+third-party components below, each under its own license. This file is generated by
+\`node scripts/third-party-notices.mjs\`; do not edit it by hand.
+
+Notes:
+
+- Components under the Mozilla Public License 2.0 are used unmodified; their source is
+  available at the listed location.
+- Where a component offers a choice of licenses (for example "MIT OR Apache-2.0"), Habi uses
+  it under the permissive option.
+- The bundled fonts (IBM Plex Sans, IBM Plex Mono, Newsreader) are under the SIL Open Font
+  License 1.1 and are distributed unmodified. "Plex" is a Reserved Font Name.
+
+## Rust components (${rust.length})
+
+${table(rust)}
+
+## JavaScript components (${javascript.length})
+
+${table(javascript)}
+
+## License and notice texts
+
+${appendix.map((t, i) => `### T${i + 1}\n\n\`\`\`text\n${t.replace(/```/g, "ʼʼʼ")}\n\`\`\``).join("\n\n")}
+`;
+
+if (process.argv.includes("--check")) {
+  const current = existsSync(out) ? readFileSync(out, "utf8") : "";
+  if (current !== doc) {
+    console.error("THIRD_PARTY_NOTICES.md is out of date. Run: node scripts/third-party-notices.mjs");
+    process.exit(1);
+  }
+} else {
+  writeFileSync(out, doc);
+  console.log(
+    `Wrote THIRD_PARTY_NOTICES.md: ${rust.length} Rust and ${javascript.length} JavaScript components, ${appendix.length} distinct texts.`,
+  );
+}
+if (unknown.length > 0) {
+  console.error(`License unknown for: ${unknown.map((c) => `${c.name}@${c.version}`).join(", ")}`);
+  process.exit(1);
+}

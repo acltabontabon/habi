@@ -1,0 +1,11 @@
+[versions]
+spring-boot = "3.3.2"
+jooq = "3.19.10"
+
+[libraries]
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-jooq = { module = "org.springframework.boot:spring-boot-starter-jooq" }
+jooq-codegen = { group = "org.jooq", name = "jooq-codegen", version.ref = "jooq" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

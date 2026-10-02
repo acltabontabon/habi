@@ -1,0 +1,140 @@
+# Repository inspection: supported signals
+
+Inspection is **read-only**. Habi lists file names (respecting `.gitignore`, `.ignore`,
+`.habiignore` and per-project exclusions), reads build manifests and a few recognized files,
+and never runs builds, package managers, Git, hooks or repository code. It does not read
+README text as evidence.
+
+## Traversal limits and exclusions
+
+- Always skipped, at any depth: `.git`, `node_modules`, `.gradle`, `.idea`, `.venv`,
+  `__pycache__`, `.next`, `.nuxt`, `.svelte-kit`, `.turbo`, `.cache`, `.yarn`,
+  `.terraform`, …
+- Skipped only where they are build output: `target`, `build`, `dist`, `out`, `vendor`,
+  `venv`, `coverage`. These names are also ordinary folder names (a Java package
+  `com/acme/build`, `docs/out`), so they are skipped only at the project root or directly
+  inside a directory that has a build manifest (`pom.xml`, `build.gradle(.kts)`,
+  `settings.gradle(.kts)`, `package.json`, `Cargo.toml`, `go.mod`, `composer.json`,
+  `Gemfile`, `pyproject.toml`, `setup.py`, `requirements.txt`, `build.sbt`, `build.xml`).
+  Elsewhere they are listed like any other directory.
+- Files that may hold secrets (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, …)
+  are excluded from the file index and never read or displayed.
+- Symbolic links are never followed (counted in the scan report).
+- Limits: 50 000 files, depth 24, manifests ≤ 2 MiB, lockfiles ≤ 48 MiB. Hitting the file or
+  depth limit marks the scan **incomplete**; a directory that cannot be read makes the file
+  listing (`files` coverage) **partial**. Either way, absence-based file, language, CI and
+  container conditions become *unknown*.
+- Content probes read the first 4 KiB of at most 600 YAML/JSON/XML/SQL files (build
+  manifests, lockfiles and well-known tool configs such as `pom.xml`, `package.json`,
+  `tsconfig*.json`, `logback.xml` are never probed). Probes have their own coverage area,
+  `content`: a module with candidates left unread (over the limit, or unreadable) has
+  partial `content` coverage, which only makes the absence of content-recognized tags
+  (`api:openapi`, `db:liquibase`) *unknown*. Other file conditions are unaffected.
+
+## Modules
+
+Every directory containing `pom.xml`, `build.gradle(.kts)` or `package.json` is a module;
+the root is always one. Files belong to the deepest enclosing module. Conditions with
+`scope: module` are evaluated per module, so a backend skill does not apply to a whole
+monorepo because one service uses that stack.
+
+Some facts describe the repository rather than the directory that holds them: CI
+configuration, agent instructions and skills, MCP configuration, Dockerfiles and build
+wrappers (and the `ci:*`, `agents:*` and `container:docker` tags derived from them). A
+module also sees these facts from its enclosing modules, including the root, and the
+explanation says so ("detected at the repository root from `.github/workflows/ci.yml`").
+Dependencies and manifest-derived tags are not inherited this way; Maven parents and Gradle
+`subprojects {}` blocks are handled by their detectors. `file:` patterns stay relative to,
+and limited to, the module's own files.
+
+User declarations made for one module apply to that module only. In `scope: repository`
+evaluation, a module's "absent" declaration does not hide facts found elsewhere and does
+not establish absence for the repository; a module's "present" declaration establishes
+presence (and is reported with its module).
+
+## Maven (`pom.xml`)
+
+- Dependencies, `dependencyManagement`, build plugins, profiles, `<modules>`.
+- `${…}` properties resolve through the POM and **local** parents (`relativePath`, default
+  `../pom.xml`). Undefined properties → version *unresolved*, with the property named.
+- Missing versions resolve from local `dependencyManagement`; otherwise *managed by* the
+  external parent or imported BOM.
+- External parents make Maven coverage **partial** (their dependencies are invisible), except
+  `spring-boot-starter-parent` / `spring-boot-dependencies`, which only manage versions.
+- DTDs are rejected; node count is bounded.
+
+## Gradle (`build.gradle`, `build.gradle.kts`, `settings.gradle(.kts)`, `gradle/libs.versions.toml`)
+
+- Plugins (`id(...)`, `kotlin(...)`, core plugins, `alias(libs.plugins…)`, `apply plugin`).
+- Dependencies in string, map and version-catalog forms (`libs.x.y`, bundles).
+- `subprojects {}` / `allprojects {}` dependencies and `apply plugin` lines are attributed
+  to the modules they apply to (inherited, with the root script as evidence).
+- Declarations sharing a line with block braces (`plugins { id("x") version "1" }`,
+  `dependencies { implementation("g:a:1") }`) are read in the block they belong to; braces
+  inside string literals do not open blocks.
+- Coverage becomes **partial** when Habi sees: `apply from`, `configure(...)`, conditional or
+  computed declarations, unrecognized dependency or plugin declaration forms, or convention
+  plugins from `buildSrc`/included builds. The reasons are listed in the Evidence view.
+- Dynamic versions (`+`, ranges, `latest.*`) are *ranges*; `$var` versions are *unresolved*.
+
+## npm (`package.json`, `package-lock.json`, `pnpm-lock.yaml`)
+
+- `dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`, `workspaces`.
+- A declared range (`^18.2.0`) is **not** a runtime version. Concrete versions come from
+  `package-lock.json` (v2/v3) or `pnpm-lock.yaml` importers, or an exact pin. `yarn.lock`
+  is not parsed (versions stay ranges).
+
+## Recognized files
+
+| Role | How |
+|---|---|
+| OpenAPI specification | YAML/JSON whose first 4 KiB contains a top-level `openapi: 3.x` / `swagger: "2.0"` |
+| Liquibase changelog | `<databaseChangeLog`, `databaseChangeLog:` or `--liquibase formatted sql` |
+| Flyway migration | `**/db/migration/V*__*.sql` |
+| Agent instructions | `AGENTS.md`, `CLAUDE.md`, `.claude/rules/**`, `.cursor/rules/*.mdc`, `.cursorrules`, `.github/copilot-instructions.md` |
+| Agent skills | `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.cursor/skills/*/SKILL.md` |
+| MCP config | `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml` |
+| Tooling | `tsconfig.json`, Jest/Vitest/Playwright/Cypress configs, GitHub Actions, GitLab CI, Dockerfile, `mvnw`/`gradlew` |
+
+## Derived tags
+
+Defined in `crates/habi-core/src/inspect/tags.rs`, each with its evidence basis
+(manifest, files or both):
+
+`framework:spring-boot · quarkus · micronaut · react · vue · angular · next · svelte · express · nestjs`,
+`build:vite`, `test:junit · testcontainers · jest · vitest · playwright · cypress`,
+`db:liquibase · flyway · jooq`, `orm:jpa`, `api:openapi · springdoc`,
+`ci:github-actions · gitlab`, `container:docker`,
+`agents:agents-md · claude-md · cursor-rules · skills`,
+and languages from source extensions: `lang:java · kotlin · typescript · javascript · python · go · rust · csharp`.
+
+A tag Habi cannot detect (e.g. a team-specific `team:payments`) is always *unknown* until
+the user declares it for the project.
+
+## Provenance
+
+Every fact records its detector, module, evidence file and line, a short non-sensitive
+excerpt (a coordinate, never file bodies), and its origin: read directly, derived, inherited
+from a local parent, or declared by the user. The project fingerprint (manifest and lockfile
+digests plus the file listing) changes when relevant files change; check results tied to an
+older fingerprint are shown as out of date.
+
+Inspections are cached per project. Before a cached inspection is reused, Habi compares the
+size and modification time of every manifest, lockfile, ignore file, `.git/HEAD` and every
+listed directory (up to 20 000) with what it saw; any difference — an edit, a branch switch,
+a file added or removed — triggers a new inspection. Applying a plan (install, update,
+removal, restore) or recovering an interrupted one also drops the cached inspection. An
+in-place edit of an unrecognized file's content (for example turning an existing YAML file
+into an OpenAPI document) is only seen after a rescan.
+
+Versions are compared leniently: `3.2.0.RELEASE` is `3.2.0`. Only recognized pre-release
+markers (`alpha`, `beta`, `rc`, `cr`, `M1`/`milestone`, `SNAPSHOT`, `preview`, `ea`, `dev`,
+any case) make a pre-release; other qualifiers (`32.1.3-jre`, `-android`, `.Final`) are
+ignored, so `32.1.3-jre` satisfies `>=31`.
+
+## Adding a detector
+
+Detectors are plain functions that read inputs and call `Collector` (`dependency`, `file`,
+`tag`, `coverage`). Add the parser module under `inspect/`, call it from `inspect::inspect`,
+record coverage honestly (`Partial` with a reason whenever something is not evaluated), add
+tag rules if useful, and add fixtures with misleading inputs to the tests.

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-library.schema.json",
+  "title": "Habi library manifest (habi-library.yaml)",
+  "description": "Optional file at the root of a team library (or of the configured subdirectory). Describes the library and declares portable project instructions. Version 1.",
+  "type": "object",
+  "required": ["habi"],
+  "additionalProperties": true,
+  "properties": {
+    "habi": { "const": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "owner": { "type": "string", "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 1000 },
+    "contact": { "type": "string", "maxLength": 300 },
+    "skills_root": {
+      "description": "Directory (relative to the library root) to search for skills. Defaults to the whole library.",
+      "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath"
+    },
+    "instructions": {
+      "description": "Markdown files installed as managed sections of AGENTS.md.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "path"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,99}$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 1000 },
+          "path": { "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath" },
+          "owner": { "type": "string", "maxLength": 120 },
+          "requirement": { "enum": ["recommended", "required"] },
+          "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
+          "scope": { "enum": ["module", "repository"] },
+          "applies_when": { "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/condition" },
+          "excludes": { "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/condition" }
+        }
+      }
+    }
+  }
+}
