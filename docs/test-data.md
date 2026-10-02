@@ -53,6 +53,6 @@ Automated expectations for these live in `crates/habi-core/tests/matching_fixtur
 
   Then open http://127.0.0.1:1420. IPC calls reach the real service (inspection, drafts on
   disk, Git, install plans); commands that open a native picker ask for a path in a small
-  prompt instead. A banner marks the mode. The bridge listens on loopback only, is an example
+  prompt instead. The tab title names the mode. The bridge listens on loopback only, is an example
   target, and is not part of any build. It does not exercise the Tauri adapter itself — that
   is covered by `apps/desktop/src-tauri/src/ipc_tests.rs`.

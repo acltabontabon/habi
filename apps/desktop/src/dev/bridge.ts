@@ -100,10 +100,6 @@ async function invoke(cmd: string, args: Record<string, unknown>): Promise<unkno
 
 export function installBridge() {
   mockIPC((cmd, args) => invoke(cmd, (args ?? {}) as Record<string, unknown>));
-  const banner = document.createElement("div");
-  banner.textContent = "Development bridge — real core, path prompts instead of native dialogs";
-  banner.setAttribute("role", "note");
-  banner.style.cssText =
-    "position:fixed;right:12px;bottom:12px;z-index:100;padding:2px 10px;border-radius:999px;font:11.5px var(--font-ui);background:var(--thread-wash);color:var(--thread-strong);border:1px solid var(--thread);pointer-events:none;opacity:.85";
-  document.body.appendChild(banner);
+  // The mode is named in the tab title, not on screen.
+  document.title = "Habi — development bridge";
 }

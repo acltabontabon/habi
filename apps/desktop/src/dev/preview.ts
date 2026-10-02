@@ -6,7 +6,7 @@
  * (`cargo test -p habi-core --test ui_fixtures -- --ignored`). This exists so
  * screens can be inspected with realistic data during design work. It is
  * loaded only in Vite dev mode outside Tauri and is never part of a build;
- * a banner on screen says it is fixture data.
+ * the tab title says it is fixture data.
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import details from "../test/fixtures/item-details.json";
@@ -96,10 +96,6 @@ function answer(cmd: string, args: Args): unknown {
 
 export function installPreview() {
   mockIPC((cmd, args) => answer(cmd, args as Args));
-  const banner = document.createElement("div");
-  banner.textContent = "Design preview — fixture data from the example library, not your projects";
-  banner.setAttribute("role", "note");
-  banner.style.cssText =
-    "position:fixed;left:12px;bottom:12px;z-index:100;padding:4px 10px;border-radius:999px;font:12px var(--font-ui);background:var(--thread-wash);color:var(--thread-strong);border:1px solid var(--thread)";
-  document.body.appendChild(banner);
+  // The mode is named in the tab title, not on screen.
+  document.title = "Habi — design preview (fixture data)";
 }
