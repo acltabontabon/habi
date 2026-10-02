@@ -1,8 +1,8 @@
 {
   "api-contract-review": {
     "item": {
-      "key": "63eeb3f26e33/api-contract-review",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/api-contract-review",
+      "sourceId": "991bea07c155",
       "id": "api-contract-review",
       "kind": "workflow",
       "title": "API contract review",
@@ -90,20 +90,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -113,8 +114,8 @@
   },
   "frontend-test-practices": {
     "item": {
-      "key": "63eeb3f26e33/frontend-test-practices",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/frontend-test-practices",
+      "sourceId": "991bea07c155",
       "id": "frontend-test-practices",
       "kind": "skill",
       "title": "Front-end test practices",
@@ -206,20 +207,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -229,8 +231,8 @@
   },
   "github-pr-summary": {
     "item": {
-      "key": "63eeb3f26e33/github-pr-summary",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/github-pr-summary",
+      "sourceId": "991bea07c155",
       "id": "github-pr-summary",
       "kind": "skill",
       "title": "GitHub PR summary",
@@ -303,20 +305,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -326,8 +329,8 @@
   },
   "incident-notes": {
     "item": {
-      "key": "63eeb3f26e33/incident-notes",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/incident-notes",
+      "sourceId": "991bea07c155",
       "id": "incident-notes",
       "kind": "skill",
       "title": "Incident notes",
@@ -366,20 +369,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -389,8 +393,8 @@
   },
   "java-service-conventions": {
     "item": {
-      "key": "63eeb3f26e33/java-service-conventions",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/java-service-conventions",
+      "sourceId": "991bea07c155",
       "id": "java-service-conventions",
       "kind": "instructions",
       "title": "Java service conventions",
@@ -443,20 +447,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -466,8 +471,8 @@
   },
   "jooq-query-review": {
     "item": {
-      "key": "63eeb3f26e33/jooq-query-review",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/jooq-query-review",
+      "sourceId": "991bea07c155",
       "id": "jooq-query-review",
       "kind": "skill",
       "title": "jOOQ query review",
@@ -515,20 +520,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -538,8 +544,8 @@
   },
   "jpa-entity-review": {
     "item": {
-      "key": "63eeb3f26e33/jpa-entity-review",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/jpa-entity-review",
+      "sourceId": "991bea07c155",
       "id": "jpa-entity-review",
       "kind": "skill",
       "title": "JPA entity review",
@@ -590,20 +596,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -613,8 +620,8 @@
   },
   "liquibase-migration-review": {
     "item": {
-      "key": "63eeb3f26e33/liquibase-migration-review",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/liquibase-migration-review",
+      "sourceId": "991bea07c155",
       "id": "liquibase-migration-review",
       "kind": "workflow",
       "title": "Liquibase migration review",
@@ -783,20 +790,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -806,8 +814,8 @@
   },
   "react-component-review": {
     "item": {
-      "key": "63eeb3f26e33/react-component-review",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/react-component-review",
+      "sourceId": "991bea07c155",
       "id": "react-component-review",
       "kind": "skill",
       "title": "React component review",
@@ -873,20 +881,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
@@ -896,8 +905,8 @@
   },
   "service-observability": {
     "item": {
-      "key": "63eeb3f26e33/service-observability",
-      "sourceId": "63eeb3f26e33",
+      "key": "991bea07c155/service-observability",
+      "sourceId": "991bea07c155",
       "id": "service-observability",
       "kind": "skill",
       "title": "Service observability",
@@ -945,20 +954,21 @@
       "complete": true
     },
     "source": {
-      "id": "63eeb3f26e33",
+      "id": "991bea07c155",
       "name": "Example team library",
       "kind": "git",
+      "role": "team",
       "location": "git@example.invalid:team/skills.git",
       "subdir": null,
       "tracked": {
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T09:49:25Z",
-      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
-      "snapshotAt": "2026-10-02T09:49:25Z",
+      "createdAt": "2026-10-02T11:08:30Z",
+      "snapshot": "fecbe35bc08269616e8892a14eaa15be5c6e462e",
+      "snapshotAt": "2026-10-02T11:08:30Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T09:49:25Z",
+      "lastAttemptAt": "2026-10-02T11:08:30Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"
