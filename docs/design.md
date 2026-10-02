@@ -69,11 +69,16 @@ its one signature — used only where it carries meaning.
 - **Review** — clients and scope, every file with an expandable diff and plain explanation,
   conflicts with explicit choices, notes, the recovery promise, and a final button that names
   the action ("Install for Cursor in this project").
-- **Libraries** — *Team libraries* and *Community* are separate sections. Connecting offers a
-  short, fixed list of well-known community libraries (no index service, no ranking), then
-  URL first, whose library it is, and everything else under advanced options. A library page
-  leads with its selvedge, freshness, a stat strip (skills, with rules, shipping scripts,
-  proprietary) and, for community libraries, what not having been reviewed means.
+- **Library** — two areas. The index: the library's identity in a few lines (kind, name,
+  repository, "15 skills · 5 with scripts · updated 4 h ago", "not reviewed by your team" for
+  community) over a scannable list of skills (title, one line of purpose, quiet mono marks for
+  rules and scripts; ↑/↓ or j/k). The reader: **one document surface at a time** — the skill's
+  introduction (purpose, one primary action *Add to a project…*, *Edit a copy* as a quiet link,
+  a facts list: applies · package · runs · source · licence · lineage) above SKILL.md, or one of
+  its files in place of it (← back or Esc). Prose renders; code reads as highlighted code. The
+  package sits beside the reader as a light tree and folds above it on narrower windows. Git
+  details (repository, revision, refresh, who reviews it, disconnect) live in a sheet opened
+  from the library's address. The same reader shows an item's content inside a project.
 - **Contributions** — one dense row per contribution: a single state chip (with "checked …
   ago" for host-reported states), destination, last update and one next action. A
   contribution's page puts the file list beside the selected diff (stacked on narrow

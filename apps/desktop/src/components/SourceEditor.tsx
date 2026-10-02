@@ -141,7 +141,8 @@ export function SourceEditor({
         ...defaultKeymap,
         ...historyKeymap,
       ]),
-      EditorView.lineWrapping,
+      // Prose wraps; code keeps its lines and scrolls sideways.
+      ...(prose || language === "plain" ? [EditorView.lineWrapping] : []),
       theme,
       EditorView.contentAttributes.of({ "aria-label": label, spellcheck: prose ? "true" : "false" }),
       EditorState.readOnly.of(readOnly),

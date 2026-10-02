@@ -209,7 +209,9 @@ function Shell() {
             />
           )}
           {route.name === "skills" && <SkillsView skillId={route.skillId} />}
-          {route.name === "sources" && <SourcesView sourceId={route.sourceId} itemId={route.itemId} />}
+          {route.name === "sources" && (
+            <SourcesView sourceId={route.sourceId} itemId={route.itemId} file={route.file} />
+          )}
           {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
           {route.name === "settings" && <SettingsView />}
         </main>

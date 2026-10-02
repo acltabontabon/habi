@@ -29,8 +29,7 @@
 .well-known-title,
 .facet-label,
 .explain-heading,
-.detail-kicker,
-.stat-strip dt {
+.detail-kicker {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   font-weight: 500;
@@ -811,11 +810,6 @@
   gap: 4px;
 }
 
-.project-understanding {
-  font-size: var(--text-md);
-  color: var(--ink-soft);
-}
-
 .project-actions {
   display: flex;
   gap: var(--s2);
@@ -1169,35 +1163,6 @@
   gap: 4px 10px;
   margin-top: 2px;
 }
-.rec-row-meta > span + span:not(.row-facts)::before {
-  content: "·";
-  margin-right: 10px;
-  color: var(--ink-faint);
-}
-
-.row-facts {
-  display: inline-flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.fact-chip {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0 5px;
-  line-height: 15px;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 3px;
-  color: var(--ink-muted);
-}
-
-.fact-chip-warn {
-  border-color: transparent;
-  background: var(--warn-wash);
-  color: var(--warn-ink);
-}
 
 .library-about {
   padding: var(--s3) var(--s4);
@@ -1210,36 +1175,6 @@
   flex: none;
   height: 4px;
   border-radius: 0;
-}
-
-.commit-line {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 72ch;
-}
-
-.stat-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s6);
-  margin: var(--s3) 0 0;
-}
-
-.stat-strip > div {
-  display: grid;
-  gap: 2px;
-}
-
-.stat-strip dd {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  color: var(--ink);
 }
 
 .role-switch {
@@ -1766,17 +1701,6 @@ button.chip:hover {
 
 /* ---------- Content ---------- */
 
-.content-panel {
-  display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
-  gap: var(--s5);
-  padding-top: var(--s4);
-}
-
-.content-panel > .diagnostics {
-  grid-column: 1 / -1;
-}
-
 .file-list {
   list-style: none;
   margin: 0;
@@ -1807,24 +1731,6 @@ button.chip:hover {
 .file-row:hover,
 .file-row.is-active {
   background: var(--paper-raised);
-}
-
-.file-view {
-  margin: var(--s2) 0;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.file-view-head {
-  padding: 4px var(--s3);
-  border-bottom: 1px solid var(--hairline);
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
-.file-view .prose {
-  padding: var(--s3) var(--s4);
 }
 
 .code {
@@ -2896,9 +2802,6 @@ details > summary.change-head::-webkit-details-marker {
     border-left: 0;
     padding-left: 0;
   }
-  .content-panel {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .project-head,
   .detail-head,
   .page {
@@ -3094,4 +2997,487 @@ dl.facets,
 
 .reasons-matched {
   margin-top: var(--s2);
+}
+
+/* ---------- Library: an index, and one reading surface ---------- */
+
+.library {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.library > .selvedge {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 0;
+}
+
+.library-index {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--hairline);
+}
+
+.library-id {
+  display: grid;
+  gap: 4px;
+  padding: var(--s6) var(--s5) var(--s4);
+}
+
+.library-name {
+  font-size: 26px;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  overflow-wrap: break-word;
+}
+
+.library-repo {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.library-repo:hover,
+.library-repo:focus-visible {
+  color: var(--thread-strong);
+  text-decoration-color: currentColor;
+}
+
+.library-facts,
+.library-trust {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.library-trust {
+  color: var(--ink-faint);
+}
+
+.library-about {
+  margin-top: var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.library-index .list-filter {
+  padding: 0 var(--s5);
+}
+
+.index-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--s2) 0 var(--s6);
+}
+
+.index-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px var(--s3);
+  width: 100%;
+  padding: 9px var(--s5) 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  transition: background var(--duration) var(--ease);
+}
+
+.index-row:hover {
+  background: var(--paper-raised);
+}
+
+.index-row.is-active {
+  background: var(--paper-selected);
+  box-shadow: inset 2px 0 0 var(--thread);
+}
+
+.index-row-title {
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.index-row-marks {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.index-row-desc {
+  grid-column: 1 / -1;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.index-empty {
+  padding: var(--s3) var(--s5);
+}
+
+.library-reader {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The reader: one document, the package beside it. */
+.reader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  min-height: 100%;
+}
+
+.reader-main {
+  min-width: 0;
+  padding: var(--s7) clamp(var(--s5), 4vw, 64px) var(--s8);
+}
+
+.reader-doc {
+  max-width: 74ch;
+}
+
+.reader-rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100%;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3);
+  padding: var(--s7) var(--s4) var(--s5);
+  border-left: 1px solid var(--hairline);
+}
+
+.contents {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3);
+}
+
+.contents-group {
+  min-width: 0;
+}
+
+.contents ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.contents-folder {
+  margin: 0 0 2px 6px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.contents-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.contents-file:hover {
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.contents-file.is-active {
+  background: var(--paper-selected);
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--thread);
+}
+
+.contents-file svg {
+  flex: none;
+  color: var(--warn-ink);
+}
+
+.contents-branch {
+  flex: none;
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
+}
+
+.contents-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contents-size {
+  flex: none;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.reader-notes {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.reader-notes ul {
+  margin: var(--s2) 0 0;
+  padding-left: var(--s4);
+}
+
+/* What a skill is, before its documentation. */
+.skill-intro {
+  display: grid;
+  gap: var(--s3);
+  max-width: 74ch;
+  margin-bottom: var(--s6);
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.skill-title {
+  font-size: clamp(26px, 2.6vw, 34px);
+  font-weight: 620;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  overflow-wrap: break-word;
+}
+
+.skill-purpose {
+  font-size: var(--text-lg);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.skill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s4);
+  margin: var(--s1) 0 var(--s2);
+}
+
+.skill-facts {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 5px var(--s4);
+  margin: 0;
+}
+
+.skill-facts dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 2px;
+}
+
+.skill-facts dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.skill-facts .fact-runs {
+  color: var(--warn-ink);
+}
+
+/* A file, read in place of the skill. */
+.reader-crumb {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+
+.reader-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.reader-back:hover,
+.reader-back:focus-visible {
+  color: var(--thread-strong);
+}
+
+.reader-file {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.file-reader {
+  display: grid;
+  gap: var(--s3);
+}
+
+.file-reader-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+}
+
+.file-reader .source-editor {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.file-reader-note {
+  padding: var(--s3) 0;
+}
+
+/* The source sheet: Git details, only when asked for. */
+.sheet-facts {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: var(--s2) var(--s4);
+  margin: 0 0 var(--s3);
+}
+
+.sheet-facts dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 3px;
+}
+
+.sheet-facts dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  overflow-wrap: anywhere;
+}
+
+.sheet-confirm {
+  margin-right: auto;
+  font-size: var(--text-sm);
+}
+
+.choice-note {
+  font-size: var(--text-xs);
+  color: var(--ok-ink);
+}
+
+/* The libraries list. */
+.library-rows {
+  list-style: none;
+  margin: var(--s5) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.library-row {
+  display: grid;
+  grid-template-columns: 18px minmax(120px, 200px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  width: 100%;
+  padding: 12px var(--s2);
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: transparent;
+  text-align: left;
+}
+
+.library-row:hover {
+  background: var(--paper-raised);
+}
+
+.library-row-name {
+  font-weight: 600;
+}
+
+.library-row-repo,
+.library-row-state {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Narrower windows: the package folds above the document, then the index
+   gives the reader the width. */
+@media (max-width: 1180px) {
+  .reader {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reader-rail {
+    position: static;
+    order: -1;
+    padding: var(--s4) clamp(var(--s5), 4vw, 64px);
+    border-left: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .contents {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .reader-main {
+    padding-top: var(--s5);
+  }
+}
+
+@media (max-width: 900px) {
+  .library {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .library-index {
+    max-height: 38vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .library-row {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+  .library-row-repo {
+    display: none;
+  }
 }

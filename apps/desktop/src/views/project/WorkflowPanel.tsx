@@ -4,7 +4,7 @@ import type { Recommendation } from "../../bindings/Recommendation";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { useItemDetail } from "../../lib/queries";
-import { FileViewer } from "./ContentPanel";
+import { FileReader } from "../reader/SkillReader";
 
 export function WorkflowPanel({
   recommendation: r,
@@ -72,7 +72,7 @@ export function WorkflowPanel({
                 </p>
               ) : null}
               {step.references.includes(reference ?? "") && reference ? (
-                <FileViewer sourceId={r.item.sourceId} itemId={r.item.id} path={reference} />
+                <FileReader sourceId={r.item.sourceId} itemId={r.item.id} path={reference} />
               ) : null}
             </div>
           </li>

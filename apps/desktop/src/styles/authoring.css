@@ -130,11 +130,6 @@
   justify-items: start;
 }
 
-.action-hint {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
 /* ---------- Connect a library ---------- */
 
 .connect {
@@ -1757,13 +1752,6 @@
   .skill-row-side {
     justify-items: start;
     text-align: left;
-  }
-  .recent-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .recent-row .recent-path {
-    grid-column: 1 / -1;
-    grid-row: 2;
   }
 }
 

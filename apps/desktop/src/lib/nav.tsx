@@ -7,7 +7,7 @@ export type Route =
   | { name: "welcome" }
   | { name: "project"; projectId: string; tab: ProjectTab; itemKey?: string }
   | { name: "skills"; skillId?: string }
-  | { name: "sources"; sourceId?: string; itemId?: string }
+  | { name: "sources"; sourceId?: string; itemId?: string; file?: string }
   | { name: "contributions"; contributionId?: string }
   | { name: "settings" };
 
@@ -54,8 +54,11 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
       if (top?.name === "project" && next.name === "project" && top.projectId === next.projectId) {
         return [...s.slice(0, -1), next];
       }
+      // Within a library, choosing skills replaces; opening one of a skill's
+      // files stacks, so Back returns to the skill.
       if (top?.name === "sources" && next.name === "sources" && top.sourceId === next.sourceId) {
-        return [...s.slice(0, -1), next];
+        const opensFile = Boolean(next.file) && !top.file && top.itemId === next.itemId;
+        if (!opensFile) return [...s.slice(0, -1), next];
       }
       return [...s.slice(-30), next];
     });
