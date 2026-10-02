@@ -37,6 +37,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     try {
       await api.forgetProject(projectId);
       void client.invalidateQueries({ queryKey: keys.recent });
+      if (route.name === "project" && route.projectId === projectId) navigate({ name: "welcome" });
       toast.show(`${name} removed from the list. Nothing on disk was changed.`);
     } catch (e) {
       toast.show(`Could not remove ${name}: ${e instanceof Error ? e.message : String(e)}`, "danger");
@@ -94,7 +95,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
             {projects.map((p) => {
               const active = route.name === "project" && route.projectId === p.id;
               return (
-                <li key={p.id} className={p.exists ? undefined : "sidebar-row"}>
+                <li key={p.id} className={`sidebar-row${p.exists ? "" : " is-missing"}`}>
                   <button
                     type="button"
                     className={`sidebar-item${active ? " is-active" : ""}`}
@@ -108,17 +109,15 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                     {p.sample ? <span className="sidebar-tag">sample</span> : null}
                     {!p.exists ? <span className="sidebar-tag">missing</span> : null}
                   </button>
-                  {!p.exists ? (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      aria-label={`Forget ${p.name} (folder missing)`}
-                      title="Forget this project — removes it from the list only"
-                      onClick={() => void forget(p.id, p.name)}
-                    >
-                      <Icon name="close" />
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="icon-btn sidebar-row-action"
+                    aria-label={`Remove ${p.name} from the list`}
+                    title="Remove from list — nothing on disk is deleted"
+                    onClick={() => void forget(p.id, p.name)}
+                  >
+                    <Icon name="close" />
+                  </button>
                 </li>
               );
             })}
