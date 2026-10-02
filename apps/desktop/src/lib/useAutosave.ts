@@ -13,7 +13,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HabiError } from "./api";
 
-type Registered = { flush: () => Promise<boolean>; unsaved: () => boolean };
+type Registered = {
+  flush: () => Promise<boolean>;
+  unsaved: () => boolean;
+  /** Edits waiting for the pause, or a write still in flight. */
+  pending: () => boolean;
+};
 const registered = new Set<Registered>();
 
 /** Writes every open editor's pending edits. Resolves true when all of them are saved. */
@@ -25,6 +30,11 @@ export async function flushAutosaves(): Promise<boolean> {
 /** Whether an open editor holds edits that could not be saved (a conflict or a failed write). */
 export function hasUnsavedEdits(): boolean {
   return [...registered].some((r) => r.unsaved());
+}
+
+/** Whether an open editor holds edits that are not written yet (but could still be). */
+export function hasPendingEdits(): boolean {
+  return [...registered].some((r) => r.pending());
 }
 
 export type SaveState = "clean" | "pending" | "saving" | "saved" | "error" | "conflict";
@@ -129,6 +139,7 @@ export function useAutosave<T>(options: {
     const entry: Registered = {
       flush: run,
       unsaved: () => blocked.current || failed.current,
+      pending: () => inFlight.current !== null || keyRef.current(latest.current) !== savedKey.current,
     };
     registered.add(entry);
     const onHide = () => void run();

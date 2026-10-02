@@ -2,7 +2,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { Dialog } from "../components/Dialog";
 import { Button } from "../components/ui";
-import { hasUnsavedEdits } from "./useAutosave";
+import { flushAutosaves, hasPendingEdits, hasUnsavedEdits } from "./useAutosave";
 
 export type ProjectTab = "recommendations" | "found" | "evidence" | "installed";
 
@@ -70,7 +70,11 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
   top.current = route;
   const guarded = useCallback((go: () => void) => {
     if (hasUnsavedEdits()) setHeld(() => go);
-    else go();
+    else if (hasPendingEdits()) {
+      // Edits still waiting for the pause are written before the screen goes
+      // away; if that fails, the move waits for the author like any other.
+      void flushAutosaves().then((saved) => (saved ? go() : setHeld(() => go)));
+    } else go();
   }, []);
 
   const go = useCallback((next: Route, replace = false) => {
