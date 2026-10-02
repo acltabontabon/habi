@@ -266,6 +266,11 @@ pub struct LibraryItem {
     pub content_digest: String,
     pub metadata_status: MetadataStatus,
     pub diagnostics: Vec<Diagnostic>,
+    /// What stands out in the item's files (commands that download and run
+    /// code, credential access, compiled programs, …), found by reading them
+    /// as data. A static reading: not a guarantee either way.
+    #[serde(default)]
+    pub signals: Vec<super::signals::Signal>,
     /// False if some of the item's files were skipped while reading the
     /// library (too large, symbolic links). Incomplete items are not installable.
     pub complete: bool,

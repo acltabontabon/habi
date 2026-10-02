@@ -5,6 +5,8 @@
 
 use crate::state::AppState;
 use habi_core::cancel::CancelToken;
+use habi_core::catalog::github::RepoFacts;
+use habi_core::catalog::{CatalogEntry, CatalogFit};
 use habi_core::checks::{CheckPreview, CheckRun};
 use habi_core::clients::ClientId;
 use habi_core::contribute::{Contribution, ContributionOrigin, PublishOutcome, ShareForm};
@@ -24,7 +26,9 @@ use habi_core::skills::intake::{
     ImportInspection, ImportOutcome, ImportSelection, InstructionDocument, ProjectKnowledge,
 };
 use habi_core::skills::{LocalSkill, LocalSkillSummary, NewSkill, SkillDocument, SkillFileContent};
-use habi_core::source::{NewSource, RefreshOutcome, Source, SourceRole};
+use habi_core::source::{
+    NewSource, RefreshOutcome, Source, SourceRole, SourceUpdate, UpdateReport,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -346,6 +350,13 @@ pub async fn list_sources(state: State<'_, AppState>) -> CmdResult<Vec<Source>> 
     blocking(habi, |h| h.sources().list()).await
 }
 
+/// One source by id, including a library that is only being previewed.
+#[tauri::command]
+pub async fn get_source(state: State<'_, AppState>, source_id: String) -> CmdResult<Source> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.sources().get(&source_id)).await
+}
+
 #[tauri::command]
 pub async fn pick_library_folder(
     app: AppHandle,
@@ -421,6 +432,116 @@ pub async fn refresh_source(
     let habi = state.habi()?;
     let (cancel, _guard) = state.job(job_id);
     blocking(habi, move |h| h.sources().refresh(&source_id, &cancel)).await
+}
+
+/// Asks whether a library's repository has something newer than what the
+/// library reads. Downloads nothing and changes nothing: updating is a
+/// separate act (`refresh_source`). `None` for a folder.
+#[tauri::command]
+pub async fn check_source_update(
+    state: State<'_, AppState>,
+    source_id: String,
+    job_id: Option<String>,
+) -> CmdResult<Option<SourceUpdate>> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.sources().check_update(&source_id, &cancel)).await
+}
+
+/// What the last checks found, judged against what each library reads now.
+#[tauri::command]
+pub async fn source_updates(state: State<'_, AppState>) -> CmdResult<Vec<SourceUpdate>> {
+    let habi = state.habi()?;
+    blocking(habi, |h| h.sources().updates()).await
+}
+
+/// What the last update changed in a library, until it is dismissed.
+#[tauri::command]
+pub async fn source_update_report(
+    state: State<'_, AppState>,
+    source_id: String,
+) -> CmdResult<Option<UpdateReport>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.sources().last_update(&source_id)).await
+}
+
+/// The user has read what an update changed.
+#[tauri::command]
+pub async fn dismiss_update_report(state: State<'_, AppState>, source_id: String) -> CmdResult<()> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.sources().dismiss_update_report(&source_id)).await
+}
+
+// ----- catalog ---------------------------------------------------------------------
+
+/// The public libraries Habi suggests, with what is known of each.
+#[tauri::command]
+pub async fn catalog(state: State<'_, AppState>) -> CmdResult<Vec<CatalogEntry>> {
+    let habi = state.habi()?;
+    blocking(habi, |h| h.catalog().entries()).await
+}
+
+/// Fetches a catalog library so it can be inspected (nothing is connected,
+/// installed or run). Opening one fetched before downloads nothing, unless
+/// `refresh` asks for a check.
+#[tauri::command]
+pub async fn preview_catalog_entry(
+    state: State<'_, AppState>,
+    entry_id: String,
+    refresh: bool,
+    job_id: Option<String>,
+) -> CmdResult<CatalogEntry> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| {
+        h.catalog().preview(&entry_id, refresh, &cancel)
+    })
+    .await
+}
+
+/// Connects a catalog library as a community library.
+#[tauri::command]
+pub async fn connect_catalog_entry(
+    state: State<'_, AppState>,
+    entry_id: String,
+    job_id: Option<String>,
+) -> CmdResult<Source> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.catalog().connect(&entry_id, &cancel)).await
+}
+
+/// What GitHub says about a catalog repository (stars, forks, last push,
+/// archived), for the page of a library not yet connected. Kept for a day;
+/// absent when it cannot be had. Never an error.
+#[tauri::command]
+pub async fn catalog_repo_facts(
+    state: State<'_, AppState>,
+    entry_id: String,
+    job_id: Option<String>,
+) -> CmdResult<Option<RepoFacts>> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.catalog().repo_facts(&entry_id, &cancel)).await
+}
+
+/// Discards a fetched preview. A connected library is not touched.
+#[tauri::command]
+pub async fn forget_catalog_preview(state: State<'_, AppState>, entry_id: String) -> CmdResult<()> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.catalog().forget(&entry_id)).await
+}
+
+/// Skills of already fetched catalog libraries that fit a project.
+#[tauri::command]
+pub async fn catalog_fits(
+    state: State<'_, AppState>,
+    project_id: String,
+    job_id: Option<String>,
+) -> CmdResult<Vec<CatalogFit>> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.catalog_fits(&project_id, &cancel)).await
 }
 
 #[tauri::command]

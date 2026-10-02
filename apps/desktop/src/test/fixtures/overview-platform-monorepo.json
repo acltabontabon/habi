@@ -4,17 +4,17 @@
     "name": "platform-monorepo",
     "path": "~/work/platform-monorepo",
     "exists": true,
-    "lastOpenedAt": "2026-10-02T12:53:10Z",
+    "lastOpenedAt": "2026-10-02T21:58:00Z",
     "exclusions": [],
     "sample": false,
     "summary": {
       "fits": 7,
       "needsInformation": 0,
       "sources": [
-        "d2bba1de6872"
+        "e6bd262a6c6a"
       ],
       "installed": 0,
-      "at": "2026-10-02T12:53:10Z"
+      "at": "2026-10-02T21:58:00Z"
     }
   },
   "inspection": {
@@ -22,7 +22,7 @@
     "name": "platform-monorepo",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "community-skills-relevance",
+      "branch": "main",
       "repositoryRoot": "~/Workspace/habi",
       "isMonorepo": true,
       "workspaceSignals": [
@@ -790,14 +790,14 @@
       "elapsedMs": 1
     },
     "fingerprint": "sha256:d57ecf8a745d7841e71f5651818739efc8daf0aa544f9fe0a2742d98e5e60403",
-    "inspectedAt": "2026-10-02T12:53:10Z"
+    "inspectedAt": "2026-10-02T21:58:00Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "d2bba1de6872/java-service-conventions",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/java-service-conventions",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -807,7 +807,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -896,6 +896,7 @@
         "reason": "Contains Java code (CatalogApplication.java) · declares org.springframework.boot:* (pom.xml:12)",
         "specificity": 2
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -912,8 +913,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/service-observability",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/service-observability",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -923,7 +924,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1036,6 +1037,7 @@
         "reason": "Applies to 2 of 4 modules (catalog-service, inventory-service) — Uses Spring Boot (pom.xml:12)",
         "specificity": 1
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -1052,8 +1054,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/liquibase-migration-review",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/liquibase-migration-review",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -1063,7 +1065,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1550,6 +1552,7 @@
         "reason": "Applies to 1 of 4 modules (inventory-service) — Uses Spring Boot (pom.xml:4) · declares org.liquibase:liquibase-core (pom.xml:22) · uses Liquibase (pom.xml:22)",
         "specificity": 3
       },
+      "basis": "declared",
       "readiness": {
         "state": "ready",
         "prerequisites": [
@@ -1583,8 +1586,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/react-component-review",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/react-component-review",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1594,7 +1597,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1706,6 +1709,7 @@
         "reason": "Applies to 1 of 4 modules (@platform/web) — Uses React (package.json:5)",
         "specificity": 1
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -1730,8 +1734,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/jooq-query-review",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/jooq-query-review",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1741,7 +1745,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1849,6 +1853,7 @@
         "reason": "Applies to 1 of 4 modules (catalog-service) — Uses jOOQ (pom.xml:16)",
         "specificity": 1
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -1865,8 +1870,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/frontend-test-practices",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/frontend-test-practices",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -1876,7 +1881,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2327,6 +2332,7 @@
         "reason": "Applies to 1 of 4 modules (@platform/web) — Uses React (package.json:5) · uses Vitest (package.json:6)",
         "specificity": 2
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -2343,8 +2349,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/github-pr-summary",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/github-pr-summary",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -2354,7 +2360,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2396,6 +2402,7 @@
         "reason": "Uses GitHub Actions (ci.yml)",
         "specificity": 1
       },
+      "basis": "declared",
       "readiness": {
         "state": "missing",
         "prerequisites": [
@@ -2429,8 +2436,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/incident-notes",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/incident-notes",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -2440,7 +2447,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -2456,6 +2463,7 @@
         "reason": "No applicability is declared, so Habi does not match it to projects. It remains available to use manually.",
         "specificity": 0
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -2472,8 +2480,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/api-contract-review",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/api-contract-review",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -2483,7 +2491,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2588,6 +2596,7 @@
         "reason": "Does not apply to any of the 4 modules — in platform-monorepo: Conditions not met — has an OpenAPI specification: not detected in the root module",
         "specificity": 0
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -2612,8 +2621,8 @@
     },
     {
       "item": {
-        "key": "d2bba1de6872/jpa-entity-review",
-        "sourceId": "d2bba1de6872",
+        "key": "e6bd262a6c6a/jpa-entity-review",
+        "sourceId": "e6bd262a6c6a",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -2623,7 +2632,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
+        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2783,6 +2792,7 @@
         "reason": "Does not apply to any of the 4 modules — in catalog-service: Excluded — uses jOOQ: detected from services/catalog/pom.xml:16",
         "specificity": 0
       },
+      "basis": "declared",
       "readiness": {
         "state": "noRequirements",
         "prerequisites": []
@@ -2800,7 +2810,7 @@
   ],
   "sources": [
     {
-      "id": "d2bba1de6872",
+      "id": "e6bd262a6c6a",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -2810,14 +2820,21 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T12:53:10Z",
-      "snapshot": "da8192f929d3407e70d2938fac0dfe12b521beab",
-      "snapshotAt": "2026-10-02T12:53:10Z",
-      "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T12:53:10Z",
+      "createdAt": "2026-10-02T21:57:59Z",
+      "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+      "snapshotAt": "2026-10-02T21:57:59Z",
+      "commitSummary": "Example library — Example, 2026-10-03",
+      "lastAttemptAt": "2026-10-02T21:57:59Z",
       "lastError": null,
       "warning": null,
-      "freshness": "current"
+      "freshness": "current",
+      "sample": false,
+      "skillCount": 10,
+      "preview": false,
+      "catalogId": null,
+      "include": [],
+      "exclude": [],
+      "defaultBranch": null
     }
   ],
   "orphaned": []

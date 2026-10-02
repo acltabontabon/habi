@@ -10,13 +10,24 @@ export type Route =
   | { name: "welcome" }
   | { name: "project"; projectId: string; tab: ProjectTab; itemKey?: string }
   | { name: "skills"; skillId?: string }
-  | { name: "sources"; sourceId?: string; itemId?: string; file?: string }
+  | {
+      name: "sources";
+      /** A connected library. */
+      sourceId?: string;
+      /** A catalog library, connected or only being previewed. */
+      entry?: string;
+      /** A page for bringing in a library of your own. */
+      view?: "git" | "folder";
+      itemId?: string;
+      file?: string;
+    }
   | { name: "contributions"; contributionId?: string }
   | { name: "settings" };
 
 type Nav = {
   route: Route;
-  navigate: (route: Route) => void;
+  /** `replace` swaps the current screen instead of stacking a new one (a screen that only passes through). */
+  navigate: (route: Route, options?: { replace?: boolean }) => void;
   back: () => void;
   canGoBack: boolean;
   /** The screen "back" returns to, if any. */
@@ -44,6 +55,11 @@ export function lastProject(): string | null {
   }
 }
 
+/** Which library a sources route is in ("" for the overview and connect pages). */
+function libraryOf(route: Extract<Route, { name: "sources" }>): string {
+  return route.sourceId ?? (route.entry ? `entry:${route.entry}` : "");
+}
+
 export function NavProvider({ initial, children }: { initial: Route; children: ReactNode }) {
   const [stack, setStack] = useState<Route[]>([initial]);
   const route = stack[stack.length - 1] ?? initial;
@@ -57,10 +73,11 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
     else go();
   }, []);
 
-  const go = useCallback((next: Route) => {
+  const go = useCallback((next: Route, replace = false) => {
     if (next.name === "project") rememberProject(next.projectId);
     setStack((s) => {
       const top = s[s.length - 1];
+      if (replace) return [...s.slice(0, -1), next];
       if (top && JSON.stringify(top) === JSON.stringify(next)) return s;
       // Selecting items within one project view replaces instead of stacking.
       if (top?.name === "project" && next.name === "project" && top.projectId === next.projectId) {
@@ -68,7 +85,12 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
       }
       // Within a library, choosing skills replaces; opening one of a skill's
       // files stacks, so Back returns to the skill.
-      if (top?.name === "sources" && next.name === "sources" && top.sourceId === next.sourceId) {
+      if (
+        top?.name === "sources" &&
+        next.name === "sources" &&
+        libraryOf(top) !== "" &&
+        libraryOf(top) === libraryOf(next)
+      ) {
         const opensFile = Boolean(next.file) && !top.file && top.itemId === next.itemId;
         if (!opensFile) return [...s.slice(0, -1), next];
       }
@@ -77,9 +99,9 @@ export function NavProvider({ initial, children }: { initial: Route; children: R
   }, []);
 
   const navigate = useCallback(
-    (next: Route) => {
+    (next: Route, options?: { replace?: boolean }) => {
       if (JSON.stringify(top.current) === JSON.stringify(next)) return;
-      guarded(() => go(next));
+      guarded(() => go(next, options?.replace));
     },
     [guarded, go],
   );

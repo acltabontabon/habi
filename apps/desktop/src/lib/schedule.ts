@@ -1,7 +1,9 @@
 /**
- * Conservative scheduled refresh: only while the window is visible and the
+ * Conservative scheduled checking: only while the window is visible and the
  * machine reports a network, at most once per configured interval per
- * source. Refresh only fetches library content; it never changes projects.
+ * source. A repository is only asked whether it has something newer: nothing
+ * is downloaded, and no library moves until the user presses Update. A local
+ * folder has no remote, so it is simply read again. Neither changes a project.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -22,15 +24,26 @@ export function useScheduledRefresh() {
         if (settings.autoRefreshHours === 0) return;
         const due = Date.now() - settings.autoRefreshHours * 3600 * 1000;
         const sources = await api.listSources();
-        let refreshed = false;
+        const checked = new Map(
+          (await api.sourceUpdates()).map((u) => [u.sourceId, Date.parse(u.checkedAt)]),
+        );
+        let changed = false;
         for (const source of sources) {
-          const last = source.lastAttemptAt ? Date.parse(source.lastAttemptAt) : 0;
-          if (source.freshness !== "neverFetched" && last < due) {
-            await api.refreshSource(source.id, newJobId()).catch(() => undefined);
-            refreshed = true;
+          if (source.freshness === "neverFetched") continue;
+          if (source.kind === "git") {
+            if ((checked.get(source.id) ?? 0) < due) {
+              await api.checkSourceUpdate(source.id).catch(() => undefined);
+              changed = true;
+            }
+          } else {
+            const last = source.lastAttemptAt ? Date.parse(source.lastAttemptAt) : 0;
+            if (last < due) {
+              await api.refreshSource(source.id, newJobId()).catch(() => undefined);
+              changed = true;
+            }
           }
         }
-        if (refreshed) invalidateProjectData(client);
+        if (changed) invalidateProjectData(client);
       } catch {
         // A background refresh never interrupts; each library shows its own
         // freshness, and the next tick tries again.

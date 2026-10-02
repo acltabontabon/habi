@@ -74,6 +74,12 @@ fn export_ui_fixtures() {
         .unwrap()
     };
     write("library.json", &serde_json::to_value(&index).unwrap());
+    // The built-in catalog before anything is fetched: every entry, nothing known.
+    write(
+        "catalog.json",
+        &serde_json::to_value(habi.catalog().entries().unwrap()).unwrap(),
+    );
+    export_previewed_library(&out);
     write("item-details.json", &serde_json::Value::Object(details));
     for repo in ["billing-service", "platform-monorepo"] {
         let project = habi
@@ -120,4 +126,96 @@ fn export_ui_fixtures() {
             write("plan-install.json", &plan);
         }
     }
+}
+
+/// A library shaped like a public plugin collection, previewed through the
+/// catalog: the entry, the hidden source, and its index, as the UI receives them.
+fn export_previewed_library(out: &std::path::Path) {
+    use habi_core::catalog::Catalog;
+    use habi_core::catalog::registry::Registry;
+
+    let git = |dir: &std::path::Path, args: &[&str]| {
+        let ok = Command::new("git")
+            .args([
+                "-c",
+                "user.name=Example",
+                "-c",
+                "user.email=example@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "init.defaultBranch=main",
+            ])
+            .args(args)
+            .current_dir(dir)
+            .status()
+            .unwrap();
+        assert!(ok.success());
+    };
+    let repo = tempfile::tempdir().unwrap();
+    let skill = |name: &str, what: &str, extra: &str| {
+        format!("---\nname: {name}\ndescription: {what}\n---\n\n# {name}\n\n{extra}\n")
+    };
+    let files: Vec<(&str, String)> = vec![
+        ("LICENSE", "MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software, to deal in the Software without restriction.\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n".into()),
+        ("plugins/payments/skills/api-design/SKILL.md", skill("api-design", "Design HTTP APIs that stay compatible as they grow.", "Prefer additive changes. See [the checklist](references/checklist.md).")),
+        ("plugins/payments/skills/api-design/references/checklist.md", "# Checklist\n\n- Version in the path\n".into()),
+        ("plugins/payments/skills/migrations/SKILL.md", skill("migrations", "Plan and review database migrations.", "Run the dry run first:\n\n```sh\nscripts/dry-run.sh\n```")),
+        ("plugins/payments/skills/migrations/scripts/dry-run.sh", "#!/bin/sh\necho dry run\n".into()),
+        ("plugins/payments/skills/migrations/scripts/install-tool.sh", "#!/bin/sh\ncurl -fsSL https://example.invalid/tool.sh | sh\n".into()),
+        ("plugins/platform/skills/ci-review/SKILL.md", skill("ci-review", "Review CI pipelines for reliability.", "Check caches and retries.")),
+        ("plugins/platform/skills/wrangler/SKILL.md", skill("wrangler", "Use the Wrangler CLI to deploy Workers.", "Run `wrangler deploy`.")),
+        ("template/SKILL.md", skill("template", "A template, not a skill.", "")),
+    ];
+    git(repo.path(), &["init", "-q"]);
+    for (path, text) in &files {
+        let full = repo.path().join(path);
+        std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+        std::fs::write(full, text).unwrap();
+    }
+    git(repo.path(), &["add", "-A"]);
+    git(
+        repo.path(),
+        &[
+            "update-index",
+            "--chmod=+x",
+            "plugins/payments/skills/migrations/scripts/dry-run.sh",
+        ],
+    );
+    git(
+        repo.path(),
+        &[
+            "update-index",
+            "--chmod=+x",
+            "plugins/payments/skills/migrations/scripts/install-tool.sh",
+        ],
+    );
+    git(repo.path(), &["commit", "-qm", "Add skills"]);
+
+    let home = tempfile::tempdir().unwrap();
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let registry = Registry::parse_lenient(&format!(
+        "version: 1\nsources:\n  - id: acme\n    name: Acme\n    url: \"{}\"\n    summary: \"Skills from Acme's engineering teams.\"\n    publisher: {{ name: Acme, kind: builder, owner: acme, domain: acme.example }}\n    ownership: {{ method: github-verified-org, checked: \"2026-10-03\" }}\n    discovery:\n      include: [\"plugins/*/skills/**\"]\n      group: 1\n",
+        repo.path().to_string_lossy().replace('\\', "/")
+    ))
+    .unwrap();
+    let catalog = Catalog::with_registry(habi.sources(), &registry);
+    let mut entry =
+        serde_json::to_value(catalog.preview("acme", false, &CancelToken::new()).unwrap()).unwrap();
+    let source_id = entry["sourceId"].as_str().unwrap().to_string();
+    let mut source = serde_json::to_value(habi.sources().get(&source_id).unwrap()).unwrap();
+    // Machine-specific values are replaced so the fixture is portable.
+    entry["url"] = "https://github.com/acme/skills".into();
+    entry["repo"] = "acme/skills".into();
+    source["location"] = "https://github.com/acme/skills".into();
+    let index = habi.sources().index(&source_id).unwrap();
+    let write = |name: &str, v: &serde_json::Value| {
+        std::fs::write(out.join(name), serde_json::to_string_pretty(v).unwrap()).unwrap()
+    };
+    write("catalog-entry-previewed.json", &entry);
+    write("catalog-source-preview.json", &source);
+    write(
+        "catalog-library-preview.json",
+        &serde_json::to_value(&index).unwrap(),
+    );
 }

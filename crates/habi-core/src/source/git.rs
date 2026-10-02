@@ -90,6 +90,55 @@ fn ssh_hint(stderr: &str) -> Option<&'static str> {
     }
 }
 
+/// Files larger than this are never read by Habi (it skips them with a
+/// warning), so a shallow fetch does not download them either.
+pub const SKIP_BLOBS_OVER: u64 = 2 * 1024 * 1024;
+
+/// How much of a repository a fetch downloads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FetchDepth {
+    /// All history and all files.
+    Full,
+    /// The newest commit only, without files over `SKIP_BLOBS_OVER`.
+    Tip,
+}
+
+/// The remote's answer to `ls-remote` for one ref.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteHead {
+    /// The commit the ref points at (a tag is peeled to its commit).
+    pub commit: String,
+    /// The branch `HEAD` names, when the ref asked about was `HEAD`.
+    pub branch: Option<String>,
+}
+
+fn parse_ls_remote(text: &str) -> Option<RemoteHead> {
+    let mut branch = None;
+    let mut commit = None;
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("ref: ") {
+            let target = rest.split('\t').next().unwrap_or(rest);
+            branch = target.strip_prefix("refs/heads/").map(str::to_string);
+            continue;
+        }
+        let Some((oid, name)) = line.split_once('\t') else {
+            continue;
+        };
+        let valid = oid.len() >= 40 && oid.chars().all(|c| c.is_ascii_hexdigit());
+        if !valid {
+            continue;
+        }
+        // An annotated tag is listed twice; the peeled `^{}` line is the commit.
+        if name.ends_with("^{}") || commit.is_none() {
+            commit = Some(oid.to_string());
+        }
+    }
+    Some(RemoteHead {
+        commit: commit?,
+        branch,
+    })
+}
+
 /// One entry of `git ls-tree -r -l`.
 #[derive(Debug, Clone)]
 pub struct TreeEntry {
@@ -152,6 +201,9 @@ impl Git {
             ),
             ("LC_ALL".into(), "C".into()),
             ("LANG".into(), "C".into()),
+            // A cache fetched without large files must report them missing,
+            // not quietly download them one by one.
+            ("GIT_NO_LAZY_FETCH".into(), "1".into()),
         ];
         if self.batch_ssh {
             spec.env.push(("GIT_SSH_COMMAND".into(), BATCH_SSH.into()));
@@ -278,7 +330,7 @@ impl Git {
         Ok(())
     }
 
-    /// Fetches `refspec_source` from `url` into `target_ref`.
+    /// Fetches `refspec_source` from `url` into `target_ref`, with full history.
     pub fn fetch(
         &self,
         git_dir: &Path,
@@ -287,22 +339,72 @@ impl Git {
         target_ref: &str,
         cancel: &CancelToken,
     ) -> Result<()> {
+        self.fetch_with(git_dir, url, source, target_ref, FetchDepth::Full, cancel)
+    }
+
+    /// `fetch` with a choice of how much to download.
+    pub fn fetch_with(
+        &self,
+        git_dir: &Path,
+        url: &str,
+        source: &str,
+        target_ref: &str,
+        depth: FetchDepth,
+        cancel: &CancelToken,
+    ) -> Result<()> {
         let refspec = format!("+{source}:{target_ref}");
-        self.run(
+        let filter = format!("--filter=blob:limit={SKIP_BLOBS_OVER}");
+        let mut args = vec!["fetch", "--no-tags", "--no-recurse-submodules", "--quiet"];
+        if depth == FetchDepth::Tip {
+            // Habi reads one commit's files, and never a file over its own
+            // size limit, so neither history nor oversized blobs are needed.
+            args.extend(["--depth=1", filter.as_str()]);
+        }
+        args.extend(["--", url, refspec.as_str()]);
+        self.run(Some(git_dir), &args, Duration::from_secs(300), cancel)?;
+        Ok(())
+    }
+
+    /// True if the repository holds a truncated history (a `Tip` fetch).
+    pub fn is_shallow(&self, git_dir: &Path, cancel: &CancelToken) -> Result<bool> {
+        let out = self.run(
             Some(git_dir),
-            &[
-                "fetch",
-                "--no-tags",
-                "--no-recurse-submodules",
-                "--quiet",
-                "--",
-                url,
-                &refspec,
-            ],
-            Duration::from_secs(300),
+            &["rev-parse", "--is-shallow-repository"],
+            Duration::from_secs(30),
             cancel,
         )?;
-        Ok(())
+        Ok(out.stdout_text().trim() == "true")
+    }
+
+    /// What the remote's `source` ref points at right now, without
+    /// downloading any objects. For `HEAD`, also the branch it names.
+    pub fn ls_remote(&self, url: &str, source: &str, cancel: &CancelToken) -> Result<RemoteHead> {
+        let peeled = format!("{source}^{{}}");
+        let out = self.run(
+            None,
+            &["ls-remote", "--symref", "--", url, source, &peeled],
+            Duration::from_secs(60),
+            cancel,
+        )?;
+        parse_ls_remote(&out.stdout_text())
+            .ok_or_else(|| HabiError::NotFound(format!("`{source}` in the remote repository")))
+    }
+
+    /// The names of the tags a remote has, without downloading anything.
+    pub fn list_tags(&self, url: &str, cancel: &CancelToken) -> Result<Vec<String>> {
+        let out = self.run(
+            None,
+            &["ls-remote", "--tags", "--refs", "--", url],
+            Duration::from_secs(60),
+            cancel,
+        )?;
+        Ok(out
+            .stdout_text()
+            .lines()
+            .filter_map(|l| l.split_once('\t'))
+            .filter_map(|(_, name)| name.strip_prefix("refs/tags/"))
+            .map(str::to_string)
+            .collect())
     }
 
     pub fn rev_parse_commit(
@@ -598,6 +700,31 @@ pub fn classify(stderr: &str) -> GitFailure {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SHA_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const SHA_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    #[test]
+    fn ls_remote_names_the_head_branch() {
+        let text = format!("ref: refs/heads/main\tHEAD\n{SHA_A}\tHEAD\n");
+        let head = parse_ls_remote(&text).unwrap();
+        assert_eq!(head.commit, SHA_A);
+        assert_eq!(head.branch.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn ls_remote_peels_annotated_tags() {
+        let text = format!("{SHA_A}\trefs/tags/v1\n{SHA_B}\trefs/tags/v1^{{}}\n");
+        let head = parse_ls_remote(&text).unwrap();
+        assert_eq!(head.commit, SHA_B, "the commit, not the tag object");
+        assert_eq!(head.branch, None);
+    }
+
+    #[test]
+    fn ls_remote_without_the_ref_is_nothing() {
+        assert!(parse_ls_remote("").is_none());
+        assert!(parse_ls_remote("not a ref line\n").is_none());
+    }
 
     #[test]
     fn large_output_is_an_error_unless_the_caller_allows_it() {

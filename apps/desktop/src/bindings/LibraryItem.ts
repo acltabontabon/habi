@@ -12,6 +12,7 @@ import type { McpRequirement } from "./McpRequirement";
 import type { MetadataStatus } from "./MetadataStatus";
 import type { Requirement } from "./Requirement";
 import type { Scope } from "./Scope";
+import type { Signal } from "./Signal";
 import type { ToolRequirement } from "./ToolRequirement";
 import type { WorkflowSpec } from "./WorkflowSpec";
 
@@ -52,6 +53,12 @@ basedOn: string | null, compatibility: string | null, requirement: Requirement, 
  * `None` when not restricted.
  */
 clients: Array<ClientId> | null, workflow: WorkflowSpec | null, bindings: Array<BindingSpec>, checks: Array<CheckSpec>, evidence: Array<DeclaredEvidence>, examples: Array<Example>, files: Array<ItemFile>, contentDigest: string, metadataStatus: MetadataStatus, diagnostics: Array<Diagnostic>, 
+/**
+ * What stands out in the item's files (commands that download and run
+ * code, credential access, compiled programs, …), found by reading them
+ * as data. A static reading: not a guarantee either way.
+ */
+signals: Array<Signal>, 
 /**
  * False if some of the item's files were skipped while reading the
  * library (too large, symbolic links). Incomplete items are not installable.

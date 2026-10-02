@@ -583,3 +583,21 @@ fn recover_says_it_rolls_back() {
     assert!(stdout(&out).contains("Roll back"), "{}", stdout(&out));
     assert!(!stdout(&out).contains("Finish"), "{}", stdout(&out));
 }
+
+#[test]
+fn the_catalog_lists_every_library_without_touching_the_network() {
+    let env = Env::new();
+    let (out, v) = env.json(env.work.path(), &["catalog", "list"]);
+    assert!(out.status.success(), "{v}");
+    let entries = v.as_array().expect("a list");
+    assert_eq!(entries.len(), 11);
+    // Nothing is known that was not read: no counts, no review, nothing fetched.
+    for e in entries {
+        assert_eq!(e["availability"], "notFetched", "{e}");
+        assert!(e["contents"].is_null() && e["review"].is_null(), "{e}");
+    }
+    // Opening an id that is not in the catalog is a plain not-found.
+    let (out, v) = env.json(env.work.path(), &["catalog", "preview", "nope"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(error_code(&v), "notFound");
+}

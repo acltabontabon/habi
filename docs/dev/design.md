@@ -78,10 +78,26 @@ its one signature — used only where it carries meaning.
   Git or folder are in each tooltip, the Libraries page and the source sheet). Opening a
   project appears on hover or focus of its heading (and ⌘O); creating a skill is ⌘N. Below
   720 px the sidebar becomes a rail of icons and threads.
-- **Libraries** — a destination of its own: *Connected* (team · local · community, with
-  freshness), *Discover* (a short curated list of community libraries not yet connected, each
-  previewed — what it covers, about how many skills, license, trust — before *Connect
-  library*), and *Your own* (connect a Git repository, use a folder; each a focused page).
+- **Libraries** — a destination of its own. Groups, in order: *Connected* (everything Habi
+  keeps current for you, wherever it came from; connecting is not owning, a copy you adopt and
+  edit is), *Bring your own* (the two ways to connect a repository or folder of your own),
+  *From the builders* (the organisations behind the tools) and *From the community*
+  (independent maintainers). Columns flow side by side as the window allows. One row per
+  library: name, repository, and a one-line gist of what it is. A row speaks only when
+  something is wrong (a deprecated or unreachable library, a failed refresh); counts, licence,
+  age and how an owner was checked are in the library's own masthead. Above the list, two
+  knots on one thread (*Connect a library → Put skills to work*) say what to do and light up
+  only for what is true on this machine; until something is connected the first knot breathes
+  and an arrow bobs toward the list. `/` filters, ↑/↓ or j/k move, Enter opens.
+  Choosing a library opens its page (what the catalog knows, one **Connect library** button);
+  pressing it reads the library while a loom weaves (cancel, stopped and failed states stay
+  inside the weaving), then opens the connected library. Nothing is installed, copied or run.
+  **A library moves forward when the user says so.** Opening a Git library (and the scheduled
+  check, if enabled) only asks the remote whether it has something newer; a line with one
+  *Update* button appears, and the list says *v6.4.2 available*. After an update the library
+  header says what changed (*Updated v6.4.1 → v6.4.2 · 1 new · 2 changed · 1 removed*, the
+  skills named) and the index marks those skills until *Mark as seen*. The catalog lives in
+  `crates/habi-core/catalog/sources.yaml` ([format](../library-authors/catalog.md)).
 - **Library** — an index of knowledge and one reading surface. The index is the library's
   warp: its thread runs down the rail (stitched for community) and each skill is a pick across
   it — a hanging initial, the title, a one-line purpose (agent trigger text left out), quiet

@@ -6,6 +6,10 @@ export type PruneReport = {
  */
 operationsRemoved: number, 
 /**
+ * Library previews, never connected, discarded for being old.
+ */
+previewsRemoved: number, 
+/**
  * Earlier library snapshots removed.
  */
 snapshotsRemoved: number, 

@@ -27,4 +27,25 @@ sample: boolean,
  * Items (skills, workflows, instructions) in the cached snapshot; 0
  * before the first fetch.
  */
-skillCount: number, };
+skillCount: number, 
+/**
+ * Fetched so it can be inspected, but not connected: previews are kept
+ * out of every list, recommendation and installation until connected.
+ */
+preview: boolean, 
+/**
+ * The catalog entry this source was added from, if any.
+ */
+catalogId: string | null, 
+/**
+ * Only files matching one of these globs are read (all files when empty).
+ */
+include: Array<string>, 
+/**
+ * Files matching one of these globs are never read.
+ */
+exclude: Array<string>, 
+/**
+ * The branch the remote's `HEAD` named at the last check.
+ */
+defaultBranch: string | null, };

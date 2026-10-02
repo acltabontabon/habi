@@ -831,7 +831,7 @@
   gap: var(--s5);
 }
 
-.project-head-woven .swatch {
+.project-head-woven .skein {
   margin-top: 2px;
   box-shadow: 0 0 0 1px var(--hairline);
 }
@@ -861,7 +861,7 @@
   color: var(--ink-muted);
 }
 
-/* What fits, by library: the cloth's composition. */
+/* What fits, by library: the composition bar. */
 .composition {
   display: grid;
   gap: 10px;
@@ -2828,7 +2828,7 @@ details > summary.change-head::-webkit-details-marker {
     padding-top: var(--s5);
     padding-bottom: var(--s3);
   }
-  .project-head-woven .swatch {
+  .project-head-woven .skein {
     width: 48px;
     height: 48px;
   }
@@ -4282,7 +4282,7 @@ dl.facets,
     border-left: 0;
     padding-left: 0;
   }
-  .project-head-woven .swatch {
+  .project-head-woven .skein {
     width: 36px;
     height: 36px;
   }
@@ -4578,14 +4578,2184 @@ dl.facets,
   gap: var(--s4);
 }
 
-.connect-folder {
-  flex: 1;
+/* ---------- Connect your own library ---------- */
+
+/* The folder, as one large stitched target instead of a box and a button. */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
   min-width: 0;
-  padding: 7px var(--s3);
-  border: 1px dashed var(--hairline-strong);
+  padding: var(--s4);
+  border: 1.5px dashed var(--hairline-strong);
   border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-soft);
+  text-align: left;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.pick:hover:not(:disabled),
+.pick:focus-visible {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+}
+
+.pick.is-chosen {
+  border-style: solid;
+  border-color: var(--thread);
+}
+
+.pick svg {
+  flex: none;
+  color: var(--thread-strong);
+}
+
+.pick-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pick-empty {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pick-path {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.pick-sub {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* The chosen folder, opened: how many skills are in it, then each by name. */
+.field.grow > .scan {
+  height: 100%;
+}
+
+.scan {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1.5px solid var(--thread);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.scan-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--s3);
+  border-bottom: 1px solid var(--hairline);
   font-size: var(--text-sm);
+}
+
+.scan-head svg {
+  flex: none;
+  color: var(--thread-strong);
+}
+
+/* The folder's own name always shows; the path in front of it gives way. */
+.scan-path {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+.scan-parent {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-muted);
+}
+
+.scan-path strong {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.scan-head .link-quiet {
+  flex: none;
+  white-space: nowrap;
+}
+
+.scan-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s2);
+  margin: 0;
+  padding: var(--s3) var(--s3) var(--s2);
+}
+
+.scan-count {
+  font-size: 34px;
+  font-weight: 620;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.scan-label {
+  color: var(--ink-muted);
+}
+
+.scan-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--s3);
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* Scrolls inside the box, so a large folder never makes the station taller. */
+.scan-list {
+  display: grid;
+  flex: 1 1 0;
+  align-content: start;
+  min-height: 0;
+  margin: 0;
+  padding: 0 var(--s3) var(--s2);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.scan-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--s3);
+  padding: 7px 0 7px var(--s4);
+  border-top: 1px solid var(--hairline);
+  animation: scan-in 360ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* A knot on the thread for each skill found. */
+.scan-item::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 2px;
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: var(--thread);
+}
+
+.scan-name,
+.scan-desc {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.scan-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.scan-desc {
+  grid-column: 1;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.scan-meta {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.scan-state {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s4) var(--s3);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.scan-state p {
+  margin: 0;
+}
+
+.scan-none {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@keyframes scan-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-item {
+    animation: none;
+  }
+}
+
+/* One pill each, side by side; the chosen one is explained underneath. */
+.choice-field {
+  gap: var(--s2);
+}
+
+.choice-field .field-hint {
+  margin-top: var(--s1);
+}
+
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.choice-pill {
+  position: relative;
+  display: inline-flex;
+}
+
+.choice-pill input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.choice-pill span {
+  padding: 5px 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.choice-pill:hover span {
+  border-color: var(--ink-faint);
+}
+
+.choice-pill input:checked + span {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  color: var(--ink);
+}
+
+.choice-pill input:focus-visible + span {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+
+.choice-pill input:disabled + span {
+  opacity: 0.55;
+}
+
+/* The options: closed, they say what they are set to. */
+.options {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--s3);
+}
+
+.options summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.options summary::-webkit-details-marker {
+  display: none;
+}
+
+.options summary svg {
+  transition: transform var(--duration) var(--ease);
+}
+
+.options[open] summary svg {
+  transform: rotate(90deg);
+}
+
+.options-now {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.options-body {
+  display: grid;
+  gap: var(--s4);
+  padding-top: var(--s3);
+}
+
+/* The page: three stations on one thread, what it comes to in a sentence, and
+   the loom along the foot where connecting happens. */
+/* The page is the window: it fills it both ways. The stations keep the height their
+   content gives them; what a tall window has over goes to the loom along the foot,
+   whose warp threads simply grow longer. */
+.connect-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: var(--s4) clamp(var(--s5), 3vw, 72px);
+}
+
+.connect-board {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.connect-head {
+  display: grid;
+  gap: var(--s2);
+  max-width: 72rem;
+  margin-bottom: clamp(var(--s4), 2.4vh, var(--s6));
+}
+
+.connect-head .kicker {
+  margin: var(--s2) 0 0;
+}
+
+.connect-head .page-title {
+  margin: 0;
+  font-size: clamp(28px, 1.2vw + 20px, 48px);
+  line-height: 1.1;
+}
+
+.connect-head .lead-sm {
+  max-width: none;
+  margin: 0;
+  font-size: clamp(16px, 0.4vw + 12px, 20px);
+  line-height: 1.55;
+}
+
+.stations {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s6);
+}
+
+.station {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: var(--s1);
+  min-width: 0;
+  margin: 0;
+  padding: 34px 0 0;
+  border: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+/* The thread runs from knot to knot, and takes the colour as each is reached. */
+.station::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 30px;
+  right: calc(var(--s6) * -1 + 8px);
+  border-top: 1.5px dashed var(--hairline-strong);
+  transition: border-color var(--duration) var(--ease);
+}
+
+.station:last-child::before {
+  right: 0;
+}
+
+.station.is-lit::before {
+  border-top-color: var(--thread);
+}
+
+.station.is-locked {
+  opacity: 0.5;
+}
+
+.station-knot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border: 1.5px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.station.is-lit .station-knot {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+/* Start here: the first knot breathes until it has something. */
+.station.is-next .station-knot {
+  border-color: var(--thread);
+  color: var(--thread-strong);
+}
+
+.station.is-next .station-knot::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1.5px solid var(--thread);
+  border-radius: 50%;
+  opacity: 0;
+  animation: knot-breathe 2.4s var(--ease) infinite;
+}
+
+.station-title {
+  margin: 0 0 var(--s3);
+  font-size: clamp(20px, 0.5vw + 14px, 28px);
+  font-weight: 620;
+  letter-spacing: -0.02em;
+}
+
+.station-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+/* The three stations stand level: whatever is last in a short one takes the room left. */
+.station-body > .grow {
+  flex: 1 1 auto;
+}
+
+.field.grow {
+  align-content: stretch;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.field.grow > .pick {
+  min-height: 92px;
+  height: 100%;
+}
+
+.address {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-height: 92px;
+  padding: var(--s4);
+  border: 1.5px solid var(--thread);
+  border-radius: var(--radius);
+  background: var(--thread-wash);
+}
+
+.address-host {
+  font-size: clamp(11px, 0.2vw + 9px, 14px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.address-repo {
+  font-size: clamp(16px, 0.7vw + 10px, 26px);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.address-how {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.panel {
+  display: grid;
+  align-content: center;
+  gap: var(--s2);
+  padding: var(--s4);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius);
+}
+
+.panel .kicker {
+  margin: 0;
+}
+
+/* The choice as cloth: two tiles, each a piece of weave in the thread that kind of library has. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: var(--s2);
+  min-height: 150px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+  padding: var(--s3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.tile:hover {
+  border-color: var(--ink-faint);
+}
+
+.tile input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tile.is-chosen {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+}
+
+.tile:has(input:focus-visible) {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+
+.tile:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Warp threads, long as the tile allows, over a faint weft. */
+.cloth {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: space-evenly;
+  min-height: 44px;
+  margin-bottom: var(--s2);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: repeating-linear-gradient(to bottom, transparent 0 13px, var(--hairline) 13px 14px);
+}
+
+.cloth-thread {
+  flex: none;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--ink-faint);
+  opacity: 0.55;
+  transition: opacity var(--duration) var(--ease);
+}
+
+/* Stitched: a community thread is drawn in dashes. */
+.cloth-thread.is-stitched {
+  background: repeating-linear-gradient(to bottom, var(--ink-faint) 0 9px, transparent 9px 15px);
+}
+
+/* The one that would be yours, once chosen. */
+.tile.is-chosen .cloth-thread {
+  opacity: 0.8;
+}
+
+.tile.is-chosen .cloth-thread.is-new {
+  inline-size: 5px;
+  opacity: 1;
+  background: var(--thread);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--thread) 60%, transparent);
+  transform-origin: top;
+  animation: thread-draw 520ms var(--ease) both;
+}
+
+.tile.is-chosen .cloth-thread.is-new.is-stitched {
+  background: repeating-linear-gradient(to bottom, var(--thread) 0 9px, transparent 9px 15px);
+}
+
+@keyframes thread-draw {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-chosen .cloth-thread.is-new {
+    animation: none;
+  }
+}
+
+.tile-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tile-gist {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.panel-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.station.is-locked .station-body {
+  pointer-events: none;
+}
+
+.input-lg {
+  min-height: 44px;
+  padding-inline: var(--s3);
+  font-size: 15px;
+}
+
+.station .pick {
+  min-height: 92px;
+}
+
+.guide {
+  display: grid;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+
+.guide .kicker {
+  margin: 0;
+}
+
+.guide-forms {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+}
+
+.guide-forms dt {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.guide-forms dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.skill-tree {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.connect-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s5) var(--s6);
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+
+.connect-say {
+  display: grid;
+  flex: 1 1 28rem;
+  gap: var(--s3);
+}
+
+/* What it all comes to, said once. Filled words are marked like highlighted
+   text; the ones not given yet stay open blanks. */
+.connect-sentence {
+  max-width: 70ch;
+  margin: 0;
+  font-size: clamp(17px, 0.8vw + 9px, 30px);
+  line-height: 1.65;
+  letter-spacing: -0.01em;
+  color: var(--ink-soft);
+}
+
+.tok {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--thread-wash);
+  color: var(--ink);
+  font-weight: 600;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.tok.is-open {
+  padding: 0 2px;
+  border-bottom: 1.5px dashed var(--hairline-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* The name is the one word of the sentence you can write over. */
+.tok-input {
+  border: 0;
+  border-bottom: 1.5px solid var(--thread);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: inherit;
+  outline-offset: 2px;
+  cursor: text;
+}
+
+.tok-input:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--thread) 22%, transparent);
+}
+
+.tok-input:disabled {
+  cursor: default;
+}
+
+.narrow-link {
+  justify-self: start;
+}
+
+.connect-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.connect-go {
+  min-block-size: 46px;
+  padding-inline: var(--s5);
+  font-size: 15px;
+}
+
+/* The loom takes whatever height is left, and its idle warp threads grow to fill it. */
+.connect-loom.lp-loom {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 56px;
+  margin-top: var(--s4);
+  padding-top: 0;
+}
+
+.connect-loom .weaving.is-waiting {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.connect-loom .weaving.is-waiting .weaving-cloth {
+  height: 100%;
+  min-height: 56px;
+}
+
+.connect-loom .weaving.is-fill .weaving-warp {
+  vector-effect: non-scaling-stroke;
+}
+
+/* While it is read, the weaving keeps a fixed band at the foot. */
+.connect-loom .weaving:not(.is-waiting) .weaving-cloth {
+  height: clamp(56px, 10vh, 120px);
+}
+
+@media (max-width: 1000px) {
+  .connect-head {
+    margin-bottom: var(--s6);
+  }
+  .stations {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s5);
+    max-width: 40rem;
+  }
+  /* One column: the thread runs down the left. */
+  .station {
+    padding: 0 0 0 46px;
+  }
+  .station::before {
+    top: 30px;
+    bottom: calc(var(--s5) * -1 + 8px);
+    left: 10px;
+    right: auto;
+    border-top: 0;
+    border-left: 1.5px dashed var(--hairline-strong);
+  }
+  .station.is-lit::before {
+    border-left-color: var(--thread);
+  }
+  .station:last-child::before {
+    display: none;
+  }
+  .connect-foot {
+    margin-top: var(--s6);
+  }
+}
+
+/* ---------- Libraries by provenance ---------- */
+
+.libraries-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  max-width: 340px;
+  margin-top: var(--s3);
+  padding: 6px var(--s3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  color: var(--ink-faint);
+  transition: border-color var(--duration) var(--ease);
+}
+
+.libraries-filter:focus-within {
+  border-color: var(--thread);
+}
+
+.libraries-filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.libraries-groups {
+  display: grid;
+  gap: var(--s6);
+}
+
+.libraries-first {
+  max-width: 62ch;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* One rhythm for every group: thread, who, what is in it, one word of
+   trust, where it stands. Nothing is a card. */
+.libraries .library-row.is-entry {
+  grid-template-columns: 18px minmax(150px, 1.1fr) minmax(0, 1.7fr) 78px 104px;
+  padding: 10px var(--s2);
+}
+
+.library-row-id {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.library-row.is-entry .library-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-row.is-entry .library-row-repo {
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.library-row-trust {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.3;
+  color: var(--ink-muted);
+  text-align: right;
+  white-space: normal;
+}
+
+.library-row-state.is-on {
+  color: var(--ink);
+}
+
+.library-row-state.is-go {
+  color: var(--ink-faint);
+  transition: color var(--duration) var(--ease);
+}
+
+.library-row.is-entry:hover .library-row-state.is-go,
+.library-row.is-entry:focus-visible .library-row-state.is-go {
+  color: var(--thread-strong);
+}
+
+.library-row.is-entry.is-own {
+  grid-template-columns: 18px minmax(150px, 1.1fr) minmax(0, 1.7fr) 78px 104px;
+}
+
+.library-row.is-entry.is-own .library-row-name {
+  font-weight: 550;
+}
+
+.library-row.is-entry:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: -2px;
+}
+
+@media (max-width: 1020px) {
+  .libraries .library-row.is-entry,
+  .libraries .library-row.is-entry.is-own {
+    grid-template-columns: 18px minmax(120px, 1fr) minmax(0, 1.3fr) 96px;
+  }
+  .libraries .library-row-trust {
+    display: none;
+  }
+  .libraries .library-row.is-entry .library-row-repo {
+    display: block;
+  }
+}
+
+/* ---------- A library's strip: who, what, which revision ---------- */
+
+.library-strip {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s6) clamp(var(--s5), 4vw, 64px) var(--s4);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-raised);
+}
+
+.library-strip > * {
+  max-width: 880px;
+}
+
+.strip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.strip-kicker {
+  margin: 0;
+}
+
+.strip-title {
+  margin: 0;
+  font-size: clamp(30px, 3.4vw, 46px);
+  font-weight: 640;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.strip-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+}
+
+.strip-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  row-gap: 2px;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.strip-facts > * + *::before {
+  content: "·";
+  margin: 0 var(--s2);
+  color: var(--ink-faint);
+}
+
+.strip-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.strip-trust {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.strip-trust.is-official {
+  color: var(--ink-soft);
+}
+
+.strip-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s5);
+}
+
+.sig-count.is-caution {
+  color: var(--warn-ink);
+}
+
+.strip-panel {
+  display: grid;
+  gap: var(--s2);
+  max-width: 78ch;
+  margin-top: var(--s2);
+  padding: var(--s2) 0 var(--s2) var(--s4);
+  border-left: 2px solid var(--hairline-strong);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  animation: unfold var(--duration) var(--ease);
+}
+
+.strip-panel-lead {
+  margin: 0;
+}
+
+.strip-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  align-items: center;
+}
+
+.strip-flagged {
+  display: grid;
+  margin: var(--s2) 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+}
+
+.strip-flagged-item {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(0, 1.3fr);
+  gap: 1px var(--s4);
+  width: 100%;
+  padding: 6px var(--s2);
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+  text-align: left;
+}
+
+.strip-flagged-item:hover,
+.strip-flagged-item:focus-visible {
+  background: var(--paper-raised);
+}
+
+.strip-flagged-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.strip-flagged-what {
+  color: var(--warn-ink);
+}
+
+.strip-flagged-where {
+  grid-column: 2;
+  overflow: hidden;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strip-flagged-more {
+  padding: 6px var(--s2);
+}
+
+.strip-facts-list {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 6px var(--s4);
+  margin: 0;
+}
+
+.strip-facts-list dt {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.strip-facts-list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.strip-notes {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+/* Moving a library forward is the user's act: a newer version is offered on a
+   stitched line with one button, and what an update changed is named after. */
+.library-updates {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s3) clamp(var(--s5), 4vw, 64px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.library-updates > * {
+  max-width: 880px;
+}
+
+.strip-update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s3);
+  border: 1px dashed var(--thread);
+  border-radius: var(--radius);
+}
+
+.strip-update-knot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--thread) 22%, transparent);
+}
+
+.strip-update-text {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.strip-changes-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+  font-size: var(--text-sm);
+}
+
+.strip-changes-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 var(--s3);
+  color: var(--ink-muted);
+}
+
+.strip-changes-seen {
+  margin-left: auto;
+}
+
+.strip-changes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--s3) var(--s5);
+  padding: var(--s3) 0 var(--s1) var(--s4);
+  border-left: 2px solid var(--thread);
+  animation: unfold var(--duration) var(--ease);
+}
+
+.change-names .kicker {
+  margin: 0 0 var(--s1);
+}
+
+.change-names ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+
+.change-names .is-gone {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.index-changed {
+  color: var(--thread-strong);
+}
+
+/* How far a library has come into your work: a thread knotted at each
+   stage that is true. Stitched until it is. */
+.thread {
+  display: flex;
+  align-items: center;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-faint);
+}
+
+.thread-step + .thread-step {
+  margin-left: 26px;
+}
+
+.thread-step + .thread-step::before {
+  content: "";
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  width: 18px;
+  border-top: 2px dashed var(--hairline-strong);
+}
+
+.thread-step.is-done + .thread-step.is-done::before {
+  border-top-style: solid;
+  border-top-color: var(--thread);
+}
+
+.thread-knot {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.thread-step.is-done {
+  color: var(--ink-soft);
+}
+
+.thread-step.is-done .thread-knot {
+  border-color: var(--thread);
+  background: var(--thread);
+}
+
+.thread-label {
+  font-size: var(--text-2xs);
+}
+
+/* ---------- Signals: what Habi noticed, and where ---------- */
+
+.signals {
+  display: grid;
+  gap: var(--s2);
+}
+
+.signal-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 1px var(--s2);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+}
+
+.signal-mark {
+  display: inline-flex;
+  align-self: center;
+  color: var(--ink-faint);
+}
+
+.signal.is-caution .signal-mark,
+.signal.is-caution .signal-what {
+  color: var(--warn-ink);
+}
+
+.signal-where {
+  max-width: 34ch;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: hidden;
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.signal-where {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+button.signal-where:hover,
+button.signal-where:focus-visible {
+  color: var(--thread-strong);
+}
+
+.signal-detail {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signals-caveat {
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.sig-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.sig-link:hover,
+.sig-link:focus-visible {
+  color: var(--thread-strong);
+}
+
+/* ---------- In a library's index: groups, fits, flags ---------- */
+
+.index-group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: 14px var(--s5) 4px 38px;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.index-group-count {
+  font-size: var(--text-2xs);
+}
+
+.index-fit {
+  color: var(--ok-ink);
+}
+
+.index-flag {
+  display: inline-flex;
+  align-items: center;
+  color: var(--warn-ink);
+}
+
+.skill-fit {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  max-width: 64ch;
+  margin: var(--s2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--ok-ink);
+}
+
+.skill-fit svg {
+  flex: none;
+  align-self: center;
+}
+
+.connect-confirm {
+  display: grid;
+  gap: var(--s3);
+  font-size: var(--text-sm);
+}
+
+.connect-confirm p {
+  margin: 0;
+}
+
+.catalog-fits {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.catalog-fits svg {
+  flex: none;
+  align-self: center;
+  color: var(--ink-faint);
+}
+
+/* Where an adopted copy came from, kept beside the copy. */
+.provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  font-size: var(--text-sm);
+}
+
+.provenance svg {
+  align-self: center;
+}
+
+/* ---------- The way in: three knots on one thread ---------- */
+
+.path {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 600px;
+  margin: var(--s5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.path-step {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding-right: var(--s5);
+}
+
+/* The thread runs knot to knot; solid once both ends are true. */
+.path-step::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 28px;
+  right: 6px;
+  border-top: 2px dashed var(--hairline-strong);
+}
+
+.path-step:last-child::before {
+  display: none;
+}
+
+.path-step.is-done:has(+ .path-step.is-done)::before {
+  border-top-style: solid;
+  border-top-color: var(--thread);
+}
+
+.path-knot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-bottom: var(--s2);
+  border: 1.5px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.path-step.is-done .path-knot {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+.path-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.path-text {
+  max-width: 28ch;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 760px) {
+  .path {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+  }
+  .path-step::before {
+    display: none;
+  }
+}
+
+/* ---------- Library rows: who, the gist, what was found, where it stands ---------- */
+
+.libraries .library-row.is-entry,
+.libraries .library-row.is-entry.is-own {
+  grid-template-columns: 18px minmax(150px, 200px) minmax(0, 1fr) 118px 92px 88px;
+  padding: 11px var(--s2);
+}
+
+/* The gist: what the library is, in a line or two. */
+.library-row.is-entry .library-row-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.library-row-facts {
+  display: grid;
+  gap: 1px;
+  text-align: right;
+}
+
+.library-row-facts .library-row-count {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.library-row-sub {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+@media (max-width: 1240px) {
+  .libraries .library-row.is-entry,
+  .libraries .library-row.is-entry.is-own {
+    grid-template-columns: 18px minmax(130px, 190px) minmax(0, 1fr) 88px;
+  }
+  .libraries .library-row-trust {
+    display: none;
+  }
+  .library-row-facts {
+    display: none;
+  }
+  .library-row.is-entry .library-row-summary {
+    grid-column: span 1;
+  }
+}
+
+ul.connect-confirm {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- Libraries: a fluid page ----------
+   The page uses the window. Groups are columns that flow side by side as
+   room allows (three across on a large screen); the header puts the way in
+   (three knots) beside the title and filter instead of beneath them; each
+   row is self-contained, so it reads the same at any column width. */
+
+.page.narrow.libraries {
+  max-width: 1760px;
+}
+
+.libraries-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "kick" "title" "path" "filter";
+  column-gap: clamp(var(--s6), 6vw, 120px);
+  align-items: start;
+}
+
+.libraries-head > .kicker {
+  grid-area: kick;
+}
+
+.libraries-head > .page-title {
+  grid-area: title;
+  font-size: clamp(26px, 2.3vw, 32px);
+  text-wrap: balance;
+}
+
+.libraries-head > .path {
+  grid-area: path;
+  max-width: 640px;
+  margin: var(--s4) 0 var(--s3);
+}
+
+.libraries-head > .libraries-filter {
+  grid-area: filter;
+  max-width: 420px;
+}
+
+@media (min-width: 1180px) {
+  .libraries-head {
+    grid-template-columns: minmax(300px, 1fr) minmax(440px, 600px);
+    grid-template-areas: "kick path" "title path" "filter path";
+    align-items: center;
+  }
+  .libraries-head > .path {
+    margin: 0;
+  }
+}
+
+/* Groups sit where they leave no holes: one column; then what is connected
+   and the way to bring your own beside the (taller) builders; then three across. */
+.libraries-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "connected" "own" "builders" "community";
+  column-gap: clamp(var(--s6), 3vw, 64px);
+  /* Spacing lives on the sections, so a group that is absent leaves no gap
+     behind and the columns still start on one line. */
+  row-gap: 0;
+  align-items: start;
+}
+
+.libraries-groups > .libraries-section {
+  margin-bottom: var(--s6);
+}
+
+.area-connected {
+  grid-area: connected;
+}
+
+.area-own {
+  grid-area: own;
+}
+
+.area-builders {
+  grid-area: builders;
+}
+
+.area-community {
+  grid-area: community;
+}
+
+@media (min-width: 1180px) {
+  .libraries-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "connected builders" "own builders" "community builders";
+    grid-template-rows: auto auto 1fr;
+  }
+}
+
+@media (min-width: 1760px) {
+  .libraries-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas: "connected builders community" "own builders community";
+    grid-template-rows: auto 1fr;
+  }
+}
+
+.libraries-groups .libraries-section {
+  min-width: 0;
+}
+
+.libraries .library-row.is-entry,
+.libraries .library-row.is-entry.is-own {
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--s3);
+  padding: 11px var(--s2);
+}
+
+.libraries .library-row.is-entry > .strand,
+.libraries .library-row.is-entry > span[aria-hidden="true"]:first-child {
+  margin-top: 3px;
+}
+
+.lr-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.lr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s3);
+  min-width: 0;
+}
+
+.library-row.is-entry .library-row-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.4;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+/* A row speaks up only when something is wrong with it. */
+.lr-facts {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.lr-go {
+  margin-left: auto;
+  color: var(--ink-faint);
+  transition:
+    color var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.library-row.is-entry:hover .lr-go,
+.library-row.is-entry:focus-visible .lr-go {
+  color: var(--thread-strong);
+  transform: translateX(3px);
+}
+
+.library-back {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s4) clamp(var(--s5), 4vw, 64px) 0;
+}
+
+.strip-top .editor-back {
+  grid-column: auto;
+}
+
+.strip-kicker {
+  margin: var(--s2) 0 0;
+}
+
+/* ---------- Weaving: a loom at work while a library is read ---------- */
+
+.weaving {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  margin: var(--s7) 0 var(--s6);
+  text-align: center;
+}
+
+.weaving-cloth {
+  width: min(100%, 600px);
+  height: auto;
+  overflow: visible;
+}
+
+.weaving-warp {
+  stroke: var(--hairline-strong);
+  stroke-width: 1.2;
+}
+
+.weaving-weft {
+  stroke: var(--ink-faint);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: var(--weft, 340);
+  stroke-dashoffset: var(--weft, 340);
+  animation: weft-draw 4.8s var(--ease) infinite;
+  animation-delay: calc(var(--r) * 0.46s);
+}
+
+.weaving-row.is-saffron .weaving-weft {
+  stroke: var(--thread);
+}
+
+.weaving-over {
+  fill: var(--ink-soft);
+  opacity: 0;
+  animation: over-in 4.8s var(--ease) infinite;
+  animation-delay: calc(var(--r) * 0.46s);
+}
+
+.weaving-row.is-saffron .weaving-over {
+  fill: var(--hairline-strong);
+}
+
+@keyframes weft-draw {
+  0% {
+    stroke-dashoffset: var(--weft, 340);
+    opacity: 1;
+  }
+  36% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  80% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes over-in {
+  0%,
+  22% {
+    opacity: 0;
+  }
+  38%,
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weaving-weft {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .weaving-over {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+.weaving-label {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+.weaving-time {
+  color: var(--ink-faint);
+}
+
+.weaving-hint {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  animation: unfold var(--duration) var(--ease);
+}
+
+.weaving-cancel {
+  font-size: var(--text-sm);
+}
+
+/* While a library is read, the page is the weaving: it takes the width. */
+.page.narrow.preview-page {
+  max-width: none;
+}
+
+.preview-page > .preview-summary,
+.preview-page > .community-head {
+  max-width: 70ch;
+}
+
+/* A weaving that stopped: the cloth stays as it was, mid-row, with a loose
+   thread hanging where the weft ended. */
+.weaving.is-stopped .weaving-weft,
+.weaving.is-stopped .weaving-over {
+  animation: none;
+}
+
+.weaving-row.is-done .weaving-weft {
+  stroke-dashoffset: 0;
+}
+
+.weaving-row.is-done .weaving-over {
+  opacity: 0.85;
+}
+
+.weaving-row.is-half .weaving-weft {
+  stroke-dashoffset: calc(var(--weft, 340) / 2);
+}
+
+.weaving-row.is-half .weaving-over {
+  opacity: 0;
+}
+
+.weaving-row.is-none {
+  opacity: 0;
+}
+
+.weaving-loose {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 3 4;
+}
+
+.weaving.is-failed .weaving-loose {
+  stroke: var(--warn-ink);
+  stroke-dasharray: none;
+}
+
+.weaving.is-stopped .weaving-label {
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* Start here: the first knot that is not yet true breathes, and an arrow
+   bobs toward the list. It settles once there is something connected. */
+.path-step.is-next .path-knot::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1.5px solid var(--thread);
+  border-radius: 50%;
+  opacity: 0;
+  animation: knot-breathe 2.4s var(--ease) infinite;
+}
+
+.path-step.is-next .path-knot {
+  border-color: var(--thread);
+  color: var(--thread-strong);
+}
+
+.path-cue {
+  display: inline-block;
+  margin-left: var(--s2);
+  color: var(--thread-strong);
+  animation: cue-bob 1.6s var(--ease) infinite;
+}
+
+@keyframes knot-breathe {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.8);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes cue-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .path-step.is-next .path-knot::after,
+  .path-cue {
+    animation: none;
+  }
+  .path-step.is-next .path-knot::after {
+    opacity: 0.5;
+  }
+}
+
+/* The loom, waiting: the warp stands, a little faded, until Connect is pressed. */
+.weaving.is-waiting {
+  margin-top: var(--s7);
+  opacity: 0.55;
+}
+
+/* A library's page before it is connected: one dossier on four columns.
+   Header and the way in, the gist, GitHub's figures, how it was checked,
+   and the loom along the foot. Everything shares the same left edge and the
+   same four columns, at any width. */
+.library-page {
+  display: grid;
+  align-content: start;
+  gap: var(--s5);
+}
+
+.lp-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+
+.lp-title {
+  display: grid;
+  gap: 4px;
+}
+
+.lp-gist {
+  max-width: 70ch;
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.lp-repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
+
+.lp-repo:hover,
+.lp-repo:focus-visible {
+  color: var(--thread-strong);
+}
+
+/* Four equal cells; a stitched edge between them. */
+.lp-figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: var(--s3) 0 0;
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.lp-figures > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 var(--s4);
+  border-left: 1.5px dashed var(--hairline-strong);
+}
+
+.lp-figures > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.lp-figures dd {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 38px);
+  font-weight: 620;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.lp-figures dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* How it was checked, on the same four columns (notes take the last two). */
+.lp-checks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s5) 0;
+}
+
+.lp-checks > section {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding-right: var(--s4);
+}
+
+.lp-checks .kicker {
+  margin: 0 0 var(--s2);
+}
+
+.lp-checks p {
+  margin: 0;
+}
+
+.lp-notes {
+  grid-column: span var(--span, 2);
+}
+
+.lp-plain {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.lp-plain .mono {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.lp-notes ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.lp-sub {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+@media (max-width: 900px) {
+  .lp-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--s4);
+  }
+  .lp-figures > div:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .lp-checks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lp-notes {
+    grid-column: auto;
+  }
+}
+
+/* The loom along the foot: waiting, weaving, stopped. */
+.lp-loom {
+  margin-top: var(--s5);
+}
+
+.lp-loom .weaving {
+  width: 100%;
+  margin: 0;
+}
+
+.lp-loom .weaving.is-waiting {
+  opacity: 0.6;
+}
+
+.lp-loom .weaving-cloth {
+  width: 100%;
 }

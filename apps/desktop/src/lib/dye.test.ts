@@ -21,6 +21,11 @@ function source(id: string, createdAt: string): Source {
     freshness: "current",
     sample: false,
     skillCount: 0,
+    preview: false,
+    catalogId: null,
+    include: [],
+    exclude: [],
+    defaultBranch: null,
   };
 }
 

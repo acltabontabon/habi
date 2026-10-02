@@ -32,7 +32,8 @@ use crate::skills::intake::{
     ProjectKnowledge,
 };
 use crate::skills::{
-    LOCAL_SOURCE_ID, LOCAL_SOURCE_NAME, LocalSkill, NewSkill, SkillOrigin, Skills, Tree, TreeLimits,
+    LOCAL_SOURCE_ID, LOCAL_SOURCE_NAME, LocalSkill, NewSkill, SkillOrigin, Skills, Tree,
+    TreeLimits, Upstream,
 };
 use crate::source::{Freshness, Source, SourceKind, Sources, TrackedRef, portable_identity};
 use crate::store::{AppPaths, Store};
@@ -628,6 +629,77 @@ impl Habi {
         Ok(out)
     }
 
+    /// Skills of catalog libraries that fit a project, from libraries already
+    /// fetched or connected (nothing is downloaded). Only skills with a rule
+    /// to evaluate are considered: their author's, or the catalog's hint.
+    pub fn catalog_fits(
+        &self,
+        project_id: &str,
+        cancel: &CancelToken,
+    ) -> Result<Vec<crate::catalog::CatalogFit>> {
+        let project = self.existing_project(project_id)?;
+        if project.sample {
+            return Ok(Vec::new());
+        }
+        let inspection = self.inspect(project_id, false, cancel)?;
+        let declarations = self.declarations(project_id)?;
+        let lock = read_lock(&project.root)?;
+        let mut out = Vec::new();
+        for entry in self.catalog().entries()? {
+            let (Some(source_id), Some(_)) = (&entry.source_id, &entry.fetched) else {
+                continue;
+            };
+            let source = self.sources.get(source_id)?;
+            let index = self.sources.index(source_id)?;
+            let hints = crate::catalog::hints_for_source(&source);
+            let identity = portable_identity(&source);
+            let candidates: Vec<Candidate> = index
+                .items
+                .iter()
+                .map(|item| (item, hints.as_ref().and_then(|h| h.find(&item.path))))
+                .filter(|(item, hint)| item.applies_when.is_some() || hint.is_some())
+                .map(|(item, hint)| Candidate {
+                    item,
+                    source_name: &source.name,
+                    source_identity: &identity,
+                    snapshot: &index.snapshot,
+                    runs: Vec::new(),
+                    hint,
+                })
+                .collect();
+            if candidates.is_empty() {
+                continue;
+            }
+            let libraries = vec![(source.clone(), index.clone())];
+            let installations = self.installations(&project.root, &lock, &libraries);
+            let fits: Vec<recommend::Recommendation> = recommend::recommend(
+                &project.root,
+                &inspection,
+                &declarations,
+                &lock,
+                &installations,
+                &candidates,
+            )
+            .into_iter()
+            .filter(|r| r.applicability.applicability == Applicability::Applies)
+            .collect();
+            if !fits.is_empty() {
+                out.push(crate::catalog::CatalogFit {
+                    entry_id: entry.id,
+                    source_id: source_id.clone(),
+                    connected: entry.availability == crate::catalog::CatalogAvailability::Connected,
+                    fits,
+                });
+            }
+        }
+        Ok(out)
+    }
+
+    /// The catalog of public libraries Habi suggests.
+    pub fn catalog(&self) -> crate::catalog::Catalog<'_> {
+        crate::catalog::Catalog::new(&self.sources)
+    }
+
     pub fn skills(&self) -> Skills<'_> {
         Skills {
             paths: &self.paths,
@@ -654,6 +726,11 @@ impl Habi {
             freshness: Freshness::Current,
             sample: false,
             skill_count: u32::try_from(items).unwrap_or(u32::MAX),
+            preview: false,
+            catalog_id: None,
+            include: Vec::new(),
+            exclude: Vec::new(),
+            default_branch: None,
         }
     }
 
@@ -766,6 +843,9 @@ impl Habi {
     }
 
     fn payload_for_ref(&self, r: &ItemRef) -> Result<Payload> {
+        if r.source_id != LOCAL_SOURCE_ID {
+            self.sources.connected(&r.source_id)?;
+        }
         let source = self.source_of(&r.source_id)?;
         let index = self.index_of(&r.source_id)?;
         let item = index
@@ -841,7 +921,14 @@ impl Habi {
             .iter()
             .map(|(s, _)| portable_identity(s))
             .collect();
-        for ((source, index), identity) in libraries.iter().zip(&identities) {
+        // Rules Habi's catalog suggests for skills whose authors declared none.
+        let hint_sets: Vec<Option<crate::catalog::Hints>> = libraries
+            .iter()
+            .map(|(s, _)| crate::catalog::hints_for_source(s))
+            .collect();
+        for (((source, index), identity), hints) in
+            libraries.iter().zip(&identities).zip(&hint_sets)
+        {
             for item in &index.items {
                 candidates.push(Candidate {
                     item,
@@ -849,6 +936,7 @@ impl Habi {
                     source_identity: identity,
                     snapshot: &index.snapshot,
                     runs: checks::runs(&self.store, id, &item.key)?,
+                    hint: hints.as_ref().and_then(|h| h.find(&item.path)),
                 });
             }
         }
@@ -1231,6 +1319,50 @@ impl Habi {
         )
     }
 
+    /// Where an item of a library lives and who publishes it, recorded with
+    /// a copy so the copy can be traced back to it.
+    fn upstream_of(&self, source: &Source, item: &crate::library::model::LibraryItem) -> Upstream {
+        let url = (source.kind == SourceKind::Git
+            && !crate::source::is_local_location(&source.location))
+        .then(|| crate::source::remote_identity(&source.location))
+        .filter(|u| u.starts_with("https://") || u.starts_with("http://"));
+        let path = match &source.subdir {
+            Some(sub) if !item.path.is_empty() => format!("{sub}/{}", item.path),
+            Some(sub) => sub.clone(),
+            None => item.path.clone(),
+        };
+        let entry = self.catalog().entries().ok().and_then(|all| {
+            all.into_iter()
+                .find(|e| e.source_id.as_deref() == Some(source.id.as_str()))
+        });
+        let library_license = entry
+            .as_ref()
+            .and_then(|e| e.contents.as_ref())
+            .and_then(|c| c.license.as_ref())
+            .map(|l| l.spdx.clone().unwrap_or_else(|| format!("see {}", l.file)));
+        Upstream {
+            url,
+            path,
+            license: item.license.clone().or(library_license),
+            publisher: entry.as_ref().map(|e| e.publisher.name.clone()),
+            catalog_id: source.catalog_id.clone().or(entry.map(|e| e.id)),
+        }
+    }
+
+    /// `upstream_of` for a skill Habi installed into a project: found through
+    /// the connected library it came from, if that library is still here.
+    fn upstream_of_installed(&self, identity: &str, item_id: &str) -> Option<Upstream> {
+        let source = self
+            .sources
+            .list()
+            .ok()?
+            .into_iter()
+            .find(|s| portable_identity(s) == identity)?;
+        let index = self.sources.index(&source.id).ok()?;
+        let item = index.items.iter().find(|i| i.id == item_id)?;
+        Some(self.upstream_of(&source, item))
+    }
+
     fn packages(&self, from: &ImportFrom, cancel: &CancelToken) -> Result<(String, Vec<Package>)> {
         match from {
             ImportFrom::Project { project_id } => {
@@ -1260,6 +1392,7 @@ impl Habi {
                                 source_identity: i.source.identity.clone(),
                                 item_id: i.id.clone(),
                                 snapshot: i.snapshot.clone(),
+                                upstream: self.upstream_of_installed(&i.source.identity, &i.id),
                             },
                             None => SkillOrigin::Project {
                                 project_name: p.name.clone(),
@@ -1290,7 +1423,7 @@ impl Habi {
                 if source_id == LOCAL_SOURCE_ID {
                     return Err(HabiError::invalid("those skills are already yours"));
                 }
-                let source = self.sources.get(source_id)?;
+                let source = self.sources.connected(source_id)?;
                 let index = self.sources.index(source_id)?;
                 let mut packages = Vec::new();
                 for item in index
@@ -1321,6 +1454,7 @@ impl Habi {
                             source_identity: portable_identity(&source),
                             item_id: item.id.clone(),
                             snapshot: index.snapshot.clone(),
+                            upstream: Some(self.upstream_of(&source, item)),
                         },
                         title: Some(item.title.clone()),
                     });

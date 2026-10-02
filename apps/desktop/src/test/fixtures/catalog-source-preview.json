@@ -1,0 +1,28 @@
+{
+  "id": "bed841edeafd",
+  "name": "~preview:acme",
+  "kind": "git",
+  "role": "community",
+  "location": "https://github.com/acme/skills",
+  "subdir": null,
+  "tracked": {
+    "kind": "default"
+  },
+  "createdAt": "2026-10-02T21:57:59Z",
+  "snapshot": "a966b2ee74bb86c2f7a6ae843affd6d2891da1ff",
+  "snapshotAt": "2026-10-02T21:57:59Z",
+  "commitSummary": "Add skills — Example, 2026-10-03",
+  "lastAttemptAt": "2026-10-02T21:57:59Z",
+  "lastError": null,
+  "warning": null,
+  "freshness": "current",
+  "sample": false,
+  "skillCount": 4,
+  "preview": true,
+  "catalogId": "acme",
+  "include": [
+    "plugins/*/skills/**"
+  ],
+  "exclude": [],
+  "defaultBranch": "main"
+}

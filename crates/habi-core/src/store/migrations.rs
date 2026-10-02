@@ -135,6 +135,21 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE snapshots ADD COLUMN item_count INTEGER;
     "#,
+    // v7: the library catalog. A source can be a hidden preview (fetched so
+    // it can be inspected, not yet connected), remember which catalog entry it
+    // came from, and read only part of its repository (`include_json` and
+    // `exclude_json` are globs, applied before the size limits). The default
+    // branch is what the remote's HEAD named at the last check. A snapshot
+    // keeps its derived summary (licence, signal counts) so lists do not
+    // rebuild every index.
+    r#"
+    ALTER TABLE sources ADD COLUMN preview INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE sources ADD COLUMN catalog_id TEXT;
+    ALTER TABLE sources ADD COLUMN include_json TEXT NOT NULL DEFAULT '[]';
+    ALTER TABLE sources ADD COLUMN exclude_json TEXT NOT NULL DEFAULT '[]';
+    ALTER TABLE sources ADD COLUMN default_branch TEXT;
+    ALTER TABLE snapshots ADD COLUMN summary_json TEXT;
+    "#,
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
@@ -220,6 +235,39 @@ mod tests {
             let dir = tempfile::tempdir().unwrap();
             open_twice(&dir.path().join("habi.db"));
         }
+    }
+
+    #[test]
+    fn upgrading_from_v6_keeps_existing_sources_as_ordinary_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("habi.db");
+        let conn = Connection::open(&path).unwrap();
+        for sql in &MIGRATIONS[..6] {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", 6).unwrap();
+        conn.execute(
+            "INSERT INTO sources (id, name, kind, location, ref_kind, created_at)
+             VALUES ('s1', 'Team', 'git', 'https://example.com/team/skills', 'default', 'now')",
+            [],
+        )
+        .unwrap();
+        drop(conn);
+
+        let store = Store::open(&path).unwrap();
+        assert_eq!(store.schema_version().unwrap(), LATEST);
+        assert!(dir.path().join("habi.db.pre-v7.bak").is_file());
+        let conn = store.conn().unwrap();
+        let (preview, catalog, include, exclude): (i64, Option<String>, String, String) = conn
+            .query_row(
+                "SELECT preview, catalog_id, include_json, exclude_json FROM sources WHERE id = 's1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(preview, 0, "an existing source is not a preview");
+        assert_eq!(catalog, None);
+        assert_eq!((include.as_str(), exclude.as_str()), ("[]", "[]"));
     }
 
     #[test]

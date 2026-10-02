@@ -18,9 +18,7 @@ function useRouteLabel(route: Route | undefined): string | null {
     case "contributions":
       return route.contributionId ? "the contribution" : "Contributions";
     case "sources":
-      return route.sourceId && !["git", "folder", "community"].includes(route.sourceId)
-        ? "the library"
-        : "Libraries";
+      return route.sourceId || route.entry ? "the library" : "Libraries";
     case "settings":
       return "Settings";
     case "welcome":

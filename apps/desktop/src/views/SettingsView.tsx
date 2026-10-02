@@ -93,9 +93,9 @@ export function SettingsView() {
         </p>
       </Section>
 
-      <Section title="Library refresh" id="refresh">
+      <Section title="Library updates" id="refresh">
         <label className="field">
-          <span className="field-label">Check connected libraries for new content</span>
+          <span className="field-label">Check connected libraries for new versions</span>
           <select
             className="input"
             value={s.autoRefreshHours}
@@ -111,9 +111,9 @@ export function SettingsView() {
           </select>
         </label>
         <p className="muted">
-          Refreshing only downloads library content. It never changes a project; adopting an update always
-          goes through a preview. Scheduled refresh pauses while the window is hidden or the network is
-          offline.
+          Checking only asks the repository whether it has something newer. Nothing is downloaded and no
+          library changes until you press Update, and an update never changes a project: adopting a skill
+          always goes through a preview. Checks pause while the window is hidden or the network is offline.
         </p>
       </Section>
 

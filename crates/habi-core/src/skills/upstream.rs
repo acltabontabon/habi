@@ -252,6 +252,7 @@ impl Skills<'_> {
             source_identity,
             item_id,
             snapshot,
+            ..
         } = row.origin
         else {
             return Ok(None);
@@ -523,6 +524,7 @@ impl Skills<'_> {
             source_name,
             source_identity,
             item_id,
+            upstream,
             ..
         } = row.origin
         else {
@@ -535,6 +537,7 @@ impl Skills<'_> {
             source_identity,
             item_id,
             snapshot: plan.status.current_snapshot.clone().unwrap_or_default(),
+            upstream,
         };
         self.store.conn()?.execute(
             "UPDATE local_skills SET origin_json = ?2, origin_digest = ?3, updated_at = ?4 WHERE id = ?1",

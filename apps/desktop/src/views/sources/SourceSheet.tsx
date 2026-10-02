@@ -121,7 +121,9 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
         <dd className="mono">
           {source.tracked.kind === "default"
             ? "default branch"
-            : `${source.tracked.kind} ${source.tracked.name}`}
+            : source.tracked.kind === "latestRelease"
+              ? "latest release"
+              : `${source.tracked.kind} ${source.tracked.name}`}
         </dd>
         <dt>Revision</dt>
         <dd className="mono">{source.snapshot ? shortId(source.snapshot) : "not fetched"}</dd>

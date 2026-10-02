@@ -2,6 +2,7 @@
 //!
 //! The crate is independent of any UI:
 //! - `inspect`: read-only repository inspection producing facts with provenance.
+//! - `catalog`: the public skill libraries Habi suggests, previewed before connecting.
 //! - `library`: reading team libraries (Agent Skills plus optional Habi metadata).
 //! - `matching`: deterministic, three-valued applicability evaluation.
 //! - `source`: team library sources (Git or folders), snapshots, offline cache.
@@ -20,6 +21,7 @@
 
 pub mod brand;
 pub mod cancel;
+pub mod catalog;
 pub mod checks;
 pub mod clients;
 pub mod contribute;

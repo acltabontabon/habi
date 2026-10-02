@@ -147,7 +147,7 @@ function Shell() {
         : route.name === "contributions"
           ? `sharing:${route.contributionId ?? ""}`
           : route.name === "sources"
-            ? `sources:${route.sourceId ?? ""}`
+            ? `sources:${route.sourceId ?? route.entry ?? route.view ?? ""}`
             : route.name;
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the screen changes.
   useEffect(() => {
@@ -249,7 +249,13 @@ function Shell() {
             )}
             {route.name === "skills" && <SkillsView skillId={route.skillId} />}
             {route.name === "sources" && (
-              <SourcesView sourceId={route.sourceId} itemId={route.itemId} file={route.file} />
+              <SourcesView
+                sourceId={route.sourceId}
+                entry={route.entry}
+                view={route.view}
+                itemId={route.itemId}
+                file={route.file}
+              />
             )}
             {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
             {route.name === "settings" && <SettingsView />}

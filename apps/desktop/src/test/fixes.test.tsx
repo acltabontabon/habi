@@ -214,6 +214,11 @@ describe("share dialog", () => {
     freshness: "current",
     sample: false,
     skillCount: 1,
+    preview: false,
+    catalogId: null,
+    include: [],
+    exclude: [],
+    defaultBranch: null,
   };
   const skill = {
     summary: {

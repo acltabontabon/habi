@@ -351,6 +351,12 @@ export function ItemDetailPane({
               id="why"
             >
               <p className="why-summary">{a.reason}</p>
+              {r.basis === "catalogHint" ? (
+                <p className="muted why-basis">
+                  This rule is Habi's, not the author's: the library declares no rules for this skill, so
+                  Habi's catalog suggests when it applies. Treat it as a pointer and read the skill.
+                </p>
+              ) : null}
               {a.applicability === "undeclared" ? (
                 <p className="muted">
                   {NO_RULES_PHRASE}. Habi does not guess from the title or text. You can still install it

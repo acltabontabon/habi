@@ -1,0 +1,197 @@
+# Habi's catalog of public skill libraries.
+#
+# This file is the only place that says which repositories Habi suggests and
+# how to read them. Nothing here is fetched until a person opens a preview or
+# connects one. Skill counts, licences, categories and update times are never
+# written here: they come from the repository itself, when it is read.
+#
+# Format: docs/library-authors/catalog.md
+#
+#   publisher.kind   builder    the organisation that makes the product or
+#                               platform the skills are about
+#                    community  an independent maintainer
+#   ownership        evidence that `publisher.owner` is the claimed
+#                    publisher. Required for builders; never for community.
+#                      github-verified-org      the GitHub organisation is
+#                                               verified by GitHub
+#                      org-site-matches-domain  the organisation is not
+#                                               verified, but its declared
+#                                               website is `publisher.domain`
+#   discovery        which files of the repository are read (globs; `*` stays
+#                    inside a folder, `**` crosses folders). Applied before
+#                    Habi's size limits, so a large repository only needs to
+#                    be small where its skills are.
+#   track            which version is read: `default` (the newest commit of
+#                    the default branch; the default) or `latest-release`
+#                    (the newest tag that is a version number, v1.4.0; the
+#                    default branch while the repository has none). Only for
+#                    a repository whose tags are versions. Either way a
+#                    library is updated when the user says so.
+#   group            the path segment (0 = first) whose folder names group the
+#                    skills in the preview: a plugin, a product area.
+#   review           Habi has inspected this library at a revision. Absent
+#                    until someone has done that and written down what was
+#                    covered. Being official or popular is not a review.
+#   hints            skills that apply to a project with specific, checkable
+#                    features, in the same condition language as habi.yaml.
+#                    A skill with no hint is never called relevant.
+#
+# Verified 2026-10-03 against GitHub: each repository exists, is public, is
+# not archived, and the paths below hold the skills.
+
+version: 1
+
+sources:
+  - id: anthropic
+    name: Anthropic
+    url: https://github.com/anthropics/skills
+    summary: "Anthropic's public Agent Skills: documents, design, MCP servers and skill authoring."
+    publisher: { name: Anthropic, kind: builder, owner: anthropics, domain: anthropic.com }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: ["skills/**"]
+    notes:
+      - "Licences differ per skill; the Word, PDF, PowerPoint and Excel skills are proprietary."
+
+  - id: openai
+    name: OpenAI
+    url: https://github.com/openai/plugins
+    summary: "Skills bundled in OpenAI's plugins for Codex, covering many products and platforms."
+    publisher: { name: OpenAI, kind: builder, owner: openai, domain: openai.com }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: ["plugins/*/skills/**"]
+      exclude: ["plugins/plugin-eval/fixtures/**"]
+      group: 1
+    notes:
+      - "Replaces openai/skills, which OpenAI has deprecated in favour of this repository."
+      - "A plugin is more than its skills: connectors and apps in a plugin are not skills and are not read."
+      - "Some skills mirror other publishers' skills; the same name can appear in several plugins."
+
+  - id: microsoft
+    name: Microsoft
+    url: https://github.com/microsoft/skills
+    summary: "Skills for Azure and Microsoft SDKs, to ground coding agents in how each one works."
+    publisher: { name: Microsoft, kind: builder, owner: microsoft, domain: microsoft.com }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: [".github/plugins/*/skills/**", ".github/skills/**"]
+      group: 2
+    hints:
+      - path: ".github/plugins/azure-sdk-java/**"
+        applies_when: { dependency: { name: "com.azure:*", ecosystem: jvm } }
+      - path: ".github/plugins/azure-sdk-typescript/**"
+        applies_when: { dependency: { name: "@azure/*", ecosystem: npm } }
+
+  - id: google
+    name: Google
+    url: https://github.com/google/skills
+    summary: "Skills for Google Cloud, Google Ads and other Google products and technologies."
+    publisher: { name: Google, kind: builder, owner: google, domain: google.com }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: ["skills/**"]
+      group: 1
+    hints:
+      - path: "skills/cloud/bigquery-*"
+        applies_when:
+          any:
+            - dependency: { name: "@google-cloud/bigquery", ecosystem: npm }
+            - dependency: { name: "com.google.cloud:google-cloud-bigquery", ecosystem: jvm }
+      - path: "skills/cloud/cloud-build-basics"
+        applies_when: { file: "**/cloudbuild.{yaml,yml,json}" }
+
+  - id: github
+    name: GitHub
+    url: https://github.com/github/awesome-copilot
+    summary: "Community-contributed skills for GitHub Copilot, hosted by GitHub."
+    publisher: { name: GitHub, kind: builder, owner: github, domain: github.com }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: ["skills/**"]
+    notes:
+      - "GitHub hosts this collection; its skills are contributed by many people."
+      - "The agents, instructions and extensions in the same repository are not skills and are not read."
+
+  - id: cloudflare
+    name: Cloudflare
+    url: https://github.com/cloudflare/skills
+    summary: "Skills for building on Cloudflare: Workers, Durable Objects, Agents, sandboxes and more."
+    publisher: { name: Cloudflare, kind: builder, owner: cloudflare, domain: cloudflare.com }
+    ownership: { method: org-site-matches-domain, checked: "2026-10-03" }
+    discovery:
+      include: ["skills/**"]
+    hints:
+      - path: "skills/{workers-best-practices,wrangler,durable-objects,agents-sdk}"
+        applies_when:
+          any:
+            - file: "**/wrangler.{toml,json,jsonc}"
+            - dependency: { name: wrangler, ecosystem: npm }
+      - path: "skills/nextjs-on-cloudflare"
+        applies_when: { tag: "framework:next" }
+
+  - id: vercel
+    name: Vercel
+    url: https://github.com/vercel-labs/agent-skills
+    summary: "React, Next.js and React Native practices from Vercel."
+    publisher: { name: Vercel, kind: builder, owner: vercel-labs, domain: vercel.com }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: ["skills/**"]
+    notes:
+      - "Licences differ per skill."
+    hints:
+      - path: "skills/{react-best-practices,composition-patterns,react-view-transitions}"
+        applies_when: { tag: "framework:react" }
+      - path: "skills/react-native-skills"
+        applies_when: { dependency: { name: react-native, ecosystem: npm } }
+      - path: "skills/{deploy-to-vercel,vercel-cli-with-tokens,vercel-optimize}"
+        applies_when:
+          any:
+            - file: "**/vercel.json"
+            - dependency: { name: "@vercel/*", ecosystem: npm }
+
+  - id: sentry
+    name: Sentry
+    url: https://github.com/getsentry/skills
+    summary: "Skills the Sentry team uses for development: code review, pull requests, security and docs."
+    publisher: { name: Sentry, kind: builder, owner: getsentry, domain: sentry.io }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    discovery:
+      include: ["skills/**"]
+    hints:
+      - path: "skills/django-*"
+        applies_when: { file: "**/manage.py" }
+      - path: "skills/gha-security-review"
+        applies_when: { tag: "ci:github-actions" }
+
+  - id: superpowers
+    name: Superpowers
+    url: https://github.com/obra/superpowers
+    summary: "An engineering process for coding agents, from first idea to merged branch."
+    publisher: { name: obra, kind: community, owner: obra }
+    discovery:
+      track: latest-release
+      include: ["skills/**"]
+    notes:
+      - "Skills call each other by name; adopt the ones they reference together."
+
+  - id: addyosmani
+    name: Addy Osmani
+    url: https://github.com/addyosmani/agent-skills
+    summary: "Production engineering practices for coding agents."
+    publisher: { name: Addy Osmani, kind: community, owner: addyosmani }
+    discovery:
+      track: latest-release
+      include: ["skills/**"]
+
+  - id: wshobson
+    name: wshobson
+    url: https://github.com/wshobson/agents
+    summary: "A large plugin collection across languages, frameworks and platforms."
+    publisher: { name: wshobson, kind: community, owner: wshobson }
+    discovery:
+      include: ["plugins/*/skills/**"]
+      group: 1
+    notes:
+      - "Broad and uneven; read a skill before adopting it."
