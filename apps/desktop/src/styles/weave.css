@@ -70,132 +70,267 @@
   }
 }
 
-/* ---------- Home weave: sources converging into the repository ---------- */
+/* ---------- The loom: sources woven through projects (home) ---------- */
 
-.home-weave {
+.loom {
   position: relative;
-  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(120px, 176px);
+  column-gap: var(--s5);
 }
 
-.home-weave-svg {
+.loom-labels,
+.loom-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.loom-head-cell {
+  height: var(--loom-head);
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 20px;
+}
+
+.loom-row-label,
+.loom-new,
+.loom-meta-cell,
+.loom-ghost-cell {
+  height: var(--loom-row);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.loom-row-label {
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: var(--text-md);
+  font-weight: 560;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  line-height: var(--loom-row);
+  transition:
+    opacity 200ms var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.loom-row-label:hover,
+.loom-row-label:focus-visible {
+  color: var(--thread-strong);
+}
+
+.loom-meta-cell {
+  justify-content: space-between;
+  gap: var(--s3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  transition: opacity 200ms var(--ease);
+}
+
+.loom-when {
+  color: var(--ink-faint);
+}
+
+.loom-field {
+  position: relative;
+  min-width: 0;
+}
+
+.loom-svg {
   display: block;
   overflow: visible;
 }
 
-.weave-strand {
-  fill: none;
-  stroke: var(--hairline-strong);
-  stroke-width: 2;
-  stroke-linecap: round;
-  transition: opacity 240ms var(--ease);
-}
-
-.weave-over {
-  stroke-width: 2.6;
-}
-
-.weave-row {
-  fill: none;
-  stroke: var(--hairline-strong);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-}
-
-.weave-row.is-accent {
-  stroke: var(--thread);
-  stroke-width: 2.6;
-}
-
-.weave-hit {
-  stroke: transparent;
-  stroke-width: 14;
-  fill: none;
-  pointer-events: stroke;
-}
-
-.weave-source {
-  cursor: pointer;
-  outline: none;
-}
-
-.weave-source-hit {
-  fill: transparent;
-  rx: 4px;
-}
-
-.weave-source:focus-visible .weave-source-hit {
-  stroke: var(--focus);
-  stroke-width: 1.5;
-}
-
-.home-weave .is-dim,
-.home-weave g.is-dim > * {
-  opacity: 0.16;
-}
-
-.home-weave g.is-dim .weave-hit {
-  opacity: 1;
-}
-
-/* One quiet line names what is pointed at; nothing floats over the weave. */
-.home-weave-caption {
+/* Source names head their warp threads, like a weaving draft. */
+.loom-sources {
   position: absolute;
-  top: 0;
-  right: 0;
-  max-width: 44%;
-  min-height: 40px;
-  display: grid;
-  gap: 2px;
-  justify-items: end;
-  text-align: right;
-  pointer-events: none;
+  inset: 0 0 auto 0;
+  height: var(--loom-head);
 }
 
-.home-weave-caption-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
+.loom-source {
+  position: absolute;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  max-width: 132px;
+  padding: 2px 2px 3px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  transition:
+    opacity 200ms var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.loom-source.is-tilted {
+  transform: rotate(-32deg);
+  transform-origin: left bottom;
+  bottom: 14px;
+}
+
+.loom-source:hover,
+.loom-source:focus-visible {
   color: var(--ink);
-  max-width: 100%;
+  border-bottom-color: var(--dye);
+}
+
+.loom-source-name {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.loom-source-count {
+  color: var(--ink-faint);
+}
+
+.loom-bare,
+.loom-more {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
   white-space: nowrap;
 }
 
-.home-weave-caption-meta {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
+.loom-bare {
+  left: 0;
+  top: calc(var(--loom-head) - 40px);
+  margin: 0;
 }
 
-/* Entrance: threads come down, skills cross, everything settles. Once. */
+.loom-more {
+  right: 0;
+  bottom: 20px;
+}
+
+.loom-strand {
+  stroke: var(--hairline-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: opacity 200ms var(--ease);
+}
+
+.loom-halo {
+  stroke: var(--paper);
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.loom-pick {
+  stroke: var(--hairline-strong);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke var(--duration) var(--ease);
+}
+
+.loom-pick.is-hot {
+  stroke: var(--ink-faint);
+}
+
+/* Rows not matched yet, and empty rows: quiet hairlines, no pattern. */
+.loom-pick.is-unmatched {
+  stroke-width: 1.5;
+}
+
+.loom-pick.is-ghost {
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
+/* The next project: an unwoven saffron row. */
+.loom-pick.is-new {
+  stroke: var(--thread);
+  stroke-width: 2;
+  stroke-dasharray: 1 9;
+  opacity: 0.8;
+}
+
+.loom-strand.is-bare {
+  opacity: 0.32;
+}
+
+.loom-float.is-bare {
+  opacity: 0.45;
+}
+
+.loom-float {
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: opacity 200ms var(--ease);
+}
+
+.loom-knot {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 2;
+}
+
+.loom .is-dim {
+  opacity: 0.18;
+}
+
+.loom-labels .is-dim,
+.loom-meta .is-dim,
+.loom-sources .is-dim {
+  opacity: 0.36;
+}
+
+/* Arrival: warp comes down, each project is woven across, knots last. */
 @media (prefers-reduced-motion: no-preference) {
-  .weave-warp {
-    animation: weave-down 620ms var(--ease) both;
+  .loom-warp {
+    animation: loom-down 560ms var(--ease) both;
   }
-  .weave-weft > g {
-    animation: weave-across 420ms var(--ease) both;
+  .loom-weft > * {
+    animation: loom-across 420ms var(--ease) both;
+    animation-delay: calc(260ms + var(--i, 0) * 50ms);
   }
-  .weave-weft > g:nth-child(1) {
-    animation-delay: 300ms;
+  .loom-weft > :nth-child(1) {
+    --i: 0;
   }
-  .weave-weft > g:nth-child(2) {
-    animation-delay: 360ms;
+  .loom-weft > :nth-child(2) {
+    --i: 1;
   }
-  .weave-weft > g:nth-child(3) {
-    animation-delay: 420ms;
+  .loom-weft > :nth-child(3) {
+    --i: 2;
   }
-  .weave-weft > g:nth-child(4) {
-    animation-delay: 480ms;
+  .loom-weft > :nth-child(4) {
+    --i: 3;
   }
-  .weave-weft > g:nth-child(5) {
-    animation-delay: 520ms;
+  .loom-weft > :nth-child(5) {
+    --i: 4;
   }
-  .weave-weft > g:nth-child(6) {
-    animation-delay: 560ms;
+  .loom-weft > :nth-child(6) {
+    --i: 5;
+  }
+  .loom-weft > :nth-child(7) {
+    --i: 6;
+  }
+  .loom-weft > :nth-child(8) {
+    --i: 7;
   }
 }
 
-@keyframes weave-down {
+@keyframes loom-down {
   from {
     clip-path: inset(0 0 100% 0);
   }
@@ -204,11 +339,24 @@
   }
 }
 
-@keyframes weave-across {
+@keyframes loom-across {
   from {
     clip-path: inset(0 100% 0 0);
   }
   to {
     clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (max-width: 900px) {
+  .loom {
+    grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+    column-gap: var(--s3);
+  }
+  .loom-meta {
+    display: none;
+  }
+  .loom-source.is-tilted {
+    transform: rotate(-60deg);
   }
 }
