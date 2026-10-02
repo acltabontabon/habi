@@ -508,8 +508,14 @@ impl Sources {
                 .collect::<rusqlite::Result<_>>()?
         };
         for (id, snapshot) in pending {
-            let index = self.index_at(&id, &snapshot)?;
-            set_item_count(&self.store.conn()?, &id, &snapshot, index.items.len())?;
+            // A cache that cannot be read stays uncounted (shown as 0); the
+            // library itself reports the problem when it is opened.
+            match self.index_at(&id, &snapshot) {
+                Ok(index) => {
+                    set_item_count(&self.store.conn()?, &id, &snapshot, index.items.len())?
+                }
+                Err(e) => tracing::warn!(source = %id, error = %e, "could not count library items"),
+            }
         }
         Ok(())
     }
