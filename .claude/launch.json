@@ -1,0 +1,55 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "habi-bridge",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "HABI_HOME=.habi-dev",
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "habi-core",
+        "--example",
+        "dev_bridge"
+      ],
+      "port": 1430
+    },
+    {
+      "name": "habi-ui",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/desktop && VITE_HABI_BRIDGE=1 pnpm dev"
+      ],
+      "port": 1420
+    },
+    {
+      "name": "habi-bridge-alt",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "HABI_HOME=.habi-dev-alt",
+        "HABI_BRIDGE_PORT=1431",
+        "CARGO_TARGET_DIR=target/alt",
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "habi-core",
+        "--example",
+        "dev_bridge"
+      ],
+      "port": 1431
+    },
+    {
+      "name": "habi-ui-alt",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/desktop && VITE_HABI_BRIDGE=1 HABI_UI_PORT=1421 HABI_BRIDGE_PORT=1431 pnpm dev"
+      ],
+      "port": 1421
+    }
+  ]
+}

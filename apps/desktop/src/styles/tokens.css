@@ -1,0 +1,140 @@
+/*
+ * Habi design tokens.
+ *
+ * Paper and ink, with one warm accent: the ochre "thread" that connects a
+ * recommendation to the evidence behind it. Semantic colors are separate
+ * from the brand accent and are always paired with words, never color alone.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --paper: #f5f0e6;
+  --paper-raised: #fbf8f2;
+  --paper-sunken: #ede6d8;
+  --paper-selected: #fffdf8;
+
+  /* Ink */
+  --ink: #1f1c19;
+  --ink-soft: #3d3832;
+  --ink-muted: #675f55; /* 5.5:1 on --paper, 5.1:1 on --paper-sunken */
+  --ink-faint: #8a8174; /* 3.4:1: decorative (line numbers) and disabled only */
+  --hairline: #ddd3c2;
+  --hairline-strong: #c9bda8;
+
+  /* Brand accent: the thread */
+  --thread: #b5712a;
+  --thread-strong: #8f5519; /* 5.3:1 on --paper, for text */
+  --thread-wash: #f1e2cc;
+
+  /* Semantic: always accompanied by text */
+  --ok-ink: #2c6440;
+  --ok-wash: #e1eddf;
+  --unknown-ink: #455474;
+  --unknown-wash: #e3e7f0;
+  --warn-ink: #7f5310;
+  --warn-wash: #f5e7c9;
+  --danger-ink: #962a22;
+  --danger-wash: #f5ded9;
+  --muted-wash: #ebe4d6;
+
+  /* Interaction */
+  --focus: #1f1c19;
+  --focus-halo: #f5f0e6;
+  --button-ink: #1f1c19;
+  --button-ink-text: #fbf8f2;
+  --button-ink-hover: #3d3832;
+  --shadow-dialog: 0 24px 64px rgba(31, 28, 25, 0.18), 0 2px 8px rgba(31, 28, 25, 0.08);
+  --scrim: rgba(31, 28, 25, 0.32);
+
+  /* Diff */
+  --diff-add: #e3efdf;
+  --diff-add-ink: #1f5132;
+  --diff-del: #f6e0db;
+  --diff-del-ink: #7f241d;
+
+  /* Type */
+  --font-display: "Newsreader Variable", "Newsreader", Georgia, "Times New Roman", serif;
+  --font-ui: "IBM Plex Sans Variable", "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 40px;
+
+  --leading-tight: 1.2;
+  --leading: 1.5;
+
+  /* Space (4px grid) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --sidebar-width: 232px;
+  --list-width: 400px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --duration: 160ms;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #171513;
+  --paper-raised: #1f1c19;
+  --paper-sunken: #131110;
+  --paper-selected: #26221e;
+
+  --ink: #ece5d6;
+  --ink-soft: #d6cebf;
+  --ink-muted: #a69d8f; /* 6.8:1 on --paper, 6.3:1 on --paper-raised */
+  --ink-faint: #7a7266;
+  --hairline: #332e29;
+  --hairline-strong: #463f38;
+
+  --thread: #d6944c;
+  --thread-strong: #e2a865;
+  --thread-wash: #33271a;
+
+  --ok-ink: #95cfa3;
+  --ok-wash: #1f2d22;
+  --unknown-ink: #aeb9d9;
+  --unknown-wash: #222837;
+  --warn-ink: #e6bd6a;
+  --warn-wash: #33291a;
+  --danger-ink: #f0958a;
+  --danger-wash: #3a2120;
+  --muted-wash: #26221e;
+
+  --focus: #ece5d6;
+  --focus-halo: #171513;
+  --button-ink: #ece5d6;
+  --button-ink-text: #171513;
+  --button-ink-hover: #d6cebf;
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --scrim: rgba(0, 0, 0, 0.5);
+
+  --diff-add: #1e2d22;
+  --diff-add-ink: #a5d8b1;
+  --diff-del: #3a2120;
+  --diff-del-ink: #f2a59b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}

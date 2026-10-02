@@ -1,0 +1,1 @@
+CREATE TABLE stock (sku VARCHAR(64) PRIMARY KEY, quantity INT NOT NULL);

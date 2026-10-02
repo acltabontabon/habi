@@ -1,0 +1,4 @@
+#!/bin/sh
+# Placeholder Maven wrapper script for the Habi fixture. Habi never executes it during inspection.
+echo "fixture wrapper: run 'mvn' instead" >&2
+exit 1

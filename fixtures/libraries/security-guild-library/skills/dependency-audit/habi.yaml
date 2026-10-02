@@ -1,0 +1,33 @@
+habi: 1
+title: Dependency audit
+kind: workflow
+owner: Security Guild (example)
+priority: 5
+applies_when:
+  any:
+    - tag: lang:typescript
+    - tag: lang:javascript
+excludes:
+  tag: framework:spring-boot
+requires:
+  tools:
+    - name: npm
+      commands: [npm]
+      install_hint: Install Node.js, which includes npm.
+workflow:
+  steps:
+    - title: Run the audit
+      detail: Use the check below or run npm audit yourself.
+    - title: Summarize
+      references: [scripts/summarize.sh]
+    - title: Propose upgrades
+      expected: A short list of packages to upgrade, with target versions.
+  artifacts:
+    - Upgrade proposal in the pull request description
+checks:
+  - id: audit
+    title: npm audit (production dependencies)
+    description: Contacts the npm registry. Runs in the module folder.
+    run: ["npm", "audit", "--omit=dev"]
+    cwd: module
+    timeout_seconds: 120

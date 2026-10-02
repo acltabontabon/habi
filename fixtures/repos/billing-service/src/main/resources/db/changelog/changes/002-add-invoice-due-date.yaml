@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-invoice-due-date
+      author: billing-team
+      changes:
+        - addColumn:
+            tableName: invoice
+            columns:
+              - column: { name: due_date, type: date }

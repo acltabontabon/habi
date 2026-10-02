@@ -1,0 +1,55 @@
+habi: 1
+id: api-change-review
+title: API change review
+kind: workflow
+owner: API Guild
+requirement: recommended
+priority: 10
+scope: module
+applies_when:
+  any:
+    - tag: api:openapi
+    - file: "**/*.proto"
+excludes:
+  tag: framework:express
+requires:
+  tools:
+    - name: OpenAPI diff
+      commands: [oasdiff]
+      purpose: Compare specifications between branches.
+      install_hint: brew install oasdiff
+  mcp:
+    - name: github
+      purpose: Read the pull request under review.
+      server:
+        command: npx
+        args: ["-y", "@modelcontextprotocol/server-github"]
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+  clients: [claude-code, cursor, codex]
+workflow:
+  steps:
+    - title: Diff the specification
+      detail: Compare with the base branch.
+      references: [references/breaking-changes.md]
+      expected: A list of changed operations.
+  artifacts:
+    - Review notes in the pull request
+bindings:
+  - name: spec
+    kind: file
+    glob: "**/openapi*.yaml"
+checks:
+  - id: breaking
+    title: Detect breaking changes
+    run: ["oasdiff", "breaking", "origin/main", { binding: spec }]
+    cwd: repository
+    timeout_seconds: 120
+evidence:
+  - date: 2026-07-02
+    result: passed
+    environment: OpenAPI 3.1, Claude Code
+    summary: Used in four services.
+examples:
+  - title: Adding an optional field
+x-team-notes: Unknown keys are allowed and preserved.

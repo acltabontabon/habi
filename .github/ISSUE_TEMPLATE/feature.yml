@@ -1,0 +1,21 @@
+name: Idea or request
+description: Suggest an improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the situation and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help?
+  - type: markdown
+    attributes:
+      value: |
+        Habi deliberately avoids some things (marketplaces, telemetry, guessing applicability with
+        a model) — see docs/product.md. Ideas in those areas are welcome, but please say how they
+        would keep Habi local and honest about evidence.

@@ -1,0 +1,7 @@
+# Intentionally invalid (test data): `regex` is not a condition, and the
+# priority is out of range. Habi must list the skill, flag the metadata as
+# invalid, and treat applicability as undeclared rather than guessing.
+habi: 1
+priority: 500
+applies_when:
+  regex: "(?i)password"

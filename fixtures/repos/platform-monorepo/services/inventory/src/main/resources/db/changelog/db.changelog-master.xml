@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog">
+    <changeSet id="001-stock" author="inventory-team">
+        <createTable tableName="stock_item">
+            <column name="sku" type="varchar(64)"/>
+            <column name="quantity" type="int"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

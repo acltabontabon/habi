@@ -1,0 +1,4 @@
+# Invalid: conditions are declarative only; there is no scripting.
+habi: 1
+applies_when:
+  script: "grep -r spring ."

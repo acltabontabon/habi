@@ -1,0 +1,12 @@
+habi: 1
+name: Platform team know-how
+owner: Developer Experience
+skills_root: skills
+instructions:
+  - id: java-conventions
+    title: Java conventions
+    path: instructions/java.md
+    requirement: required
+    scope: repository
+    applies_when:
+      tag: lang:java

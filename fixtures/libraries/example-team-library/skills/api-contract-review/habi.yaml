@@ -1,0 +1,23 @@
+habi: 1
+title: API contract review
+kind: workflow
+owner: API Guild (example)
+priority: 15
+scope: module
+applies_when:
+  tag: api:openapi
+workflow:
+  steps:
+    - title: Diff the specification
+      detail: Compare the OpenAPI document with the base branch.
+    - title: Classify each change
+      references: [references/breaking-changes.md]
+    - title: Check conventions
+      detail: Naming, pagination, problem+json errors.
+  artifacts:
+    - Contract review notes in the pull request
+evidence:
+  - date: 2026-07-02
+    result: passed
+    environment: OpenAPI 3.1 specs, Cursor and Claude Code
+    summary: Used across four services during the v2 API migration.
