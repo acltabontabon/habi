@@ -39,7 +39,7 @@ The first build takes a few minutes.
 TypeScript bindings, `cargo deny` (skipped with a note if
 [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) is not installed), frontend lint,
 type check, tests and build, third-party notices, documentation links and the website build.
-CI also runs these on macOS, Windows and Linux, and builds the desktop installers.
+CI also runs these on macOS and Windows, and builds the desktop installers.
 
 [Architecture](docs/dev/architecture.md) explains the repository layout and modules, and how
 to work on the UI in a browser against the real core or against fixture data.

@@ -6,7 +6,7 @@ first release. Product principles live in [product.md](product.md); the release 
 [release.md](../dev/release.md).
 
 Habi runs on macOS 11 or later (Apple Silicon and Intel) and on Windows. Linux is not
-supported; the core and CLI are still tested on Linux in CI.
+supported, and CI does not test it.
 
 ## What works
 
