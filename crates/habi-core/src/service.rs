@@ -40,7 +40,7 @@ use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -382,7 +382,7 @@ impl Habi {
             .execute("DELETE FROM settings WHERE key = ?1", [summary_key(id)])?;
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(id);
         Ok(())
     }
@@ -401,7 +401,7 @@ impl Habi {
         )?;
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(id);
         self.project(id)
     }
@@ -454,14 +454,24 @@ impl Habi {
         rescan: bool,
         cancel: &CancelToken,
     ) -> Result<ProjectInspection> {
-        if !rescan
-            && let Some(cached) = self.inspections.lock().expect("inspection cache").get(id)
-            // A cheap re-check (sizes and modification times of manifests,
-            // lockfiles and listed directories) catches edits, added or
-            // removed files and branch switches since the last scan.
+        // Cloned out first: the staleness check reads the file system, and
+        // the cache stays available to other threads meanwhile.
+        let cached = (!rescan)
+            .then(|| {
+                self.inspections
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .get(id)
+                    .cloned()
+            })
+            .flatten();
+        // A cheap re-check (sizes and modification times of manifests,
+        // lockfiles and listed directories) catches edits, added or removed
+        // files and branch switches since the last scan.
+        if let Some(cached) = cached
             && !cached.is_stale()
         {
-            return Ok(cached.clone());
+            return Ok(cached);
         }
         let project = self.existing_project(id)?;
         let options = WalkOptions {
@@ -471,7 +481,7 @@ impl Habi {
         let inspection = inspect(&project.root, &options, cancel)?;
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .insert(id.to_string(), inspection.clone());
         Ok(inspection)
     }
@@ -480,7 +490,7 @@ impl Habi {
     pub fn invalidate_inspection(&self, project: &str) {
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(project);
     }
 
@@ -887,7 +897,7 @@ impl Habi {
     // ----- plans ---------------------------------------------------------------
 
     fn keep(&self, plan: Plan) -> Plan {
-        let mut plans = self.plans.lock().expect("plan cache");
+        let mut plans = self.plans.lock().unwrap_or_else(PoisonError::into_inner);
         if plans.len() > 32 {
             let oldest = plans
                 .values()
@@ -962,7 +972,7 @@ impl Habi {
     pub fn plan(&self, plan_id: &str) -> Result<Plan> {
         self.plans
             .lock()
-            .expect("plan cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .get(plan_id)
             .cloned()
             .ok_or_else(|| {
@@ -975,7 +985,10 @@ impl Habi {
         let plan = self.plan(plan_id)?;
         let result = self.applier().apply(&plan);
         // A plan is single-use whatever the outcome.
-        self.plans.lock().expect("plan cache").remove(plan_id);
+        self.plans
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(plan_id);
         // Installs, updates, removals and restores change the project (skills,
         // AGENTS.md, MCP config), even when they fail part-way and roll back.
         self.invalidate_for_root(&plan.root);
@@ -1026,7 +1039,10 @@ impl Habi {
         let item = self.find_item(item_key)?;
         let mut preview = checks::prepare(&p.root, &inspection, &item, check_id, module, bindings)?;
         preview.preview_id = uuid::Uuid::new_v4().to_string();
-        let mut stored = self.check_previews.lock().expect("check previews");
+        let mut stored = self
+            .check_previews
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         if stored.len() > 32 {
             stored.clear();
         }
@@ -1054,7 +1070,7 @@ impl Habi {
         let stored = self
             .check_previews
             .lock()
-            .expect("check previews")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(preview_id)
             .ok_or_else(|| {
                 HabiError::NotFound(
