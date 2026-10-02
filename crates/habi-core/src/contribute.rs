@@ -27,7 +27,7 @@ pub use crate::review::{RemoteRepo, remote_repo};
 use crate::review::{ReviewHost, ReviewState, ReviewStatus, ReviewTools};
 use crate::source::git::Git;
 use crate::source::{SourceKind, Sources, TrackedRef};
-use crate::store::{AppPaths, Store};
+use crate::store::{AppPaths, ResourceLock, Store};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -1342,6 +1342,27 @@ impl<'a> Contributions<'a> {
         Ok((c, stored))
     }
 
+    /// Takes the lock of the contribution's library, the one refreshing and
+    /// removing it take: committing and sending use its Git cache, which
+    /// must not be fetched into or deleted meanwhile.
+    fn lock_source(&self, id: &str) -> Result<ResourceLock> {
+        let source_id: String = self
+            .store
+            .conn()?
+            .query_row(
+                "SELECT source_id FROM contributions WHERE id = ?1",
+                [id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| HabiError::NotFound(format!("contribution {id}")))?;
+        ResourceLock::acquire(
+            self.paths,
+            &format!("source-{source_id}"),
+            Duration::from_secs(5),
+        )
+    }
+
     fn save_row(&self, c: &Contribution, stored: &Stored) -> Result<()> {
         let envelope = json!({ "origin": c.origin, "stored": stored });
         self.store.conn()?.execute(
@@ -2141,6 +2162,7 @@ impl<'a> Contributions<'a> {
         build_on_remote: bool,
         cancel: &CancelToken,
     ) -> Result<Contribution> {
+        let _lock = self.lock_source(id)?;
         self.commit_inner(id, build_on_remote, cancel)
             .inspect_err(|e| self.record_attention(id, AttentionKind::Prepare, e))
     }
@@ -2739,6 +2761,7 @@ impl<'a> Contributions<'a> {
         open_request: bool,
         cancel: &CancelToken,
     ) -> Result<PublishOutcome> {
+        let _lock = self.lock_source(id)?;
         self.publish_inner(id, open_request, cancel)
             .inspect_err(|e| self.record_attention(id, AttentionKind::Send, e))
     }
