@@ -103,6 +103,9 @@ function Loaded({ initial }: { initial: LocalSkill }) {
   const [yamlMode, setYamlMode] = useState(false);
   const [tab, setTab] = useState<Tab>("instructions");
   const bodyEditor = useRef<SourceEditorHandle>(null);
+  // Where the rules apply matters while writing the purpose and the rules;
+  // instructions and files get the full width.
+  const showsPreview = tab === "purpose" || tab === "applicability";
   const [writing, setWriting] = useState(true);
   const [showProblems, setShowProblems] = useState(false);
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
@@ -474,7 +477,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
         </Notice>
       ) : null}
 
-      <div className="editor-body">
+      <div className={`editor-body${showsPreview ? "" : " is-full"}`}>
         <div className="editor-main">
           <div className="tabs editor-tabs" role="tablist" aria-label="Skill sections" ref={tabsRef}>
             {TABS.map((t) => (
@@ -738,12 +741,14 @@ function Loaded({ initial }: { initial: LocalSkill }) {
           </div>
         </div>
 
-        <ApplicabilityPreview
-          request={previewRequest}
-          requestKey={previewKey}
-          hasProjects={available.length > 0}
-          onOpenProject={() => void openProject({ stay: true })}
-        />
+        {showsPreview ? (
+          <ApplicabilityPreview
+            request={previewRequest}
+            requestKey={previewKey}
+            hasProjects={available.length > 0}
+            onOpenProject={() => void openProject({ stay: true })}
+          />
+        ) : null}
       </div>
 
       {dialog === "use" ? (
