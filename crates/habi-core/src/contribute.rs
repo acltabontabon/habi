@@ -37,6 +37,8 @@ use std::time::Duration;
 use ts_rs::TS;
 
 const MAX_FILES: usize = 200;
+/// A skill folder's files by path.
+type Files = BTreeMap<String, Vec<u8>>;
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -121,19 +123,54 @@ pub struct ShareForm {
 pub enum DraftFileStatus {
     Added,
     Modified,
-    Unchanged,
+    /// Moved without changing its content (a removed and an added path with
+    /// the same digest).
+    Renamed,
     Removed,
+    Unchanged,
+}
+
+/// One file of the package, compared with the library. Changed files come
+/// first; unchanged files follow.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct DraftFile {
+    /// Path in the library repository (the new path of a renamed file).
+    pub path: String,
+    /// The path a renamed file had in the library.
+    pub previous_path: Option<String>,
+    pub status: DraftFileStatus,
+    pub size: u32,
+    pub diff: TextDiff,
+    /// Part of what is shared. A changed file the author leaves out keeps the
+    /// library's version (an added file is not added, a removed one stays).
+    pub included: bool,
+    /// Why this file cannot be left out, if so.
+    pub required: Option<String>,
+}
+
+/// What went wrong the last time the author prepared or sent this
+/// contribution. Cleared by the next success.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AttentionKind {
+    /// Preparing the branch failed.
+    Prepare,
+    /// Pushing the branch (or asking the host before it) failed.
+    Send,
+    /// Someone else pushed to the contribution branch since it was sent.
+    RemoteMoved,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
-pub struct DraftFile {
-    /// Path in the library repository.
-    pub path: String,
-    pub status: DraftFileStatus,
-    pub size: u32,
-    pub diff: TextDiff,
+pub struct Attention {
+    pub kind: AttentionKind,
+    pub message: String,
+    pub at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -178,6 +215,11 @@ pub struct Contribution {
     pub staging_path: String,
     /// A revision is open: `cancel_revision` returns to the version before it.
     pub revising: bool,
+    /// The last attempt to prepare or send failed, or someone else pushed to
+    /// the branch.
+    pub attention: Option<Attention>,
+    /// When the branch was last pushed (and a request opened, if one was).
+    pub published_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -194,6 +236,9 @@ pub struct ContributionRemote {
     /// GitHub or GitLab when the address says so; otherwise unknown until
     /// Habi asks `gh`/`glab`.
     pub host: Option<ReviewHost>,
+    /// What the library follows: the branch a request targets (the
+    /// repository's default branch when it follows `HEAD`).
+    pub tracked: TrackedRef,
     /// Why no review request can be opened from here, if so.
     pub request_unavailable: Option<String>,
 }
@@ -245,6 +290,15 @@ struct Stored {
     /// contribution would replace.
     #[serde(default)]
     replaces: Option<String>,
+    /// Changed files the author leaves out (paths in the skill folder; the
+    /// new path of a renamed file). Kept in a column of its own
+    /// (`excluded_json`), written only by `select_files`.
+    #[serde(skip)]
+    excluded: BTreeSet<String>,
+    #[serde(default)]
+    attention: Option<Attention>,
+    #[serde(default)]
+    published_at: Option<String>,
 }
 
 /// The contribution as it was before "Revise", to back out of a revision.
@@ -908,6 +962,262 @@ fn write_staging(
 /// Largest patch Habi writes (a contribution is at most 200 files of 1 MiB).
 const PATCH_LIMIT: usize = 512 * 1024 * 1024;
 
+/// The staged package compared with the library, and what would leave the
+/// machine given the files the author left out. Paths are relative to the
+/// skill folder.
+struct Comparison {
+    files: Vec<DraftFile>,
+    /// Exactly what the contribution's skill folder holds.
+    outgoing: BTreeMap<String, Vec<u8>>,
+    /// Paths in `outgoing` that keep the library's version because the
+    /// author left the change out.
+    kept: BTreeSet<String>,
+    /// Changed files that are left out (the new path of a renamed file).
+    excluded: BTreeSet<String>,
+    /// Old path -> new path of renamed files.
+    renamed: BTreeMap<String, String>,
+    /// Some changed file is part of the contribution.
+    any_included_change: bool,
+}
+
+const NEW_SKILL_FILE: &str = "A new skill cannot be shared without its SKILL.md.";
+
+fn compare(
+    item_path: &str,
+    base: &BTreeMap<String, Vec<u8>>,
+    staged: &BTreeMap<String, Vec<u8>>,
+    excluded: &BTreeSet<String>,
+) -> Comparison {
+    let lib = |name: &str| format!("{item_path}/{name}");
+    // A removed and an added path with the same content is a rename. Each
+    // removed path pairs with at most one added path, in path order.
+    let mut added_by_digest: BTreeMap<String, Vec<&String>> = BTreeMap::new();
+    for name in staged.keys().filter(|k| !base.contains_key(*k)) {
+        added_by_digest
+            .entry(sha256(&staged[name]))
+            .or_default()
+            .push(name);
+    }
+    let mut renamed: BTreeMap<String, String> = BTreeMap::new();
+    for name in base.keys().filter(|k| !staged.contains_key(*k)) {
+        if let Some(list) = added_by_digest.get_mut(&sha256(&base[name]))
+            && !list.is_empty()
+        {
+            renamed.insert(name.clone(), list.remove(0).clone());
+        }
+    }
+    let renamed_from: BTreeMap<&String, &String> = renamed.iter().map(|(o, n)| (n, o)).collect();
+
+    let mut out = Comparison {
+        files: Vec::new(),
+        outgoing: staged.clone(),
+        kept: BTreeSet::new(),
+        excluded: BTreeSet::new(),
+        renamed: renamed.clone(),
+        any_included_change: false,
+    };
+    let names: BTreeSet<&String> = staged.keys().chain(base.keys()).collect();
+    for name in names {
+        if renamed.contains_key(name) {
+            continue; // shown as the rename's previous path
+        }
+        let (old, new) = (base.get(name), staged.get(name));
+        let previous = renamed_from.get(name).map(|p| (*p).clone());
+        let status = match (old, new) {
+            (None, Some(_)) if previous.is_some() => DraftFileStatus::Renamed,
+            (None, Some(_)) => DraftFileStatus::Added,
+            (Some(_), None) => DraftFileStatus::Removed,
+            (Some(a), Some(b)) if a == b => DraftFileStatus::Unchanged,
+            _ => DraftFileStatus::Modified,
+        };
+        let required = (name == SKILL_FILE && status == DraftFileStatus::Added)
+            .then(|| NEW_SKILL_FILE.to_string());
+        let changed = status != DraftFileStatus::Unchanged;
+        let included = !changed || required.is_some() || !excluded.contains(name);
+        if changed && included {
+            out.any_included_change = true;
+        }
+        if !included {
+            out.excluded.insert(name.clone());
+            match status {
+                DraftFileStatus::Added => {
+                    out.outgoing.remove(name);
+                }
+                DraftFileStatus::Modified | DraftFileStatus::Removed => {
+                    out.outgoing.insert(name.clone(), base[name].clone());
+                    out.kept.insert(name.clone());
+                }
+                DraftFileStatus::Renamed => {
+                    let prev = previous.clone().unwrap_or_default();
+                    out.outgoing.remove(name);
+                    out.outgoing.insert(prev.clone(), base[&prev].clone());
+                    out.kept.insert(prev);
+                }
+                DraftFileStatus::Unchanged => {}
+            }
+        }
+        out.files.push(DraftFile {
+            path: lib(name),
+            previous_path: previous.as_deref().map(lib),
+            status,
+            size: new.or(old).map(|b| b.len() as u32).unwrap_or(0),
+            diff: if matches!(
+                status,
+                DraftFileStatus::Unchanged | DraftFileStatus::Renamed
+            ) {
+                TextDiff::default()
+            } else {
+                diff(old.map(|v| v.as_slice()), new.map(|v| v.as_slice()))
+            },
+            included,
+            required,
+        });
+    }
+    // Changed files first, each group in path order (the sort is stable).
+    out.files
+        .sort_by_key(|f| f.status == DraftFileStatus::Unchanged);
+    out
+}
+
+/// Turns a reference into a path inside the package, relative to `dir`
+/// (the referring file's folder, or "" for the package root). Addresses,
+/// absolute paths and paths leaving the package are not package files.
+fn package_path(reference: &str, dir: &str) -> Option<String> {
+    let target = reference
+        .trim()
+        .trim_start_matches('<')
+        .trim_end_matches('>');
+    let target = target.split(['#', '?']).next().unwrap_or_default();
+    if target.is_empty()
+        || target.starts_with(['/', '~', '$', '\\'])
+        || target
+            .split('/')
+            .next()
+            .is_some_and(|first| first.contains(':'))
+    {
+        return None;
+    }
+    let decoded = target.replace("%20", " ");
+    let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
+    for part in decoded.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            p => parts.push(p),
+        }
+    }
+    if parts.is_empty() || decoded.ends_with('/') {
+        return None;
+    }
+    Some(parts.join("/"))
+}
+
+/// Inline code that names a file, like `scripts/check.sh`.
+fn names_a_file(code: &str) -> bool {
+    !code.is_empty()
+        && code.contains('/')
+        && !code.chars().any(char::is_whitespace)
+        && !code.contains(['*', '{', '}', '`'])
+        && !code.contains("://")
+        && !code.starts_with('-')
+        && code
+            .rsplit('/')
+            .next()
+            .is_some_and(|last| last.contains('.'))
+}
+
+/// Package files a Markdown file points at: link targets (relative to the
+/// file) and inline code naming a path (relative to the package). Fenced
+/// code blocks are skipped.
+fn markdown_references(file: &str, text: &str) -> BTreeSet<String> {
+    let dir = file.rsplit_once('/').map(|(d, _)| d).unwrap_or("");
+    let mut out = BTreeSet::new();
+    let mut fenced = false;
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            fenced = !fenced;
+            continue;
+        }
+        if fenced {
+            continue;
+        }
+        // `[label]: target` definitions.
+        if trimmed.starts_with('[')
+            && let Some((_, rest)) = trimmed.split_once("]:")
+            && let Some(target) = rest.split_whitespace().next()
+            && let Some(p) = package_path(target, dir)
+        {
+            out.insert(p);
+        }
+        // `[text](target "title")` links and images.
+        let mut rest = line;
+        while let Some(at) = rest.find("](") {
+            let after = &rest[at + 2..];
+            let end = after.find(')').unwrap_or(after.len());
+            if let Some(target) = after[..end].split_whitespace().next()
+                && let Some(p) = package_path(target, dir)
+            {
+                out.insert(p);
+            }
+            rest = &after[end..];
+        }
+        // `inline code` between single backticks.
+        for (i, code) in line.split('`').enumerate() {
+            if i % 2 == 1
+                && names_a_file(code)
+                && let Some(p) = package_path(code, "")
+            {
+                out.insert(p);
+            }
+        }
+    }
+    out
+}
+
+/// Markdown files in what would be shared that point at a file the
+/// contribution leaves out, deletes or renames.
+fn reference_problems(
+    item_path: &str,
+    cmp: &Comparison,
+    base: &BTreeMap<String, Vec<u8>>,
+    staged: &BTreeMap<String, Vec<u8>>,
+) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for (name, bytes) in &cmp.outgoing {
+        if !name.to_ascii_lowercase().ends_with(".md") {
+            continue;
+        }
+        for target in markdown_references(name, &String::from_utf8_lossy(bytes)) {
+            if cmp.outgoing.contains_key(&target) {
+                continue;
+            }
+            let message = if cmp.excluded.contains(&target) {
+                format!(
+                    "{name} refers to {target}, which is left out of this contribution. Include {target}, or remove the reference."
+                )
+            } else if let Some(new) = cmp.renamed.get(&target) {
+                format!(
+                    "{name} refers to {target}, which this contribution renames to {new}. Update the reference."
+                )
+            } else if base.contains_key(&target) || staged.contains_key(&target) {
+                format!(
+                    "{name} refers to {target}, which this contribution deletes. Keep {target}, or remove the reference."
+                )
+            } else {
+                continue;
+            };
+            out.push(Diagnostic::error(
+                message,
+                Some(&format!("{item_path}/{name}")),
+            ));
+        }
+    }
+    out
+}
+
 impl<'a> Contributions<'a> {
     fn git(&self) -> Result<Git> {
         Git::locate(&self.paths.empty_dir())
@@ -918,7 +1228,8 @@ impl<'a> Contributions<'a> {
         let row = conn
             .query_row(
                 "SELECT c.id, c.source_id, s.name, c.item_path, c.title, c.base_commit, c.branch, c.commit_id, c.state,
-                        c.origin_json, c.created_at, c.updated_at, c.published_url, c.patch_path
+                        c.origin_json, c.created_at, c.updated_at, c.published_url, c.patch_path,
+                        c.excluded_json
                  FROM contributions c LEFT JOIN sources s ON s.id = c.source_id WHERE c.id = ?1",
                 [id],
                 |r| {
@@ -937,6 +1248,7 @@ impl<'a> Contributions<'a> {
                         r.get::<_, String>(11)?,
                         r.get::<_, Option<String>>(12)?,
                         r.get::<_, Option<String>>(13)?,
+                        r.get::<_, String>(14)?,
                     ))
                 },
             )
@@ -957,13 +1269,16 @@ impl<'a> Contributions<'a> {
             updated,
             url,
             patch,
+            excluded,
         ) = row;
         let envelope: Value =
             serde_json::from_str(&origin_json).map_err(|e| HabiError::Internal(e.to_string()))?;
         let origin: ContributionOrigin = serde_json::from_value(envelope["origin"].clone())
             .map_err(|e| HabiError::Internal(e.to_string()))?;
-        let stored: Stored = serde_json::from_value(envelope["stored"].clone())
+        let mut stored: Stored = serde_json::from_value(envelope["stored"].clone())
             .map_err(|e| HabiError::Internal(e.to_string()))?;
+        stored.excluded =
+            serde_json::from_str(&excluded).map_err(|e| HabiError::Internal(e.to_string()))?;
         let state: ContributionState =
             serde_json::from_value(json!(state)).unwrap_or(ContributionState::Draft);
         Ok((
@@ -993,6 +1308,8 @@ impl<'a> Contributions<'a> {
                 review: stored.review.clone(),
                 revision: stored.revision,
                 pushed_commit: stored.pushed_commit.clone(),
+                attention: stored.attention.clone(),
+                published_at: stored.published_at.clone(),
                 created_at: created,
                 updated_at: updated,
             },
@@ -1039,17 +1356,30 @@ impl<'a> Contributions<'a> {
         Ok(())
     }
 
-    fn base_files(&self, c: &Contribution) -> Result<BTreeMap<String, Vec<u8>>> {
+    /// The skill's files in the library snapshot the contribution started
+    /// from, and which of them are executable.
+    fn base_files(&self, c: &Contribution) -> Result<(Files, BTreeSet<String>)> {
         let files: Vec<SnapshotFile> = self.sources.snapshot_files(&c.source_id, &c.base_commit)?;
         let prefix = format!("{}/", c.item_path);
         let mut out = BTreeMap::new();
+        let mut executables = BTreeSet::new();
         for f in files.into_iter().filter(|f| f.path.starts_with(&prefix)) {
-            out.insert(
-                f.path[prefix.len()..].to_string(),
-                self.sources.blobs().get(&f.digest)?,
-            );
+            let name = f.path[prefix.len()..].to_string();
+            if f.executable {
+                executables.insert(name.clone());
+            }
+            out.insert(name, self.sources.blobs().get(&f.digest)?);
         }
-        Ok(out)
+        Ok((out, executables))
+    }
+
+    /// The staged files compared with the library, with the author's
+    /// selection applied.
+    fn comparison(&self, c: &Contribution, stored: &Stored) -> Result<(Comparison, Files, Files)> {
+        let staged = self.staged(&c.id).unwrap_or_default();
+        let (base, _) = self.base_files(c)?;
+        let cmp = compare(&c.item_path, &base, &staged, &stored.excluded);
+        Ok((cmp, base, staged))
     }
 
     fn staged(&self, id: &str) -> Result<BTreeMap<String, Vec<u8>>> {
@@ -1340,6 +1670,8 @@ impl<'a> Contributions<'a> {
             review: None,
             revision: 0,
             pushed_commit: None,
+            attention: None,
+            published_at: None,
             created_at: now.clone(),
             updated_at: now,
         };
@@ -1357,6 +1689,9 @@ impl<'a> Contributions<'a> {
             executables: Some(executables),
             before_revision: None,
             replaces,
+            excluded: BTreeSet::new(),
+            attention: None,
+            published_at: None,
         };
         self.save_row(&contribution, &stored)?;
         self.preview(&id)
@@ -1427,41 +1762,79 @@ impl<'a> Contributions<'a> {
             }),
             on_this_machine,
             host: repo.as_ref().and_then(RemoteRepo::known_host),
+            tracked: source.tracked.clone(),
             request_unavailable,
         })
     }
 
-    /// Files that would leave the machine, the diff, and validation.
+    /// Every file of the package compared with the library (changed files
+    /// first), what the author left out, and validation of exactly what
+    /// would leave the machine.
     pub fn preview(&self, id: &str) -> Result<Contribution> {
         let (mut c, stored) = self.load_row(id)?;
-        let staged = self.staged(id).unwrap_or_default();
-        let base = self.base_files(&c)?;
-        let mut files = Vec::new();
-        let names: BTreeSet<&String> = staged.keys().chain(base.keys()).collect();
-        for name in names {
-            let (old, new) = (base.get(name), staged.get(name));
-            let status = match (old, new) {
-                (None, Some(_)) => DraftFileStatus::Added,
-                (Some(_), None) => DraftFileStatus::Removed,
-                (Some(a), Some(b)) if a == b => DraftFileStatus::Unchanged,
-                _ => DraftFileStatus::Modified,
-            };
-            files.push(DraftFile {
-                path: format!("{}/{}", c.item_path, name),
-                status,
-                size: new.or(old).map(|b| b.len() as u32).unwrap_or(0),
-                diff: if status == DraftFileStatus::Unchanged {
-                    TextDiff::default()
-                } else {
-                    diff(old.map(|v| v.as_slice()), new.map(|v| v.as_slice()))
-                },
-            });
-        }
-        c.files = files;
-        c.validation = self.validate(&c, &stored, &staged);
-        c.in_library = self.matches_library(&c, &staged, None);
+        let (cmp, base, staged) = self.comparison(&c, &stored)?;
+        c.validation = self.validate(&c, &stored, &cmp, &base, &staged);
+        c.in_library = self.matches_library(&c, &cmp.outgoing, None);
+        c.files = cmp.files;
         c.remote = self.remote_info(&c);
         Ok(c)
+    }
+
+    /// Leaves changed files out of the contribution, or puts them back:
+    /// `excluded` lists every changed file to leave out, as library paths
+    /// (or paths in the skill folder). A left-out file keeps the library's
+    /// version. Only while the contribution is not prepared yet.
+    pub fn select_files(&self, id: &str, excluded: &[String]) -> Result<Contribution> {
+        let (mut c, stored) = self.load_active(id)?;
+        if c.state != ContributionState::Draft {
+            return Err(HabiError::invalid(
+                "this contribution's branch is already prepared; choose Revise to change which files it includes",
+            ));
+        }
+        let (all, _, _) = self.comparison(
+            &c,
+            &Stored {
+                excluded: BTreeSet::new(),
+                ..stored.clone()
+            },
+        )?;
+        let prefix = format!("{}/", c.item_path);
+        let mut chosen = BTreeSet::new();
+        for path in excluded {
+            let name = path.strip_prefix(&prefix).unwrap_or(path);
+            let file = all
+                .files
+                .iter()
+                .find(|f| {
+                    f.path.strip_prefix(&prefix) == Some(name)
+                        || f.previous_path
+                            .as_deref()
+                            .and_then(|p| p.strip_prefix(&prefix))
+                            == Some(name)
+                })
+                .ok_or_else(|| {
+                    HabiError::invalid(format!("{path} is not a file of this contribution"))
+                })?;
+            if file.status == DraftFileStatus::Unchanged {
+                return Err(HabiError::invalid(format!(
+                    "{path} does not differ from the library, so there is nothing to leave out"
+                )));
+            }
+            if let Some(reason) = &file.required {
+                return Err(HabiError::invalid(reason.clone()));
+            }
+            chosen.insert(file.path[prefix.len()..].to_string());
+        }
+        c.updated_at = crate::time::now();
+        self.store.conn()?.execute(
+            "UPDATE contributions SET excluded_json = ?2, updated_at = ?3 WHERE id = ?1",
+            params![
+                c.id,
+                serde_json::to_string(&chosen).map_err(|e| HabiError::Internal(e.to_string()))?,
+                c.updated_at
+            ],
+        )?;
+        self.preview(id)
     }
 
     /// True when the library's current snapshot holds exactly the staged
@@ -1513,14 +1886,19 @@ impl<'a> Contributions<'a> {
         Some((snapshot, files))
     }
 
+    /// Checks exactly what would leave the machine: the package format and
+    /// Habi metadata, references between its files, and secrets.
     fn validate(
         &self,
         c: &Contribution,
         stored: &Stored,
-        staged: &BTreeMap<String, Vec<u8>>,
+        cmp: &Comparison,
+        base: &Files,
+        staged: &Files,
     ) -> Vec<Diagnostic> {
         let mut out = Vec::new();
-        let list: Vec<SnapshotFile> = staged
+        let outgoing = &cmp.outgoing;
+        let list: Vec<SnapshotFile> = outgoing
             .iter()
             .map(|(p, b)| SnapshotFile {
                 path: format!("{}/{}", c.item_path, p),
@@ -1533,7 +1911,7 @@ impl<'a> Contributions<'a> {
             let rel = path
                 .strip_prefix(&format!("{}/", c.item_path))
                 .unwrap_or(path);
-            staged
+            outgoing
                 .get(rel)
                 .cloned()
                 .ok_or_else(|| format!("{path} missing"))
@@ -1551,7 +1929,7 @@ impl<'a> Contributions<'a> {
             }
         }
         out.extend(index.diagnostics);
-        for (path, bytes) in staged {
+        for (path, bytes) in outgoing {
             if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes)) {
                 out.push(Diagnostic::error(
                     format!("{path} appears to contain {what}. Remove it before sharing."),
@@ -1568,13 +1946,19 @@ impl<'a> Contributions<'a> {
                 None,
             ));
         }
-        if !c
+        out.extend(reference_problems(&c.item_path, cmp, base, staged));
+        if cmp
             .files
             .iter()
-            .any(|f| f.status != DraftFileStatus::Unchanged)
+            .all(|f| f.status == DraftFileStatus::Unchanged)
         {
             out.push(Diagnostic::warning(
                 "Nothing differs from the library yet.",
+                None,
+            ));
+        } else if !cmp.any_included_change {
+            out.push(Diagnostic::error(
+                "Every changed file is left out, so there is nothing to share. Include at least one.",
                 None,
             ));
         }
@@ -1594,7 +1978,7 @@ impl<'a> Contributions<'a> {
         let mut snapshots: BTreeMap<String, Option<(String, Vec<SnapshotFile>)>> = BTreeMap::new();
         ids.iter()
             .map(|id| {
-                self.load_row(id).map(|(mut c, _)| {
+                self.load_row(id).map(|(mut c, stored)| {
                     if c.state != ContributionState::Draft {
                         let snapshot = snapshots
                             .entry(c.source_id.clone())
@@ -1602,8 +1986,14 @@ impl<'a> Contributions<'a> {
                         // A library that has not moved since the contribution
                         // started cannot contain it yet.
                         if let Some(s) = snapshot.as_ref().filter(|s| s.0 != c.base_commit) {
-                            let staged = self.staged(id).unwrap_or_default();
-                            c.in_library = self.matches_library(&c, &staged, Some(s));
+                            let outgoing = if stored.excluded.is_empty() {
+                                self.staged(id).unwrap_or_default()
+                            } else {
+                                self.comparison(&c, &stored)
+                                    .map(|(cmp, _, _)| cmp.outgoing)
+                                    .unwrap_or_default()
+                            };
+                            c.in_library = self.matches_library(&c, &outgoing, Some(s));
                         }
                     }
                     c.remote = self.remote_info(&c);
@@ -1627,6 +2017,39 @@ impl<'a> Contributions<'a> {
         build_on_remote: bool,
         cancel: &CancelToken,
     ) -> Result<Contribution> {
+        self.commit_inner(id, build_on_remote, cancel)
+            .inspect_err(|e| self.record_attention(id, AttentionKind::Prepare, e))
+    }
+
+    /// Remembers that preparing or sending failed, so Sharing activity can
+    /// say so until the next attempt succeeds. Problems the author fixes in
+    /// the form (validation, nothing to share) and cancellation are not
+    /// recorded; they are reported where the author acted.
+    fn record_attention(&self, id: &str, kind: AttentionKind, error: &HabiError) {
+        let kind = match error {
+            HabiError::Cancelled | HabiError::InvalidInput(_) => return,
+            HabiError::Conflict(_) => AttentionKind::RemoteMoved,
+            _ => kind,
+        };
+        let Ok((mut c, mut stored)) = self.load_active(id) else {
+            return;
+        };
+        let now = crate::time::now();
+        stored.attention = Some(Attention {
+            kind,
+            message: error.to_info().message,
+            at: now.clone(),
+        });
+        c.updated_at = now;
+        let _ = self.save_row(&c, &stored);
+    }
+
+    fn commit_inner(
+        &self,
+        id: &str,
+        build_on_remote: bool,
+        cancel: &CancelToken,
+    ) -> Result<Contribution> {
         self.load_active(id)?;
         let preview = self.preview(id)?;
         if preview
@@ -1638,17 +2061,18 @@ impl<'a> Contributions<'a> {
                 "fix the validation errors before committing",
             ));
         }
-        if preview
+        if !preview
             .files
             .iter()
-            .all(|f| f.status == DraftFileStatus::Unchanged)
+            .any(|f| f.status != DraftFileStatus::Unchanged && f.included)
         {
             return Err(HabiError::invalid(
-                "nothing to contribute: the files match the library",
+                "nothing to contribute: the files that would be shared match the library",
             ));
         }
         let (mut c, mut stored) = self.load_row(id)?;
         if c.state != ContributionState::Draft {
+            // Already prepared (a retry): the same branch and commit.
             return Ok(preview);
         }
         let git = self.git()?;
@@ -1688,7 +2112,23 @@ impl<'a> Contributions<'a> {
             }
         };
         let dir = staging(self.paths, id);
-        let staged = self.staged(id)?;
+        // Exactly what is shared: the staged files, except changes the
+        // author left out, which keep the library's version.
+        let (cmp, _, _) = self.comparison(&c, &stored)?;
+        let (base, base_executables) = self.base_files(&c)?;
+        let kept_dir = work.join("kept");
+        let _ = std::fs::remove_dir_all(&kept_dir);
+        for name in &cmp.kept {
+            atomic_write(&RelPath::new(name)?.to_path(&kept_dir), &base[name])?;
+        }
+        let source_of = |name: &str| -> Result<PathBuf> {
+            Ok(RelPath::new(name)?.to_path(if cmp.kept.contains(name) {
+                &kept_dir
+            } else {
+                &dir
+            }))
+        };
+        let staged = &cmp.outgoing;
         let folder = repo_path("");
         let folder = folder.trim_end_matches('/');
         // Path -> (mode, object id) of what the parent has in the folder.
@@ -1704,7 +2144,7 @@ impl<'a> Contributions<'a> {
         if !staged.is_empty() {
             let mut list = String::new();
             for name in staged.keys() {
-                list.push_str(&RelPath::new(name)?.to_path(&dir).to_string_lossy());
+                list.push_str(&source_of(name)?.to_string_lossy());
                 list.push('\n');
             }
             let out = git.run_with_input(
@@ -1741,11 +2181,15 @@ impl<'a> Contributions<'a> {
             // recorded when the files were copied; where the file system
             // cannot show it, a file the parent has as executable stays so.
             let parent_exec = in_parent.get(&path).is_some_and(|(m, _)| m == "100755");
-            let executable = match &stored.executables {
-                Some(set) => set.contains(name) || (!cfg!(unix) && parent_exec),
-                None => {
-                    crate::fsutil::is_executable(&RelPath::new(name)?.to_path(&dir))
-                        || (!cfg!(unix) && parent_exec)
+            let executable = if cmp.kept.contains(name) {
+                base_executables.contains(name)
+            } else {
+                match &stored.executables {
+                    Some(set) => set.contains(name) || (!cfg!(unix) && parent_exec),
+                    None => {
+                        crate::fsutil::is_executable(&RelPath::new(name)?.to_path(&dir))
+                            || (!cfg!(unix) && parent_exec)
+                    }
                 }
             };
             let mode = if executable { "100755" } else { "100644" };
@@ -1775,6 +2219,7 @@ impl<'a> Contributions<'a> {
             .trim()
             .to_string();
         let _ = std::fs::remove_file(&index_file);
+        let _ = std::fs::remove_dir_all(&kept_dir);
         if stored.parent_commit.is_some() {
             let parent_tree = git
                 .run(
@@ -1818,6 +2263,7 @@ impl<'a> Contributions<'a> {
         c.updated_at = crate::time::now();
         stored.parent_commit = None;
         stored.before_revision = None;
+        stored.attention = None;
         self.save_row(&c, &stored)?;
         self.preview(id)
     }
@@ -1973,6 +2419,7 @@ impl<'a> Contributions<'a> {
         c.commit_id = None;
         c.state = ContributionState::Draft;
         c.updated_at = crate::time::now();
+        stored.attention = None;
         self.save_row(&c, &stored)?;
         self.preview(id)
     }
@@ -2023,6 +2470,7 @@ impl<'a> Contributions<'a> {
         }
         stored.synced_form = Some(stored.form.clone());
         stored.parent_commit = None;
+        stored.attention = None;
         c.updated_at = crate::time::now();
         self.save_row(&c, &stored)?;
         self.preview(id)
@@ -2157,7 +2605,21 @@ impl<'a> Contributions<'a> {
     /// branch and never merges. When the branch was sent before, the request
     /// is checked first: a merged or closed request is not pushed to, and
     /// "updated the open request" is said only when the host showed it open.
+    ///
+    /// Sending again after a failure is safe: the branch name is fixed per
+    /// contribution, a push never overwrites commits, and a request is opened
+    /// only when the host does not already show one for the branch.
     pub fn publish(
+        &self,
+        id: &str,
+        open_request: bool,
+        cancel: &CancelToken,
+    ) -> Result<PublishOutcome> {
+        self.publish_inner(id, open_request, cancel)
+            .inspect_err(|e| self.record_attention(id, AttentionKind::Send, e))
+    }
+
+    fn publish_inner(
         &self,
         id: &str,
         open_request: bool,
@@ -2315,6 +2777,8 @@ impl<'a> Contributions<'a> {
             (None, Some(note)) => Some(note.clone()),
             (None, None) => Some("The branch was pushed; no review request was opened.".into()),
         };
+        stored.attention = None;
+        stored.published_at = Some(crate::time::now());
         c.updated_at = crate::time::now();
         self.save_row(&c, &stored)?;
         Ok(outcome)
@@ -2340,6 +2804,7 @@ impl<'a> Contributions<'a> {
         c.state = ContributionState::Discarded;
         stored.parent_commit = None;
         stored.before_revision = None;
+        stored.attention = None;
         c.updated_at = crate::time::now();
         self.save_row(&c, &stored)
     }
@@ -2539,5 +3004,95 @@ mod tests {
         }
         let files = read_folder(dir.path()).unwrap();
         assert_eq!(files.keys().collect::<Vec<_>>(), vec!["SKILL.md"]);
+    }
+
+    fn files(list: &[(&str, &str)]) -> Files {
+        list.iter()
+            .map(|(p, t)| (p.to_string(), t.as_bytes().to_vec()))
+            .collect()
+    }
+
+    #[test]
+    fn renames_pair_identical_content_and_a_new_skill_keeps_its_skill_md() {
+        let base = files(&[("SKILL.md", "a"), ("old/x.md", "same"), ("y.md", "y")]);
+        let staged = files(&[
+            ("SKILL.md", "b"),
+            ("new/x.md", "same"),
+            ("copy.md", "same"),
+            ("y.md", "y"),
+        ]);
+        let cmp = compare("skills/s", &base, &staged, &BTreeSet::new());
+        let got: Vec<(&str, DraftFileStatus, Option<&str>)> = cmp
+            .files
+            .iter()
+            .map(|f| (f.path.as_str(), f.status, f.previous_path.as_deref()))
+            .collect();
+        // One removed path pairs with one added path; the other copy is new.
+        assert_eq!(
+            got,
+            vec![
+                ("skills/s/SKILL.md", DraftFileStatus::Modified, None),
+                (
+                    "skills/s/copy.md",
+                    DraftFileStatus::Renamed,
+                    Some("skills/s/old/x.md")
+                ),
+                ("skills/s/new/x.md", DraftFileStatus::Added, None),
+                ("skills/s/y.md", DraftFileStatus::Unchanged, None),
+            ]
+        );
+        // Leaving the rename out keeps the old path.
+        let left_out = compare(
+            "skills/s",
+            &base,
+            &staged,
+            &BTreeSet::from(["copy.md".to_string()]),
+        );
+        assert!(left_out.outgoing.contains_key("old/x.md"));
+        assert!(!left_out.outgoing.contains_key("copy.md"));
+
+        // A new skill cannot leave its SKILL.md out.
+        let fresh = compare(
+            "skills/n",
+            &Files::new(),
+            &files(&[("SKILL.md", "x"), ("notes.md", "n")]),
+            &BTreeSet::from(["SKILL.md".to_string(), "notes.md".to_string()]),
+        );
+        let skill = &fresh.files[0];
+        assert!(skill.included);
+        assert_eq!(skill.required.as_deref(), Some(NEW_SKILL_FILE));
+        assert!(!fresh.files[1].included);
+        assert_eq!(fresh.outgoing.keys().collect::<Vec<_>>(), vec!["SKILL.md"]);
+    }
+
+    #[test]
+    fn markdown_names_package_files_in_links_and_inline_code() {
+        let text = "\
+See [the checklist](references/checklist.md#top) and ![img](./assets/a%20b.png \"t\").
+Run `scripts/check.sh` but not `npm test`, `-v`, `src/**/*.ts` or `scripts/`.
+[def]: ../escape.md
+Visit [site](https://example.invalid/x.md) or [mail](mailto:a@b) or [abs](/etc/x.md).
+```
+`scripts/in-fence.sh`
+```
+";
+        let refs = markdown_references("SKILL.md", text);
+        assert_eq!(
+            refs.into_iter().collect::<Vec<_>>(),
+            vec![
+                "assets/a b.png",
+                "references/checklist.md",
+                "scripts/check.sh"
+            ]
+        );
+        // Links resolve from the file's folder; inline code from the package.
+        let nested = markdown_references(
+            "references/a.md",
+            "[b](b.md) [up](../SKILL.md) `scripts/x.sh`",
+        );
+        assert_eq!(
+            nested.into_iter().collect::<Vec<_>>(),
+            vec!["SKILL.md", "references/b.md", "scripts/x.sh"]
+        );
     }
 }

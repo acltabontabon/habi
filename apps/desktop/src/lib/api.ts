@@ -160,6 +160,9 @@ export const api = {
   listContributions: () => call<Contribution[]>("list_contributions"),
   updateContribution: (id: string, title: string, message: string, form: ShareForm) =>
     call<Contribution>("update_contribution", { id, title, message, form }),
+  /** Leaves changed files (library paths) out of the contribution; the rest are included. */
+  selectContributionFiles: (id: string, excluded: string[]) =>
+    call<Contribution>("select_contribution_files", { id, excluded }),
   commitContribution: (id: string, jobId?: string, buildOnRemote = false) =>
     call<Contribution>("commit_contribution", { id, jobId: jobId ?? null, buildOnRemote }),
   /** Reopens a sent contribution; the next branch and send update the same request. */

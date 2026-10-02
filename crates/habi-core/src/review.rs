@@ -298,6 +298,16 @@ pub struct ReviewComment {
     pub created_at: String,
 }
 
+/// Who can see the library repository, as the host reported it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum RepoVisibility {
+    Public,
+    Internal,
+    Private,
+}
+
 /// What the host reported, and when Habi asked.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -315,6 +325,13 @@ pub struct ReviewStatus {
     pub comments: Vec<ReviewComment>,
     /// More comments exist than Habi shows.
     pub comments_truncated: bool,
+    /// The branch the request targets, as the host reported it.
+    #[serde(default)]
+    pub target_branch: Option<String>,
+    /// The repository's visibility, when the host's answer includes it
+    /// (GitHub does; GitLab's merge request does not).
+    #[serde(default)]
+    pub visibility: Option<RepoVisibility>,
     pub checked_at: String,
 }
 
@@ -517,6 +534,25 @@ pub fn parse_github(
         approved_by,
         comments,
         comments_truncated,
+        target_branch: pull
+            .get("base")
+            .and_then(|b| str_of(b, "ref"))
+            .map(|r| plain_text(r, 255)),
+        visibility: pull
+            .get("base")
+            .and_then(|b| b.get("repo"))
+            .and_then(|repo| match str_of(repo, "visibility") {
+                Some("public") => Some(RepoVisibility::Public),
+                Some("internal") => Some(RepoVisibility::Internal),
+                Some("private") => Some(RepoVisibility::Private),
+                _ => repo.get("private").and_then(Value::as_bool).map(|p| {
+                    if p {
+                        RepoVisibility::Private
+                    } else {
+                        RepoVisibility::Public
+                    }
+                }),
+            }),
         checked_at: checked_at.to_string(),
     })
 }
@@ -601,6 +637,8 @@ pub fn parse_gitlab(
         approved_by,
         comments,
         comments_truncated,
+        target_branch: str_of(mr, "target_branch").map(|r| plain_text(r, 255)),
+        visibility: None,
         checked_at: checked_at.to_string(),
     })
 }
@@ -868,7 +906,8 @@ mod tests {
     fn github_latest_review_per_person_decides() {
         let pull = json!({
             "number": 7, "state": "open", "draft": false, "merged_at": null,
-            "html_url": "https://github.com/acme/skills/pull/7", "head": { "sha": "abc" }
+            "html_url": "https://github.com/acme/skills/pull/7", "head": { "sha": "abc" },
+            "base": { "ref": "main", "repo": { "private": true, "visibility": "internal" } }
         });
         let reviews = json!([
             { "user": { "login": "ana" }, "state": "CHANGES_REQUESTED", "body": "Please add an example.", "submitted_at": "2026-10-01T10:00:00Z" },
@@ -887,6 +926,8 @@ mod tests {
         );
         assert_eq!(s.approved_by, vec!["bo"]);
         assert_eq!(s.head_commit.as_deref(), Some("abc"));
+        assert_eq!(s.target_branch.as_deref(), Some("main"));
+        assert_eq!(s.visibility, Some(RepoVisibility::Internal));
         assert_eq!(
             s.url.as_deref(),
             Some("https://github.com/acme/skills/pull/7")

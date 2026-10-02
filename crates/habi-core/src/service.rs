@@ -1541,6 +1541,11 @@ impl Habi {
         self.contributions().update(id, title, message, form)
     }
 
+    /// Leaves changed files out of a contribution (or puts them back).
+    pub fn select_contribution_files(&self, id: &str, excluded: &[String]) -> Result<Contribution> {
+        self.contributions().select_files(id, excluded)
+    }
+
     pub fn commit_contribution(&self, id: &str, cancel: &CancelToken) -> Result<Contribution> {
         self.commit_contribution_with(id, false, cancel)
     }

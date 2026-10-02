@@ -747,3 +747,335 @@ fn saving_an_unchanged_form_leaves_the_metadata_as_written() {
     };
     assert_eq!(keys(&after), keys(&before));
 }
+
+/// Files under the skill folder in a commit of Habi's cache.
+fn tree_files(s: &Setup, commit: &str, folder: &str) -> Vec<String> {
+    git(
+        &s.cache(),
+        &["ls-tree", "-r", "--name-only", commit, "--", folder],
+    )
+    .lines()
+    .map(str::to_string)
+    .collect()
+}
+
+#[test]
+fn a_moved_file_is_a_rename_and_unchanged_files_follow_the_changes() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item("api-contract-review");
+    let staging = s.staging(&c.id);
+    std::fs::create_dir_all(staging.join("docs")).unwrap();
+    std::fs::rename(
+        staging.join("references/breaking-changes.md"),
+        staging.join("docs/breaking-changes.md"),
+    )
+    .unwrap();
+
+    // Moved, but SKILL.md still links to the old place.
+    let c = s.habi.contributions().preview(&c.id).unwrap();
+    let errors: Vec<&str> = c
+        .validation
+        .iter()
+        .filter(|d| d.level == DiagnosticLevel::Error)
+        .map(|d| d.message.as_str())
+        .collect();
+    assert_eq!(
+        errors,
+        vec![
+            "SKILL.md refers to references/breaking-changes.md, which this contribution renames to docs/breaking-changes.md. Update the reference."
+        ]
+    );
+
+    let skill = staging.join("SKILL.md");
+    let text = std::fs::read_to_string(&skill)
+        .unwrap()
+        .replace("references/breaking-changes.md", "docs/breaking-changes.md");
+    std::fs::write(&skill, text).unwrap();
+    let c = s.habi.contributions().preview(&c.id).unwrap();
+    let files: Vec<(&str, DraftFileStatus, Option<&str>)> = c
+        .files
+        .iter()
+        .map(|f| (f.path.as_str(), f.status, f.previous_path.as_deref()))
+        .collect();
+    assert_eq!(
+        files,
+        vec![
+            (
+                "skills/api-contract-review/SKILL.md",
+                DraftFileStatus::Modified,
+                None
+            ),
+            (
+                "skills/api-contract-review/docs/breaking-changes.md",
+                DraftFileStatus::Renamed,
+                Some("skills/api-contract-review/references/breaking-changes.md")
+            ),
+            (
+                "skills/api-contract-review/habi.yaml",
+                DraftFileStatus::Unchanged,
+                None
+            ),
+        ]
+    );
+    assert!(
+        c.validation
+            .iter()
+            .all(|d| d.level != DiagnosticLevel::Error),
+        "{:?}",
+        c.validation
+    );
+    let committed = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    assert_eq!(
+        tree_files(
+            &s,
+            committed.commit_id.as_deref().unwrap(),
+            "skills/api-contract-review"
+        ),
+        vec![
+            "skills/api-contract-review/SKILL.md",
+            "skills/api-contract-review/docs/breaking-changes.md",
+            "skills/api-contract-review/habi.yaml",
+        ]
+    );
+}
+
+#[test]
+fn files_left_out_are_not_committed_and_keep_the_library_version() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item("jpa-entity-review");
+    let staging = s.staging(&c.id);
+    append(&staging.join("SKILL.md"), "\nCheck cascade types.\n");
+    std::fs::create_dir_all(staging.join("notes")).unwrap();
+    std::fs::write(staging.join("notes/draft.md"), "Private scratch notes.\n").unwrap();
+    std::fs::write(staging.join("examples.md"), "An example.\n").unwrap();
+    std::fs::remove_file(staging.join("habi.yaml")).unwrap();
+
+    let c = s
+        .habi
+        .select_contribution_files(
+            &c.id,
+            &[
+                "skills/jpa-entity-review/notes/draft.md".into(),
+                // A path in the skill folder works too.
+                "habi.yaml".into(),
+            ],
+        )
+        .unwrap();
+    let included: Vec<(&str, DraftFileStatus, bool)> = c
+        .files
+        .iter()
+        .map(|f| (f.path.as_str(), f.status, f.included))
+        .collect();
+    assert_eq!(
+        included,
+        vec![
+            (
+                "skills/jpa-entity-review/SKILL.md",
+                DraftFileStatus::Modified,
+                true
+            ),
+            (
+                "skills/jpa-entity-review/examples.md",
+                DraftFileStatus::Added,
+                true
+            ),
+            (
+                "skills/jpa-entity-review/habi.yaml",
+                DraftFileStatus::Removed,
+                false
+            ),
+            (
+                "skills/jpa-entity-review/notes/draft.md",
+                DraftFileStatus::Added,
+                false
+            ),
+        ]
+    );
+    // The selection is checked against the package.
+    let err = s
+        .habi
+        .select_contribution_files(&c.id, &["skills/jpa-entity-review/nope.md".into()])
+        .unwrap_err();
+    assert!(err.to_string().contains("not a file"), "{err}");
+
+    let committed = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    let commit = committed.commit_id.clone().unwrap();
+    assert_eq!(
+        tree_files(&s, &commit, "skills/jpa-entity-review"),
+        vec![
+            "skills/jpa-entity-review/SKILL.md",
+            "skills/jpa-entity-review/examples.md",
+            "skills/jpa-entity-review/habi.yaml",
+        ]
+    );
+    // The removal was left out: the library's metadata stays as it was.
+    assert_eq!(
+        git(
+            &s.cache(),
+            &[
+                "rev-parse",
+                &format!("{commit}:skills/jpa-entity-review/habi.yaml")
+            ]
+        ),
+        git(
+            &s.cache(),
+            &[
+                "rev-parse",
+                &format!("{}:skills/jpa-entity-review/habi.yaml", c.base_commit)
+            ]
+        )
+    );
+    // The left-out file is still in the staging folder, not lost.
+    assert!(staging.join("notes/draft.md").is_file());
+    // The patch holds only what was included.
+    let out = tempfile::tempdir().unwrap();
+    let patch = s
+        .habi
+        .contributions()
+        .export_patch(&c.id, out.path(), &cancel)
+        .unwrap();
+    let patch = std::fs::read_to_string(patch).unwrap();
+    assert!(patch.contains("Check cascade types."));
+    assert!(!patch.contains("Private scratch notes."));
+    // Once prepared, the selection is fixed until Revise.
+    assert!(
+        s.habi
+            .select_contribution_files(&c.id, &[])
+            .unwrap_err()
+            .to_string()
+            .contains("Revise")
+    );
+}
+
+#[test]
+fn a_reference_to_a_left_out_or_deleted_file_blocks_preparing() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item("liquibase-migration-review");
+    let staging = s.staging(&c.id);
+    let errors = |c: &habi_core::contribute::Contribution| -> Vec<(String, Option<String>)> {
+        c.validation
+            .iter()
+            .filter(|d| d.level == DiagnosticLevel::Error)
+            .map(|d| (d.message.clone(), d.path.clone()))
+            .collect()
+    };
+
+    // Deleting a file SKILL.md links to.
+    let checklist = std::fs::read(staging.join("references/checklist.md")).unwrap();
+    std::fs::remove_file(staging.join("references/checklist.md")).unwrap();
+    let c = s.habi.contributions().preview(&c.id).unwrap();
+    assert_eq!(
+        errors(&c),
+        vec![(
+            "SKILL.md refers to references/checklist.md, which this contribution deletes. Keep references/checklist.md, or remove the reference.".to_string(),
+            Some("skills/liquibase-migration-review/SKILL.md".to_string())
+        )]
+    );
+    let err = s.habi.commit_contribution(&c.id, &cancel).unwrap_err();
+    assert!(err.to_string().contains("validation"), "{err}");
+    // A validation problem is fixed in place; it is not a failed operation.
+    assert!(
+        s.habi
+            .contributions()
+            .preview(&c.id)
+            .unwrap()
+            .attention
+            .is_none()
+    );
+    // Leaving the deletion out keeps the library's file: the reference is
+    // fine (and, with nothing else changed, there is nothing to share).
+    let c = s
+        .habi
+        .select_contribution_files(
+            &c.id,
+            &["skills/liquibase-migration-review/references/checklist.md".into()],
+        )
+        .unwrap();
+    assert_eq!(
+        errors(&c),
+        vec![(
+            "Every changed file is left out, so there is nothing to share. Include at least one."
+                .to_string(),
+            None
+        )]
+    );
+    std::fs::write(staging.join("references/checklist.md"), checklist).unwrap();
+
+    // A new script named in inline code, then left out.
+    std::fs::create_dir_all(staging.join("scripts")).unwrap();
+    std::fs::write(staging.join("scripts/verify.sh"), "#!/bin/sh\necho ok\n").unwrap();
+    append(
+        &staging.join("SKILL.md"),
+        "\nRun `scripts/verify.sh` before reviewing.\n",
+    );
+    let c = s
+        .habi
+        .select_contribution_files(
+            &c.id,
+            &["skills/liquibase-migration-review/scripts/verify.sh".into()],
+        )
+        .unwrap();
+    assert_eq!(
+        errors(&c),
+        vec![(
+            "SKILL.md refers to scripts/verify.sh, which is left out of this contribution. Include scripts/verify.sh, or remove the reference.".to_string(),
+            Some("skills/liquibase-migration-review/SKILL.md".to_string())
+        )]
+    );
+    let c = s.habi.select_contribution_files(&c.id, &[]).unwrap();
+    assert!(errors(&c).is_empty(), "{:?}", errors(&c));
+    s.habi.commit_contribution(&c.id, &cancel).unwrap();
+}
+
+#[test]
+fn retrying_never_creates_a_second_branch_or_commit() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item("jpa-entity-review");
+    append(&s.staging(&c.id).join("SKILL.md"), "\nMore.\n");
+    let first = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    // Preparing again returns the same commit on the same branch.
+    let again = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    assert_eq!(again.commit_id, first.commit_id);
+    assert_eq!(again.state, ContributionState::Committed);
+
+    // Sending fails: the library cannot be reached. Nothing is pushed and
+    // the contribution says it needs attention.
+    let moved = s.lib.with_extension("moved");
+    std::fs::rename(&s.lib, &moved).unwrap();
+    s.habi
+        .publish_contribution(&c.id, false, &cancel)
+        .unwrap_err();
+    std::fs::rename(&moved, &s.lib).unwrap();
+    let failed = s.habi.contributions().preview(&c.id).unwrap();
+    assert_eq!(failed.state, ContributionState::Committed);
+    let attention = failed.attention.expect("the failure is recorded");
+    assert_eq!(attention.kind, habi_core::contribute::AttentionKind::Send);
+    assert!(git(&s.lib, &["branch", "--list", "habi/contrib/*"]).is_empty());
+
+    // Retrying succeeds and clears it; retrying once more changes nothing.
+    s.habi.publish_contribution(&c.id, false, &cancel).unwrap();
+    let sent = s.habi.contributions().preview(&c.id).unwrap();
+    assert!(sent.attention.is_none());
+    assert!(sent.published_at.is_some());
+    s.habi.publish_contribution(&c.id, false, &cancel).unwrap();
+    let branches: Vec<String> = git(&s.lib, &["branch", "--list", "habi/contrib/*"])
+        .lines()
+        .map(|l| l.trim_start_matches(['*', ' ']).to_string())
+        .collect();
+    assert_eq!(branches, vec![c.branch.clone()]);
+    assert_eq!(
+        git(&s.lib, &["rev-parse", &c.branch]),
+        first.commit_id.unwrap()
+    );
+    assert_eq!(
+        git(
+            &s.lib,
+            &["rev-list", "--count", &format!("main..{}", c.branch)]
+        ),
+        "1"
+    );
+}

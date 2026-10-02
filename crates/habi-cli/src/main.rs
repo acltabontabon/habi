@@ -315,6 +315,23 @@ Then: habi contribute show <id>  →  edit the files  →  habi contribute commi
         #[arg(long)]
         message: Option<String>,
     },
+    /// Leave changed files out of the contribution; they keep the library's
+    /// version.
+    Exclude {
+        /// Contribution id.
+        id: String,
+        /// Paths in the skill folder (or library paths), as `show` lists them.
+        #[arg(required = true)]
+        paths: Vec<String>,
+    },
+    /// Put files left out with `exclude` back into the contribution.
+    Include {
+        /// Contribution id.
+        id: String,
+        /// Paths in the skill folder (or library paths).
+        #[arg(required = true)]
+        paths: Vec<String>,
+    },
     /// Commit the contribution on a branch in Habi's cache (nothing is pushed).
     Commit {
         /// Contribution id.
@@ -1510,6 +1527,8 @@ fn contribute(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
     let id = match &cmd {
         ContributeCmd::Show { id }
         | ContributeCmd::Describe { id, .. }
+        | ContributeCmd::Exclude { id, .. }
+        | ContributeCmd::Include { id, .. }
         | ContributeCmd::Commit { id, .. }
         | ContributeCmd::Status { id }
         | ContributeCmd::Rehearse { id }
@@ -1533,6 +1552,38 @@ fn contribute(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
         }
         .into(),
         None => e,
+    })
+}
+
+/// Leaves files out of a contribution (`exclude`) or puts them back.
+fn select_files(ctx: &Ctx, id: &str, paths: &[String], exclude: bool) -> Result<Value> {
+    let habi = &ctx.habi;
+    let current = habi.contributions().preview(id)?;
+    let prefix = format!("{}/", current.item_path);
+    let wanted: Vec<String> = paths
+        .iter()
+        .map(|p| {
+            let p = p.trim_end_matches('/');
+            if p.starts_with(&prefix) {
+                p.to_string()
+            } else {
+                format!("{prefix}{p}")
+            }
+        })
+        .collect();
+    let mut excluded: Vec<String> = current
+        .files
+        .iter()
+        .filter(|f| !f.included)
+        .map(|f| f.path.clone())
+        .filter(|p| exclude || !wanted.contains(p))
+        .collect();
+    if exclude {
+        excluded.extend(wanted);
+    }
+    let c = habi.select_contribution_files(id, &excluded)?;
+    emit(ctx, &c, || {
+        output::contribution(&c, &staging_path(habi, &c.id))
     })
 }
 
@@ -1609,6 +1660,8 @@ fn contribute_inner(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
                 output::contribution(&c, &staging_path(habi, &c.id))
             })
         }
+        ContributeCmd::Exclude { id, paths } => select_files(ctx, &id, &paths, true),
+        ContributeCmd::Include { id, paths } => select_files(ctx, &id, &paths, false),
         ContributeCmd::Commit {
             id,
             build_on_remote,
