@@ -568,6 +568,10 @@
   border-top: 1px solid var(--hairline);
 }
 
+.editor-body.is-full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .editor-main {
   display: flex;
   flex-direction: column;
@@ -1668,7 +1672,7 @@
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1180px) {
-  .editor-body {
+  .editor-body:not(.is-full) {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
   }
   .files-pane {
