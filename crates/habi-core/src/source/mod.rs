@@ -257,7 +257,7 @@ pub fn parse_location(input: &str) -> Result<Location> {
             }
         }
         if scheme == "file" {
-            return local_location(Path::new(&format!("/{}", rest.trim_start_matches('/'))));
+            return local_location(&file_url_path(rest));
         }
         return Ok(Location::Remote(s.to_string()));
     }
@@ -291,6 +291,28 @@ pub fn parse_location(input: &str) -> Result<Location> {
     local_location(&expanded)
 }
 
+/// The local path of a `file://` URL (`rest` is what follows `file://`):
+/// `/srv/skills` from `file:///srv/skills`, and `C:/skills` (not
+/// `/C:/skills`) from `file:///C:/skills`.
+fn file_url_path(rest: &str) -> PathBuf {
+    let path = rest.trim_start_matches('/');
+    let drive = path.as_bytes();
+    let has_drive = matches!(drive, [letter, b':', ..] if letter.is_ascii_alphabetic())
+        && matches!(drive.get(2), None | Some(b'/' | b'\\'));
+    if has_drive {
+        PathBuf::from(path)
+    } else {
+        PathBuf::from(format!("/{path}"))
+    }
+}
+
+/// True if a source location (as stored, or as shown with `~`) names a
+/// folder on this machine rather than a remote URL. `C:\…` is absolute on
+/// Windows, so a leading `/` alone is not the test.
+pub fn is_local_location(location: &str) -> bool {
+    location.starts_with('/') || location.starts_with('~') || Path::new(location).is_absolute()
+}
+
 fn local_location(path: &Path) -> Result<Location> {
     let dir = crate::paths::canonical_dir(path)?;
     let is_git =
@@ -306,9 +328,7 @@ fn local_location(path: &Path) -> Result<Location> {
 /// project lock files so teammates can match installed items to sources.
 pub fn portable_identity(source: &Source) -> String {
     match source.kind {
-        SourceKind::Git
-            if !source.location.starts_with('/') && !source.location.starts_with('~') =>
-        {
+        SourceKind::Git if !is_local_location(&source.location) => {
             let mut url = source
                 .location
                 .trim_end_matches('/')
@@ -389,7 +409,7 @@ fn row_to_source(row: &Row) -> rusqlite::Result<Source> {
     } else {
         SourceKind::Directory
     };
-    let display_location = if location.starts_with('/') {
+    let display_location = if is_local_location(&location) {
         display_path(Path::new(&location))
     } else {
         location
@@ -1024,6 +1044,72 @@ mod tests {
             parse_location(&dir.path().to_string_lossy()),
             Ok(Location::LocalDir(_))
         ));
+    }
+
+    #[test]
+    fn file_urls_keep_drive_letters() {
+        assert_eq!(file_url_path("/srv/skills"), PathBuf::from("/srv/skills"));
+        assert_eq!(file_url_path("//srv/skills"), PathBuf::from("/srv/skills"));
+        assert_eq!(
+            file_url_path("/C:/team/skills"),
+            PathBuf::from("C:/team/skills")
+        );
+        assert_eq!(file_url_path("/d:\\skills"), PathBuf::from("d:\\skills"));
+        assert_eq!(file_url_path("/C:"), PathBuf::from("C:"));
+        // Not a drive: a folder whose name happens to contain a colon.
+        assert_eq!(file_url_path("/ab:/x"), PathBuf::from("/ab:/x"));
+    }
+
+    fn git_source(location: &str) -> Source {
+        Source {
+            id: "s".into(),
+            name: "Team".into(),
+            kind: SourceKind::Git,
+            role: SourceRole::Team,
+            location: location.into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+            created_at: String::new(),
+            snapshot: None,
+            snapshot_at: None,
+            commit_summary: None,
+            last_attempt_at: None,
+            last_error: None,
+            warning: None,
+            freshness: Freshness::NeverFetched,
+        }
+    }
+
+    #[test]
+    fn local_locations_are_told_from_urls() {
+        assert!(is_local_location("/srv/skills"));
+        assert!(is_local_location("~/code/skills"));
+        assert!(!is_local_location("https://example.com/team/skills.git"));
+        assert!(!is_local_location("git@example.com:team/skills.git"));
+        assert_eq!(portable_identity(&git_source("/srv/skills")), "local:Team");
+        assert_eq!(portable_identity(&git_source("~/skills")), "local:Team");
+        assert_eq!(
+            portable_identity(&git_source("git@example.com:team/skills.git")),
+            "example.com:team/skills"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_paths_are_local() {
+        assert!(is_local_location(r"C:\Users\ana\skills"));
+        assert!(is_local_location(r"\\server\share\skills"));
+        // Once read as an scp-style `C:` host, leaking the path into lock files.
+        assert_eq!(
+            portable_identity(&git_source(r"C:\Users\ana\skills")),
+            "local:Team"
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!(
+            "file:///{}",
+            dir.path().to_string_lossy().replace('\\', "/")
+        );
+        assert!(matches!(parse_location(&url), Ok(Location::LocalDir(_))));
     }
 
     #[test]
