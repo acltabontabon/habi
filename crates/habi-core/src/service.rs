@@ -1004,13 +1004,32 @@ impl Habi {
         // Installs, updates, removals and restores change the project (skills,
         // AGENTS.md, MCP config), even when they fail part-way and roll back.
         self.invalidate_for_root(&plan.root);
+        self.tidy_after(&plan.root, &result);
         result
     }
 
     pub fn apply_plan(&self, plan: &Plan) -> Result<OperationSummary> {
         let result = self.applier().apply(plan);
         self.invalidate_for_root(&plan.root);
+        self.tidy_after(&plan.root, &result);
         result
+    }
+
+    /// Prunes old records after a successful apply. Best effort: the
+    /// operation itself already succeeded.
+    fn tidy_after(&self, root: &Path, result: &Result<OperationSummary>) {
+        if result.is_ok()
+            && let Err(e) =
+                crate::maintenance::after_apply(&self.paths, &self.store, &project_id(root))
+        {
+            tracing::warn!(error = %e, "could not prune old records");
+        }
+    }
+
+    /// Frees disk space: old operation records and library snapshots beyond
+    /// the newest of each, and stored content nothing kept refers to.
+    pub fn prune(&self) -> Result<crate::maintenance::PruneReport> {
+        crate::maintenance::prune(&self.paths, &self.store)
     }
 
     pub fn history(&self, project: &str) -> Result<Vec<OperationSummary>> {

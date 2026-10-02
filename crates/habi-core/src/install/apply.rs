@@ -201,20 +201,26 @@ fn load(project_id: &str, path: &Path) -> Journal {
     }
 }
 
-/// Every journal of a project, newest first.
+/// Every journal of a project, newest first. Timestamps have one-second
+/// resolution; within a second, the journal saved last comes first.
 pub(crate) fn load_all(paths: &AppPaths, project_id: &str) -> Vec<Journal> {
     let mut out = Vec::new();
     let Ok(entries) = std::fs::read_dir(journal_dir(paths, project_id)) else {
-        return out;
+        return Vec::new();
     };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.extension().is_some_and(|e| e == "json") {
-            out.push(load(project_id, &path));
+            let saved = entry.metadata().and_then(|m| m.modified()).ok();
+            out.push((load(project_id, &path), saved));
         }
     }
-    out.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-    out
+    out.sort_by(|(a, a_saved), (b, b_saved)| {
+        b.created_at
+            .cmp(&a.created_at)
+            .then_with(|| b_saved.cmp(a_saved))
+    });
+    out.into_iter().map(|(journal, _)| journal).collect()
 }
 
 /// Journals that may be unfinished, from the index (or, for journals from
