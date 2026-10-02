@@ -67,6 +67,13 @@ First working version.
 - The package editor treats a skill as a complete package: instructions first, files beside
   them, scripts with templates, previews, validation next to each file.
 
+### Libraries
+- **Libraries** is a destination: what is connected, community libraries to discover (previewed
+  before connecting), and your own (a Git repository or a folder, each on its own page).
+- Reading a skill shows one document at a time with its package beside it; files open in
+  place of SKILL.md, code reads as code.
+- Shared copies record their lineage (`metadata.based-on`) so knowledge keeps its origin.
+
 ### Design
 - New visual language, *Loom*: Daylight and Graphite themes, IBM Plex Sans with a monospace
   voice for labels and counts, and one dye color per library that follows its items

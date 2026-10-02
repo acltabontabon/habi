@@ -113,11 +113,7 @@ export function Welcome() {
                   {plural(libraryCount, "library", "libraries")} · {plural(total, "skill")}
                 </button>
               ) : (
-                <button
-                  type="button"
-                  className="link-quiet"
-                  onClick={() => navigate({ name: "sources", sourceId: "new" })}
-                >
+                <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
                   Connect a library
                 </button>
               )}

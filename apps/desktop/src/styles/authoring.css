@@ -47,12 +47,6 @@
   padding: var(--s3) 0 var(--s1);
 }
 
-.prose-sm {
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  max-width: 68ch;
-}
-
 .segmented-control {
   display: inline-flex;
   flex: none;
@@ -138,11 +132,6 @@
 
 .connect-page .lead-sm {
   max-width: 60ch;
-}
-
-.connect-help {
-  max-width: 600px;
-  margin-top: var(--s5);
 }
 
 .connect .working {
