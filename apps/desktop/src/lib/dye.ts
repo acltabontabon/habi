@@ -1,7 +1,10 @@
 /**
  * Each library has its own dye: the color of its warp thread wherever its
- * items appear. Colors follow the order libraries were connected in, so they
- * stay put as libraries are added. My skills are spun from plain ink.
+ * items appear. The color comes from the library's id, so it stays put when
+ * other libraries are added or removed, or the sample workspace is made
+ * again. When two ids land on the same color, the later library takes the
+ * next free one; only a library that had to step aside can move. My skills
+ * are spun from plain ink.
  */
 import { useCallback, useMemo } from "react";
 import type { Source } from "../bindings/Source";
@@ -19,15 +22,29 @@ export type Dye = {
 
 const INK: Dye = { color: "var(--ink-soft)", community: false };
 
+/** FNV-1a: a small, stable string hash. */
+function hash(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 export function dyeMap(sources: Source[]): Map<string, Dye> {
   const ordered = [...sources].sort(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
+  const taken = new Set<number>();
   return new Map(
-    ordered.map((s, i) => [
-      s.id,
-      { color: `var(--dye-${i % DYE_COUNT})`, community: s.role === "community" },
-    ]),
+    ordered.map((s) => {
+      let slot = hash(s.id) % DYE_COUNT;
+      // With every color in use, libraries share; until then each has its own.
+      while (taken.size < DYE_COUNT && taken.has(slot)) slot = (slot + 1) % DYE_COUNT;
+      taken.add(slot);
+      return [s.id, { color: `var(--dye-${slot})`, community: s.role === "community" }];
+    }),
   );
 }
 
