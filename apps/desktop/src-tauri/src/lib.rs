@@ -151,6 +151,8 @@ pub fn run() {
             commands::diagnostics_preview,
             commands::diagnostics_save,
             commands::create_sample_workspace,
+            commands::remove_sample_workspace,
+            commands::free_up_space,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Habi");
