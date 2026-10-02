@@ -401,7 +401,7 @@ describe("welcome", () => {
   it("leads with one action, opening a project, and needs no library", async () => {
     const user = userEvent.setup();
     const { container } = wrap(<Welcome />);
-    const open = screen.getByRole("button", { name: "Open a project…" });
+    const open = await screen.findByRole("button", { name: "Open a project…" });
     expect(open).toHaveClass("btn-primary");
     // A library is optional: offered as a quiet link, never as the main action.
     expect(screen.getByRole("button", { name: "Connect a library" })).toHaveClass("link-quiet");
