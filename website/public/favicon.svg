@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Habi</title>
+  <!-- Two warp threads and one weft thread interlace to form an H:
+       the weft passes under the left warp and over the right one. -->
+  <rect width="1024" height="1024" rx="232" fill="#1F1C19"/>
+  <g fill="none">
+    <line x1="268" y1="520" x2="756" y2="520" stroke="#D9913F" stroke-width="76" stroke-linecap="round"/>
+    <line x1="660" y1="236" x2="660" y2="788" stroke="#EFE8D8" stroke-width="76" stroke-linecap="round"/>
+    <line x1="614" y1="520" x2="706" y2="520" stroke="#1F1C19" stroke-width="124" stroke-linecap="butt"/>
+    <line x1="606" y1="520" x2="714" y2="520" stroke="#D9913F" stroke-width="76" stroke-linecap="butt"/>
+    <line x1="364" y1="466" x2="364" y2="574" stroke="#1F1C19" stroke-width="124" stroke-linecap="butt"/>
+    <line x1="364" y1="236" x2="364" y2="788" stroke="#EFE8D8" stroke-width="76" stroke-linecap="round"/>
+  </g>
+</svg>

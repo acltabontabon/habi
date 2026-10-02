@@ -1,0 +1,1870 @@
+/*
+ * Habi, as a page: cloth at the top, the problem as it is lived, one scene
+ * that weaves the answer, receipts, and the name woven at the foot.
+ * The accent voice is IBM Plex Serif italic — the same family as the app.
+ */
+
+em {
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--thread-strong);
+}
+
+/* ---------- Header ---------- */
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid transparent;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  backdrop-filter: saturate(1.4) blur(10px);
+  transition: border-color var(--duration) var(--ease);
+}
+
+.top[data-scrolled] {
+  border-bottom-color: var(--hairline);
+}
+
+.top-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--page);
+  height: 60px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2.4vw, 28px);
+}
+
+.top-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.top-link:hover {
+  color: var(--thread-strong);
+}
+
+/* ---------- Shared ---------- */
+
+/* One rhythm between sections. */
+:root {
+  --section: clamp(104px, 13vw, 176px);
+  --top: 60px;
+}
+
+/* One beat per screen: each fills the view, its content centred, so the
+   next never peeks in. Taller beats simply grow. */
+.screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - var(--top));
+  padding-block: clamp(48px, 8vh, 96px);
+}
+
+.hero,
+.problem,
+.scene,
+.duo,
+.start,
+.foot {
+  max-width: var(--page);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section-title,
+.problem-title {
+  font-size: clamp(38px, 6vw, 86px);
+  font-weight: 640;
+  letter-spacing: -0.048em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.section-lead {
+  max-width: 54ch;
+  margin-top: 22px;
+  font-size: clamp(17px, 1.5vw, 19px);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.section-lead a {
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.kicker {
+  margin-bottom: 18px;
+}
+
+/* ---------- Hero: the headline is cloth ---------- */
+
+.hero {
+  padding-block: clamp(24px, 5vh, 64px);
+}
+
+.hero-cloth {
+  position: relative;
+  padding: 12px 0 0;
+  touch-action: pan-y;
+}
+
+.cloth {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cloth-back {
+  z-index: 0;
+}
+
+.cloth-front {
+  z-index: 2;
+}
+
+.thread {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.is-stitched .thread,
+.thread.is-stitched {
+  stroke-dasharray: 7 6;
+}
+
+.thread-halo {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.weft-halo {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 12;
+}
+
+.weft {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+/* The cloth arrives: the warps fall, then the weft is thrown across. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .cloth {
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 1100ms var(--ease);
+  }
+  .js .is-woven .cloth {
+    clip-path: inset(-40px -80px -40px -80px);
+  }
+  .js .weft,
+  .js .weft-halo {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 900ms var(--ease) 800ms;
+  }
+  .js .is-woven .weft,
+  .js .is-woven .weft-halo {
+    stroke-dashoffset: 0;
+  }
+}
+
+.hero-kicker {
+  margin-bottom: clamp(16px, 2vw, 24px);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.hero-title {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(44px, 7.8vw, 124px);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.hero-line {
+  display: block;
+}
+
+.hero-title em {
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.hero-weft-space {
+  height: clamp(32px, 4vw, 52px);
+}
+
+.pluck-hint {
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  z-index: 3;
+  padding: 2px 0 2px 10px;
+  background: var(--paper);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  transition: opacity 600ms var(--ease);
+}
+
+.is-plucked .pluck-hint {
+  opacity: 0;
+}
+
+@media (hover: none) {
+  .pluck-hint {
+    display: none;
+  }
+}
+
+/* What it says on the left, what to do on the right. */
+.hero-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px 48px;
+  margin-top: clamp(24px, 3vw, 36px);
+}
+
+.hero-say {
+  display: grid;
+  gap: 16px;
+}
+
+.hero-lead {
+  max-width: 46ch;
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero-meta {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* ---------- The problem: ask around, or search ---------- */
+
+.problem {
+  padding-top: 0;
+}
+
+.problem-title {
+  max-width: 17ch;
+}
+
+.problem-title em {
+  display: block;
+}
+
+.ordeal {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: start;
+  gap: clamp(20px, 3vw, 36px);
+  margin-top: clamp(44px, 6vw, 80px);
+}
+
+.ordeal-label {
+  position: absolute;
+  top: -26px;
+  left: 2px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Asking around: a channel thread. */
+.chat {
+  position: relative;
+  margin: 0;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  background: var(--paper-raised);
+  box-shadow: 0 30px 60px -38px rgba(22, 22, 26, 0.35);
+  transform: rotate(-1.2deg);
+}
+
+.chat-head {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.chat-thread {
+  display: grid;
+  gap: 12px;
+}
+
+.msg {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 0 10px;
+}
+
+.msg-avatar {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--dye);
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--paper);
+}
+
+.msg-who {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.msg-text {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.msg.is-you .msg-who {
+  color: var(--thread-strong);
+}
+
+.msg-react {
+  padding-left: 38px;
+}
+
+.msg-react span {
+  display: inline-block;
+  padding: 2px 9px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 99px;
+  font-size: 13px;
+}
+
+.msg-system {
+  padding-top: 4px;
+  font-size: 11.5px;
+  text-align: center;
+  color: var(--ink-faint);
+}
+
+/* Searching: a shell. Same in both themes. */
+.shell {
+  position: relative;
+  margin: 26px 0 0;
+  border: 1px solid #26262c;
+  border-radius: 14px;
+  background: #121214;
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.55);
+  transform: rotate(0.8deg);
+}
+
+.shell-body {
+  min-height: 360px;
+  padding: 18px 20px 20px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #b9b7af;
+  overflow-x: auto;
+}
+
+.shell-cmd {
+  margin-top: 10px;
+  color: #f6f5f1;
+  white-space: nowrap;
+}
+
+.shell-cmd:first-child {
+  margin-top: 0;
+}
+
+.shell-prompt {
+  color: #f2a541;
+}
+
+.shell-typed {
+  display: inline-block;
+  vertical-align: bottom;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.shell-out p {
+  white-space: pre;
+}
+
+.shell-out.is-err {
+  color: #ff8f7e;
+}
+
+.problem-turn {
+  max-width: 20ch;
+  margin-top: 0;
+  font-size: clamp(34px, 5.4vw, 78px);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.problem-turn em {
+  display: block;
+}
+
+/* The answer flows straight on from the problem: same screen, one movement. */
+.turn {
+  margin-top: clamp(80px, 11vw, 140px);
+}
+
+.turn .problem-turn {
+  margin-top: 0;
+}
+
+/* The answer, point for point. */
+.answers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px clamp(24px, 4vw, 56px);
+  margin-top: clamp(36px, 5vw, 56px);
+  padding-top: 24px;
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.answers li p:last-child {
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.answers code {
+  padding: 1px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  font-size: 0.82em;
+}
+
+.answer-label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--thread-strong);
+}
+
+.answer-label span {
+  color: var(--ink-faint);
+}
+
+.js .problem .turn {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 700ms var(--ease),
+    transform 800ms var(--ease);
+}
+
+.js .problem .turn.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* It plays once: messages arrive, commands are typed, output follows. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .problem :is(.msg, .msg-react, .msg-system, .shell-cmd, .shell-out) {
+    opacity: 0;
+  }
+  .js .problem .play.is-in :is(.msg, .msg-react, .msg-system, .shell-out) {
+    animation: pop 360ms var(--ease) both;
+    animation-delay: calc(var(--t) * 1ms + 400ms);
+  }
+  .js .problem .play.is-in .shell-cmd {
+    animation: show 1ms linear both;
+    animation-delay: calc(var(--t) * 1ms + 400ms);
+  }
+  .js .problem .shell-typed {
+    width: 0;
+  }
+  .js .problem .play.is-in .shell-typed {
+    animation: type calc(var(--n) * 24ms) steps(var(--n)) both;
+    animation-delay: calc(var(--t) * 1ms + 400ms);
+  }
+  .js .problem .play.is-in .shell-out.is-err {
+    animation:
+      pop 200ms var(--ease) both,
+      jolt 380ms ease-out both;
+    animation-delay: calc(var(--t) * 1ms + 400ms);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes show {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes type {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(var(--n) * 1ch);
+  }
+}
+
+@keyframes jolt {
+  20% {
+    transform: translateX(-4px);
+  }
+  45% {
+    transform: translateX(4px);
+  }
+  70% {
+    transform: translateX(-2px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ---------- The bridge: pull the thread ---------- */
+
+.bridge {
+  display: grid;
+  justify-items: center;
+  max-width: var(--page);
+  margin-inline: auto;
+  padding: var(--section) var(--gutter) 0;
+  text-align: center;
+}
+
+.bridge-title {
+  font-size: clamp(30px, 4.4vw, 60px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.bridge-title em {
+  display: block;
+}
+
+.bridge-thread {
+  position: relative;
+  width: 3px;
+  height: 44vh;
+  margin-top: clamp(24px, 3vw, 36px);
+}
+
+.bridge-thread span {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--thread);
+  transform-origin: top;
+}
+
+/* The knot where it lands. */
+.bridge-thread::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% - 8px);
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid var(--thread);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.bridge-thread.is-pulled span {
+  transform: scaleY(var(--pull, 0));
+}
+
+.bridge-thread.is-pulled::after {
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 260ms var(--ease),
+    transform 320ms var(--ease);
+}
+
+.bridge-thread.is-pulled.is-landed::after {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- The weave ---------- */
+
+.scene {
+  position: relative;
+  margin-top: var(--section);
+}
+
+/* Pinned, the scene centres itself in the viewport: that is its margin. */
+.scene.is-live {
+  height: 470vh;
+  margin-top: 0;
+}
+
+.scene-sticky {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.78fr) 18px minmax(0, 1.22fr);
+  align-items: center;
+  gap: clamp(20px, 3.5vw, 48px);
+}
+
+.scene.is-live .scene-sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  padding-top: 60px;
+}
+
+.scene.is-static .scene-sticky {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+}
+
+.captions {
+  position: relative;
+  display: grid;
+  gap: 48px;
+}
+
+.scene.is-live .captions {
+  display: block;
+  height: 340px;
+}
+
+.scene.is-live .caption {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 180ms ease-in,
+    transform 220ms ease-in;
+  pointer-events: none;
+}
+
+/* The next caption arrives once the last has left. */
+.scene.is-live .caption.is-on {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 420ms var(--ease) 200ms,
+    transform 560ms var(--ease) 200ms;
+}
+
+.caption-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--thread-strong);
+}
+
+.caption-step span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-faint);
+}
+
+.caption-step span::after {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--hairline-strong);
+}
+
+.caption-title {
+  font-size: clamp(34px, 4.2vw, 62px);
+  font-weight: 650;
+  letter-spacing: -0.048em;
+  line-height: 0.98;
+}
+
+.caption-title em {
+  display: block;
+}
+
+.caption-body {
+  max-width: 38ch;
+  margin-top: 20px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.rail {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.rail span {
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--hairline-strong);
+  transition: background 300ms var(--ease);
+}
+
+.rail span.is-on {
+  background: var(--thread);
+}
+
+.scene.is-static .rail {
+  display: none;
+}
+
+.stage {
+  position: relative;
+  width: min(100%, calc(78svh * 640 / 520));
+  aspect-ratio: 640 / 520;
+  margin: 0 auto;
+  container-type: size;
+}
+
+.stage-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+[data-warp] {
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke 500ms var(--ease);
+}
+
+[data-warp].is-stitched {
+  stroke-dasharray: 7 6;
+}
+
+[data-warp].is-mark {
+  stroke: var(--paper);
+  stroke-dasharray: none;
+}
+
+.s-halo {
+  stroke: var(--paper);
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+
+.s-pick {
+  stroke: var(--hairline-strong);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke 500ms var(--ease);
+}
+
+[data-weft].is-mark .s-pick {
+  stroke: var(--thread);
+}
+
+[data-float] {
+  stroke: var(--paper);
+  stroke-width: 3;
+  paint-order: stroke;
+  transition: fill 300ms var(--ease);
+}
+
+[data-float].is-updated {
+  fill: var(--thread);
+}
+
+.s-loop {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+.s-knot {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 2.5;
+  opacity: 0;
+}
+
+.s-bead {
+  fill: var(--thread);
+  opacity: 0;
+}
+
+.s-mark-ground {
+  fill: var(--ink);
+  opacity: 0;
+}
+
+.s-mark-cut {
+  stroke: var(--ink);
+  opacity: 0;
+}
+
+.s-mark-over {
+  stroke: var(--paper);
+  opacity: 0;
+}
+
+.stage-html {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.s-source,
+.s-repo,
+.s-chip {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  white-space: nowrap;
+  opacity: 0;
+}
+
+/* Tilted, as on the app's loom, so names never collide. */
+.s-source {
+  transform: translate(-2px, -6px) rotate(-38deg);
+  transform-origin: 0 100%;
+  font-size: clamp(9.5px, 1.8cqw, 12px);
+  color: var(--ink-muted);
+}
+
+.s-repo {
+  transform: translate(-100%, -50%);
+  font-size: clamp(8.5px, 1.9cqw, 12.5px);
+  color: var(--ink-soft);
+}
+
+.s-chip {
+  transform: translateY(-50%);
+  padding: 3px 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  font-size: clamp(9.5px, 1.8cqw, 12px);
+  color: var(--ink-soft);
+}
+
+.s-chip.is-refine,
+.s-chip.is-update {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+.s-frag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  gap: 2px;
+  max-width: 36cqw;
+  padding: 7px 11px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-raised);
+  transform-origin: 0 50%;
+}
+
+.s-frag.is-chat {
+  max-width: 44cqw;
+  border-radius: 13px 13px 13px 3px;
+}
+
+.s-frag.is-head {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
+
+.s-frag-name {
+  font-size: clamp(9.5px, 1.8cqw, 12px);
+  color: var(--ink-muted);
+}
+
+.s-frag.is-file .s-frag-name {
+  color: var(--ink);
+}
+
+.s-frag-text {
+  font-size: clamp(10.5px, 2.1cqw, 14px);
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.s-frag.is-file .s-frag-text {
+  font-size: clamp(9.5px, 1.8cqw, 12px);
+  color: var(--ink-faint);
+}
+
+.s-frag.is-head .s-frag-name {
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-size: clamp(13px, 2.6cqw, 18px);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.s-frag-tail {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 12px;
+  width: clamp(36px, 10cqw, 64px);
+  height: auto;
+  overflow: visible;
+  transition: opacity 300ms var(--ease);
+}
+
+.s-frag-tail path {
+  fill: none;
+  stroke: var(--dye);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.s-frag.is-gathering .s-frag-tail {
+  opacity: 0;
+}
+
+.s-card {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  width: 56cqw;
+  padding: 3.2cqw 3.6cqw 3.6cqw;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow: 0 24px 48px -24px rgba(22, 22, 26, 0.3);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+}
+
+.s-card-root {
+  margin-bottom: 1.6cqw;
+  font-size: clamp(10px, 2.2cqw, 14px);
+  font-weight: 500;
+}
+
+.s-card ul {
+  display: grid;
+  gap: 1.4cqw;
+}
+
+.s-card li {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding-left: 3.4cqw;
+  font-size: clamp(9.5px, 2cqw, 13px);
+  opacity: 0;
+}
+
+.s-card li::before {
+  content: "";
+  position: absolute;
+  top: 0.65em;
+  left: 0;
+  width: 2cqw;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dye);
+}
+
+.s-card em {
+  font-family: var(--font-ui);
+  font-size: clamp(9px, 1.8cqw, 12px);
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+/* ---------- Receipts ---------- */
+
+.duo {
+  padding-top: clamp(48px, 8vh, 96px);
+}
+
+.duo-head {
+  max-width: 820px;
+}
+
+.duo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  margin: 44px 0 22px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.duo-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: -1px;
+  padding: 10px 16px 12px 0;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  font-weight: 560;
+  color: var(--ink-faint);
+  transition: color var(--duration) var(--ease);
+}
+
+.duo-tab + .duo-tab {
+  padding-left: 16px;
+}
+
+.duo-tab .mono {
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
+.duo-tab:hover,
+.duo-tab[aria-selected="true"] {
+  color: var(--ink);
+}
+
+/* The active step is woven across as it plays. */
+.duo-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--thread);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.duo-tab[aria-selected="true"] .duo-progress {
+  transform: scaleX(1);
+}
+
+.duo[data-playing] .duo-tab[aria-selected="true"] .duo-progress {
+  animation: weave-across var(--dur) linear both;
+}
+
+@keyframes weave-across {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.duo-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  align-items: stretch;
+  gap: 14px 20px;
+}
+
+.js .duo-panel:not(.is-active) {
+  display: none;
+}
+
+.duo-panel + .duo-panel {
+  margin-top: 40px;
+}
+
+.js .duo-panel + .duo-panel {
+  margin-top: 0;
+}
+
+.duo-panel:focus-visible {
+  outline-offset: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js .duo-panel.is-active .app,
+  .js .duo-panel.is-active .term {
+    animation: arrive 520ms var(--ease) both;
+  }
+  .js .duo-panel.is-active .term {
+    animation-delay: 120ms;
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Two panes, one height: the app as you'd see it, the same step in a terminal. */
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pane-label {
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.app {
+  flex: 1;
+  min-height: 400px;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 30px 60px -36px rgba(22, 22, 26, 0.35);
+}
+
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-sunken);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+/* A desktop window's title bar: it's an app, not a web page. */
+.app-lights {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.app-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--hairline-strong);
+}
+
+.app-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--ink);
+  box-shadow: inset 0 -5px 0 -3.5px var(--thread);
+}
+
+.app-crumb::before {
+  content: "/";
+  margin-right: 8px;
+  color: var(--ink-faint);
+}
+
+.app-body {
+  padding: 22px 24px 24px;
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: 630;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.app-sub,
+.app-stack {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.app-group {
+  margin: 20px 0 6px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.app-group span {
+  margin-left: 6px;
+  color: var(--ink-muted);
+}
+
+.app-row {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  gap: 2px 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.app-row.is-selected {
+  background: var(--paper-selected);
+  box-shadow:
+    inset 2px 0 0 var(--thread),
+    var(--shadow-raised);
+}
+
+.app-strand {
+  grid-row: 1 / span 3;
+  justify-self: center;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--dye-0);
+}
+
+.app-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.app-row-reason {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.app-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.app-chips::before {
+  content: "";
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--thread);
+}
+
+.app-chips code {
+  padding: 1px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  font-size: 11.5px;
+}
+
+/* A library's index, as the app draws it: one warp, skills as picks. */
+.app-index {
+  position: relative;
+  display: grid;
+  margin-top: 16px;
+}
+
+.app-index::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--dye-0);
+  opacity: 0.5;
+}
+
+.app-index li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px 7px 24px;
+  border-radius: 6px;
+}
+
+.app-index li.is-active {
+  background: var(--paper-selected);
+  box-shadow: var(--shadow-raised);
+}
+
+.app-index li.is-active::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 1px;
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--thread);
+}
+
+.app-index-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-index-marks {
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.app-files {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  font-size: 12px;
+}
+
+.app-files li {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-files b {
+  font-weight: 500;
+  color: var(--ok-ink);
+}
+
+.app-files span {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--ink-faint);
+}
+
+.app-note {
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.app-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-top: 18px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: var(--button-ink);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--button-ink-text);
+}
+
+.app-button.is-quiet {
+  border: 1px solid var(--hairline-strong);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.app-flag {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--warn-wash);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--warn-ink);
+}
+
+.app-flag.is-update {
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+.app-diff {
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.app-diff span {
+  display: block;
+  padding: 1px 10px;
+  white-space: pre-wrap;
+}
+
+.app-diff .ctx {
+  color: var(--ink-muted);
+}
+
+.app-diff .add {
+  background: var(--diff-add);
+  color: var(--diff-add-ink);
+}
+
+.app-diff .del {
+  background: var(--diff-del);
+  color: var(--diff-del-ink);
+}
+
+.app-thread {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  margin-top: 18px;
+  font-size: 12.5px;
+}
+
+.app-thread li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+}
+
+.app-thread li + li::before {
+  content: "";
+  width: 28px;
+  height: 2px;
+  margin: 0 8px 0 4px;
+  background: var(--thread);
+}
+
+.app-thread li::after {
+  order: -1;
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--thread);
+  border-radius: 50%;
+}
+
+.app-thread li + li::after {
+  order: 0;
+}
+
+.app-thread li.is-done::after {
+  background: var(--thread);
+  box-shadow: inset 0 0 0 2px var(--paper);
+}
+
+.app-thread li.is-next {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* The terminal: the same in both themes. */
+.term {
+  border: 1px solid #26262c;
+  border-radius: 14px;
+  background: #121214;
+  color: #d9d7cf;
+}
+
+.term {
+  flex: 1;
+  height: 400px;
+  min-height: 100%;
+  overflow: auto;
+  padding: 18px 20px 6px;
+}
+
+.term-cmd {
+  font-size: 12.5px;
+  color: #f6f5f1;
+  white-space: nowrap;
+}
+
+.term-cwd {
+  color: #7c7c86;
+}
+
+.term-prompt {
+  color: #f2a541;
+}
+
+/* Output keeps its shape: long lines scroll rather than wrap mid-word. */
+.term-out {
+  width: max-content;
+  min-width: 100%;
+  margin: 8px 0 18px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #b9b7af;
+  white-space: pre;
+}
+
+.duo-says {
+  grid-column: 1 / -1;
+  margin-bottom: 6px;
+  font-size: clamp(17px, 1.6vw, 19px);
+  color: var(--ink-muted);
+}
+
+.duo-says strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- Start ---------- */
+
+.start {
+  display: grid;
+  justify-items: center;
+  padding-top: 0;
+  text-align: center;
+}
+
+.finale {
+  padding-block: clamp(32px, 5vh, 64px);
+  max-width: var(--page);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.finale > .start,
+.finale > .foot {
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+
+.finale > .foot {
+  padding-bottom: 0;
+}
+
+.start-title {
+  font-size: clamp(44px, 7vw, 100px);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.start-title span,
+.start-title em {
+  display: block;
+  text-wrap: balance;
+}
+
+.start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: clamp(32px, 4vw, 48px);
+}
+
+.btn-big {
+  height: 52px;
+  padding: 0 24px;
+  font-size: 16.5px;
+}
+
+.btn.is-soon {
+  cursor: default;
+}
+
+.btn.is-soon:hover {
+  background: var(--button-ink);
+}
+
+.soon {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--thread);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #16161a;
+}
+
+.start-note {
+  margin-top: 22px;
+  font-size: 15px;
+  color: var(--ink-muted);
+}
+
+.start-note a {
+  color: var(--ink-soft);
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.start-note a:hover {
+  color: var(--thread-strong);
+}
+
+/* ---------- Foot: the name, woven ---------- */
+
+/* The close and the name are one beat. */
+.foot {
+  padding-top: clamp(32px, 5vh, 64px);
+  padding-bottom: 40px;
+}
+
+.woven-word {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 0.08em 0 0.12em;
+  font-size: clamp(96px, 17vw, 210px);
+  font-weight: 700;
+  letter-spacing: -0.075em;
+  line-height: 0.8;
+  text-align: center;
+}
+
+.woven-word-text {
+  position: relative;
+  z-index: 1;
+  padding-right: 0.06em;
+}
+
+.woven-word-warps {
+  position: absolute;
+  inset: 0;
+}
+
+.woven-word-warps i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--x);
+  width: clamp(4px, 0.9vw, 9px);
+  border-radius: 99px;
+  background: var(--dye);
+}
+
+.woven-word-warps i.is-over {
+  z-index: 2;
+  box-shadow: 0 0 0 clamp(4px, 0.9vw, 9px) var(--paper);
+}
+
+.woven-word-warps b {
+  position: absolute;
+  top: 62%;
+  left: -2%;
+  right: -2%;
+  z-index: 0;
+  height: clamp(5px, 1vw, 11px);
+  border-radius: 99px;
+  background: var(--thread);
+  box-shadow: 0 0 0 clamp(4px, 0.9vw, 9px) var(--paper);
+}
+
+/* The name, as a dictionary has it. */
+.lexeme {
+  max-width: 620px;
+  margin: clamp(28px, 4vw, 44px) auto 0;
+  text-align: center;
+}
+
+.lexeme-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  font-size: 20px;
+}
+
+.lexeme-head b {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lexeme-head span {
+  font-size: 15px;
+  color: var(--ink-faint);
+}
+
+.lexeme-head i {
+  font-family: "IBM Plex Serif", Georgia, serif;
+  color: var(--ink-muted);
+}
+
+.lexeme-body {
+  margin-top: 14px;
+  font-size: clamp(18px, 2vw, 23px);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  text-wrap: balance;
+}
+
+/* ---------- Narrower: recomposed, not shrunk ---------- */
+
+@media (max-width: 900px) {
+  .hero-foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ordeal {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 56px;
+  }
+  .answers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat,
+  .shell {
+    transform: none;
+  }
+  .shell {
+    margin-top: 0;
+  }
+  .shell-body {
+    min-height: 0;
+    font-size: 11.5px;
+  }
+  .scene-sticky,
+  .scene.is-static .scene-sticky {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  /* Top-aligned on small screens: the scene needs its own gap. */
+  .scene.is-live {
+    margin-top: clamp(24px, 6vw, 48px);
+  }
+  .scene.is-live .scene-sticky {
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
+    padding-top: 72px;
+  }
+  .scene .stage {
+    order: -1;
+    width: min(100%, calc(48svh * 640 / 520));
+  }
+  .scene.is-live .captions {
+    height: 280px;
+    margin-top: 8px;
+  }
+  .scene.is-live .caption {
+    justify-content: flex-start;
+  }
+
+  .rail {
+    display: none;
+  }
+  .caption-title {
+    font-size: clamp(28px, 7.4vw, 40px);
+  }
+  .caption-body {
+    margin-top: 12px;
+    font-size: 15px;
+  }
+  .duo-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app {
+    min-height: 0;
+  }
+  .term {
+    height: auto;
+    max-height: 340px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hide-sm {
+    display: none;
+  }
+  .thread-halo {
+    stroke-width: 7;
+  }
+  .thread {
+    stroke-width: 2.5;
+  }
+
+  .duo-tab {
+    padding-right: 10px;
+    font-size: 14.5px;
+  }
+  .duo-tab + .duo-tab {
+    padding-left: 10px;
+  }
+  .duo-tab .mono {
+    display: none;
+  }
+  .app-body {
+    padding: 18px;
+  }
+}

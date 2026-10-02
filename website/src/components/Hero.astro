@@ -1,0 +1,82 @@
+---
+/*
+ * The headline is cloth. Warp threads — one per library, each in its dye,
+ * the community one stitched — hang through the type, passing over one line
+ * and under the next, the way the weft passes through Habi's mark. Beneath
+ * the type the saffron weft is thrown across them.
+ *
+ * Two SVG layers draw the same threads: one behind the type, one in front
+ * of it clipped to where each thread passes over. Without scripts the
+ * threads hang straight behind the type; with them they can be plucked
+ * (scripts/hero.ts).
+ */
+const lines = ["What one developer", "learns, |every project|", "keeps."];
+const warps = [
+  { x: 5, dye: "var(--dye-0)" },
+  { x: 17, dye: "var(--dye-1)" },
+  { x: 31, dye: "var(--ink-soft)" },
+  { x: 46, dye: "var(--dye-4)" },
+  { x: 60, dye: "var(--dye-2)", stitched: true },
+  { x: 74, dye: "var(--dye-3)" },
+  { x: 88, dye: "var(--dye-5)" },
+];
+---
+
+<section class="hero screen" aria-labelledby="hero-title">
+  <p class="hero-kicker mono">Skills &amp; instructions for AI coding agents</p>
+  <div class="hero-cloth" data-cloth data-warps={JSON.stringify(warps.map((w) => w.x))}>
+    <svg class="cloth cloth-back" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      {
+        warps.map((w, i) => (
+          <path
+            data-thread={i}
+            class:list={["thread", { "is-stitched": w.stitched }]}
+            d={`M${w.x} 0 L${w.x} 100`}
+            stroke={w.dye}
+          />
+        ))
+      }
+      <path class="weft-halo" data-weft pathLength="1" d="M0 0"></path>
+      <path class="weft" data-weft pathLength="1" d="M0 0"></path>
+    </svg>
+
+    <h1 id="hero-title" class="hero-title">
+      {
+        lines.map((line) => (
+          <span class="hero-line">{line.split("|").map((part, k) => (k % 2 ? <em>{part}</em> : part))}</span>
+        ))
+      }
+    </h1>
+
+    <div class="hero-weft-space" data-weft-y></div>
+
+    <svg class="cloth cloth-front" aria-hidden="true">
+      <defs data-clips></defs>
+      {
+        warps.map((w, i) => (
+          <g data-front={i} class:list={{ "is-stitched": w.stitched }}>
+            <path class="thread-halo" d="M0 0" />
+            <path class="thread" d="M0 0" stroke={w.dye} />
+          </g>
+        ))
+      }
+    </svg>
+
+    <p class="pluck-hint mono" data-pluck-hint aria-hidden="true">go on — pluck a thread</p>
+  </div>
+
+  <div class="hero-foot">
+    <div class="hero-say">
+      <p class="hero-lead">
+        Every team is writing AI agent skills — in its own repo, on its own laptops. Habi is a desktop app that brings
+        them together: it shows which ones fit the repository you're in, and sends what you improve back to the team
+        that owns it.
+      </p>
+      <p class="hero-meta mono">For macOS and Windows · works with Claude Code, Cursor and Codex</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#start">Download</a>
+      <a class="btn btn-quiet" href="#problem">Why Habi exists <span aria-hidden="true">↓</span></a>
+    </div>
+  </div>
+</section>

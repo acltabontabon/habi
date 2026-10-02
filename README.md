@@ -156,6 +156,7 @@ and the [example library](fixtures/libraries/example-team-library).
 | [Release](docs/release.md) | Builds, signing, versioning, blockers |
 | [Reuse assessment](docs/reuse-assessment.md) | Dependencies and why custom logic exists |
 | [Test data](docs/test-data.md) | Fixtures, the sample workspace and the seed script |
+| [Website](website/) | The site at acltabontabon.github.io/habi: `pnpm dev` in `website/`; data from `pnpm snapshot` and `scripts/journey.sh` |
 
 ## Contributing
 

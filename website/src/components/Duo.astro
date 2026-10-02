@@ -1,0 +1,207 @@
+---
+import data from "../data/recommendations.json";
+import { journey } from "../data/journey";
+import Icon from "./Icon.astro";
+
+/*
+ * Receipts for the three promises — explore, check, pay it forward — as one
+ * skill's trip: from another team's library, into a repository, improved,
+ * and back to everyone. The terminal shows real output
+ * (src/data/journey.ts); the app views are drawn with the app's own styles,
+ * words and the snapshot's data. Plays through once while on screen; any
+ * interaction hands over control.
+ */
+const billing = data.repos.find((r) => r.name === "billing-service");
+const fits = (billing?.items ?? []).filter((i) => i.group === "relevant");
+
+// The example team library's index, as the app lists it.
+const library = [
+  { title: "API contract review", marks: ["workflow", "rules"] },
+  { title: "GitHub PR summary", marks: ["rules"] },
+  { title: "Incident notes", marks: [] },
+  { title: "Java service conventions", marks: ["instructions", "required"] },
+  { title: "JPA entity review", marks: ["rules"] },
+  { title: "Liquibase migration review", marks: ["workflow", "rules"], active: true },
+  { title: "Service observability", marks: ["required", "rules"] },
+];
+---
+
+<section class="duo screen" id="receipts" aria-labelledby="duo-title" data-reveal data-duo>
+  <div class="duo-head">
+    <p class="kicker">One skill's trip</p>
+    <h2 id="duo-title" class="section-title">Receipts, <em>not promises.</em></h2>
+    <p class="section-lead">
+      From another team's library, into your repository, improved — and back to everyone, all in the Habi app. The
+      same steps run from the command line too; every line shown there is real output from Habi 0.1.
+    </p>
+  </div>
+
+  <div class="duo-tabs" role="tablist" aria-label="One skill's trip">
+    {
+      journey.map((s, i) => (
+        <button
+          type="button"
+          role="tab"
+          id={`duo-tab-${s.id}`}
+          aria-controls={`duo-${s.id}`}
+          aria-selected={i === 0 ? "true" : "false"}
+          tabindex={i === 0 ? 0 : -1}
+          class="duo-tab"
+        >
+          <span class="mono">{String(i + 1).padStart(2, "0")}</span>
+          {s.verb}
+          <i class="duo-progress" aria-hidden="true" />
+        </button>
+      ))
+    }
+  </div>
+
+  {
+    journey.map((s, i) => (
+      <div
+        class:list={["duo-panel", { "is-active": i === 0 }]}
+        id={`duo-${s.id}`}
+        role="tabpanel"
+        aria-labelledby={`duo-tab-${s.id}`}
+        tabindex="0"
+      >
+        <p class="duo-says">
+          <strong>{s.title}.</strong> {s.says}
+        </p>
+
+        <div class="pane">
+          <p class="pane-label mono">In the Habi app</p>
+          <div class="app" role="img" aria-label={`In the app: ${s.title}`}>
+            <p class="app-bar mono">
+              <span class="app-lights" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span class="app-dot" />
+              Habi
+              <span class="app-crumb">{s.id === "explore" ? "Libraries / Platform team" : s.cwd}</span>
+            </p>
+
+            {s.id === "explore" ? (
+              <div class="app-body">
+                <p class="app-title">Platform team</p>
+                <p class="app-stack mono">platform/agent-skills · team · 10 skills</p>
+                <ol class="app-index">
+                  {library.map((l) => (
+                    <li class:list={{ "is-active": l.active }}>
+                      <span class="app-index-title">{l.title}</span>
+                      <span class="app-index-marks mono">{l.marks.join(" · ")}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+
+            {s.id === "check" ? (
+              <div class="app-body">
+                <p class="app-title">billing-service</p>
+                <p class="app-stack mono">{billing?.stack.join(" · ")}</p>
+                <p class="app-group mono">
+                  Fits this project <span>{fits.length}</span>
+                </p>
+                {fits.map((f, n) => (
+                  <div class:list={["app-row", { "is-selected": n === 0 }]}>
+                    <span class="app-strand" />
+                    <p class="app-row-title">{f.title}</p>
+                    <p class="app-row-reason">{f.reason}</p>
+                    {n === 0 ? (
+                      <p class="app-chips">
+                        {f.evidence.map((e) => (
+                          <code>{e}</code>
+                        ))}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {s.id === "use" ? (
+              <div class="app-body">
+                <p class="app-title">Review and install</p>
+                <p class="app-sub">Liquibase migration review · Platform team</p>
+                <ul class="app-files mono">
+                  <li>
+                    <b>+</b>.claude/skills/liquibase-migration-review/SKILL.md <span>+26</span>
+                  </li>
+                  <li>
+                    <b>+</b>…/references/checklist.md <span>+9</span>
+                  </li>
+                  <li>
+                    <b>+</b>…/habi.yaml <span>+53</span>
+                  </li>
+                  <li>
+                    <b>+</b>.habi/lock.json <span>+50</span>
+                  </li>
+                </ul>
+                <p class="app-note">Every replaced or deleted file is kept, and can be restored.</p>
+                <span class="app-button">
+                  <Icon name="download" size={13} /> Install for Claude Code and Cursor
+                </span>
+              </div>
+            ) : null}
+
+            {s.id === "pay" ? (
+              <div class="app-body">
+                <p class="app-sub">To Platform team · skills/liquibase-migration-review</p>
+                <p class="app-title">Check table size before ALTER TABLE on MySQL</p>
+                <ol class="app-thread">
+                  <li class="is-done">Review</li>
+                  <li class="is-done">Branch prepared</li>
+                  <li class="is-next">Send for review</li>
+                </ol>
+                <div class="app-diff mono">
+                  <span class="add">+6. On MySQL, check the table's size first: an</span>
+                  <span class="add">+   `ALTER TABLE` that copies the table blocks writes.</span>
+                </div>
+                <p class="app-note">Package, metadata, references and secrets checked — nothing to fix.</p>
+                <span class="app-button">
+                  <Icon name="share" size={13} /> Create pull request
+                </span>
+              </div>
+            ) : null}
+
+            {s.id === "everyone" ? (
+              <div class="app-body">
+                <p class="app-title">platform-monorepo</p>
+                <p class="app-group mono">Installed &amp; history</p>
+                <div class="app-row is-selected">
+                  <span class="app-strand" />
+                  <p class="app-row-title">
+                    Liquibase migration review <span class="app-flag is-update">update available</span>
+                  </p>
+                  <p class="app-row-reason mono">74898d6 → 697a40f · reviewed and merged by Platform team</p>
+                </div>
+                <div class="app-diff mono">
+                  <span class="add">+6. On MySQL, check the table's size first …</span>
+                </div>
+                <span class="app-button">Adopt the reviewed update</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div class="pane">
+          <p class="pane-label mono">Or from the CLI, if you live in a terminal</p>
+          <div class="term">
+            {s.terminal.map((t) => (
+              <div class="term-block">
+                <p class="term-cmd mono">
+                  <span class="term-cwd">~/work{s.cwd ? `/${s.cwd}` : ""}</span>{" "}
+                  <span class="term-prompt">$</span> {t.cmd}
+                </p>
+                <pre class="term-out mono">{t.out}</pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    ))
+  }
+</section>

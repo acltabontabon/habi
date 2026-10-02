@@ -1,0 +1,28 @@
+---
+import Bridge from "../components/Bridge.astro";
+import Duo from "../components/Duo.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import Problem from "../components/Problem.astro";
+import Start from "../components/Start.astro";
+import Weave from "../components/Weave.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Habi — what one developer learns, every project keeps"
+  description="Every team is writing AI agent skills for Claude Code, Cursor and Codex — in its own repo, on its own laptops. Habi is a desktop app that shows which ones fit the repository you are in, and sends what you improve back to the team that owns it. Open source."
+>
+  <Header />
+  <main id="main">
+    <Hero />
+    <Problem />
+    <Bridge />
+    <Weave />
+    <Duo />
+    <Start />
+  </main>
+  <script>
+    import "../scripts/site";
+  </script>
+</Base>

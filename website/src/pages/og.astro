@@ -1,0 +1,67 @@
+---
+/*
+ * The share image's source (1200 × 630). Rendered to public/og.png with
+ * `pnpm og` while `pnpm dev` runs. Not linked from the site.
+ */
+import "@fontsource-variable/ibm-plex-sans/wght.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-serif/500-italic.css";
+import Mark from "../components/Mark.astro";
+import "../styles/tokens.css";
+
+const warps = [
+  { x: 7, dye: "var(--dye-0)" },
+  { x: 21, dye: "var(--dye-1)" },
+  { x: 36, dye: "var(--ink-soft)" },
+  { x: 52, dye: "var(--dye-4)" },
+  { x: 67, dye: "var(--dye-2)", stitched: true },
+  { x: 81, dye: "var(--dye-3)" },
+  { x: 93, dye: "var(--dye-5)" },
+];
+const lines = ["What one developer", "learns, |every project|", "keeps."];
+---
+
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Habi — share image</title>
+    <style>
+      body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: var(--paper); color: var(--ink);
+        font-family: "IBM Plex Sans Variable", sans-serif; }
+      .og { position: relative; height: 100%; padding: 64px 72px; box-sizing: border-box; }
+      .brand { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 650; letter-spacing: -0.03em; }
+      .cloth { position: relative; margin-top: 54px; }
+      .w { position: absolute; top: -40px; bottom: -36px; left: var(--x); width: 5px; border-radius: 3px; background: var(--dye); }
+      .w.s { background: repeating-linear-gradient(to bottom, var(--dye) 0 10px, transparent 10px 18px); }
+      h1 { position: relative; z-index: 1; margin: 0; font-size: 96px; font-weight: 650; letter-spacing: -0.055em; line-height: 0.98; }
+      h1 span { position: relative; display: block; }
+      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.035em; color: var(--thread-strong); }
+      .o { position: absolute; top: 6%; bottom: 4%; left: var(--x); width: 5px; border-radius: 3px; background: var(--dye); box-shadow: 0 0 0 7px var(--paper); z-index: 2; }
+      .weft { position: absolute; left: -72px; right: -72px; bottom: -22px; height: 7px; border-radius: 4px; background: var(--thread); box-shadow: 0 0 0 7px var(--paper); z-index: 1; }
+      .meta { position: absolute; left: 72px; bottom: 54px; font-family: "IBM Plex Mono", monospace; font-size: 20px; color: var(--ink-muted); }
+    </style>
+  </head>
+  <body>
+    <div class="og">
+      <div class="brand"><Mark size={44} /> Habi</div>
+      <div class="cloth">
+        {warps.map((w) => <i class:list={["w", { s: w.stitched }]} style={`--x:${w.x}%;--dye:${w.dye}`} />)}
+        <h1>
+          {
+            lines.map((line, l) => (
+              <span>
+                {line.split("|").map((part, k) => (k % 2 ? <em>{part}</em> : part))}
+                {warps.map((w, i) =>
+                  (i + l) % 2 === 0 ? <i class="o" style={`--x:${w.x}%;--dye:${w.dye}`} /> : null,
+                )}
+              </span>
+            ))
+          }
+        </h1>
+        <i class="weft"></i>
+      </div>
+      <p class="meta">Skills &amp; instructions for AI coding agents</p>
+    </div>
+  </body>
+</html>

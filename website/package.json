@@ -1,0 +1,30 @@
+{
+  "name": "habi-website",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/acltabontabon/habi.git",
+    "directory": "website"
+  },
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "astro dev --port 4321",
+    "build": "astro build",
+    "preview": "astro preview --port 4321",
+    "snapshot": "node scripts/snapshot.mjs",
+    "capture": "node scripts/capture.mjs",
+    "og": "\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630 --virtual-time-budget=4000 --screenshot=public/og.png http://localhost:4321/habi/og/"
+  },
+  "dependencies": {
+    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-serif": "5.3.0",
+    "astro": "7.3.5"
+  }
+}

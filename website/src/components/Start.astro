@@ -1,0 +1,45 @@
+---
+import Icon from "./Icon.astro";
+
+const repo = "https://github.com/acltabontabon/habi";
+---
+
+<div class="screen finale">
+<section class="start" id="start" aria-labelledby="start-title" data-reveal>
+  <h2 id="start-title" class="start-title">
+    <span>Mute #engineering.</span>
+    <em>Start weaving.</em>
+  </h2>
+  <div class="start-actions">
+    <span class="btn btn-primary btn-big is-soon">
+      <Icon name="download" size={16} />
+      Download the app
+      <span class="soon mono">coming soon</span>
+    </span>
+    <a class="btn btn-quiet btn-big" href={repo}>View on GitHub <Icon name="external" size={13} /></a>
+  </div>
+  <p class="start-note">
+    For macOS and Windows. Pre-release — can't wait? <a href={`${repo}#try-it`}>Build it from source</a> in a few minutes.
+  </p>
+</section>
+
+<footer class="foot">
+  <p class="woven-word" aria-label="habi">
+    <span class="woven-word-text" aria-hidden="true">habi</span>
+    <span class="woven-word-warps" aria-hidden="true">
+      {
+        [12, 30, 50, 70, 88].map((x, i) => (
+          <i class:list={{ "is-over": i % 2 === 0 }} style={`--x:${x}%;--dye:var(--dye-${[0, 1, 4, 2, 3][i]})`} />
+        ))
+      }
+      <b></b>
+    </span>
+  </p>
+  <div class="lexeme">
+    <p class="lexeme-head"><b>ha·bi</b> <span class="mono">/ˈha.bi/</span> <i>Filipino</i></p>
+    <p class="lexeme-body">
+      To weave: to pass one thread over and under the others until, together, they <em>hold</em>.
+    </p>
+  </div>
+</footer>
+</div>
