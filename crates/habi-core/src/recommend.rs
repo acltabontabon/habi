@@ -13,7 +13,7 @@ use crate::install::plan::read_project_file;
 use crate::install::status::{InstallState, Installation};
 use crate::library::model::{DeclaredEvidence, ItemKind, LibraryItem, MetadataStatus, Requirement};
 use crate::matching::eval::Declaration;
-use crate::matching::{Applicability, ApplicabilityResult, assess};
+use crate::matching::{Applicability, ApplicabilityResult, Views, assess_in};
 use crate::paths::display_path;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -360,16 +360,16 @@ pub fn recommend(
     installations: &[Installation],
     candidates: &[Candidate],
 ) -> Vec<Recommendation> {
+    let views = Views::new(inspection, declarations);
     let mut out: Vec<Recommendation> = candidates
         .iter()
         .map(|c| {
             let item = c.item;
-            let applicability = assess(
+            let applicability = assess_in(
                 item.applies_when.as_ref(),
                 item.excludes.as_ref(),
                 item.scope,
-                inspection,
-                declarations,
+                &views,
             );
             let modules: Vec<String> = applicability
                 .modules

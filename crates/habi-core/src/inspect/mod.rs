@@ -18,7 +18,7 @@ use crate::cancel::CancelToken;
 use crate::error::Result;
 use crate::fsutil::{Bounded, read_bounded, sha256, tree_digest};
 use model::*;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 
 pub use walk::WalkOptions;
@@ -253,12 +253,17 @@ pub fn inspect(
     let mut out = Collector::default();
     let mut fingerprint_parts: Vec<(String, String)> = Vec::new();
 
+    // Paths by file name, built once: looked up for every manifest kind.
+    let mut by_name: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (p, _) in &files {
+        let name = p.rsplit('/').next().unwrap_or(p);
+        by_name.entry(name).or_default().push(p);
+    }
     let names = |name: &str| -> Vec<String> {
-        files
-            .iter()
-            .filter(|(p, _)| p == name || p.ends_with(&format!("/{name}")))
-            .map(|(p, _)| p.clone())
-            .collect()
+        by_name
+            .get(name)
+            .map(|paths| paths.iter().map(|p| p.to_string()).collect())
+            .unwrap_or_default()
     };
     let poms = names("pom.xml");
     let gradle_builds: Vec<String> = names("build.gradle")
