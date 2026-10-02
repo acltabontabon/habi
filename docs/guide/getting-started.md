@@ -12,6 +12,11 @@ There are no prebuilt downloads yet. Build Habi from source as described in the
 On the start screen, choose **Try the sample workspace**. Habi creates two example libraries and
 seven example projects in its own data folder, all labeled as samples, so you can see
 recommendations, installs and updates without touching your own repositories.
+Sample libraries are matched only with sample projects, never with yours.
+
+When you are done, choose **Remove sample workspace** on the banner in any sample project or
+library (also in Settings and the command palette). It removes only the examples. You can try
+the sample again at any time from the command palette.
 
 ## Your first project
 

@@ -17,6 +17,7 @@ import { tagLabel } from "../../lib/tags";
 export { tagLabel };
 
 import { useOverview } from "../../lib/queries";
+import { SampleBanner } from "../SampleWorkspace";
 import { EvidenceView } from "./EvidenceView";
 import { FoundView } from "./FoundView";
 import { InstalledView } from "./InstalledView";
@@ -200,6 +201,8 @@ export function ProjectView({
           </Button>
         </div>
       </header>
+
+      {project.sample ? <SampleBanner /> : null}
 
       {weave.length > 0 ? (
         <section className="composition" aria-label="What fits, by library">

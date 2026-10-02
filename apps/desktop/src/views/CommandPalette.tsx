@@ -2,6 +2,7 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
+import { useState } from "react";
 import type { LibraryIndex } from "../bindings/LibraryIndex";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
 import { Icon } from "../components/Icon";
@@ -14,6 +15,7 @@ import { useNav } from "../lib/nav";
 import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { summarize } from "../lib/skillFacts";
 import { useTheme } from "../lib/theme";
+import { RemoveSampleDialog, useCreateSample, useHasSample } from "./SampleWorkspace";
 
 export function CommandPalette({
   open,
@@ -30,6 +32,9 @@ export function CommandPalette({
   const client = useQueryClient();
   const toast = useToast();
   const [theme, setTheme] = useTheme();
+  const sample = useCreateSample();
+  const hasSample = useHasSample();
+  const [removingSample, setRemovingSample] = useState(false);
   const projectId = route.name === "project" ? route.projectId : undefined;
   const overview = projectId ? client.getQueryData<ProjectOverview>(keys.overview(projectId)) : undefined;
   // In a library, its skills come first: the palette follows what you are looking at.
@@ -67,202 +72,221 @@ export function CommandPalette({
   };
 
   return (
-    <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-      <RadixDialog.Portal>
-        <RadixDialog.Overlay className="dialog-scrim" />
-        <RadixDialog.Content className="palette" aria-describedby={undefined}>
-          <RadixDialog.Title className="visually-hidden">Search and commands</RadixDialog.Title>
-          <Command label="Search and commands" loop>
-            <div className="palette-input">
-              <Icon name="search" />
-              <Command.Input placeholder="Search projects, skills, libraries, actions…" autoFocus />
-            </div>
-            <Command.List className="palette-list">
-              <Command.Empty className="palette-empty">No matches.</Command.Empty>
-              {librarySourceId && library ? (
-                <Command.Group heading={`In ${library.name ?? libraryName ?? "this library"}`}>
-                  {library.items.map((i) => (
+    <>
+      <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
+        <RadixDialog.Portal>
+          <RadixDialog.Overlay className="dialog-scrim" />
+          <RadixDialog.Content className="palette" aria-describedby={undefined}>
+            <RadixDialog.Title className="visually-hidden">Search and commands</RadixDialog.Title>
+            <Command label="Search and commands" loop>
+              <div className="palette-input">
+                <Icon name="search" />
+                <Command.Input placeholder="Search projects, skills, libraries, actions…" autoFocus />
+              </div>
+              <Command.List className="palette-list">
+                <Command.Empty className="palette-empty">No matches.</Command.Empty>
+                {librarySourceId && library ? (
+                  <Command.Group heading={`In ${library.name ?? libraryName ?? "this library"}`}>
+                    {library.items.map((i) => (
+                      <Command.Item
+                        key={i.key}
+                        value={`${i.title} ${i.id}`}
+                        onSelect={() =>
+                          run(() => navigate({ name: "sources", sourceId: librarySourceId, itemId: i.id }))
+                        }
+                      >
+                        <Icon name="thread" />
+                        <span>{i.title}</span>
+                        <span className="palette-meta">{summarize(i.description).text}</span>
+                      </Command.Item>
+                    ))}
+                    {route.name === "sources" && route.itemId ? (
+                      <Command.Item
+                        value="package contents files inspector"
+                        onSelect={() => run(() => setInspectorOpen(true))}
+                      >
+                        <Icon name="layers" />
+                        <span>Show the package contents</span>
+                        <span className="palette-meta mono">⌘I</span>
+                      </Command.Item>
+                    ) : null}
+                  </Command.Group>
+                ) : null}
+                {overview ? (
+                  <Command.Group heading={`In ${overview.project.name}`}>
+                    {overview.recommendations.map((r) => (
+                      <Command.Item
+                        key={r.item.key}
+                        value={`${r.item.title} ${r.item.id}`}
+                        onSelect={() =>
+                          run(() =>
+                            navigate({
+                              name: "project",
+                              projectId: overview.project.id,
+                              tab: "recommendations",
+                              itemKey: r.item.key,
+                            }),
+                          )
+                        }
+                      >
+                        <Icon name="thread" />
+                        <span>Why {r.item.title}?</span>
+                        <span className="palette-meta">
+                          {r.applicability.applicability === "applies"
+                            ? "fits"
+                            : applicabilityLabel[r.applicability.applicability].toLowerCase()}
+                        </span>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ) : null}
+                <Command.Group heading="Projects">
+                  {(projects.data ?? []).map((p) => (
                     <Command.Item
-                      key={i.key}
-                      value={`${i.title} ${i.id}`}
+                      key={p.id}
+                      value={`project ${p.name} ${p.path}`}
+                      disabled={!p.exists}
                       onSelect={() =>
-                        run(() => navigate({ name: "sources", sourceId: librarySourceId, itemId: i.id }))
+                        run(() => navigate({ name: "project", projectId: p.id, tab: "recommendations" }))
                       }
                     >
-                      <Icon name="thread" />
-                      <span>{i.title}</span>
-                      <span className="palette-meta">{summarize(i.description).text}</span>
+                      <Icon name="folder" />
+                      <span>{p.name}</span>
+                      <span className="palette-meta mono">{p.path}</span>
                     </Command.Item>
                   ))}
-                  {route.name === "sources" && route.itemId ? (
+                </Command.Group>
+                <Command.Group heading="My skills">
+                  {(skills.data ?? [])
+                    .filter((sk) => sk.deletedAt === null)
+                    .map((sk) => (
+                      <Command.Item
+                        key={sk.id}
+                        value={`skill ${sk.title} ${sk.name}`}
+                        onSelect={() => run(() => navigate({ name: "skills", skillId: sk.id }))}
+                      >
+                        <Icon name="pencil" />
+                        <span>{sk.title || "Untitled skill"}</span>
+                        <span className="palette-meta mono">{sk.name}</span>
+                      </Command.Item>
+                    ))}
+                </Command.Group>
+                <Command.Group heading="Libraries">
+                  {(sources.data ?? []).map((s) => (
                     <Command.Item
-                      value="package contents files inspector"
-                      onSelect={() => run(() => setInspectorOpen(true))}
+                      key={s.id}
+                      value={`library ${s.name}`}
+                      onSelect={() => run(() => navigate({ name: "sources", sourceId: s.id }))}
                     >
-                      <Icon name="layers" />
-                      <span>Show the package contents</span>
-                      <span className="palette-meta mono">⌘I</span>
+                      <Icon name="library" />
+                      <span>{s.name}</span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+                <Command.Group heading="Actions">
+                  <Command.Item value="open project folder" onSelect={() => run(() => void openProject())}>
+                    <Icon name="folder" /> <span>Open a project…</span>{" "}
+                    <span className="palette-meta">⌘O</span>
+                  </Command.Item>
+                  <Command.Item value="create new skill draft write" onSelect={() => run(() => newSkill())}>
+                    <Icon name="pencil" /> <span>Create a skill</span>{" "}
+                    <span className="palette-meta">⌘N</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="add import existing skills folder"
+                    onSelect={() => run(() => addSkills())}
+                  >
+                    <Icon name="plus" /> <span>Add existing skills…</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="my skills drafts"
+                    onSelect={() => run(() => navigate({ name: "skills" }))}
+                  >
+                    <Icon name="pencil" /> <span>My skills</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="libraries browse connect discover community"
+                    onSelect={() => run(() => navigate({ name: "sources" }))}
+                  >
+                    <Icon name="library" /> <span>Browse & connect libraries…</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="connect git repository library team url"
+                    onSelect={() => run(() => navigate({ name: "sources", sourceId: "git" }))}
+                  >
+                    <Icon name="branch" /> <span>Connect a Git repository…</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="use folder local library directory"
+                    onSelect={() => run(() => navigate({ name: "sources", sourceId: "folder" }))}
+                  >
+                    <Icon name="folder" /> <span>Use a folder as a library…</span>
+                  </Command.Item>
+                  <Command.Item value="refresh all libraries" onSelect={() => run(() => void refreshAll())}>
+                    <Icon name="refresh" /> <span>Refresh all libraries</span>
+                  </Command.Item>
+                  {projectId ? (
+                    <Command.Item
+                      value="project facts evidence declarations"
+                      onSelect={() => run(() => navigate({ name: "project", projectId, tab: "evidence" }))}
+                    >
+                      <Icon name="file" /> <span>Show project facts</span>
+                    </Command.Item>
+                  ) : null}
+                  {projectId ? (
+                    <Command.Item
+                      value="history installed restore"
+                      onSelect={() => run(() => navigate({ name: "project", projectId, tab: "installed" }))}
+                    >
+                      <Icon name="history" /> <span>Installed items and history</span>
+                    </Command.Item>
+                  ) : null}
+                  <Command.Item
+                    value="share contribute"
+                    onSelect={() => run(() => navigate({ name: "contributions" }))}
+                  >
+                    <Icon name="share" /> <span>Contributions</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="theme dark light"
+                    onSelect={() => run(() => setTheme(theme === "dark" ? "light" : "dark"))}
+                  >
+                    <Icon name={theme === "dark" ? "sun" : "moon"} />{" "}
+                    <span>Switch to {theme === "dark" ? "light" : "dark"} theme</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="settings preferences diagnostics"
+                    onSelect={() => run(() => navigate({ name: "settings" }))}
+                  >
+                    <Icon name="settings" /> <span>Settings</span> <span className="palette-meta">⌘,</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="home welcome start"
+                    onSelect={() => run(() => navigate({ name: "welcome" }))}
+                  >
+                    <Icon name="arrowLeft" /> <span>Start screen</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="try sample workspace example demo"
+                    onSelect={() => run(() => void sample.create())}
+                  >
+                    <Icon name="layers" /> <span>Try the sample workspace</span>
+                  </Command.Item>
+                  {hasSample ? (
+                    <Command.Item
+                      value="remove sample workspace example demo delete"
+                      onSelect={() => run(() => setRemovingSample(true))}
+                    >
+                      <Icon name="trash" /> <span>Remove sample workspace…</span>
                     </Command.Item>
                   ) : null}
                 </Command.Group>
-              ) : null}
-              {overview ? (
-                <Command.Group heading={`In ${overview.project.name}`}>
-                  {overview.recommendations.map((r) => (
-                    <Command.Item
-                      key={r.item.key}
-                      value={`${r.item.title} ${r.item.id}`}
-                      onSelect={() =>
-                        run(() =>
-                          navigate({
-                            name: "project",
-                            projectId: overview.project.id,
-                            tab: "recommendations",
-                            itemKey: r.item.key,
-                          }),
-                        )
-                      }
-                    >
-                      <Icon name="thread" />
-                      <span>Why {r.item.title}?</span>
-                      <span className="palette-meta">
-                        {r.applicability.applicability === "applies"
-                          ? "fits"
-                          : applicabilityLabel[r.applicability.applicability].toLowerCase()}
-                      </span>
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              ) : null}
-              <Command.Group heading="Projects">
-                {(projects.data ?? []).map((p) => (
-                  <Command.Item
-                    key={p.id}
-                    value={`project ${p.name} ${p.path}`}
-                    disabled={!p.exists}
-                    onSelect={() =>
-                      run(() => navigate({ name: "project", projectId: p.id, tab: "recommendations" }))
-                    }
-                  >
-                    <Icon name="folder" />
-                    <span>{p.name}</span>
-                    <span className="palette-meta mono">{p.path}</span>
-                  </Command.Item>
-                ))}
-              </Command.Group>
-              <Command.Group heading="My skills">
-                {(skills.data ?? [])
-                  .filter((sk) => sk.deletedAt === null)
-                  .map((sk) => (
-                    <Command.Item
-                      key={sk.id}
-                      value={`skill ${sk.title} ${sk.name}`}
-                      onSelect={() => run(() => navigate({ name: "skills", skillId: sk.id }))}
-                    >
-                      <Icon name="pencil" />
-                      <span>{sk.title || "Untitled skill"}</span>
-                      <span className="palette-meta mono">{sk.name}</span>
-                    </Command.Item>
-                  ))}
-              </Command.Group>
-              <Command.Group heading="Libraries">
-                {(sources.data ?? []).map((s) => (
-                  <Command.Item
-                    key={s.id}
-                    value={`library ${s.name}`}
-                    onSelect={() => run(() => navigate({ name: "sources", sourceId: s.id }))}
-                  >
-                    <Icon name="library" />
-                    <span>{s.name}</span>
-                  </Command.Item>
-                ))}
-              </Command.Group>
-              <Command.Group heading="Actions">
-                <Command.Item value="open project folder" onSelect={() => run(() => void openProject())}>
-                  <Icon name="folder" /> <span>Open a project…</span> <span className="palette-meta">⌘O</span>
-                </Command.Item>
-                <Command.Item value="create new skill draft write" onSelect={() => run(() => newSkill())}>
-                  <Icon name="pencil" /> <span>Create a skill</span> <span className="palette-meta">⌘N</span>
-                </Command.Item>
-                <Command.Item
-                  value="add import existing skills folder"
-                  onSelect={() => run(() => addSkills())}
-                >
-                  <Icon name="plus" /> <span>Add existing skills…</span>
-                </Command.Item>
-                <Command.Item
-                  value="my skills drafts"
-                  onSelect={() => run(() => navigate({ name: "skills" }))}
-                >
-                  <Icon name="pencil" /> <span>My skills</span>
-                </Command.Item>
-                <Command.Item
-                  value="libraries browse connect discover community"
-                  onSelect={() => run(() => navigate({ name: "sources" }))}
-                >
-                  <Icon name="library" /> <span>Browse & connect libraries…</span>
-                </Command.Item>
-                <Command.Item
-                  value="connect git repository library team url"
-                  onSelect={() => run(() => navigate({ name: "sources", sourceId: "git" }))}
-                >
-                  <Icon name="branch" /> <span>Connect a Git repository…</span>
-                </Command.Item>
-                <Command.Item
-                  value="use folder local library directory"
-                  onSelect={() => run(() => navigate({ name: "sources", sourceId: "folder" }))}
-                >
-                  <Icon name="folder" /> <span>Use a folder as a library…</span>
-                </Command.Item>
-                <Command.Item value="refresh all libraries" onSelect={() => run(() => void refreshAll())}>
-                  <Icon name="refresh" /> <span>Refresh all libraries</span>
-                </Command.Item>
-                {projectId ? (
-                  <Command.Item
-                    value="project facts evidence declarations"
-                    onSelect={() => run(() => navigate({ name: "project", projectId, tab: "evidence" }))}
-                  >
-                    <Icon name="file" /> <span>Show project facts</span>
-                  </Command.Item>
-                ) : null}
-                {projectId ? (
-                  <Command.Item
-                    value="history installed restore"
-                    onSelect={() => run(() => navigate({ name: "project", projectId, tab: "installed" }))}
-                  >
-                    <Icon name="history" /> <span>Installed items and history</span>
-                  </Command.Item>
-                ) : null}
-                <Command.Item
-                  value="share contribute"
-                  onSelect={() => run(() => navigate({ name: "contributions" }))}
-                >
-                  <Icon name="share" /> <span>Contributions</span>
-                </Command.Item>
-                <Command.Item
-                  value="theme dark light"
-                  onSelect={() => run(() => setTheme(theme === "dark" ? "light" : "dark"))}
-                >
-                  <Icon name={theme === "dark" ? "sun" : "moon"} />{" "}
-                  <span>Switch to {theme === "dark" ? "light" : "dark"} theme</span>
-                </Command.Item>
-                <Command.Item
-                  value="settings preferences diagnostics"
-                  onSelect={() => run(() => navigate({ name: "settings" }))}
-                >
-                  <Icon name="settings" /> <span>Settings</span> <span className="palette-meta">⌘,</span>
-                </Command.Item>
-                <Command.Item
-                  value="home welcome start"
-                  onSelect={() => run(() => navigate({ name: "welcome" }))}
-                >
-                  <Icon name="arrowLeft" /> <span>Start screen</span>
-                </Command.Item>
-              </Command.Group>
-            </Command.List>
-          </Command>
-        </RadixDialog.Content>
-      </RadixDialog.Portal>
-    </RadixDialog.Root>
+              </Command.List>
+            </Command>
+          </RadixDialog.Content>
+        </RadixDialog.Portal>
+      </RadixDialog.Root>
+      <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
+    </>
   );
 }

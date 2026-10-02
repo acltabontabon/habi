@@ -6,24 +6,15 @@
  * skill are quiet links; everything else lives in the sidebar, the palette
  * and the project views.
  */
-import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { useToast } from "../components/Toasts";
+import { useMemo } from "react";
 import { Button, ErrorNotice, Kbd, Working } from "../components/ui";
 import { useActions } from "../lib/actions";
-import { api } from "../lib/api";
 import { useDyes } from "../lib/dye";
 import { plural, relativeTime } from "../lib/format";
 import { useNav } from "../lib/nav";
-import {
-  invalidateProjectData,
-  keys,
-  useContributions,
-  useRecentProjects,
-  useSkills,
-  useSources,
-} from "../lib/queries";
+import { useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { Loom, type LoomProject, type LoomSource } from "./Loom";
+import { useCreateSample } from "./SampleWorkspace";
 
 const LOCAL = "local";
 const SHOWN = 7;
@@ -36,27 +27,7 @@ export function Welcome() {
   const sources = useSources();
   const contributions = useContributions();
   const dyes = useDyes();
-  const client = useQueryClient();
-  const toast = useToast();
-  const [sampleBusy, setSampleBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  const createSample = async () => {
-    setError(null);
-    setSampleBusy(true);
-    try {
-      const sample = await api.createSampleWorkspace();
-      invalidateProjectData(client);
-      void client.invalidateQueries({ queryKey: keys.recent });
-      toast.show("Sample workspace ready. Everything in it is example data.");
-      const first = sample.projects[0];
-      if (first) navigate({ name: "project", projectId: first.id, tab: "recommendations" });
-    } catch (e) {
-      setError(e);
-    } finally {
-      setSampleBusy(false);
-    }
-  };
+  const sample = useCreateSample();
 
   const projects = (recent.data ?? []).filter((p) => p.exists);
   const drafts = (skills.data ?? []).filter((s) => s.deletedAt === null);
@@ -148,8 +119,6 @@ export function Welcome() {
         </p>
       </header>
 
-      {error ? <ErrorNotice error={error} /> : null}
-
       <Loom
         sources={loomSources}
         projects={loomProjects}
@@ -180,7 +149,7 @@ export function Welcome() {
             Nothing changes until you review a plan.
           </p>
           <p className="home-sample">
-            <Button busy={sampleBusy} onClick={() => void createSample()}>
+            <Button busy={sample.busy} onClick={() => void sample.create()}>
               Try the sample workspace
             </Button>
             <span>Example libraries and projects, all labeled. Everything stays on this machine.</span>

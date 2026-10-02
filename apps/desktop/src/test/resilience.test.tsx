@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,10 +16,13 @@ import { guardWindowClose } from "../lib/closing";
 import { NavProvider, type Route, useNav } from "../lib/nav";
 import { initTheme, useTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
+import { CommandPalette } from "../views/CommandPalette";
+import { ProjectView } from "../views/project/ProjectView";
 import { Sidebar } from "../views/Sidebar";
 import { SkillEditor } from "../views/skills/SkillEditor";
 import { ConnectLibrary } from "../views/sources/ConnectLibrary";
 import { Welcome } from "../views/Welcome";
+import billing from "./fixtures/overview-billing-service.json";
 
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
@@ -476,6 +479,56 @@ describe("the project list", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Remove billing-service from the list" })).toBeNull(),
     );
+  });
+});
+
+describe("the sample workspace", () => {
+  function Where() {
+    const { route } = useNav();
+    return <p>on {route.name}</p>;
+  }
+
+  it("is labeled in its projects, and removed only after confirming", async () => {
+    const sampleProject = { ...billing.project, sample: true };
+    handlers.project_overview = () => ({ ...billing, project: sampleProject });
+    handlers.watch_project = () => null;
+    handlers.unwatch_project = () => null;
+    handlers.remove_sample_workspace = vi.fn(() => null);
+    wrap(
+      <>
+        <ProjectView projectId={sampleProject.id} tab="evidence" />
+        <Where />
+      </>,
+      { name: "project", projectId: sampleProject.id, tab: "evidence" },
+    );
+    expect(await screen.findByText("You're looking at sample data.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove sample workspace" }));
+    const dialog = screen.getByRole("dialog", { name: "Remove the sample workspace?" });
+    expect(dialog).toHaveAccessibleDescription(/Your own projects, libraries and skills are not touched/);
+    expect(handlers.remove_sample_workspace).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remove sample workspace" }));
+    expect(handlers.remove_sample_workspace).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Sample workspace removed/)).toBeInTheDocument();
+    expect(screen.getByText("on welcome")).toBeInTheDocument();
+  });
+
+  it("is offered in the palette, and its removal only while it exists", async () => {
+    Element.prototype.scrollIntoView = () => {};
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    const view = wrap(<CommandPalette open onOpenChange={() => {}} />);
+    expect(await screen.findByRole("option", { name: "Try the sample workspace" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Remove sample workspace…" })).toBeNull();
+    view.unmount();
+
+    handlers.list_sources = () => [library({ sample: true })];
+    wrap(<CommandPalette open onOpenChange={() => {}} />);
+    expect(await screen.findByRole("option", { name: "Remove sample workspace…" })).toBeInTheDocument();
   });
 });
 
