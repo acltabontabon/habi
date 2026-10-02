@@ -124,7 +124,7 @@ describe("workbench", () => {
 
   it("has no detectable accessibility violations", async () => {
     const { container } = wrap(<RoutedWorkbench overview={monoOverview} />, monoOverview.project.id);
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 });

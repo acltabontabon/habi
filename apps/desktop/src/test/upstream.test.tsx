@@ -198,7 +198,7 @@ describe("updates for a copy of a library item", () => {
     await user.click(screen.getByRole("radio", { name: "Take the library's" }));
     expect(screen.getByRole("button", { name: "Take 2 library changes, keep your edit" })).toBeEnabled();
 
-    const results = await axe.run(dialog, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(dialog);
     expect(results.violations.map((v) => v.id)).toEqual([]);
 
     await user.click(screen.getByRole("button", { name: "Take 2 library changes, keep your edit" }));
