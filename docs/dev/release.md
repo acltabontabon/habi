@@ -1,5 +1,9 @@
 # Building and releasing
 
+Habi ships for **macOS and Windows**. Linux is not a release target. This page is the
+procedure; what still blocks the first release is tracked in
+[Project status](../project/status.md#release-blockers).
+
 ## Toolchain (pinned)
 
 | Tool | Version | Where pinned |
@@ -10,100 +14,60 @@
 | Tauri | 2.12.1 (crate, CLI, API) | `Cargo.toml`, `package.json` |
 | Dependencies | exact | `Cargo.lock`, `apps/desktop/pnpm-lock.yaml` |
 
-## Local commands
-
-```sh
-# Rust: format, lint, test (also regenerates TypeScript bindings)
-cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-
-# Frontend
-cd apps/desktop
-pnpm install --frozen-lockfile
-pnpm lint && pnpm typecheck && pnpm test
-
-# Desktop app (development)
-pnpm tauri dev
-
-# Installers for the current platform
-pnpm tauri build
-
-# CLI
-cargo build --release -p habi-cli   # target/release/habi
-```
-
-`scripts/check.sh` runs every check in order.
+Build and check commands are in [CONTRIBUTING.md](../../CONTRIBUTING.md#set-up). Installers
+for the current platform: `pnpm tauri build` in `apps/desktop`.
 
 ## Versioning
 
 Semantic versioning, separately for:
 
-- **The application** (`Cargo.toml` workspace version, `tauri.conf.json`, `package.json`):
-  major for incompatible changes to the lock file, data directory or CLI; minor for features;
-  patch for fixes.
-- **The metadata schema** (`habi: 1`) and **lock file** (`habi_lock: 1`): see the migration
-  policy in `docs/library-authors/metadata-schema.md`. The application version does not change the schema
-  version.
+- **The application**: major for incompatible changes to the lock file, data directory or
+  CLI; minor for features; patch for fixes. The version appears in four manifests, which
+  must agree: `Cargo.toml` (workspace), `apps/desktop/src-tauri/tauri.conf.json`,
+  `apps/desktop/package.json` and `website/package.json`. The release workflow refuses a tag
+  that does not match them.
+- **The metadata schema** (`habi: 1`) and **lock file** (`habi_lock: 1`): see the
+  [migration policy](../library-authors/metadata-schema.md#versioning-and-migration-policy).
+  The application version does not change the schema version.
 
 ## Release checklist
 
-1. Update `CHANGELOG.md` (user-readable) and versions in the three manifests.
-2. Run `scripts/check.sh` on macOS, Windows and Linux (CI does this).
-3. Run the client smoke tests in `docs/dev/compatibility-research.md` §6 with current Claude Code,
-   Cursor and Codex builds; record the client versions and date there.
-4. Tag `vX.Y.Z`; the release workflow builds installers.
-5. Sign and notarize (below). Publish checksums with the artifacts.
+1. Move the `CHANGELOG.md` entries under "Unreleased" to a new version heading, and set the
+   version in the four manifests.
+2. Make sure CI is green on `main` (macOS, Windows and Linux).
+3. Run the client [smoke tests](compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it)
+   with current Claude Code, Cursor and Codex builds; record the client versions and date
+   there.
+4. Tag `vX.Y.Z` and push the tag. The release workflow:
+   - runs the same checks as CI, including `cargo deny`;
+   - checks that the tag matches the four manifests;
+   - builds the macOS installer as one universal build (Apple Silicon and Intel), the
+     Windows installers, and the `habi` command-line tool for each;
+   - writes `SHA256SUMS-macos.txt` and `SHA256SUMS-windows.txt` and a build provenance
+     attestation for every artifact;
+   - creates a **draft** release.
+5. Install the draft's artifacts on macOS and Windows, then publish the release.
 
-## Signing and notarization (integration points)
+Anyone can check an artifact's provenance with
+`gh attestation verify <file> --repo acltabontabon/habi`.
 
-The release workflow (`.github/workflows/release.yml`) runs every check first, then builds
-installers and the `habi` command-line tool on all three platforms, and publishes one draft
-release with SHA-256 checksums. It passes these secrets to `tauri build` only when they exist.
-**None are configured in this repository.**
+## Signing and notarization
 
-| Platform | Secrets / settings | Tauri reference |
+The release workflow passes these secrets to `tauri build` only when they exist. **None are
+configured in this repository.**
+
+| What | Secrets / settings | State |
 |---|---|---|
-| macOS signing | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | `bundle.macOS.signingIdentity` |
-| macOS notarization | `APPLE_API_ISSUER`, `APPLE_API_KEY` (key id) and `APPLE_API_PRIVATE_KEY` (contents of the `.p8` file; the workflow writes it to a temporary file and sets `APPLE_API_KEY_PATH`) | notarization runs during `tauri build` |
-| Windows | code-signing certificate (`bundle.windows.certificateThumbprint` or a `signCommand`) | Authenticode |
+| macOS signing | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` (`bundle.macOS.signingIdentity`) | Wired up; no credentials |
+| macOS notarization | `APPLE_API_ISSUER`, `APPLE_API_KEY` (key id) and `APPLE_API_PRIVATE_KEY` (contents of the `.p8` file; the workflow writes it to a temporary file and sets `APPLE_API_KEY_PATH`) | Wired up; no credentials. Runs during `tauri build` |
+| Windows signing | Authenticode certificate (`bundle.windows.certificateThumbprint` or a `signCommand`) | Not implemented |
+| `habi` command-line binary | — | Not signed or notarized on either platform |
 
-Without these, the workflow produces **unsigned** artifacts and labels them as such. Never
-commit certificates or passwords.
+Without these, the workflow produces **unsigned** artifacts and the draft release says so.
+Never commit certificates or passwords.
 
 ## Updates
 
 Habi has **no auto-updater**. Users install new versions manually from the release page.
 An updater would require signed update manifests (Tauri updater with a public key) and is
 deliberately not shipped until signing exists.
-
-## Release blockers (current)
-
-Resolved for the first public release:
-
-- **License:** Apache-2.0 (`LICENSE`, `NOTICE`, `license` in every manifest and the desktop
-  bundle). Third-party notices are generated by `node scripts/third-party-notices.mjs`,
-  checked in CI, and bundled with the app; dependency licenses are enforced by `deny.toml`.
-- **Identifiers:** bundle identifier `com.acltabontabon.habi`; data directory qualifier
-  `("com", "acltabontabon", "Habi")` in `crates/habi-core/src/brand.rs`. Changing either later
-  moves users' local data.
-- **Repository:** <https://github.com/acltabontabon/habi>; schema `$id`s resolve to the raw
-  files on `main`.
-
-Still open:
-
-- **Name availability.** Trademark/domain availability for "Habi" has not been checked.
-- **Signing credentials** for macOS and Windows are not available; releases are unsigned
-  until they are (users see Gatekeeper/SmartScreen warnings).
-- **Client smoke tests** have not been run against installed Claude Code, Cursor and Codex.
-- **Windows** builds are configured in CI but were not built or run by hand. Linux is not a
-  release target.
-- **Live Git hosts.** Pull/merge request creation, status and revisions are tested against
-  stand-in `gh`/`glab` programs, not live GitHub or GitLab.
-
-## Uninstalling
-
-Removing the app does not touch projects: installed skills, `AGENTS.md` sections, MCP
-entries and `.habi/lock.json` are ordinary files that stay. Habi's data folder (sources
-cache, journals, logs, database) is **not** removed by the OS uninstaller on macOS;
-delete it manually if wanted. Its location is shown in Settings → About.

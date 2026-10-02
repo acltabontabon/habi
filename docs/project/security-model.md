@@ -63,7 +63,7 @@ and it is what makes authentication work without Habi handling secrets.
   path (`resolve_for_write`); this is re-checked at apply time, not just at preview.
 - Reads are bounded; parsers have size/depth/node limits (YAML budgets, XML without DTDs,
   bounded globs and conditions).
-- Writes are atomic (temp file + fsync + rename) and journaled; see `docs/guide/recovery.md`.
+- Writes are atomic (temp file + fsync + rename) and journaled; see [Recovery](../guide/recovery.md).
   Existing files keep their permissions; new files get 0644; skill scripts that are executable
   in the library (Git mode 100755) stay executable, and contributions preserve the bit.
 - Paths may not contain a `.git` component, so library content cannot plant a nested
@@ -143,19 +143,18 @@ and it is what makes authentication work without Habi handling secrets.
   blocked if any are found. Only the files shown in the preview leave the machine, and only
   on explicit export or publish.
 
-## Independent review
+## Internal review
 
-Before this release an independent review of the install pipeline, Git handling,
-contributions, client configuration and IPC found thirteen issues (credential-bearing URLs,
-case-only renames on case-insensitive file systems, a `FILE://` picker bypass, lost executable
-bits, hooks on local publish, checks runnable without a preview, apply-time races, marker
-injection, partial snapshots, lock-file path confinement, per-section decisions, lossy JSON
-rewrites, silent re-creation of deleted files). All were fixed, with regression tests. One
-residual risk remains: a concurrent process running as the same user could race between path
-validation and directory creation during apply.
+Habi has not had an independent security audit. An internal review by the project itself
+(recorded here since the initial commit, 2026-10-02) covered the install pipeline, Git
+handling, contributions, client configuration and IPC, and found thirteen issues: credential-bearing URLs, case-only renames on
+case-insensitive file systems, a `FILE://` picker bypass, lost executable bits, hooks on local
+publish, checks runnable without a preview, apply-time races, marker injection, partial
+snapshots, lock-file path confinement, per-section decisions, lossy JSON rewrites, and silent
+re-creation of deleted files. All were fixed, with regression tests.
 
 ## Known limitations
 
-- Habi cannot see what an agent does with installed content and does not claim to.
-- The secret scan is pattern-based; it reduces, not eliminates, the risk of sharing secrets.
-- Running a check executes code with the user's privileges. There is no sandbox.
+Residual risks (no sandbox for checks, a pattern-based secret scan, a same-user race during
+apply) are listed with the other limitations in
+[Project status](status.md#known-limitations).
