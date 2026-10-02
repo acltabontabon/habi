@@ -70,79 +70,145 @@
   }
 }
 
-/* ---------- Loom: the welcome illustration ---------- */
+/* ---------- Home weave: sources converging into the repository ---------- */
 
-.loom {
+.home-weave {
+  position: relative;
   width: 100%;
-  height: 100%;
-  max-height: 560px;
 }
 
-.loom-warp {
+.home-weave-svg {
+  display: block;
+  overflow: visible;
+}
+
+.weave-strand {
+  fill: none;
   stroke: var(--hairline-strong);
   stroke-width: 2;
   stroke-linecap: round;
-  opacity: 0.85;
+  transition: opacity 240ms var(--ease);
 }
 
-.loom-warp-over {
+.weave-over {
+  stroke-width: 2.6;
+}
+
+.weave-row {
+  fill: none;
+  stroke: var(--hairline-strong);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.weave-row.is-accent {
+  stroke: var(--thread);
+  stroke-width: 2.6;
+}
+
+.weave-hit {
+  stroke: transparent;
+  stroke-width: 14;
+  fill: none;
+  pointer-events: stroke;
+}
+
+.weave-source {
+  cursor: pointer;
+  outline: none;
+}
+
+.weave-source-hit {
+  fill: transparent;
+  rx: 4px;
+}
+
+.weave-source:focus-visible .weave-source-hit {
+  stroke: var(--focus);
+  stroke-width: 1.5;
+}
+
+.home-weave .is-dim,
+.home-weave g.is-dim > * {
+  opacity: 0.16;
+}
+
+.home-weave g.is-dim .weave-hit {
   opacity: 1;
 }
 
-.loom-weft {
-  fill: none;
-  stroke: var(--thread);
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-dasharray: 900;
-  stroke-dashoffset: 900;
-  animation: draw-thread 1400ms var(--ease) 200ms forwards;
+/* One quiet line names what is pointed at; nothing floats over the weave. */
+.home-weave-caption {
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: 44%;
+  min-height: 40px;
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  text-align: right;
+  pointer-events: none;
 }
 
-.loom-cell-warp {
-  fill: var(--hairline-strong);
+.home-weave-caption-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.loom-cell-weft {
-  fill: var(--paper-raised);
-  stroke: var(--hairline);
-  stroke-width: 0.8;
+.home-weave-caption-meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
 }
 
-.loom-cell-accent {
-  fill: var(--thread);
-  opacity: 0.85;
+/* Entrance: threads come down, skills cross, everything settles. Once. */
+@media (prefers-reduced-motion: no-preference) {
+  .weave-warp {
+    animation: weave-down 620ms var(--ease) both;
+  }
+  .weave-weft > g {
+    animation: weave-across 420ms var(--ease) both;
+  }
+  .weave-weft > g:nth-child(1) {
+    animation-delay: 300ms;
+  }
+  .weave-weft > g:nth-child(2) {
+    animation-delay: 360ms;
+  }
+  .weave-weft > g:nth-child(3) {
+    animation-delay: 420ms;
+  }
+  .weave-weft > g:nth-child(4) {
+    animation-delay: 480ms;
+  }
+  .weave-weft > g:nth-child(5) {
+    animation-delay: 520ms;
+  }
+  .weave-weft > g:nth-child(6) {
+    animation-delay: 560ms;
+  }
 }
 
-.loom-cloth > g {
-  opacity: 0;
-  animation: weave-row 500ms var(--ease) forwards;
-}
-
-@keyframes weave-row {
+@keyframes weave-down {
   from {
-    opacity: 0;
-    transform: translateY(-3px);
+    clip-path: inset(0 0 100% 0);
   }
   to {
-    opacity: 1;
-    transform: none;
+    clip-path: inset(0 0 0 0);
   }
 }
 
-@keyframes draw-thread {
+@keyframes weave-across {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
   to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .loom-weft {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-  .loom-cloth > g {
-    animation: none;
-    opacity: 1;
+    clip-path: inset(0 0 0 0);
   }
 }

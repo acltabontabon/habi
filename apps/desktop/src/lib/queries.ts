@@ -1,6 +1,7 @@
 /** Data fetching with TanStack Query: caching, loading and error states. */
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import type { Source } from "../bindings/Source";
 import { api, newJobId } from "./api";
 
 export const keys = {
@@ -36,6 +37,15 @@ export function useSources() {
   return useQuery({ queryKey: keys.sources, queryFn: api.listSources });
 }
 
+/** The fetched libraries' indexes, for views that span all of them. */
+export function useLibraries(sources: Source[]) {
+  return useQueries({
+    queries: sources
+      .filter((s) => s.snapshot)
+      .map((s) => ({ queryKey: keys.library(s.id), queryFn: () => api.library(s.id) })),
+  });
+}
+
 export function useLibrary(sourceId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: keys.library(sourceId ?? ""),
@@ -57,6 +67,7 @@ export function useItemDetail(sourceId: string | undefined, itemId: string | und
  * cancellable background job; leaving the project cancels it.
  */
 export function useOverview(projectId: string | undefined) {
+  const client = useQueryClient();
   const jobRef = useRef<string | null>(null);
   const rescanRef = useRef(false);
   const query = useQuery({
@@ -69,7 +80,10 @@ export function useOverview(projectId: string | undefined) {
       const rescan = rescanRef.current;
       rescanRef.current = false;
       try {
-        return await api.projectOverview(projectId ?? "", rescan, job);
+        const overview = await api.projectOverview(projectId ?? "", rescan, job);
+        // The project's summary (what fits) was just recorded; lists show it.
+        void client.invalidateQueries({ queryKey: keys.recent });
+        return overview;
       } finally {
         if (jobRef.current === job) jobRef.current = null;
       }
