@@ -36,10 +36,17 @@ its one signature — used only where it carries meaning.
 
 ## Key screens
 
-- **Welcome** — one question, one primary action (*Open a project…*), and two quiet
-  alternatives (*Create a skill*, *Add existing skills*). A team library is not a
-  prerequisite. Recent projects and drafts appear once there are any; the labeled sample
-  workspace and the privacy line sit in the footer.
+- **Home: the loom** — the principle as a headline ("What one developer learns, every
+  project keeps."), a three-line lifecycle block (sources · refining · shared, each a link),
+  and the loom: warp threads are knowledge sources, weft rows are your projects, and a
+  source's thread surfaces as a float where its knowledge applies to that project. A saffron
+  knot marks where a refinement from a project went back into a library. The last row is
+  unwoven and holds the one primary action, *Open a project…* (read-only). Rows and source
+  names are controls; pointing at one brings what it connects to forward. It scales (ten
+  source columns, seven rows, "+N more") and stays composed when empty: faint rows keep the
+  cloth's texture, and a first run shows undyed threads with a faint twill. Creating and
+  adding skills live in the sidebar, palette and project views; their shortcuts sit at the
+  foot with the labeled sample workspace on a first run.
 - **In this project** — skills and instruction files already in the repository, read-only,
   with real next actions (read, copy to My skills, turn part into a skill). Shown in place of
   recommendations when there is nothing to recommend yet.
@@ -67,7 +74,7 @@ its one signature — used only where it carries meaning.
   URL first, whose library it is, and everything else under advanced options. A library page
   leads with its selvedge, freshness, a stat strip (skills, with rules, shipping scripts,
   proprietary) and, for community libraries, what not having been reviewed means.
-- **Sharing activity** — one dense row per contribution: a single state chip (with "checked …
+- **Contributions** — one dense row per contribution: a single state chip (with "checked …
   ago" for host-reported states), destination, last update and one next action. A
   contribution's page puts the file list beside the selected diff (stacked on narrow
   windows), validation split into blocking and warnings, and the destination with the title,

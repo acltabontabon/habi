@@ -208,7 +208,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
             onClick={() => navigate({ name: "contributions" })}
           >
             <Icon name="share" />
-            <span className="sidebar-item-text">Sharing activity</span>
+            <span className="sidebar-item-text">Contributions</span>
             {inProgress > 0 ? (
               <span className="sidebar-count">
                 {inProgress}

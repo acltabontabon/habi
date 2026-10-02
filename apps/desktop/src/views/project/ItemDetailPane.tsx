@@ -286,7 +286,7 @@ export function ItemDetailPane({
           ) : null}
           {key && !isLocal && (r.installState === "locallyModified" || r.installState === "conflict") ? (
             <Button icon="share" onClick={() => void shareImprovement()}>
-              Share my edits with the team…
+              Share my edits with {r.item.sourceName}…
             </Button>
           ) : null}
           {key && r.installState !== "notInstalled" ? (

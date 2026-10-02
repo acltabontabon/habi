@@ -407,7 +407,9 @@ function Loaded({ initial }: { initial: LocalSkill }) {
               Use in a project…
             </Button>
             <Button icon="share" onClick={() => void open("share")}>
-              Share with team…
+              {skill.summary.origin.type === "library"
+                ? `Share back to ${skill.summary.origin.sourceName}…`
+                : "Share…"}
             </Button>
             <Button variant="quiet" onClick={() => void exportFolder()}>
               Export…

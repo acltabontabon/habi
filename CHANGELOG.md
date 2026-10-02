@@ -53,6 +53,20 @@ First working version.
   Addy Osmani, wshobson, Vercel). Aggregators that re-host other people's skills are left out.
 - A library page shows how many skills have rules, ship scripts, or are declared proprietary.
 
+### The knowledge lifecycle
+- Habi is framed around find → apply → refine → share → reuse: README, product contract, CLI
+  help and the home screen tell the same story.
+- *Sharing activity* is now **Contributions**, with one state per contribution (draft, ready,
+  open request, merged, in the library, needs attention), per-file selection, and a reference
+  check so leaving a file out cannot break the skill.
+- Share actions name their destination ("Share back to Team library…", "Share my edits with
+  Anthropic…").
+- Copies of library skills (including installed copies with local edits) keep their origin;
+  when the library changes, the copy shows the update and takes library-only changes while
+  keeping yours, asking about files both sides changed.
+- The package editor treats a skill as a complete package: instructions first, files beside
+  them, scripts with templates, previews, validation next to each file.
+
 ### Design
 - New visual language, *Loom*: Daylight and Graphite themes, IBM Plex Sans with a monospace
   voice for labels and counts, and one dye color per library that follows its items
