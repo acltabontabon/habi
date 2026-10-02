@@ -103,6 +103,7 @@ fn webview_contract_end_to_end() {
     let app = mock_builder()
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
+            commands::log_ui_error,
             commands::add_source,
             commands::refresh_source,
             commands::project_overview,
@@ -121,6 +122,14 @@ fn webview_contract_end_to_end() {
 
     let info = call(&webview, "app_info", json!({})).unwrap();
     assert_eq!(info["version"], env!("CARGO_PKG_VERSION"));
+
+    // UI errors are logged; a missing detail is fine.
+    call(
+        &webview,
+        "log_ui_error",
+        json!({ "message": "TypeError: x is undefined", "detail": null }),
+    )
+    .unwrap();
 
     let refreshed = call(
         &webview,

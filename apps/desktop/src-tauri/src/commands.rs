@@ -151,6 +151,17 @@ pub async fn cancel_job(state: State<'_, AppState>, job_id: String) -> CmdResult
     Ok(state.cancel(&job_id))
 }
 
+/// Records an error the UI could not handle in Habi's log, so a saved
+/// diagnostic report includes it. Lengths are capped; the log is redacted
+/// when a report is made.
+#[tauri::command]
+pub async fn log_ui_error(message: String, detail: Option<String>) -> CmdResult<()> {
+    let message: String = message.chars().take(2_000).collect();
+    let detail: String = detail.unwrap_or_default().chars().take(8_000).collect();
+    tracing::error!(%message, %detail, "ui error");
+    Ok(())
+}
+
 // ----- projects ------------------------------------------------------------------
 
 #[tauri::command]

@@ -153,6 +153,7 @@ pub fn run() {
             commands::get_settings,
             commands::set_settings,
             commands::cancel_job,
+            commands::log_ui_error,
             commands::pick_project,
             commands::open_recent_project,
             commands::recent_projects,
