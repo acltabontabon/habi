@@ -67,7 +67,6 @@ release with SHA-256 checksums. It passes these secrets to `tauri build` only wh
 | macOS signing | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | `bundle.macOS.signingIdentity` |
 | macOS notarization | `APPLE_API_ISSUER`, `APPLE_API_KEY` (key id) and `APPLE_API_PRIVATE_KEY` (contents of the `.p8` file; the workflow writes it to a temporary file and sets `APPLE_API_KEY_PATH`) | notarization runs during `tauri build` |
 | Windows | code-signing certificate (`bundle.windows.certificateThumbprint` or a `signCommand`) | Authenticode |
-| Linux | none required for AppImage/deb; optionally sign packages in the repository that distributes them | — |
 
 Without these, the workflow produces **unsigned** artifacts and labels them as such. Never
 commit certificates or passwords.
@@ -97,7 +96,8 @@ Still open:
 - **Signing credentials** for macOS and Windows are not available; releases are unsigned
   until they are (users see Gatekeeper/SmartScreen warnings).
 - **Client smoke tests** have not been run against installed Claude Code, Cursor and Codex.
-- **Windows and Linux** builds are configured in CI but were not built or run by hand.
+- **Windows** builds are configured in CI but were not built or run by hand. Linux is not a
+  release target.
 - **Live Git hosts.** Pull/merge request creation, status and revisions are tested against
   stand-in `gh`/`glab` programs, not live GitHub or GitLab.
 
@@ -105,5 +105,5 @@ Still open:
 
 Removing the app does not touch projects: installed skills, `AGENTS.md` sections, MCP
 entries and `.habi/lock.json` are ordinary files that stay. Habi's data folder (sources
-cache, journals, logs, database) is **not** removed by the OS uninstaller on macOS/Linux;
+cache, journals, logs, database) is **not** removed by the OS uninstaller on macOS;
 delete it manually if wanted. Its location is shown in Settings → About.
