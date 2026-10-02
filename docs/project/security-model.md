@@ -158,3 +158,44 @@ re-creation of deleted files. All were fixed, with regression tests.
 Residual risks (no sandbox for checks, a pattern-based secret scan, a same-user race during
 apply) are listed with the other limitations in
 [Project status](status.md#known-limitations).
+
+## Library catalog and previews
+
+- A catalog entry is a *suggestion of a repository*, not an endorsement. **Official** means the
+  repository's owner matches the publisher the entry names, with the evidence recorded (a
+  GitHub-verified organisation, or an unverified one whose website is the publisher's domain)
+  and shown. It says nothing about the content. **Reviewed** is a separate fact that is only
+  shown when the catalog records an inspection (revision, date, who, what it covered); no
+  entry has one. Habi never shows a "safe" or "trusted" badge.
+- Pressing Connect on a catalog library's page connects it: the repository is read into the cache, and nothing
+  is installed, copied to My skills or run. A connection that is cancelled or fails leaves no
+  source behind. Adopting a skill is a separate, explicit step per project. The core can also
+  read a library as a hidden preview (`habi catalog preview`): previews stay out of every
+  list, recommendation and installation, cannot be installed from, copied from or contributed
+  to, and are discarded after 60 days.
+- Catalog sources fetch only the newest commit and skip blobs above Habi's own per-file limit;
+  paths are narrowed by the entry's include/exclude globs *before* the file-count and size
+  limits apply. Symlinks, submodules, unsafe paths and oversized files are skipped and make the
+  skill incomplete (so it cannot be installed). Fetching never uses lazy network access.
+- **Signals** are a bounded static reading of a skill's files as data: commands that download
+  and run code, broad deletes, credential files, elevated permissions, compiled or opaque
+  files, invisible characters. Nothing is executed, imported or followed. Matches in reference
+  documents are capped at a notice, because documentation about an attack is not an attack.
+  The wording is "found by reading the files"; a skill with no signals is not called safe.
+- A rule suggested by the catalog for a skill whose author declared none is labelled as Habi's
+  judgement wherever it is shown, never overrides the author's own rules, and uses only
+  specific, checkable project features (a file, a dependency, a detected tag).
+- **Checking for updates.** Asking whether a library has something newer is one `git
+  ls-remote` against the library's own repository (the same access its fetch uses), downloads
+  no objects and changes nothing. A library moves only when the user presses Update, which
+  fetches and records a new snapshot exactly as before; installed skills and adopted copies
+  never change because a library did.
+- **The one web request.** Opening the page of a catalog library you have not connected asks
+  GitHub's public API for that repository's stars, forks, last push and archived flag
+  (`GET https://api.github.com/repos/<owner>/<repo>`, through the system `curl`, anonymous,
+  HTTPS only, 10 seconds). The address is built from the built-in catalog, never from text a
+  person typed. The answer is kept for a day, so the page works offline afterwards; if GitHub
+  cannot be reached the figures are simply not shown. They are context beside the Connect
+  button: they never rank, filter or recommend anything, and the page says that how many
+  people use a library is not evidence that it is safe. GitHub sees the request's IP address
+  and Habi's name; no account, token or project data is sent.

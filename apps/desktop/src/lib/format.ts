@@ -184,6 +184,14 @@ export function freshnessText(source: Source): { text: string; tone: Tone } {
   return map[source.freshness];
 }
 
+/** 4200 → "4.2k", 1500000 → "1.5M": a count at a glance. */
+export function compactCount(n: number): string {
+  const trim = (x: number) => x.toFixed(1).replace(/\.0$/, "");
+  if (n >= 1_000_000) return `${trim(n / 1_000_000)}M`;
+  if (n >= 1_000) return `${trim(n / 1_000)}k`;
+  return String(n);
+}
+
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
@@ -199,6 +207,7 @@ export function sizeLabel(bytes: number): string {
 export function pruneSummary(r: PruneReport): string {
   const parts = [
     r.operationsRemoved > 0 ? plural(r.operationsRemoved, "old operation record") : null,
+    r.previewsRemoved > 0 ? plural(r.previewsRemoved, "unused library preview") : null,
     r.snapshotsRemoved > 0 ? plural(r.snapshotsRemoved, "old library snapshot") : null,
     r.objectsRemoved > 0 ? plural(r.objectsRemoved, "stored file version") : null,
   ].filter((p): p is string => p !== null);

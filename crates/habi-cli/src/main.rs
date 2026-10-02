@@ -55,6 +55,9 @@ enum Command {
     /// Manage libraries: your team's and community ones (sources of skills and workflows).
     #[command(subcommand)]
     Source(SourceCmd),
+    /// Public skill libraries Habi suggests: look inside before you connect one.
+    #[command(subcommand)]
+    Catalog(CatalogCmd),
     /// Show what Habi detects in a project, with evidence.
     Inspect(ProjectArg),
     /// List the skills and workflows that fit a project, from every library and My skills.
@@ -232,6 +235,34 @@ struct ApplyArgs {
     /// Only show the preview; change nothing.
     #[arg(long)]
     dry_run: bool,
+}
+
+#[derive(Subcommand)]
+enum CatalogCmd {
+    /// List the catalog, with what is known of each library.
+    List,
+    /// Fetch a library so you can see what is in it. Nothing is connected,
+    /// installed or run. Opening one you fetched before downloads nothing.
+    Preview {
+        /// Catalog id (see `habi catalog list`).
+        id: String,
+        /// Check the repository for changes even if it was fetched before.
+        #[arg(long)]
+        refresh: bool,
+        /// List every skill, with what Habi noticed in it.
+        #[arg(long)]
+        skills: bool,
+    },
+    /// Connect a catalog library as a community library (nothing is installed).
+    Connect {
+        /// Catalog id (see `habi catalog list`).
+        id: String,
+    },
+    /// Discard a fetched preview. A connected library is not touched.
+    Forget {
+        /// Catalog id (see `habi catalog list`).
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -970,6 +1001,7 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
     let habi = &ctx.habi;
     match command {
         Command::Source(cmd) => source(ctx, cmd),
+        Command::Catalog(cmd) => catalog(ctx, cmd),
         Command::Inspect(p) => {
             let project = project(ctx, &p, false)?;
             let inspection = habi.inspect(&project.id, true, &ctx.cancel)?;
@@ -1396,6 +1428,52 @@ fn local_location(location: &str) -> Result<String> {
                 ),
             )
         })
+}
+
+fn catalog(ctx: &Ctx, cmd: CatalogCmd) -> Result<Value> {
+    let habi = &ctx.habi;
+    match cmd {
+        CatalogCmd::List => {
+            let entries = habi.catalog().entries()?;
+            emit(ctx, &entries, || output::catalog_list(&entries))
+        }
+        CatalogCmd::Preview {
+            id,
+            refresh,
+            skills,
+        } => {
+            let entry = habi.catalog().preview(&id, refresh, &ctx.cancel)?;
+            if ctx.json && skills {
+                let index = match &entry.source_id {
+                    Some(source) => Some(habi.sources().index(source)?),
+                    None => None,
+                };
+                return Ok(json!({ "entry": entry, "library": index }));
+            }
+            let index = match (&entry.source_id, skills) {
+                (Some(source), true) => Some(habi.sources().index(source)?),
+                _ => None,
+            };
+            emit(ctx, &entry, || {
+                output::catalog_entry(&entry, index.as_ref())
+            })
+        }
+        CatalogCmd::Connect { id } => {
+            let source = habi.catalog().connect(&id, &ctx.cancel)?;
+            emit(ctx, &source, || {
+                println!(
+                    "Connected `{}` as a community library. Nothing was installed.",
+                    source.name
+                )
+            })
+        }
+        CatalogCmd::Forget { id } => {
+            habi.catalog().forget(&id)?;
+            emit(ctx, &json!({ "forgotten": id }), || {
+                println!("Discarded the fetched copy of `{id}`.")
+            })
+        }
+    }
 }
 
 fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {

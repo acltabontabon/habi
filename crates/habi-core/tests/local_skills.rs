@@ -1143,7 +1143,7 @@ fn upgrading_the_database_keeps_existing_state() {
         .unwrap();
     }
     let habi = open(home.path());
-    assert_eq!(habi.store.schema_version().unwrap(), 6);
+    assert_eq!(habi.store.schema_version().unwrap(), 7);
     assert_eq!(habi.project("p1").unwrap().name, "billing");
     // Libraries connected before roles existed are the team's own.
     assert_eq!(
@@ -1153,6 +1153,10 @@ fn upgrading_the_database_keeps_existing_state() {
     // Nor is a library from then a sample one; never fetched, it has no items.
     assert!(!habi.sources().get("s1").unwrap().sample);
     assert_eq!(habi.sources().get("s1").unwrap().skill_count, 0);
+    // Nor a catalog preview: it is listed, and reads the whole repository.
+    let old = habi.sources().get("s1").unwrap();
+    assert!(!old.preview && old.catalog_id.is_none() && old.include.is_empty());
+    assert_eq!(habi.sources().list().unwrap().len(), 1);
     assert_eq!(
         habi.store.setting("desktop").unwrap().as_deref(),
         Some("{}")

@@ -63,6 +63,7 @@ const libraryOrigin = {
   sourceIdentity: "local:Team",
   itemId: "review",
   snapshot: "old",
+  upstream: null,
 } as const;
 
 const status = (state: UpstreamStatus["state"], detail: string | null = null): UpstreamStatus => ({

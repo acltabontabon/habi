@@ -1,0 +1,73 @@
+{
+  "id": "acme",
+  "name": "Acme",
+  "url": "https://github.com/acme/skills",
+  "repo": "acme/skills",
+  "summary": "Skills from Acme's engineering teams.",
+  "notes": [],
+  "publisher": {
+    "name": "Acme",
+    "kind": "builder",
+    "owner": "acme"
+  },
+  "ownership": {
+    "method": "github-verified-org",
+    "checked": "2026-10-03",
+    "evidence": "GitHub shows the acme organization as verified"
+  },
+  "review": null,
+  "status": {
+    "state": "active",
+    "note": null,
+    "successor": null
+  },
+  "include": [
+    "plugins/*/skills/**"
+  ],
+  "exclude": [],
+  "followsReleases": false,
+  "fitsWhen": [],
+  "groupSegment": 1,
+  "availability": "previewed",
+  "sourceId": "bed841edeafd",
+  "fetched": {
+    "snapshot": "a966b2ee74bb86c2f7a6ae843affd6d2891da1ff",
+    "snapshotAt": "2026-10-02T21:57:59Z",
+    "branch": "main",
+    "release": null,
+    "commitSummary": "Add skills — Example, 2026-10-03",
+    "updated": "2026-10-03",
+    "freshness": "current",
+    "warning": null
+  },
+  "contents": {
+    "items": 4,
+    "withScripts": 1,
+    "scriptFiles": 2,
+    "withReferences": 1,
+    "withAssets": 0,
+    "unusable": 0,
+    "cautionItems": 1,
+    "noticeItems": 0,
+    "signals": {
+      "caution": 1,
+      "notice": 1,
+      "info": 0
+    },
+    "groups": [
+      {
+        "name": "payments",
+        "items": 2
+      },
+      {
+        "name": "platform",
+        "items": 2
+      }
+    ],
+    "license": {
+      "file": "LICENSE",
+      "spdx": "MIT"
+    }
+  },
+  "problem": null
+}

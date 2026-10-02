@@ -7,6 +7,8 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo } from "../bindings/AppInfo";
+import type { CatalogEntry } from "../bindings/CatalogEntry";
+import type { CatalogFit } from "../bindings/CatalogFit";
 import type { CheckPreview } from "../bindings/CheckPreview";
 import type { CheckRun } from "../bindings/CheckRun";
 import type { ClientId } from "../bindings/ClientId";
@@ -41,6 +43,7 @@ import type { PruneReport } from "../bindings/PruneReport";
 import type { PublishOutcome } from "../bindings/PublishOutcome";
 import type { RefreshOutcome } from "../bindings/RefreshOutcome";
 import type { Rehearsal } from "../bindings/Rehearsal";
+import type { RepoFacts } from "../bindings/RepoFacts";
 import type { Resolution } from "../bindings/Resolution";
 import type { SampleWorkspace } from "../bindings/SampleWorkspace";
 import type { Settings } from "../bindings/Settings";
@@ -50,6 +53,8 @@ import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
 import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
+import type { SourceUpdate } from "../bindings/SourceUpdate";
+import type { UpdateReport } from "../bindings/UpdateReport";
 import type { UpstreamChoice } from "../bindings/UpstreamChoice";
 import type { UpstreamPlan } from "../bindings/UpstreamPlan";
 import type { UpstreamStatus } from "../bindings/UpstreamStatus";
@@ -120,12 +125,28 @@ export const api = {
   retract: (projectId: string, declarationId: string) => call<void>("retract", { projectId, declarationId }),
 
   listSources: () => call<Source[]>("list_sources"),
+  /** The public libraries Habi suggests, with what is known of each. */
+  catalog: () => call<CatalogEntry[]>("catalog"),
+  /** What GitHub says about a catalog repository (stars, forks, last push, archived); null when it cannot be had. */
+  catalogRepoFacts: (entryId: string) =>
+    call<RepoFacts | null>("catalog_repo_facts", { entryId, jobId: null }),
+  connectCatalogEntry: (entryId: string, jobId?: string) =>
+    call<Source>("connect_catalog_entry", { entryId, jobId: jobId ?? null }),
+  /** Skills of already fetched catalog libraries that fit a project. */
+  catalogFits: (projectId: string, jobId?: string) =>
+    call<CatalogFit[]>("catalog_fits", { projectId, jobId: jobId ?? null }),
   pickLibraryFolder: () => call<string | null>("pick_library_folder"),
   addSource: (source: NewSource) => call<Source>("add_source", { source }),
   removeSource: (sourceId: string) => call<void>("remove_source", { sourceId }),
   setSourceRole: (sourceId: string, role: SourceRole) => call<Source>("set_source_role", { sourceId, role }),
   refreshSource: (sourceId: string, jobId?: string) =>
     call<RefreshOutcome>("refresh_source", { sourceId, jobId: jobId ?? null }),
+  /** Asks whether a library's repository has something newer. Downloads and changes nothing. */
+  checkSourceUpdate: (sourceId: string) =>
+    call<SourceUpdate | null>("check_source_update", { sourceId, jobId: null }),
+  sourceUpdates: () => call<SourceUpdate[]>("source_updates"),
+  sourceUpdateReport: (sourceId: string) => call<UpdateReport | null>("source_update_report", { sourceId }),
+  dismissUpdateReport: (sourceId: string) => call<void>("dismiss_update_report", { sourceId }),
   library: (sourceId: string) => call<LibraryIndex>("library", { sourceId }),
   itemDetail: (sourceId: string, itemId: string) => call<ItemDetail>("item_detail", { sourceId, itemId }),
   itemFile: (sourceId: string, itemId: string, path: string) =>

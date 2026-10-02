@@ -48,8 +48,8 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const community = libraries.filter((l) => l.role === "community");
   const dyes = useDyes();
   const activeLibrary = route.name === "sources" ? route.sourceId : undefined;
-  const connecting =
-    route.name === "sources" && (!route.sourceId || ["git", "folder", "community"].includes(route.sourceId));
+  // Looking around (the overview, a catalog preview, connecting your own).
+  const connecting = route.name === "sources" && !route.sourceId;
   const openLibrary = (id: string) => navigate({ name: "sources", sourceId: id });
 
   return (

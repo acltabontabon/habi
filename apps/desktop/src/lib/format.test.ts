@@ -25,15 +25,22 @@ describe("format helpers", () => {
   it("says what Free up space did, plainly", () => {
     const none = {
       operationsRemoved: 0,
+      previewsRemoved: 0,
       snapshotsRemoved: 0,
       objectsRemoved: 0,
       bytesFreed: 0,
       skippedBusy: 0,
     };
     expect(pruneSummary(none)).toBe("Nothing to clean up.");
-    expect(pruneSummary({ ...none, operationsRemoved: 3, objectsRemoved: 12, bytesFreed: 3_565_158 })).toBe(
-      "Removed 3 old operation records and 12 stored file versions, freed 3.4 MB.",
-    );
+    expect(
+      pruneSummary({
+        ...none,
+        operationsRemoved: 3,
+        previewsRemoved: 0,
+        objectsRemoved: 12,
+        bytesFreed: 3_565_158,
+      }),
+    ).toBe("Removed 3 old operation records and 12 stored file versions, freed 3.4 MB.");
     expect(pruneSummary({ ...none, skippedBusy: 1 })).toBe(
       "Nothing to clean up. 1 project or library was in use and skipped; try again later.",
     );

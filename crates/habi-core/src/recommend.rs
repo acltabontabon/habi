@@ -12,6 +12,7 @@ use crate::install::lock::{LockFile, lock_key};
 use crate::install::plan::read_project_file;
 use crate::install::status::{InstallState, Installation};
 use crate::library::model::{DeclaredEvidence, ItemKind, LibraryItem, MetadataStatus, Requirement};
+use crate::matching::condition::Condition;
 use crate::matching::eval::Declaration;
 use crate::matching::{Applicability, ApplicabilityResult, Views, assess_in};
 use crate::paths::display_path;
@@ -108,6 +109,20 @@ pub enum Group {
     NotApplicable,
 }
 
+/// Where an item's applicability rule comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Basis {
+    /// The author declared it (`habi.yaml`), or declared none.
+    #[default]
+    Declared,
+    /// The author declared nothing; Habi's catalog suggests this rule for a
+    /// skill from a well-known library. It is Habi's judgement, not the
+    /// author's, and says so wherever it is shown.
+    CatalogHint,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -153,6 +168,8 @@ pub struct Recommendation {
     pub item: ItemSummary,
     pub group: Group,
     pub applicability: ApplicabilityResult,
+    /// Who set the rule `applicability` evaluated.
+    pub basis: Basis,
     pub readiness: Readiness,
     pub install_state: InstallState,
     pub installation: Option<Installation>,
@@ -350,6 +367,9 @@ pub struct Candidate<'a> {
     pub source_identity: &'a str,
     pub snapshot: &'a str,
     pub runs: Vec<CheckRun>,
+    /// A rule suggested by Habi's catalog for an item whose author declared
+    /// none. Used only when the item has no `applies_when` of its own.
+    pub hint: Option<&'a Condition>,
 }
 
 pub fn recommend(
@@ -365,12 +385,14 @@ pub fn recommend(
         .iter()
         .map(|c| {
             let item = c.item;
-            let applicability = assess_in(
-                item.applies_when.as_ref(),
-                item.excludes.as_ref(),
-                item.scope,
-                &views,
-            );
+            let (applies_when, basis) = match (item.applies_when.as_ref(), c.hint) {
+                (Some(own), _) => (Some(own), Basis::Declared),
+                (None, Some(hint)) if item.metadata_status == MetadataStatus::Undeclared => {
+                    (Some(hint), Basis::CatalogHint)
+                }
+                (None, _) => (None, Basis::Declared),
+            };
+            let applicability = assess_in(applies_when, item.excludes.as_ref(), item.scope, &views);
             let modules: Vec<String> = applicability
                 .modules
                 .iter()
@@ -418,6 +440,7 @@ pub fn recommend(
                 group,
                 evidence: evidence(item, &c.runs, &inspection.fingerprint),
                 applicability,
+                basis,
                 readiness,
                 install_state,
                 installation,

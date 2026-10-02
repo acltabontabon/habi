@@ -19,6 +19,8 @@ import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui
 import { api, HabiError } from "../../lib/api";
 import { plural } from "../../lib/format";
 import { invalidateSkills } from "../../lib/queries";
+import { useOpenExternal } from "../../lib/safeInvoke";
+import { provenanceText, upstreamUrl } from "../../lib/skills";
 
 const changeLabel: Record<SideChange, string> = { added: "Added", modified: "Changed", removed: "Removed" };
 
@@ -44,13 +46,34 @@ export function UpstreamPanel({
     staleTime: 0,
   });
   const s = status.data;
-  if (!fromLibrary || !s || s.state === "unchanged") return null;
+  const openExternal = useOpenExternal();
+  // Where the copy came from stays in view, whether or not the original has moved.
+  const provenance = fromLibrary ? provenanceText(origin) : null;
+  const original = upstreamUrl(origin);
+  const trail = provenance ? (
+    <p className="provenance muted">
+      <Icon name="branch" size={12} />
+      <span>{provenance}</span>
+      {original ? (
+        <button type="button" className="link-quiet" onClick={() => openExternal(original)}>
+          View the original
+        </button>
+      ) : null}
+    </p>
+  ) : null;
+  if (!fromLibrary || !s || s.state === "unchanged") return trail;
 
   if (s.state !== "changed") {
-    return <Notice tone="unknown" title={s.detail ?? `${s.sourceName} cannot be checked for updates.`} />;
+    return (
+      <>
+        <Notice tone="unknown" title={s.detail ?? `${s.sourceName} cannot be checked for updates.`} />
+        {trail}
+      </>
+    );
   }
   return (
     <>
+      {trail}
       <Notice
         tone="unknown"
         title={`Updated in ${s.sourceName} since you copied it`}

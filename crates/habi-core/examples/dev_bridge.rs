@@ -143,6 +143,7 @@ impl Bridge {
             "retract" => out(h.retract(&s("projectId")?, &s("declarationId")?)?),
 
             "list_sources" => out(h.sources().list()?),
+            "get_source" => out(h.sources().get(&s("sourceId")?)?),
             "pick_library_folder" | "pick_import_folder" => Ok(match picked(a)? {
                 Some(path) => json!(
                     std::fs::canonicalize(&path)
@@ -155,6 +156,20 @@ impl Bridge {
             "remove_source" => out(h.sources().remove(&s("sourceId")?)?),
             "set_source_role" => out(h.sources().set_role(&s("sourceId")?, arg(a, "role")?)?),
             "refresh_source" => out(h.sources().refresh(&s("sourceId")?, cancel)?),
+            "check_source_update" => out(h.sources().check_update(&s("sourceId")?, cancel)?),
+            "source_updates" => out(h.sources().updates()?),
+            "source_update_report" => out(h.sources().last_update(&s("sourceId")?)?),
+            "dismiss_update_report" => out(h.sources().dismiss_update_report(&s("sourceId")?)?),
+            "catalog" => out(h.catalog().entries()?),
+            "catalog_repo_facts" => out(h.catalog().repo_facts(&s("entryId")?, cancel)?),
+            "preview_catalog_entry" => {
+                out(h
+                    .catalog()
+                    .preview(&s("entryId")?, arg(a, "refresh")?, cancel)?)
+            }
+            "connect_catalog_entry" => out(h.catalog().connect(&s("entryId")?, cancel)?),
+            "forget_catalog_preview" => out(h.catalog().forget(&s("entryId")?)?),
+            "catalog_fits" => out(h.catalog_fits(&s("projectId")?, cancel)?),
             "library" => out(h.sources().index(&s("sourceId")?)?),
             "item_detail" => out(h.item_detail(&s("sourceId")?, &s("itemId")?)?),
             "item_file" => out(h.read_item_file(&s("sourceId")?, &s("itemId")?, &s("path")?)?),

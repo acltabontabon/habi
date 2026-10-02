@@ -9,6 +9,7 @@
  * the tab title says it is fixture data.
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
+import catalog from "../test/fixtures/catalog.json";
 import details from "../test/fixtures/item-details.json";
 import library from "../test/fixtures/library.json";
 import billing from "../test/fixtures/overview-billing-service.json";
@@ -16,6 +17,9 @@ import monorepo from "../test/fixtures/overview-platform-monorepo.json";
 import plan from "../test/fixtures/plan-install.json";
 
 type Args = Record<string, unknown> | undefined;
+
+/** Cancels the fetch the design preview is holding open, if any. */
+let heldFetch: (() => void) | null = null;
 
 const overviews: Record<string, unknown> = {
   [billing.project.id]: billing,
@@ -25,6 +29,32 @@ const overviews: Record<string, unknown> = {
 const projects = [billing.project, monorepo.project];
 const source = billing.sources[0];
 let settings = { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+
+// A newer release waiting, then what updating to it changed: so the offer, the
+// report and the marks in the index can all be looked at.
+const commit = (n: number) => String(n).repeat(40).slice(0, 40);
+const v = (label: string, n: number) => ({ label, release: true, commit: commit(n) });
+let update: "waiting" | "updated" | "seen" = "waiting";
+const checkedAt = () => new Date().toISOString();
+const updateCheck = () => ({
+  sourceId: source?.id ?? "",
+  current: update === "waiting" ? v("v6.4.1", 1) : v("v6.4.2", 2),
+  latest: v("v6.4.2", 2),
+  available: update === "waiting",
+  checkedAt: checkedAt(),
+});
+const report = () => ({
+  sourceId: source?.id ?? "",
+  from: v("v6.4.1", 1),
+  to: v("v6.4.2", 2),
+  at: checkedAt(),
+  added: [{ id: "incident-notes", title: "Incident notes" }],
+  updated: [
+    { id: "api-contract-review", title: "API contract review" },
+    { id: "github-pr-summary", title: "GitHub PR summary" },
+  ],
+  removed: [{ id: "old-release-checklist", title: "Old release checklist" }],
+});
 
 function answer(cmd: string, args: Args): unknown {
   const a = args ?? {};
@@ -52,6 +82,61 @@ function answer(cmd: string, args: Args): unknown {
       return overviews[a.projectId as string];
     case "list_sources":
       return [source];
+    case "source_updates":
+      return update === "seen" ? [] : [updateCheck()];
+    case "check_source_update":
+      return updateCheck();
+    case "refresh_source":
+      update = "updated";
+      return { changed: true, source };
+    case "source_update_report":
+      return update === "updated" ? report() : null;
+    case "dismiss_update_report":
+      update = "seen";
+      return null;
+    // A folder to choose and look inside, so the connect page can be seen with something in it.
+    case "pick_library_folder":
+      return "/Users/aclt/Workspace/ai-standard-packs";
+    case "inspect_import":
+      return {
+        origin: "ai-standard-packs",
+        candidates: library.items.map((i) => ({
+          path: i.path,
+          name: i.name,
+          title: i.title,
+          description: i.description,
+          license: null,
+          hasMetadata: false,
+          files: i.files.map((f) => f.path),
+          size: 0,
+          problems: [],
+          complete: true,
+          digest: i.contentDigest,
+          duplicate: null,
+          suggestedName: null,
+        })),
+        notes: [],
+      };
+    case "catalog":
+      return catalog;
+    case "catalog_fits":
+      return [];
+    // Sample figures, only so the page can be looked at; the real ones come from GitHub.
+    case "catalog_repo_facts":
+      return {
+        stars: 4200,
+        forks: 310,
+        pushedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+        createdYear: 2025,
+        archived: false,
+        fetchedAt: new Date().toISOString(),
+      };
+    // A connection that never finishes, so the waiting screen can be looked at;
+    // cancelling it fails it the way the core does.
+    case "connect_catalog_entry":
+      return new Promise((_, reject) => {
+        heldFetch = () => reject({ code: "cancelled", message: "cancelled" });
+      });
     case "library":
       return library;
     case "item_detail":
@@ -81,9 +166,12 @@ function answer(cmd: string, args: Args): unknown {
         highlight: a.line ?? null,
         totalLines: 1,
       };
+    case "cancel_job":
+      heldFetch?.();
+      heldFetch = null;
+      return true;
     case "watch_project":
     case "unwatch_project":
-    case "cancel_job":
     case "log_ui_error":
       return null;
     case "plugin:event|listen":

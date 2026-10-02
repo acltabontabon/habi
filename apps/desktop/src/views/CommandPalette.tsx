@@ -212,13 +212,13 @@ export function CommandPalette({
                   </Command.Item>
                   <Command.Item
                     value="connect git repository library team url"
-                    onSelect={() => run(() => navigate({ name: "sources", sourceId: "git" }))}
+                    onSelect={() => run(() => navigate({ name: "sources", view: "git" }))}
                   >
                     <Icon name="branch" /> <span>Connect a Git repository…</span>
                   </Command.Item>
                   <Command.Item
                     value="use folder local library directory"
-                    onSelect={() => run(() => navigate({ name: "sources", sourceId: "folder" }))}
+                    onSelect={() => run(() => navigate({ name: "sources", view: "folder" }))}
                   >
                     <Icon name="folder" /> <span>Use a folder as a library…</span>
                   </Command.Item>

@@ -172,6 +172,7 @@ export function targetBranch(c: Contribution): string {
     case "branch":
       return tracked.name;
     case "default":
+    case "latestRelease":
       return "the repository's default branch";
     case "tag":
       return `none (the library follows tag ${tracked.name})`;

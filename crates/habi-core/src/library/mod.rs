@@ -8,6 +8,8 @@
 pub mod model;
 pub mod provenance;
 pub mod schema;
+pub mod signals;
+pub mod summary;
 
 use crate::clients::ClientId;
 use crate::fsutil::tree_digest;
@@ -713,6 +715,7 @@ pub fn build_index(
         seen_ids.insert(id.clone(), dir.clone());
         let content_digest = item_digest(&item_files);
         diags.extend(package_checks(dir, &content_digest, &item_files, read));
+        let signals = signals::scan(dir, &content_digest, &item_files, read);
         let kind = metadata.kind.unwrap_or(if metadata.workflow.is_some() {
             ItemKind::Workflow
         } else {
@@ -750,6 +753,7 @@ pub fn build_index(
             content_digest,
             metadata_status: status,
             diagnostics: diags,
+            signals,
             complete: true,
         });
     }
@@ -833,6 +837,7 @@ pub fn build_index(
             content_digest,
             metadata_status,
             diagnostics: diags,
+            signals: Vec::new(),
             complete: true,
         });
     }

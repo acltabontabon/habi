@@ -1,0 +1,465 @@
+[
+  {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "url": "https://github.com/anthropics/skills",
+    "repo": "anthropics/skills",
+    "summary": "Anthropic's public Agent Skills: documents, design, MCP servers and skill authoring.",
+    "notes": [
+      "Licences differ per skill; the Word, PDF, PowerPoint and Excel skills are proprietary."
+    ],
+    "publisher": {
+      "name": "Anthropic",
+      "kind": "builder",
+      "owner": "anthropics"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the anthropics organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "url": "https://github.com/openai/plugins",
+    "repo": "openai/plugins",
+    "summary": "Skills bundled in OpenAI's plugins for Codex, covering many products and platforms.",
+    "notes": [
+      "Replaces openai/skills, which OpenAI has deprecated in favour of this repository.",
+      "A plugin is more than its skills: connectors and apps in a plugin are not skills and are not read.",
+      "Some skills mirror other publishers' skills; the same name can appear in several plugins."
+    ],
+    "publisher": {
+      "name": "OpenAI",
+      "kind": "builder",
+      "owner": "openai"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the openai organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "plugins/*/skills/**"
+    ],
+    "exclude": [
+      "plugins/plugin-eval/fixtures/**"
+    ],
+    "followsReleases": false,
+    "fitsWhen": [],
+    "groupSegment": 1,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "microsoft",
+    "name": "Microsoft",
+    "url": "https://github.com/microsoft/skills",
+    "repo": "microsoft/skills",
+    "summary": "Skills for Azure and Microsoft SDKs, to ground coding agents in how each one works.",
+    "notes": [],
+    "publisher": {
+      "name": "Microsoft",
+      "kind": "builder",
+      "owner": "microsoft"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the microsoft organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      ".github/plugins/*/skills/**",
+      ".github/skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [
+      {
+        "kind": "dependency",
+        "text": "com.azure:*"
+      },
+      {
+        "kind": "dependency",
+        "text": "@azure/*"
+      }
+    ],
+    "groupSegment": 2,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "google",
+    "name": "Google",
+    "url": "https://github.com/google/skills",
+    "repo": "google/skills",
+    "summary": "Skills for Google Cloud, Google Ads and other Google products and technologies.",
+    "notes": [],
+    "publisher": {
+      "name": "Google",
+      "kind": "builder",
+      "owner": "google"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the google organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [
+      {
+        "kind": "dependency",
+        "text": "@google-cloud/bigquery"
+      },
+      {
+        "kind": "dependency",
+        "text": "com.google.cloud:google-cloud-bigquery"
+      },
+      {
+        "kind": "file",
+        "text": "cloudbuild.{yaml,yml,json}"
+      }
+    ],
+    "groupSegment": 1,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "url": "https://github.com/github/awesome-copilot",
+    "repo": "github/awesome-copilot",
+    "summary": "Community-contributed skills for GitHub Copilot, hosted by GitHub.",
+    "notes": [
+      "GitHub hosts this collection; its skills are contributed by many people.",
+      "The agents, instructions and extensions in the same repository are not skills and are not read."
+    ],
+    "publisher": {
+      "name": "GitHub",
+      "kind": "builder",
+      "owner": "github"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the github organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "cloudflare",
+    "name": "Cloudflare",
+    "url": "https://github.com/cloudflare/skills",
+    "repo": "cloudflare/skills",
+    "summary": "Skills for building on Cloudflare: Workers, Durable Objects, Agents, sandboxes and more.",
+    "notes": [],
+    "publisher": {
+      "name": "Cloudflare",
+      "kind": "builder",
+      "owner": "cloudflare"
+    },
+    "ownership": {
+      "method": "org-site-matches-domain",
+      "checked": "2026-10-03",
+      "evidence": "The cloudflare organization is not verified by GitHub, but its website is cloudflare.com"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [
+      {
+        "kind": "file",
+        "text": "wrangler.{toml,json,jsonc}"
+      },
+      {
+        "kind": "dependency",
+        "text": "wrangler"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Next.js"
+      }
+    ],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "vercel",
+    "name": "Vercel",
+    "url": "https://github.com/vercel-labs/agent-skills",
+    "repo": "vercel-labs/agent-skills",
+    "summary": "React, Next.js and React Native practices from Vercel.",
+    "notes": [
+      "Licences differ per skill."
+    ],
+    "publisher": {
+      "name": "Vercel",
+      "kind": "builder",
+      "owner": "vercel-labs"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the vercel-labs organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "uses React"
+      },
+      {
+        "kind": "dependency",
+        "text": "react-native"
+      },
+      {
+        "kind": "file",
+        "text": "vercel.json"
+      },
+      {
+        "kind": "dependency",
+        "text": "@vercel/*"
+      }
+    ],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "sentry",
+    "name": "Sentry",
+    "url": "https://github.com/getsentry/skills",
+    "repo": "getsentry/skills",
+    "summary": "Skills the Sentry team uses for development: code review, pull requests, security and docs.",
+    "notes": [],
+    "publisher": {
+      "name": "Sentry",
+      "kind": "builder",
+      "owner": "getsentry"
+    },
+    "ownership": {
+      "method": "github-verified-org",
+      "checked": "2026-10-03",
+      "evidence": "GitHub shows the getsentry organization as verified"
+    },
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [
+      {
+        "kind": "file",
+        "text": "manage.py"
+      },
+      {
+        "kind": "tag",
+        "text": "uses GitHub Actions"
+      }
+    ],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "superpowers",
+    "name": "Superpowers",
+    "url": "https://github.com/obra/superpowers",
+    "repo": "obra/superpowers",
+    "summary": "An engineering process for coding agents, from first idea to merged branch.",
+    "notes": [
+      "Skills call each other by name; adopt the ones they reference together."
+    ],
+    "publisher": {
+      "name": "obra",
+      "kind": "community",
+      "owner": "obra"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": true,
+    "fitsWhen": [],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "addyosmani",
+    "name": "Addy Osmani",
+    "url": "https://github.com/addyosmani/agent-skills",
+    "repo": "addyosmani/agent-skills",
+    "summary": "Production engineering practices for coding agents.",
+    "notes": [],
+    "publisher": {
+      "name": "Addy Osmani",
+      "kind": "community",
+      "owner": "addyosmani"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": true,
+    "fitsWhen": [],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "wshobson",
+    "name": "wshobson",
+    "url": "https://github.com/wshobson/agents",
+    "repo": "wshobson/agents",
+    "summary": "A large plugin collection across languages, frameworks and platforms.",
+    "notes": [
+      "Broad and uneven; read a skill before adopting it."
+    ],
+    "publisher": {
+      "name": "wshobson",
+      "kind": "community",
+      "owner": "wshobson"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "plugins/*/skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [],
+    "groupSegment": 1,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  }
+]

@@ -61,13 +61,17 @@ pub enum SkillOrigin {
     /// Copied from a skill found in a project.
     #[serde(rename_all = "camelCase")]
     Project { project_name: String, path: String },
-    /// Copied from a team library item, to edit and contribute back.
+    /// Copied from a library item, to edit and contribute back.
     #[serde(rename_all = "camelCase")]
     Library {
         source_name: String,
         source_identity: String,
         item_id: String,
         snapshot: String,
+        /// Where the original lives and who stands behind it, as it was when
+        /// the copy was made. Absent on copies made before Habi recorded it.
+        #[serde(default)]
+        upstream: Option<Upstream>,
     },
     /// Started from text selected in a project's instruction file.
     #[serde(rename_all = "camelCase")]
@@ -77,6 +81,24 @@ pub enum SkillOrigin {
         start_line: u32,
         end_line: u32,
     },
+}
+
+/// The original of an adopted skill, kept with the copy so it can always be
+/// traced back, credited, and (if its owner allows) shared back.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Upstream {
+    /// The repository it came from (a web address), when it has one.
+    pub url: Option<String>,
+    /// The skill's folder in that repository.
+    pub path: String,
+    /// The licence the skill declares, else the repository's when known.
+    pub license: Option<String>,
+    /// Who publishes the repository, as the catalog names them.
+    pub publisher: Option<String>,
+    /// The catalog entry it came from, if any.
+    pub catalog_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]

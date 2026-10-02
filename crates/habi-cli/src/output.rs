@@ -237,6 +237,125 @@ pub fn cli_wording(text: &str) -> String {
     )
 }
 
+// ----- catalog -----------------------------------------------------------------
+
+pub fn catalog_list(entries: &[habi_core::catalog::CatalogEntry]) {
+    use habi_core::catalog::CatalogAvailability::*;
+    use habi_core::catalog::registry::PublisherKind;
+    for group in [PublisherKind::Builder, PublisherKind::Community] {
+        println!(
+            "{}",
+            match group {
+                PublisherKind::Builder => "From the builders",
+                PublisherKind::Community => "From the community",
+            }
+        );
+        for e in entries.iter().filter(|e| e.publisher.kind == group) {
+            let state = match e.availability {
+                NotFetched => "not fetched".to_string(),
+                Previewed => "previewed".to_string(),
+                Connected => "connected".to_string(),
+            };
+            let count = e
+                .contents
+                .as_ref()
+                .map(|c| format!(", {} skills", c.items))
+                .unwrap_or_default();
+            println!("  {:<12} {}  ({state}{count})", e.id, e.repo);
+        }
+        println!();
+    }
+}
+
+pub fn catalog_entry(
+    e: &habi_core::catalog::CatalogEntry,
+    index: Option<&habi_core::library::model::LibraryIndex>,
+) {
+    println!("{}  {}", e.name, e.url);
+    match &e.ownership {
+        Some(o) => println!("  official: {} (checked {})", o.evidence, o.checked),
+        None => println!("  community: maintained independently"),
+    }
+    match &e.review {
+        Some(r) => println!(
+            "  reviewed: {} at {} by {}{}",
+            r.scope,
+            r.revision,
+            r.by,
+            if r.current {
+                ""
+            } else {
+                " (the library has changed since)"
+            }
+        ),
+        None => println!("  reviewed: no. Habi has not inspected this library."),
+    }
+    for note in &e.notes {
+        println!("  note: {note}");
+    }
+    if let Some(f) = &e.fetched {
+        println!(
+            "  fetched: {} {}{}",
+            match &f.release {
+                Some(tag) => format!("release {tag}"),
+                None if e.follows_releases => "default branch (no release published)".to_string(),
+                None => f.branch.clone().unwrap_or_else(|| "default branch".into()),
+            },
+            short(&f.snapshot),
+            f.updated
+                .as_deref()
+                .map(|d| format!(", last change {d}"))
+                .unwrap_or_default()
+        );
+    }
+    if let Some(c) = &e.contents {
+        println!(
+            "  contents: {} skills; {} with scripts ({} script files), {} with references, {} with assets",
+            c.items, c.with_scripts, c.script_files, c.with_references, c.with_assets
+        );
+        println!(
+            "  signals: {} caution, {} notice (static reading; not a guarantee)",
+            c.signals.caution, c.signals.notice
+        );
+        if let Some(l) = &c.license {
+            println!(
+                "  licence: {} ({})",
+                l.spdx.as_deref().unwrap_or("see the file"),
+                l.file
+            );
+        }
+        if !c.groups.is_empty() {
+            let names: Vec<String> = c
+                .groups
+                .iter()
+                .take(8)
+                .map(|g| format!("{} ({})", g.name, g.items))
+                .collect();
+            println!(
+                "  groups: {}{}",
+                names.join(", "),
+                if c.groups.len() > 8 { ", …" } else { "" }
+            );
+        }
+    }
+    if let Some(p) = &e.problem {
+        println!("  problem: {}", p.message);
+    }
+    if let Some(index) = index {
+        println!();
+        for item in &index.items {
+            let marks = item
+                .signals
+                .iter()
+                .map(|s| s.severity)
+                .max()
+                .map(|s| format!("  [{s:?}]"))
+                .unwrap_or_default();
+            println!("  {}{marks}", item.path);
+        }
+    }
+}
+
 // ----- sources -----------------------------------------------------------------
 
 pub fn sources(list: &[Source]) {

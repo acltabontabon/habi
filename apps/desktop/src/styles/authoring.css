@@ -126,12 +126,8 @@
 
 /* ---------- Connect a library ---------- */
 
-.connect {
+.connect-compact {
   max-width: 600px;
-}
-
-.connect-page .lead-sm {
-  max-width: 60ch;
 }
 
 .connect .working {

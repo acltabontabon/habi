@@ -8,6 +8,8 @@
 //!   put back);
 //! - per library, the current snapshot, the newest `KEEP` others, and every
 //!   snapshot a contribution or a skill copied from the library is based on;
+//! - library previews (fetched to look at, never connected) for
+//!   `PREVIEW_KEEP_DAYS` after their last fetch, then they are discarded;
 //!
 //! and then removes content-store objects none of those refer to. Objects
 //! written or reused within the last hour are spared: a refresh or apply
@@ -26,6 +28,10 @@ use ts_rs::TS;
 /// library, are kept.
 pub const KEEP: usize = 20;
 
+/// A library fetched only to look at is discarded this long after its last
+/// fetch if it was never connected. Opening it again fetches it again.
+pub const PREVIEW_KEEP_DAYS: i64 = 60;
+
 /// Objects younger than this are never removed.
 const GRACE: Duration = Duration::from_secs(60 * 60);
 
@@ -41,6 +47,9 @@ const LAST_FULL_KEY: &str = "maintenance:last-prune";
 pub struct PruneReport {
     /// Records of finished operations removed (beyond the newest per project).
     pub operations_removed: u32,
+    /// Library previews, never connected, discarded for being old.
+    #[serde(default)]
+    pub previews_removed: u32,
     /// Earlier library snapshots removed.
     pub snapshots_removed: u32,
     /// Stored file contents removed because nothing kept refers to them.
@@ -70,6 +79,7 @@ pub fn prune_keeping(paths: &AppPaths, store: &Store, keep: usize) -> Result<Pru
             &mut referenced,
         );
     }
+    prune_previews(paths, store, &mut report)?;
     prune_snapshots(paths, store, keep, &mut report, &mut referenced)?;
     remove_unreferenced(paths, &referenced, &mut report)?;
     store.set_setting(LAST_FULL_KEY, &crate::time::now())?;
@@ -211,6 +221,27 @@ struct ListedFile {
 /// Removes earlier snapshots of every library beyond the newest `keep`
 /// (keeping the current one and those something is based on), and adds
 /// what the remaining ones refer to to `referenced`.
+/// Discards previews nobody connected within `PREVIEW_KEEP_DAYS` of their
+/// last fetch. A preview another operation is using is left for next time.
+fn prune_previews(paths: &AppPaths, store: &Store, report: &mut PruneReport) -> Result<()> {
+    let sources = crate::source::Sources::new(paths, store);
+    let now = crate::time::now();
+    for preview in sources.list_previews()? {
+        let last = preview
+            .last_attempt_at
+            .as_deref()
+            .unwrap_or(&preview.created_at);
+        let age_days = crate::time::seconds_between(last, &now).map(|s| s / (24 * 60 * 60));
+        if age_days.is_some_and(|d| d >= PREVIEW_KEEP_DAYS) {
+            match sources.remove(&preview.id) {
+                Ok(()) => report.previews_removed += 1,
+                Err(_) => report.skipped_busy += 1,
+            }
+        }
+    }
+    Ok(())
+}
+
 fn prune_snapshots(
     paths: &AppPaths,
     store: &Store,

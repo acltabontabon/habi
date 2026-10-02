@@ -1554,7 +1554,7 @@ impl<'a> Contributions<'a> {
         project_root: Option<&Path>,
         project_tags: Vec<String>,
     ) -> Result<Contribution> {
-        let source = self.sources.get(source_id)?;
+        let source = self.sources.connected(source_id)?;
         if source.kind != SourceKind::Git {
             return Err(HabiError::Unsupported(
                 "contributions need a Git-backed library; this source is a plain folder".into(),
@@ -2910,7 +2910,9 @@ impl<'a> Contributions<'a> {
             _ if open_request => {
                 let base = match &source.tracked {
                     TrackedRef::Branch { name } => Some(name.clone()),
-                    TrackedRef::Default => default_branch(&git, &url, cancel),
+                    TrackedRef::Default | TrackedRef::LatestRelease => {
+                        default_branch(&git, &url, cancel)
+                    }
                     TrackedRef::Tag { .. } => None,
                 };
                 match (base, remote_repo(&url)) {
