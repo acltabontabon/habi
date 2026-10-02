@@ -287,3 +287,28 @@ fn acceptance_scenario() {
     );
     assert_eq!(overview.sources[0].freshness, Freshness::Stale);
 }
+
+#[test]
+fn damaged_exclusions_are_an_error_not_an_empty_list() {
+    let home = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    copy_tree(&fixture("repos/billing-service"), proj.path());
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let project = habi.open_project(proj.path()).unwrap();
+    habi.set_exclusions(&project.id, vec!["secrets/**".into()])
+        .unwrap();
+    habi.store
+        .conn()
+        .unwrap()
+        .execute("UPDATE projects SET exclusions_json = '[\"secrets/**'", [])
+        .unwrap();
+    let err = habi
+        .inspect(&project.id, true, &CancelToken::new())
+        .unwrap_err();
+    assert_eq!(err.code(), "conflict", "{err}");
+    // Setting them again repairs it.
+    habi.set_exclusions(&project.id, vec!["secrets/**".into()])
+        .unwrap();
+    habi.inspect(&project.id, true, &CancelToken::new())
+        .unwrap();
+}
