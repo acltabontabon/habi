@@ -125,6 +125,11 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE contributions ADD COLUMN excluded_json TEXT NOT NULL DEFAULT '[]';
     "#,
+    // v5: libraries of the sample workspace, so they are recognized by a
+    // flag rather than by name, and kept out of the user's own projects.
+    r#"
+    ALTER TABLE sources ADD COLUMN sample INTEGER NOT NULL DEFAULT 0;
+    "#,
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
