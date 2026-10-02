@@ -14,10 +14,10 @@ recommendations, a project's list collapses them into a count per library (insta
 listed); `habi recommend --all` and *Show* list them. This keeps a large community library from
 burying what actually fits.
 
-Licences are reported, not interpreted: Habi shows the SKILL.md `license` as written and the
-nearest licence file in the skill's folder or one of its parents (`LICENSE`, `LICENSE.txt`,
+Licenses are reported, not interpreted: Habi shows the SKILL.md `license` as written and the
+nearest license file in the skill's folder or one of its parents (`LICENSE`, `LICENSE.txt`,
 `COPYING`, `LICENSE-MIT`, …). A `license` that says *proprietary* adds a note to the install
-review and a warning before sharing. A library narrowed to a subfolder only sees licence files
+review and a warning before sharing. A library narrowed to a subfolder only sees license files
 inside it.
 
 Examples that the test suite validates: [`schema/examples/valid`](../../schema/examples/valid)
