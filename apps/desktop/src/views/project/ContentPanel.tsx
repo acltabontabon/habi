@@ -2,10 +2,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Icon } from "../../components/Icon";
-import { Markdown } from "../../components/lazy";
+import { Markdown, SourceEditor } from "../../components/lazy";
 import { ErrorNotice, Notice, Working } from "../../components/ui";
 import { api } from "../../lib/api";
 import { levelLabel } from "../../lib/format";
+import { languageFor } from "../../lib/languages";
 import { useItemDetail } from "../../lib/queries";
 
 /** What the author declared and where the terms are; never an interpretation. */
@@ -53,7 +54,14 @@ export function FileViewer({
           base={path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : undefined}
         />
       ) : (
-        <pre className="code">{file.data.text}</pre>
+        <SourceEditor
+          key={path}
+          label={path}
+          value={file.data.text}
+          onChange={() => undefined}
+          readOnly
+          language={languageFor(path)}
+        />
       )}
     </div>
   );

@@ -578,10 +578,10 @@ export function FilesPane({
       <div className="files-view">
         {open ? (
           <>
-            <div className="file-view-head">
-              <span className="mono file-view-path">{open.path}</span>
+            <div className="pkg-view-head">
+              <span className="mono pkg-view-path">{open.path}</span>
               {!readOnly ? (
-                <span className="file-view-actions">
+                <span className="pkg-view-actions">
                   {open.path !== "SKILL.md" ? (
                     <Button
                       size="sm"
