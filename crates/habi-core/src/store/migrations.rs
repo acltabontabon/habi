@@ -130,6 +130,11 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE sources ADD COLUMN sample INTEGER NOT NULL DEFAULT 0;
     "#,
+    // v6: how many items a snapshot holds, so library lists can say so
+    // without building every library's index. NULL until counted.
+    r#"
+    ALTER TABLE snapshots ADD COLUMN item_count INTEGER;
+    "#,
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
