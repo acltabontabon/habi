@@ -1,0 +1,210 @@
+/*
+ * Habi's design tokens, "Loom" — the same values as the app
+ * (apps/desktop/src/styles/tokens.css): Daylight and Graphite, one saffron
+ * thread, and a natural dye per library.
+ */
+
+:root {
+  color-scheme: light;
+
+  --paper: #f6f5f1;
+  --paper-raised: #fcfbf8;
+  --paper-sunken: #eeece6;
+  --paper-selected: #ffffff;
+
+  --ink: #16161a;
+  --ink-soft: #34343b;
+  --ink-muted: #5f5f68; /* 5.9:1 on --paper, 5.4:1 on --paper-sunken */
+  --ink-faint: #8d8d95; /* 3.2:1: decorative (line numbers) and disabled only */
+  --hairline: #e2e0d9;
+  --hairline-strong: #cdcac1;
+
+  --thread: #c96f12;
+  --thread-strong: #8f4c06; /* 5.6:1 on --paper, for text */
+  --thread-wash: #f7e7d0;
+
+  --dye-0: #3a5a96; /* indigo */
+  --dye-1: #b0452f; /* madder */
+  --dye-2: #4b7a40; /* moss */
+  --dye-3: #94396a; /* cochineal */
+  --dye-4: #23777a; /* woad */
+  --dye-5: #7a5530; /* walnut */
+  --dye-6: #82700c; /* weld */
+  --dye-7: #5c4c94; /* logwood */
+
+  --ok-ink: #22663e;
+  --ok-wash: #e0eee2;
+  --unknown-ink: #44557a;
+  --unknown-wash: #e4e8f1;
+  --warn-ink: #7c5108;
+  --warn-wash: #f6e8c8;
+  --danger-ink: #a12a20;
+  --danger-wash: #f7dfda;
+  --muted-wash: #ebe9e2;
+
+  --focus: #16161a;
+  --focus-halo: #f6f5f1;
+  --button-ink: #16161a;
+  --button-ink-text: #fcfbf8;
+  --button-ink-hover: #34343b;
+  --shadow-dialog: 0 28px 72px rgba(22, 22, 26, 0.18), 0 2px 8px rgba(22, 22, 26, 0.08);
+  --shadow-raised: 0 1px 0 rgba(22, 22, 26, 0.04), 0 1px 2px rgba(22, 22, 26, 0.06);
+  --scrim: rgba(22, 22, 26, 0.34);
+
+  --diff-add: #e2f0e2;
+  --diff-add-ink: #1d5530;
+  --diff-del: #f7e1dc;
+  --diff-del-ink: #84241c;
+
+  --font-ui: "IBM Plex Sans Variable", "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-2xs: 10.5px;
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 40px;
+  --text-4xl: 54px;
+
+  --leading-tight: 1.2;
+  --leading: 1.5;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --sidebar-width: 240px;
+  --list-width: 400px;
+  --filter-height: 51px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --duration: 160ms;
+  --page: 1200px;
+  --gutter: clamp(16px, 4vw, 48px);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #0f0f11;
+  --paper-raised: #16161a;
+  --paper-sunken: #0b0b0d;
+  --paper-selected: #1c1c21;
+
+  --ink: #ececef;
+  --ink-soft: #cacad2;
+  --ink-muted: #94949f; /* 6.6:1 on --paper, 6.1:1 on --paper-raised */
+  --ink-faint: #5e5e68;
+  --hairline: #232328;
+  --hairline-strong: #34343c;
+
+  --thread: #f2a541;
+  --thread-strong: #f7bb66;
+  --thread-wash: #2b2012;
+
+  --dye-0: #8eaaf0;
+  --dye-1: #f08f75;
+  --dye-2: #95cf86;
+  --dye-3: #ea8cbf;
+  --dye-4: #6fd0cf;
+  --dye-5: #d6a36f;
+  --dye-6: #e2cc58;
+  --dye-7: #b1a2f0;
+
+  --ok-ink: #8fd6a2;
+  --ok-wash: #15251a;
+  --unknown-ink: #a9b8e2;
+  --unknown-wash: #1a2030;
+  --warn-ink: #eec36c;
+  --warn-wash: #2c2414;
+  --danger-ink: #f3958a;
+  --danger-wash: #331b19;
+  --muted-wash: #1c1c21;
+
+  --focus: #ececef;
+  --focus-halo: #0f0f11;
+  --button-ink: #ececef;
+  --button-ink-text: #0f0f11;
+  --button-ink-hover: #ffffff;
+  --shadow-dialog: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-raised: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  --diff-add: #142a1b;
+  --diff-add-ink: #a3dcb3;
+  --diff-del: #34191a;
+  --diff-del-ink: #f4a69c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --paper: #0f0f11;
+    --paper-raised: #16161a;
+    --paper-sunken: #0b0b0d;
+    --paper-selected: #1c1c21;
+
+    --ink: #ececef;
+    --ink-soft: #cacad2;
+    --ink-muted: #94949f; /* 6.6:1 on --paper, 6.1:1 on --paper-raised */
+    --ink-faint: #5e5e68;
+    --hairline: #232328;
+    --hairline-strong: #34343c;
+
+    --thread: #f2a541;
+    --thread-strong: #f7bb66;
+    --thread-wash: #2b2012;
+
+    --dye-0: #8eaaf0;
+    --dye-1: #f08f75;
+    --dye-2: #95cf86;
+    --dye-3: #ea8cbf;
+    --dye-4: #6fd0cf;
+    --dye-5: #d6a36f;
+    --dye-6: #e2cc58;
+    --dye-7: #b1a2f0;
+
+    --ok-ink: #8fd6a2;
+    --ok-wash: #15251a;
+    --unknown-ink: #a9b8e2;
+    --unknown-wash: #1a2030;
+    --warn-ink: #eec36c;
+    --warn-wash: #2c2414;
+    --danger-ink: #f3958a;
+    --danger-wash: #331b19;
+    --muted-wash: #1c1c21;
+
+    --focus: #ececef;
+    --focus-halo: #0f0f11;
+    --button-ink: #ececef;
+    --button-ink-text: #0f0f11;
+    --button-ink-hover: #ffffff;
+    --shadow-dialog: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --shadow-raised: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --scrim: rgba(0, 0, 0, 0.6);
+
+    --diff-add: #142a1b;
+    --diff-add-ink: #a3dcb3;
+    --diff-del: #34191a;
+    --diff-del-ink: #f4a69c;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}

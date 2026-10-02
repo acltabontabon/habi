@@ -1,0 +1,234 @@
+---
+import data from "../data/recommendations.json";
+
+/*
+ * The weave: the whole idea in one scene, played by scrolling.
+ *
+ * 01 versions of one skill, scattered, gather into a skill package
+ * 02 the package becomes one library's thread among others
+ * 03 repositories cross the warp; floats show where knowledge applies
+ *    (from the real `habi recommend` snapshot)
+ * 04 a refinement loops out and back; the update travels to the next project
+ * 05 the cloth draws together into Habi's mark
+ *
+ * Coordinates are in a 640 × 520 stage. The captions carry the meaning for
+ * screen readers; the stage is decorative. Without scripts, or with reduced
+ * motion, the scene is a list of five captions beside the woven state.
+ */
+const W = 640;
+const H = 520;
+const X = (x: number) => `${((x / W) * 100).toFixed(3)}`;
+const Y = (y: number) => `${((y / H) * 100).toFixed(3)}`;
+
+const sources = [
+  { name: "My skills", color: "var(--ink-soft)" },
+  { name: "Platform team", color: "var(--dye-0)" },
+  { name: "Security guild", color: "var(--dye-1)" },
+  { name: "community", color: "var(--dye-2)", stitched: true },
+];
+const warpX = [210, 305, 400, 495];
+const weftY = [196, 264, 332, 400];
+const repos = data.repos.map((r) => ({
+  name: r.name,
+  on: sources.map((s) =>
+    r.items.some((it) => it.library === s.name && (it.group === "required" || it.group === "relevant")),
+  ),
+}));
+
+// Where each piece of the lesson lives, and the line of the package it becomes.
+const card = { x: 320, y: 268 };
+const slots = [228, 262, 296];
+const fragments = [
+  {
+    kind: "chat",
+    name: "#engineering",
+    text: "does anyone have a skill for reviewing Liquibase changes?",
+    s: [36, 52],
+    t: 0,
+  },
+  { kind: "file", name: "payments/claude-skills", text: "migration-review/ — maybe?", s: [404, 40], t: 0 },
+  { kind: "file", name: "~/.claude/skills", text: "my own version", s: [44, 330], t: 0 },
+  { kind: "file", name: "CLAUDE.md", text: "billing-service: migration rules", s: [404, 372], t: 1 },
+  { kind: "head", name: "the checklist", text: "in someone's head", s: [250, 440], t: 2 },
+];
+const lines = [
+  { path: "SKILL.md", note: "the procedure, for the agent" },
+  { path: "habi.yaml", note: "where it applies · optional" },
+  { path: "references/checklist.md", note: "read when needed" },
+];
+
+const captions = [
+  {
+    step: "A skill",
+    title: ["Habi ties it", "into one skill."],
+    body: "One folder your agent can actually use: the procedure, its references, where it applies. Plain Agent Skills — no lock-in.",
+  },
+  {
+    step: "A library",
+    title: ["Your team's library.", "Not ours."],
+    body: "Skills live in Git repositories you already own and review. Each one is a thread — solid for your team, stitched for the community.",
+  },
+  {
+    step: "Find",
+    title: ["It shows up where", "it matters."],
+    body: "Open any repository: Habi reads its build files — nothing is built or run — and puts the right knowledge in front of you. With receipts, down to pom.xml:31.",
+  },
+  {
+    step: "Refine · share · reuse",
+    title: ["Make it better.", "Everyone gets it."],
+    body: "Fix it where you learned it. Send it back for review. The next project picks it up on refresh — its own changes kept.",
+  },
+  {
+    step: "Habi",
+    title: ["What one developer learns,", "every project keeps."],
+    body: "",
+  },
+];
+---
+
+<section class="scene" id="weave" aria-labelledby="weave-title" data-scene>
+  <h2 id="weave-title" class="visually-hidden">How Habi works, in five steps</h2>
+  <div class="scene-sticky">
+    <ol class="captions">
+      {
+        captions.map((c, i) => (
+          <li class="caption" data-step={i}>
+            <p class="caption-step mono">
+              <span>{String(i + 1).padStart(2, "0")}</span>
+              {c.step}
+            </p>
+            <h3 class="caption-title">
+              {c.title[0]} <em>{c.title[1]}</em>
+            </h3>
+            {c.body ? <p class="caption-body">{c.body}</p> : null}
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="rail" aria-hidden="true">
+      {captions.map((_, i) => <span data-tick={i} />)}
+    </div>
+
+    <div class="stage" aria-hidden="true">
+      <svg class="stage-svg" viewBox={`0 0 ${W} ${H}`}>
+        <rect class="s-mark-ground"></rect>
+        <g class="s-warps">
+          {
+            sources.map((s, i) => (
+              <line
+                data-warp={i}
+                class:list={{ "is-stitched": s.stitched }}
+                x1={warpX[i]}
+                x2={warpX[i]}
+                y1={card.y}
+                y2={card.y}
+                stroke={s.color}
+              />
+            ))
+          }
+        </g>
+        <g class="s-wefts">
+          {
+            weftY.map((y, r) => (
+              <g data-weft={r}>
+                <line class="s-halo" x1="170" x2="170" y1={y} y2={y} />
+                <line class="s-pick" x1="170" x2="170" y1={y} y2={y} />
+              </g>
+            ))
+          }
+        </g>
+        <g class="s-floats">
+          {
+            repos.flatMap((r, ri) =>
+              r.on.map((on, ci) =>
+                on ? (
+                  <rect
+                    data-float
+                    data-row={ri}
+                    data-col={ci}
+                    x={warpX[ci] - 2.5}
+                    y={weftY[ri] - 14}
+                    width="5"
+                    height="28"
+                    rx="2.5"
+                    fill={sources[ci].color}
+                  />
+                ) : null,
+              ),
+            )
+          }
+        </g>
+        <path
+          class="s-loop"
+          pathLength="1"
+          d={`M${warpX[1]} ${weftY[0]} C ${warpX[1] + 30} ${weftY[0] - 78}, ${warpX[1] + 150} ${weftY[0] - 96}, ${warpX[1] + 162} ${weftY[0] - 42} C ${warpX[1] + 172} ${weftY[0] + 4}, ${warpX[1] + 60} ${weftY[0] + 12}, ${warpX[1]} ${weftY[0]}`}
+        ></path>
+        <circle class="s-knot" cx={warpX[1]} cy={weftY[0]} r="11"></circle>
+        <circle class="s-bead" cx={warpX[1]} cy={weftY[0]} r="5"></circle>
+        <g class="s-mark">
+          <line class="s-mark-cut s-mark-cut-left"></line>
+          <line class="s-mark-over"></line>
+        </g>
+      </svg>
+
+      <div class="stage-html">
+        {
+          sources.map((s, i) => (
+            <span class="s-source mono" data-label-warp={i} style={`--x:${X(warpX[i])};--y:${Y(150)}`}>
+              {s.name}
+            </span>
+          ))
+        }
+        {
+          repos.map((r, i) => (
+            <span class="s-repo mono" data-label-weft={i} style={`--x:${X(160)};--y:${Y(weftY[i])}`}>
+              {r.name}
+            </span>
+          ))
+        }
+        {
+          fragments.map((f, i) => (
+            <div
+              class:list={["s-frag", `is-${f.kind}`]}
+              data-frag={i}
+              data-sx={X(f.s[0])}
+              data-sy={Y(f.s[1])}
+              data-tx={X(card.x - 128)}
+              data-ty={Y(slots[f.t])}
+              style={`--dye:var(--dye-${[3, 6, 4, 5, 7][i]})`}
+            >
+              <span class="s-frag-name mono">{f.name}</span>
+              <span class="s-frag-text">{f.text}</span>
+              <svg class="s-frag-tail" viewBox="0 0 64 30" width="64" height="30">
+                <path d={["M2 2c10 2 14 14 26 14s18-12 34-8", "M2 2c8 10 22 12 30 6s16-6 30 4"][i % 2]} />
+              </svg>
+            </div>
+          ))
+        }
+        <div class="s-card" style={`--x:${X(card.x)};--y:${Y(card.y)}`}>
+          <p class="s-card-root mono">liquibase-migration-review/</p>
+          <ul>
+            {
+              lines.map((l, i) => (
+                <li style={`--dye:var(--dye-${[3, 6, 4][i]})`}>
+                  <span class="mono">{l.path}</span>
+                  <em>{l.note}</em>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+        <span class="s-chip mono is-evidence" style={`--x:${X(warpX[1] + 16)};--y:${Y(weftY[0] - 40)}`}
+          >pom.xml:31 · liquibase-core</span
+        >
+        <span class="s-chip mono is-refine" style={`--x:${X(warpX[1] + 118)};--y:${Y(weftY[0] - 104)}`}
+          >+ MySQL size check</span
+        >
+        <span class="s-chip mono is-update" style={`--x:${X(warpX[1] + 16)};--y:${Y(weftY[1] + 34)}`}
+          >update available · 697a40f</span
+        >
+      </div>
+    </div>
+  </div>
+</section>

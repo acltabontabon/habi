@@ -10,3 +10,4 @@ coverage/
 /habi-test-data/
 /.claude/
 /.local/
+/website/.astro/
