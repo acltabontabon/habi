@@ -110,7 +110,21 @@ impl Store {
     fn connect_raw(&self) -> Result<Connection> {
         let conn = Connection::open(&self.path)?;
         conn.busy_timeout(Duration::from_secs(10))?;
-        conn.pragma_update(None, "journal_mode", "WAL")?;
+        // Switching a new database to WAL needs an exclusive lock and does not
+        // wait on the busy timeout; another process opening the same new
+        // database at the same moment makes it fail with "busy". Retry briefly.
+        let started = std::time::Instant::now();
+        loop {
+            match conn.pragma_update(None, "journal_mode", "WAL") {
+                Err(rusqlite::Error::SqliteFailure(e, _))
+                    if e.code == rusqlite::ErrorCode::DatabaseBusy
+                        && started.elapsed() < Duration::from_secs(10) =>
+                {
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                result => break result?,
+            }
+        }
         conn.pragma_update(None, "foreign_keys", "ON")?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
         Ok(conn)
