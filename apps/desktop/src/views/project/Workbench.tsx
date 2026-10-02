@@ -24,6 +24,14 @@ function rowStatus(r: Recommendation) {
   return null;
 }
 
+/**
+ * Whether an item is listed before any group is expanded: it fits or may
+ * fit, or it is installed without rules. When none is, nothing fits yet.
+ */
+export function fitsProject(r: Recommendation): boolean {
+  return r.group !== "notApplicable" && (r.group !== "available" || r.installState !== "notInstalled");
+}
+
 export function Workbench({ overview, itemKey }: { overview: ProjectOverview; itemKey?: string }) {
   const { navigate } = useNav();
   const [filter, setFilter] = useState("");
@@ -61,10 +69,7 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
   // Items without applicability rules are not recommendations: unless shown,
   // only installed ones (which may need an update) are listed.
   const listed = (r: Recommendation) =>
-    filter ||
-    (r.group === "notApplicable"
-      ? showNotApplicable
-      : r.group !== "available" || showAvailable || r.installState !== "notInstalled");
+    filter || fitsProject(r) || (r.group === "notApplicable" ? showNotApplicable : showAvailable);
   const navigable = visible.filter(listed);
   const unmatchedByLibrary = useMemo(() => {
     const counts = new Map<string, number>();
@@ -73,10 +78,15 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
         counts.set(r.item.sourceName, (counts.get(r.item.sourceName) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [overview.recommendations]);
-  const selected =
-    overview.recommendations.find((r) => r.item.key === itemKey) ??
-    navigable[0] ??
-    overview.recommendations[0];
+  // An item opened by name is shown even from a collapsed group (which then
+  // opens); otherwise the first listed item is, never a hidden one.
+  const chosen = overview.recommendations.find((r) => r.item.key === itemKey);
+  const selected = chosen ?? navigable[0];
+  useEffect(() => {
+    if (!chosen || fitsProject(chosen)) return;
+    if (chosen.group === "notApplicable") setShowNotApplicable(true);
+    else setShowAvailable(true);
+  }, [chosen]);
 
   const select = (r: Recommendation) =>
     navigate({ name: "project", projectId, tab: "recommendations", itemKey: r.item.key });
@@ -204,7 +214,11 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
         {selected ? (
           <ItemDetailPane key={selected.item.key} overview={overview} recommendation={selected} />
         ) : (
-          <Empty title="Nothing in your library yet">Refresh the library or add skills to it.</Empty>
+          <Empty title="Nothing from your libraries fits this project yet">
+            {overview.recommendations.length > 0
+              ? "Show the groups on the left to browse what your libraries offer."
+              : "Refresh the library or add skills to it."}
+          </Empty>
         )}
       </div>
     </div>

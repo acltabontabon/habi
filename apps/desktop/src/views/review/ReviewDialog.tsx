@@ -153,14 +153,15 @@ export function ReviewDialog({
     <Dialog
       open
       onOpenChange={(o) => {
-        if (!o) onClose();
+        // A plan being applied finishes first; closing would hide its outcome.
+        if (!o && !applying) onClose();
       }}
       title={titles[request.kind]}
       description="Nothing changes until you confirm below."
       wide
       footer={
         <>
-          <Button variant="quiet" onClick={onClose}>
+          <Button variant="quiet" onClick={onClose} disabled={applying}>
             Cancel
           </Button>
           {p && p.changes.length > 0 ? (
