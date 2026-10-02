@@ -10,6 +10,7 @@ import { useDyes } from "../../lib/dye";
 import { plural } from "../../lib/format";
 import { type ProjectTab, useNav } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
+import { useSafeInvoke } from "../../lib/safeInvoke";
 import { tabKeyHandler } from "../../lib/tabs";
 import { tagLabel } from "../../lib/tags";
 
@@ -19,7 +20,7 @@ import { useOverview } from "../../lib/queries";
 import { EvidenceView } from "./EvidenceView";
 import { FoundView } from "./FoundView";
 import { InstalledView } from "./InstalledView";
-import { Workbench } from "./Workbench";
+import { fitsProject, Workbench } from "./Workbench";
 
 export function understanding(overview: ProjectOverview): string[] {
   const { inspection } = overview;
@@ -48,6 +49,7 @@ export function ProjectView({
   const { navigate } = useNav();
   const overview = useOverview(projectId);
   const client = useQueryClient();
+  const safely = useSafeInvoke();
   const changed = useQuery<string[] | null>({
     queryKey: staleKey(projectId),
     queryFn: () => null,
@@ -191,7 +193,7 @@ export function ProjectView({
             size="sm"
             icon="external"
             variant="quiet"
-            onClick={() => void api.revealProjectPath(projectId, null)}
+            onClick={() => safely(() => api.revealProjectPath(projectId, null), "The folder was not shown")}
             title="Show the folder"
           >
             Reveal
@@ -277,7 +279,7 @@ export function ProjectView({
       </div>
 
       <div className="project-body" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {data.recommendations.length === 0 && tab === "recommendations" ? (
+        {tab === "recommendations" && !itemKey && !data.recommendations.some(fitsProject) ? (
           // Nothing to recommend is not a dead end: show what is already here
           // and what can be done with only this project.
           <FoundView project={project} lead />
