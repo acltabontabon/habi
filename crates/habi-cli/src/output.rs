@@ -11,7 +11,9 @@ use habi_core::install::apply::{JournalState, OperationSummary};
 use habi_core::install::diff::LineTag;
 use habi_core::install::plan::{ChangeOp, Plan};
 use habi_core::install::status::{FileState, InstallState};
-use habi_core::library::model::{DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem, Requirement};
+use habi_core::library::model::{
+    DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem, Requirement,
+};
 use habi_core::matching::Applicability;
 use habi_core::matching::eval::{Declaration, DeclaredSubject, EvalNode, Tri};
 use habi_core::recommend::{
@@ -442,11 +444,12 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         println!("\n{}", group_label(group));
         for r in members {
             shown += 1;
-            let required = if r.item.requirement == Requirement::Required && group != Group::Required {
-                " (team requirement)"
-            } else {
-                ""
-            };
+            let required =
+                if r.item.requirement == Requirement::Required && group != Group::Required {
+                    " (team requirement)"
+                } else {
+                    ""
+                };
             println!(
                 "  {}  [{}/{}]{required}",
                 r.item.title, r.item.source_name, r.item.id
@@ -472,9 +475,11 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         .filter(|r| r.group == Group::NotApplicable)
         .count();
     let mut unmatched: BTreeMap<&str, usize> = BTreeMap::new();
-    for r in o.recommendations.iter().filter(|r| {
-        r.group == Group::Available && r.install_state == InstallState::NotInstalled
-    }) {
+    for r in o
+        .recommendations
+        .iter()
+        .filter(|r| r.group == Group::Available && r.install_state == InstallState::NotInstalled)
+    {
         *unmatched.entry(r.item.source_name.as_str()).or_default() += 1;
     }
     if !all && !unmatched.is_empty() {
