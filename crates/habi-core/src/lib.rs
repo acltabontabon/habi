@@ -10,6 +10,7 @@
 //! - `contribute`: isolated contribution drafts, commits, patches, publishing.
 //! - `checks`: explicit, previewed verification commands.
 //! - `skills`: local skills (drafts, imported copies), discovery and import.
+//! - `maintenance`: pruning old operation records, snapshots and stored content.
 //! - `service`: the facade both front ends call.
 //! - `paths`, `fsutil`, `process`, `redact`: safety primitives.
 
@@ -24,6 +25,7 @@ pub mod fsutil;
 pub mod inspect;
 pub mod install;
 pub mod library;
+pub mod maintenance;
 pub mod matching;
 pub mod paths;
 pub mod process;

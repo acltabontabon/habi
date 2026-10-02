@@ -32,7 +32,14 @@ impl Blobs {
     pub fn put(&self, bytes: &[u8]) -> Result<String> {
         let digest = sha256(bytes);
         let path = self.path_for(&digest)?;
-        if !path.exists() {
+        // Content stored before is marked as just used: maintenance spares
+        // recent objects, and the caller is about to refer to this one.
+        let reused = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .and_then(|f| f.set_modified(std::time::SystemTime::now()))
+            .is_ok();
+        if !reused {
             atomic_write(&path, bytes)?;
         }
         Ok(digest)
