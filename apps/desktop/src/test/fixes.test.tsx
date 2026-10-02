@@ -77,10 +77,13 @@ const contribution: Contribution = {
   form,
   files: [
     {
-      path: "SKILL.md",
+      path: "skills/migration-review/SKILL.md",
+      previousPath: null,
       status: "added",
       size: 10,
       diff: { hunks: [], added: 1, removed: 0, binary: false, truncated: false },
+      included: true,
+      required: "A new skill cannot be shared without its SKILL.md.",
     },
   ],
   validation: [],
@@ -94,6 +97,7 @@ const contribution: Contribution = {
     display: "https://github.com/acme/skills.git",
     onThisMachine: false,
     host: "github",
+    tracked: { kind: "branch", name: "main" },
     requestUnavailable: null,
   },
   review: null,
@@ -101,6 +105,8 @@ const contribution: Contribution = {
   revising: false,
   stagingPath: "~/habi/contributions/c/files",
   pushedCommit: null,
+  attention: null,
+  publishedAt: null,
   createdAt: "2026-10-02T00:00:00Z",
   updatedAt: "2026-10-02T00:00:00Z",
 };
@@ -260,6 +266,8 @@ describe("share dialog", () => {
         approvedBy: [],
         comments: [],
         commentsTruncated: false,
+        targetBranch: "main",
+        visibility: null,
         checkedAt: new Date().toISOString(),
       },
     };
@@ -338,9 +346,9 @@ describe("contribution page", () => {
     };
     const user = userEvent.setup();
     wrap(<ContributionsView contributionId="c1" />, { name: "contributions", contributionId: "c1" });
-    await user.click(await screen.findByRole("button", { name: "Send for review…" }));
+    await user.click(await screen.findByRole("button", { name: "Create pull request…" }));
     const dialog = await screen.findByRole("dialog");
-    await user.click(screen.getByRole("button", { name: /^Push branch/ }));
+    await user.click(screen.getByRole("button", { name: "Create pull request" }));
     expect(await screen.findByText("Permission denied (publickey).")).toBeInTheDocument();
     expect(dialog).toContainElement(screen.getByText("Permission denied (publickey)."));
   });

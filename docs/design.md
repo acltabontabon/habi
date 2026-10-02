@@ -67,8 +67,12 @@ its one signature — used only where it carries meaning.
   URL first, whose library it is, and everything else under advanced options. A library page
   leads with its selvedge, freshness, a stat strip (skills, with rules, shipping scripts,
   proprietary) and, for community libraries, what not having been reviewed means.
-- **Sharing activity** — what was prepared and what actually happened, with a three-step
-  thread (review, prepare branch, send for review) that never marks an unopened request as done.
+- **Sharing activity** — one dense row per contribution: a single state chip (with "checked …
+  ago" for host-reported states), destination, last update and one next action. A
+  contribution's page puts the file list beside the selected diff (stacked on narrow
+  windows), validation split into blocking and warnings, and the destination with the title,
+  message and one concretely named action ("Create pull request"). Its three-step thread
+  (review, prepare branch, send) never marks an unopened request as done.
 
 ## Tokens and components
 
