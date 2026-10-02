@@ -72,7 +72,7 @@ const BUILD_MANIFESTS: &[&str] = &[
 ];
 
 /// Whether a directory named `name` whose parent is `parent` is skipped.
-fn skipped_dir(name: &str, parent: &Path, root: &Path) -> bool {
+pub fn skipped_dir(name: &str, parent: &Path, root: &Path) -> bool {
     if !DEFAULT_SKIPPED_DIRS.contains(&name) {
         return false;
     }
