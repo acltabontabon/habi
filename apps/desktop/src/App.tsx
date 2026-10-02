@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { ErrorNotice, Working } from "./components/ui";
 import { type Actions, ActionsContext } from "./lib/actions";
@@ -199,21 +200,24 @@ function Shell() {
         </a>
         <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
         <main id="main" className="main" tabIndex={-1}>
-          {route.name === "welcome" && <Welcome />}
-          {route.name === "project" && (
-            <ProjectView
-              key={route.projectId}
-              projectId={route.projectId}
-              tab={route.tab}
-              itemKey={route.itemKey}
-            />
-          )}
-          {route.name === "skills" && <SkillsView skillId={route.skillId} />}
-          {route.name === "sources" && (
-            <SourcesView sourceId={route.sourceId} itemId={route.itemId} file={route.file} />
-          )}
-          {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
-          {route.name === "settings" && <SettingsView />}
+          {/* A screen that fails to render is replaced; the sidebar still works, and leaving clears it. */}
+          <ErrorBoundary key={screen} area={route.name}>
+            {route.name === "welcome" && <Welcome />}
+            {route.name === "project" && (
+              <ProjectView
+                key={route.projectId}
+                projectId={route.projectId}
+                tab={route.tab}
+                itemKey={route.itemKey}
+              />
+            )}
+            {route.name === "skills" && <SkillsView skillId={route.skillId} />}
+            {route.name === "sources" && (
+              <SourcesView sourceId={route.sourceId} itemId={route.itemId} file={route.file} />
+            )}
+            {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
+            {route.name === "settings" && <SettingsView />}
+          </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         {creating ? (

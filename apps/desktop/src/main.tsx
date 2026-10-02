@@ -9,9 +9,12 @@ import "./styles/weave.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { initTheme } from "./lib/theme";
+import { installErrorLogging } from "./lib/uiErrors";
 
 initTheme();
+installErrorLogging();
 
 async function start() {
   // Development only: in a plain browser, answer IPC from the development
@@ -29,7 +32,9 @@ async function start() {
   if (root) {
     createRoot(root).render(
       <StrictMode>
-        <App />
+        <ErrorBoundary area="the app">
+          <App />
+        </ErrorBoundary>
       </StrictMode>,
     );
   }
