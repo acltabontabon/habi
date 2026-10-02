@@ -116,6 +116,20 @@ install-path collisions.
 - The lock file (`habi_lock: 1`) follows the same policy; Habi refuses to rewrite a lock
   file written by a newer version.
 
+## Validation
+
+`habi validate <folder>`, the library listing, My skills and contributions run the same
+checks on each skill package: the frontmatter and `habi.yaml` rules above, plus static checks
+of the package's own files — relative links and images in Markdown (and inline code such as
+`scripts/check.py`) must name files in the skill, links must not climb out of it, and `.json`
+and `.yaml` files must parse. **Errors** block installing and sharing from My skills and
+preparing a contribution; **warnings** should be fixed; **info** is a suggestion or says what
+was not checked. Scripts are never parsed or run. The full list, with levels, is in
+[My skills → Checks](local-skills.md#checks).
+
+Validation proves neither security nor correctness: it finds structural mistakes, not
+whether the guidance is right or the scripts are safe.
+
 ## Authoring tips
 
 - Prefer tags (`framework:spring-boot`) over raw dependency names where a tag exists: tags
