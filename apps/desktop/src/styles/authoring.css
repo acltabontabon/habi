@@ -1018,136 +1018,6 @@
 
 /* ---------- Condition builder ---------- */
 
-.builder {
-  display: grid;
-  max-width: 720px;
-  padding: 0 var(--s6) var(--s7);
-}
-
-.builder-block {
-  display: grid;
-  gap: var(--s2);
-  padding: var(--s4) 0 var(--s5);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.builder-block:last-child {
-  border-bottom: 0;
-}
-
-.builder-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  flex-wrap: wrap;
-}
-
-.builder-title {
-  font-size: 18px;
-  font-weight: 580;
-  letter-spacing: -0.012em;
-}
-
-.rules {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 9px;
-  display: grid;
-}
-
-/* Each condition hangs on the thread, like the reasons it will produce. */
-.rule {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  padding: 3px 0 3px 18px;
-  border-left: 1.5px solid var(--thread);
-}
-
-.rule-knot {
-  position: absolute;
-  left: -5px;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  margin-top: -4.5px;
-  border-radius: 50%;
-  border: 1.5px solid var(--thread);
-  background: var(--paper);
-}
-
-.rule-text {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.rule-lead {
-  color: var(--ink-muted);
-}
-
-.rule-value {
-  font-weight: 500;
-}
-
-.rule-empty {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  max-width: 60ch;
-}
-
-.rule-adder {
-  display: grid;
-  gap: 4px;
-  margin-top: var(--s1);
-}
-
-.rule-adder-row {
-  display: flex;
-  gap: var(--s2);
-  align-items: center;
-}
-
-.rule-adder-row .input {
-  min-width: 0;
-}
-
-.rule-adder-row .btn {
-  height: 32px;
-}
-
-.rule-kind {
-  flex: none;
-  width: 132px !important;
-}
-
-.suggest {
-  display: grid;
-  gap: var(--s2);
-  margin-top: var(--s2);
-  padding-top: var(--s3);
-  border-top: 1px dashed var(--hairline-strong);
-  font-size: var(--text-sm);
-}
-
-.suggest-from {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex-wrap: wrap;
-  color: var(--ink-soft);
-}
-
-.suggest-from .input {
-  width: auto;
-  min-width: 180px;
-  max-width: 280px;
-  min-height: 28px;
-  padding: 2px 8px;
-}
-
 .chip-evidence {
   color: var(--ink-muted);
   font-size: 11px;
@@ -1928,10 +1798,6 @@
     padding-left: var(--s5);
     padding-right: var(--s5);
   }
-  .builder {
-    padding-left: var(--s5);
-    padding-right: var(--s5);
-  }
   .source-editor .cm-line {
     padding: 0 var(--s5) !important;
   }
@@ -1983,10 +1849,6 @@
 }
 
 /* ---------- Refinements ---------- */
-
-.builder-block > .segmented-control {
-  justify-self: start;
-}
 
 .choice-body {
   display: grid;
