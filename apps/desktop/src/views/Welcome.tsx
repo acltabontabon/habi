@@ -8,7 +8,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useToast } from "../components/Toasts";
-import { Button, ErrorNotice, Kbd } from "../components/ui";
+import { Button, ErrorNotice, Kbd, Working } from "../components/ui";
 import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
 import { useDyes } from "../lib/dye";
@@ -94,6 +94,30 @@ export function Welcome() {
 
   const total = loomSources.filter((s) => s.kind !== "mine").reduce((n, s) => n + s.skills, 0);
   const libraryCount = loomSources.filter((s) => s.kind !== "mine").length;
+
+  // Until the projects are known, a returning user must not see the first-run screen.
+  if (recent.isPending) {
+    return (
+      <div className="startup">
+        <Working>Loading your projects…</Working>
+      </div>
+    );
+  }
+  if (recent.isError) {
+    return (
+      <div className="startup">
+        <ErrorNotice
+          error={recent.error}
+          title="Habi could not list your projects"
+          action={
+            <Button size="sm" onClick={() => void recent.refetch()}>
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="home">

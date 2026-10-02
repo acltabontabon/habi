@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { ErrorNotice, Working } from "./components/ui";
 import { type Actions, ActionsContext } from "./lib/actions";
 import { api } from "./lib/api";
+import { guardWindowClose } from "./lib/closing";
 import { lastProject, NavProvider, type Route, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
 import { keys, useAppInfo } from "./lib/queries";
@@ -97,6 +99,13 @@ function Startup() {
   );
 }
 
+function isTextEntry(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('input, textarea, select, [contenteditable="true"], .cm-editor') !== null
+  );
+}
+
 function Shell() {
   const { route, navigate, back } = useNav();
   const client = useQueryClient();
@@ -158,10 +167,36 @@ function Shell() {
     return () => stop?.();
   }, [client]);
 
+  // Closing the window waits for pending edits to be written.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let done = false;
+    try {
+      void guardWindowClose(() =>
+        toast.show(
+          "Some edits could not be saved, so Habi stayed open. Close again to quit without them.",
+          "danger",
+        ),
+      )
+        .then((unlisten) => {
+          if (done) unlisten();
+          else stop = unlisten;
+        })
+        .catch(() => undefined);
+    } catch {
+      // Not in a Tauri window (the design preview): nothing to guard.
+    }
+    return () => {
+      done = true;
+      stop?.();
+    };
+  }, [toast]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
+      // A focused control (the code editor's ⌘[ outdent) handled it already.
+      if (!mod || e.defaultPrevented) return;
       // While a dialog is open, global shortcuts would act behind it (and
       // could open a second dialog on top). ⌘K still closes the palette.
       const otherDialog = document.querySelector('[role="dialog"]:not(.palette), [role="alertdialog"]');
@@ -174,6 +209,8 @@ function Shell() {
       }
       if (anyDialog) return;
       if (e.key === "[") {
+        // In text, ⌘[ belongs to the field (outdent), not to Back.
+        if (isTextEntry(e.target)) return;
         e.preventDefault();
         back();
       } else if (mod && e.key === ",") {
@@ -199,21 +236,24 @@ function Shell() {
         </a>
         <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
         <main id="main" className="main" tabIndex={-1}>
-          {route.name === "welcome" && <Welcome />}
-          {route.name === "project" && (
-            <ProjectView
-              key={route.projectId}
-              projectId={route.projectId}
-              tab={route.tab}
-              itemKey={route.itemKey}
-            />
-          )}
-          {route.name === "skills" && <SkillsView skillId={route.skillId} />}
-          {route.name === "sources" && (
-            <SourcesView sourceId={route.sourceId} itemId={route.itemId} file={route.file} />
-          )}
-          {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
-          {route.name === "settings" && <SettingsView />}
+          {/* A screen that fails to render is replaced; the sidebar still works, and leaving clears it. */}
+          <ErrorBoundary key={screen} area={route.name}>
+            {route.name === "welcome" && <Welcome />}
+            {route.name === "project" && (
+              <ProjectView
+                key={route.projectId}
+                projectId={route.projectId}
+                tab={route.tab}
+                itemKey={route.itemKey}
+              />
+            )}
+            {route.name === "skills" && <SkillsView skillId={route.skillId} />}
+            {route.name === "sources" && (
+              <SourcesView sourceId={route.sourceId} itemId={route.itemId} file={route.file} />
+            )}
+            {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
+            {route.name === "settings" && <SettingsView />}
+          </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         {creating ? (

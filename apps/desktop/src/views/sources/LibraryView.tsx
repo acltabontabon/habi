@@ -612,18 +612,21 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         {library.isError ? <ErrorNotice error={library.error} /> : null}
       </aside>
 
-      <main className="library-reader" ref={readerBox}>
+      <section className="library-reader" ref={readerBox}>
         {!source.snapshot ? (
-          <Empty
-            title="Nothing fetched yet"
-            action={
-              <Button variant="primary" busy={refresh.isPending} onClick={() => refresh.mutate(source.id)}>
-                Fetch the library
-              </Button>
-            }
-          >
-            Fetching copies the library into Habi's cache. It never changes your projects.
-          </Empty>
+          <>
+            <Empty
+              title="Nothing fetched yet"
+              action={
+                <Button variant="primary" busy={refresh.isPending} onClick={() => refresh.mutate(source.id)}>
+                  Fetch the library
+                </Button>
+              }
+            >
+              Fetching copies the library into Habi's cache. It never changes your projects.
+            </Empty>
+            {refresh.error ? <ErrorNotice error={refresh.error} title="The library was not fetched" /> : null}
+          </>
         ) : selected ? (
           <SkillReader
             key={selected.id}
@@ -652,7 +655,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         ) : library.data ? (
           <Empty title="This library has no skills yet" />
         ) : null}
-      </main>
+      </section>
       {sheet ? <SourceSheet source={source} onClose={() => setSheet(false)} /> : null}
     </div>
   );

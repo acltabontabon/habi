@@ -15,6 +15,7 @@ import { api, HabiError } from "../../lib/api";
 import { relativeTime, shortId } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateProjectData, useRefreshSource } from "../../lib/queries";
+import { useOpenExternal } from "../../lib/safeInvoke";
 
 export function repositoryLabel(location: string): string {
   return location
@@ -32,6 +33,7 @@ function webUrl(location: string): string | null {
 export function SourceSheet({ source, onClose }: { source: Source; onClose: () => void }) {
   const client = useQueryClient();
   const toast = useToast();
+  const openExternal = useOpenExternal();
   const { navigate } = useNav();
   const refresh = useRefreshSource();
   const [confirm, setConfirm] = useState(false);
@@ -110,7 +112,7 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
           {repositoryLabel(source.location)}
           {source.subdir ? ` › ${source.subdir}` : ""}
           {web ? (
-            <button type="button" className="link-quiet" onClick={() => void api.openExternal(web)}>
+            <button type="button" className="link-quiet" onClick={() => openExternal(web)}>
               open
             </button>
           ) : null}

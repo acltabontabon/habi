@@ -9,6 +9,7 @@ import { Button, ErrorNotice, Section, Status, Working } from "../components/ui"
 import { api } from "../lib/api";
 import { ALL_CLIENTS, clientLabel } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
+import { useOpenExternal } from "../lib/safeInvoke";
 import { type ThemeChoice, useTheme } from "../lib/theme";
 
 /** The repository Habi is developed in (from package.json). */
@@ -20,6 +21,7 @@ export function SettingsView() {
   const client = useQueryClient();
   const toast = useToast();
   const [theme, setTheme] = useTheme();
+  const openExternal = useOpenExternal();
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [error, setError] = useState<unknown>(null);
   // Writes go one after another, each built on the latest settings, so two
@@ -146,11 +148,7 @@ export function SettingsView() {
           <dd>{info.data?.version}</dd>
           <dt>Source</dt>
           <dd>
-            <button
-              type="button"
-              className="link-quiet"
-              onClick={() => void api.openExternal(REPOSITORY).catch(() => undefined)}
-            >
+            <button type="button" className="link-quiet" onClick={() => openExternal(REPOSITORY)}>
               {REPOSITORY.replace("https://", "")}
             </button>{" "}
             <span className="muted">· open source, Apache-2.0</span>

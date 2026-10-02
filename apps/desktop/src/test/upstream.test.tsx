@@ -135,7 +135,7 @@ describe("updates for a copy of a library item", () => {
   it("shows nothing for drafts or when the library has not changed", async () => {
     handlers = { skill_upstream: () => status("unchanged") };
     const { container, rerender } = wrap(
-      <UpstreamPanel skill={skillFrom(libraryOrigin)} beforeReview={async () => {}} onApplied={() => {}} />,
+      <UpstreamPanel skill={skillFrom(libraryOrigin)} beforeReview={async () => true} onApplied={() => {}} />,
     );
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("skill_upstream", { id: "k" }));
     await new Promise((r) => setTimeout(r, 0));
@@ -146,7 +146,7 @@ describe("updates for a copy of a library item", () => {
         <ToastProvider>
           <UpstreamPanel
             skill={skillFrom({ type: "created" })}
-            beforeReview={async () => {}}
+            beforeReview={async () => true}
             onApplied={() => {}}
           />
         </ToastProvider>
@@ -160,7 +160,7 @@ describe("updates for a copy of a library item", () => {
       skill_upstream: () => status("removed", "“Review” is no longer in Team. Your copy stays as it is."),
     };
     wrap(
-      <UpstreamPanel skill={skillFrom(libraryOrigin)} beforeReview={async () => {}} onApplied={() => {}} />,
+      <UpstreamPanel skill={skillFrom(libraryOrigin)} beforeReview={async () => true} onApplied={() => {}} />,
     );
     expect(await screen.findByText(/no longer in Team/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
@@ -168,7 +168,7 @@ describe("updates for a copy of a library item", () => {
 
   it("requires a choice for each conflict and names the action", async () => {
     const applied = vi.fn();
-    const flushed = vi.fn(async () => {});
+    const flushed = vi.fn(async () => true);
     handlers = {
       skill_upstream: () => status("changed"),
       plan_upstream_sync: () => plan,
@@ -198,7 +198,7 @@ describe("updates for a copy of a library item", () => {
     await user.click(screen.getByRole("radio", { name: "Take the library's" }));
     expect(screen.getByRole("button", { name: "Take 2 library changes, keep your edit" })).toBeEnabled();
 
-    const results = await axe.run(dialog, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(dialog);
     expect(results.violations.map((v) => v.id)).toEqual([]);
 
     await user.click(screen.getByRole("button", { name: "Take 2 library changes, keep your edit" }));

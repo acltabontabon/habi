@@ -92,6 +92,7 @@ export const api = {
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<Settings>("set_settings", { settings }),
   cancelJob: (jobId: string) => call<boolean>("cancel_job", { jobId }),
+  logUiError: (message: string, detail: string | null) => call<void>("log_ui_error", { message, detail }),
 
   pickProject: () => call<ProjectRecord | null>("pick_project"),
   openRecentProject: (projectId: string) => call<ProjectRecord>("open_recent_project", { projectId }),
@@ -102,7 +103,7 @@ export const api = {
   projectOverview: (projectId: string, rescan: boolean, jobId?: string) =>
     call<ProjectOverview>("project_overview", { projectId, rescan, jobId: jobId ?? null }),
   watchProject: (projectId: string) => call<void>("watch_project", { projectId }),
-  unwatchProject: () => call<void>("unwatch_project"),
+  unwatchProject: (projectId: string) => call<void>("unwatch_project", { projectId }),
   readProjectExcerpt: (projectId: string, path: string, line: number | null) =>
     call<Excerpt>("read_project_excerpt", { projectId, path, line }),
   revealProjectPath: (projectId: string, path: string | null) =>

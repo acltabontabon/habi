@@ -6,7 +6,7 @@ use habi_core::error::ErrorInfo;
 use habi_core::service::Habi;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 pub struct AppState {
     pub habi: Option<Arc<Habi>>,
@@ -53,14 +53,19 @@ impl AppState {
         if let Some(id) = &id {
             self.jobs
                 .lock()
-                .expect("jobs")
+                .unwrap_or_else(PoisonError::into_inner)
                 .insert(id.clone(), token.clone());
         }
         (token, JobGuard { state: self, id })
     }
 
     pub fn cancel(&self, id: &str) -> bool {
-        match self.jobs.lock().expect("jobs").get(id) {
+        match self
+            .jobs
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(id)
+        {
             Some(t) => {
                 t.cancel();
                 true
@@ -70,7 +75,12 @@ impl AppState {
     }
 
     pub fn cancel_all(&self) {
-        for token in self.jobs.lock().expect("jobs").values() {
+        for token in self
+            .jobs
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+        {
             token.cancel();
         }
     }
@@ -84,7 +94,11 @@ pub struct JobGuard<'a> {
 impl Drop for JobGuard<'_> {
     fn drop(&mut self) {
         if let Some(id) = &self.id {
-            self.state.jobs.lock().expect("jobs").remove(id);
+            self.state
+                .jobs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(id);
         }
     }
 }

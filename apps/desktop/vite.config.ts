@@ -31,7 +31,8 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],
-      css: false,
+      // Only the design tokens are read (as text, by the contrast test).
+      css: { include: [/tokens\.css/] },
     },
   };
 });

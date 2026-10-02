@@ -6,7 +6,7 @@
  * discovered and previewed elsewhere (CommunityPreview).
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Source } from "../../bindings/Source";
 import type { SourceRole } from "../../bindings/SourceRole";
 import type { TrackedRef } from "../../bindings/TrackedRef";
@@ -45,10 +45,36 @@ export function ConnectLibrary({
   const [trackKind, setTrackKind] = useState<"default" | "branch" | "tag">("default");
   const [refName, setRefName] = useState("");
   const [role, setRole] = useState<SourceRole>("team");
-  const [registered, setRegistered] = useState<Source | null>(null);
+  const [registered, setRegisteredState] = useState<Source | null>(null);
   const [job, setJob] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+
+  // Leaving cancels a running fetch and unregisters a library that was
+  // never fetched, so a failed or abandoned connect leaves nothing behind.
+  const mounted = useRef(true);
+  const registeredRef = useRef<Source | null>(null);
+  const jobRef = useRef<string | null>(null);
+  const fetching = useRef<Promise<unknown> | null>(null);
+  const setRegistered = (source: Source | null) => {
+    registeredRef.current = source;
+    setRegisteredState(source);
+  };
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (jobRef.current) void api.cancelJob(jobRef.current);
+      const settled = (fetching.current ?? Promise.resolve()).catch(() => undefined);
+      void settled.then(async () => {
+        const orphan = registeredRef.current;
+        if (!orphan) return;
+        registeredRef.current = null;
+        await api.removeSource(orphan.id).catch(() => undefined);
+        invalidateProjectData(client);
+      });
+    };
+  }, [client]);
 
   const isLocal = location.trim().startsWith("/") || location.trim().startsWith("~");
   const shownName = nameEdited ? name : nameFromLocation(location);
@@ -81,12 +107,19 @@ export function ConnectLibrary({
   const fetchLibrary = async (source: Source) => {
     const id = newJobId();
     setJob(id);
+    jobRef.current = id;
+    const fetched = api.refreshSource(source.id, id);
+    fetching.current = fetched;
     try {
-      const outcome = await api.refreshSource(source.id, id);
+      const outcome = await fetched;
+      // Fetched once: from here on it is a connected library, kept on leaving.
+      registeredRef.current = null;
       invalidateProjectData(client);
       const library = await api.library(source.id);
-      onConnected(outcome.source, library.items.length);
+      if (mounted.current) onConnected(outcome.source, library.items.length);
     } finally {
+      jobRef.current = null;
+      fetching.current = null;
       setJob(null);
     }
   };
@@ -108,6 +141,13 @@ export function ConnectLibrary({
         if (role === "community") source = await api.setSourceRole(source.id, "community");
         setRegistered(source);
         void client.invalidateQueries({ queryKey: keys.sources });
+        if (!mounted.current) {
+          // Left while it was being added: do not fetch, unregister it.
+          setRegistered(null);
+          await api.removeSource(source.id).catch(() => undefined);
+          invalidateProjectData(client);
+          return;
+        }
       }
       await fetchLibrary(source);
     } catch (e) {

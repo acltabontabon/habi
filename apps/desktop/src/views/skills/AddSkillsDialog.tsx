@@ -12,7 +12,7 @@ import { Dialog } from "../../components/Dialog";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Status, Working } from "../../components/ui";
-import { api, newJobId } from "../../lib/api";
+import { api, HabiError, newJobId } from "../../lib/api";
 import { NO_RULES_PHRASE, plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useRecentProjects, useSources } from "../../lib/queries";
@@ -168,17 +168,33 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
   const [projectId, setProjectId] = useState(start.source === "project" ? start.projectId : "");
   const chosenProject = projectId || available[0]?.id || "";
 
+  // Closing the dialog cancels a look that is still running, and work that
+  // finishes afterwards does not navigate.
+  const mounted = useRef(true);
+  const jobRef = useRef<string | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (jobRef.current) void api.cancelJob(jobRef.current);
+    };
+  }, []);
+
   const inspect = async (from: ImportFrom, label: string, preselect?: string) => {
     setError(null);
     const job = newJobId();
+    jobRef.current = job;
     setStep({ name: "inspecting", job, label });
     try {
       const inspection = await api.inspectImport(from, job);
       setChoices(Object.fromEntries(inspection.candidates.map((c) => [c.path, defaultChoice(c, preselect)])));
       setStep({ name: "review", from, inspection });
     } catch (e) {
-      setError(e);
+      // Cancelling is the user's choice, not a failure.
+      if (!(e instanceof HabiError && e.code === "cancelled")) setError(e);
       setStep({ name: "choose" });
+    } finally {
+      if (jobRef.current === job) jobRef.current = null;
     }
   };
 
@@ -235,6 +251,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
         setStep({ name: "review", from, inspection: refreshed });
         return;
       }
+      if (!mounted.current) return;
       onClose();
       const only = outcome.imported.length === 1 ? outcome.imported[0] : undefined;
       navigate(only ? { name: "skills", skillId: only.id } : { name: "skills" });
@@ -314,7 +331,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
         ) : undefined
       }
     >
-      {error ? (
+      {error && !(error instanceof HabiError && error.code === "cancelled") ? (
         <ErrorNotice
           error={error}
           title={review ? "Some skills were not imported" : "Habi could not look there"}

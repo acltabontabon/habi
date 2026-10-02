@@ -39,22 +39,103 @@ fn init_logging(paths: &AppPaths) -> Option<tracing_appender::non_blocking::Work
     Some(guard)
 }
 
+/// Apps opened from the Finder get launchd's minimal PATH, so `gh`, `glab`
+/// and a Homebrew `git` are not found. Adds the login shell's PATH (waiting
+/// at most a moment for it) and the usual Homebrew folders. Returns what was
+/// added, for the log.
+#[cfg(target_os = "macos")]
+fn merge_login_path() -> Vec<String> {
+    use std::io::Read;
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    let shell = std::env::var("SHELL")
+        .ok()
+        .filter(|s| s.starts_with('/'))
+        .unwrap_or_else(|| "/bin/zsh".into());
+    let login = Command::new(shell)
+        .args(["-lc", "printf %s \"$PATH\""])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()
+        .and_then(|mut child| {
+            let mut stdout = child.stdout.take()?;
+            let (tx, rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let mut text = String::new();
+                let _ = stdout.read_to_string(&mut text);
+                let _ = tx.send(text);
+            });
+            let text = rx.recv_timeout(Duration::from_millis(1500)).ok();
+            let _ = child.kill();
+            let _ = child.wait();
+            text
+        })
+        .unwrap_or_default();
+
+    let current = std::env::var("PATH").unwrap_or_default();
+    let mut entries: Vec<String> = current
+        .split(':')
+        .filter(|e| !e.is_empty())
+        .map(String::from)
+        .collect();
+    let mut added = Vec::new();
+    // Anything a profile prints comes before the PATH, which is printed last.
+    for entry in login
+        .lines()
+        .last()
+        .unwrap_or_default()
+        .split(':')
+        .chain(["/opt/homebrew/bin", "/usr/local/bin"])
+    {
+        if entry.starts_with('/') && !entries.iter().any(|e| e == entry) {
+            entries.push(entry.to_string());
+            added.push(entry.to_string());
+        }
+    }
+    if !added.is_empty() {
+        // SAFETY: called first thing in `run`, before Habi starts any other
+        // thread that could read the environment (the reader thread above
+        // only reads a pipe).
+        unsafe { std::env::set_var("PATH", entries.join(":")) };
+    }
+    added
+}
+
 pub fn run() {
-    let paths = AppPaths::from_env().expect("Habi needs a home directory for its data");
-    let _ = paths.ensure();
-    let guard = init_logging(&paths);
+    #[cfg(target_os = "macos")]
+    let added_to_path = merge_login_path();
+    // Without a home folder there is nowhere to keep data or logs: the UI
+    // explains that instead of the app failing to open.
+    let (paths, paths_error) = match AppPaths::from_env() {
+        Ok(paths) => (Some(paths), None),
+        Err(e) => (None, Some(e.to_info())),
+    };
+    let guard = paths.as_ref().and_then(|p| {
+        let _ = p.ensure();
+        init_logging(p)
+    });
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "starting Habi");
+    #[cfg(target_os = "macos")]
+    if !added_to_path.is_empty() {
+        tracing::info!(added = ?added_to_path, "added login shell folders to PATH");
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
-            let state = match Habi::open(paths.clone()) {
-                Ok(habi) => AppState::new(Some(habi), None, guard),
-                Err(e) => {
-                    tracing::error!(error = %e, "could not open local data");
-                    AppState::new(None, Some(e.to_info()), guard)
-                }
+            let state = match (paths, paths_error) {
+                (Some(paths), _) => match Habi::open(paths) {
+                    Ok(habi) => AppState::new(Some(habi), None, guard),
+                    Err(e) => {
+                        tracing::error!(error = %e, "could not open local data");
+                        AppState::new(None, Some(e.to_info()), guard)
+                    }
+                },
+                (None, error) => AppState::new(None, error, guard),
             };
             app.manage(state);
             Ok(())
@@ -64,7 +145,7 @@ pub fn run() {
                 // Stop background work and file watching when the window closes.
                 let state = window.state::<AppState>();
                 state.cancel_all();
-                watch::stop(&state);
+                watch::stop(&state, None);
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -72,6 +153,7 @@ pub fn run() {
             commands::get_settings,
             commands::set_settings,
             commands::cancel_job,
+            commands::log_ui_error,
             commands::pick_project,
             commands::open_recent_project,
             commands::recent_projects,

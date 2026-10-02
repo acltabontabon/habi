@@ -8,8 +8,8 @@
 import type { Contribution } from "../../bindings/Contribution";
 import type { ReviewComment } from "../../bindings/ReviewComment";
 import { Button, Section, Status } from "../../components/ui";
-import { api } from "../../lib/api";
 import { relativeTime } from "../../lib/format";
+import { useOpenExternal } from "../../lib/safeInvoke";
 import { hostName, requestWord } from "../../lib/sharing";
 
 export function CommentItem({ comment }: { comment: ReviewComment }) {
@@ -56,6 +56,7 @@ export function ReviewPanel({
   onCheck: () => void;
   onRevise: () => void;
 }) {
+  const openExternal = useOpenExternal();
   const review = c.review;
   const host = hostName(c);
   const word = requestWord(c);
@@ -72,7 +73,7 @@ export function ReviewPanel({
       aside={
         <div className="review-actions">
           {url ? (
-            <Button variant="quiet" size="sm" icon="external" onClick={() => void api.openExternal(url)}>
+            <Button variant="quiet" size="sm" icon="external" onClick={() => openExternal(url)}>
               Open on {host}
             </Button>
           ) : null}

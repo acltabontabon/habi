@@ -14,6 +14,7 @@ import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice } from "../../components/ui";
 import { api } from "../../lib/api";
 import { invalidateProjectData } from "../../lib/queries";
+import { useSafeInvoke } from "../../lib/safeInvoke";
 import { TAG_LABELS } from "../../lib/tags";
 
 const triWord: Record<Tri, string> = { true: "holds", false: "does not hold", unknown: "not established" };
@@ -40,6 +41,7 @@ export function EvidenceExcerpt({
     queryKey: ["excerpt", projectId, file, line],
     queryFn: () => api.readProjectExcerpt(projectId, file, line),
   });
+  const safely = useSafeInvoke();
   if (excerpt.isPending) return <p className="muted excerpt-loading">Reading {file}…</p>;
   if (excerpt.isError) return <ErrorNotice error={excerpt.error} title={`Could not show ${file}`} />;
   const data = excerpt.data;
@@ -53,7 +55,7 @@ export function EvidenceExcerpt({
         <button
           type="button"
           className="link-btn"
-          onClick={() => void api.revealProjectPath(projectId, data.path)}
+          onClick={() => safely(() => api.revealProjectPath(projectId, data.path), "The file was not shown")}
         >
           Reveal in folder
         </button>

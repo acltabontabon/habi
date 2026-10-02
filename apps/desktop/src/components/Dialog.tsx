@@ -24,7 +24,11 @@ export function Dialog({
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="dialog-scrim" />
-        <RadixDialog.Content className={`dialog${wide ? " dialog-wide" : ""}`} aria-describedby={undefined}>
+        <RadixDialog.Content
+          className={`dialog${wide ? " dialog-wide" : ""}`}
+          // Without a description there is nothing to point to (and Radix would warn).
+          {...(description ? {} : { "aria-describedby": undefined })}
+        >
           <header className="dialog-head">
             <div>
               <RadixDialog.Title className="dialog-title">{title}</RadixDialog.Title>

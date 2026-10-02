@@ -198,7 +198,7 @@ describe("condition builder", () => {
 
   it("has no detectable accessibility violations", async () => {
     const { container } = wrap(<Harness onForm={() => {}} />);
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 });
@@ -401,7 +401,7 @@ describe("welcome", () => {
   it("leads with one action, opening a project, and needs no library", async () => {
     const user = userEvent.setup();
     const { container } = wrap(<Welcome />);
-    const open = screen.getByRole("button", { name: "Open a project…" });
+    const open = await screen.findByRole("button", { name: "Open a project…" });
     expect(open).toHaveClass("btn-primary");
     // A library is optional: offered as a quiet link, never as the main action.
     expect(screen.getByRole("button", { name: "Connect a library" })).toHaveClass("link-quiet");
@@ -414,7 +414,7 @@ describe("welcome", () => {
     expect(screen.getByText("read-only")).toBeInTheDocument();
     // First run: the labeled sample workspace is offered.
     expect(screen.getByRole("button", { name: "Explore a sample workspace" })).toBeInTheDocument();
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 });
