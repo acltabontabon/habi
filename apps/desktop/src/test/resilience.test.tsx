@@ -16,6 +16,7 @@ import { guardWindowClose } from "../lib/closing";
 import { NavProvider, type Route, useNav } from "../lib/nav";
 import { initTheme, useTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
+import { Sidebar } from "../views/Sidebar";
 import { SkillEditor } from "../views/skills/SkillEditor";
 import { ConnectLibrary } from "../views/sources/ConnectLibrary";
 import { Welcome } from "../views/Welcome";
@@ -440,6 +441,41 @@ describe("the start screen", () => {
     fail = false;
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("billing-service")).toBeInTheDocument();
+  });
+});
+
+describe("the project list", () => {
+  it("removes any project from the list, without touching its folder, and leaves it if open", async () => {
+    let listed = [project, { ...project, id: "p2", name: "web-app", path: "~/code/web-app" }];
+    handlers.recent_projects = () => listed;
+    handlers.forget_project = vi.fn(({ projectId }) => {
+      listed = listed.filter((p) => p.id !== projectId);
+      return null;
+    });
+    function Where() {
+      const { route } = useNav();
+      return <p>on {route.name}</p>;
+    }
+    wrap(
+      <>
+        <Sidebar onOpenPalette={() => {}} />
+        <Where />
+      </>,
+      { name: "project", projectId: "p1", tab: "recommendations" },
+    );
+    // Every project can be removed, not only one whose folder is missing.
+    expect(await screen.findByRole("button", { name: "Remove web-app from the list" })).toBeInTheDocument();
+    const remove = screen.getByRole("button", { name: "Remove billing-service from the list" });
+    expect(remove).toHaveAttribute("title", "Remove from list — nothing on disk is deleted");
+    await userEvent.click(remove);
+    expect(handlers.forget_project).toHaveBeenCalledWith({ projectId: "p1" });
+    expect(
+      await screen.findByText(/billing-service removed from the list. Nothing on disk/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("on welcome")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Remove billing-service from the list" })).toBeNull(),
+    );
   });
 });
 

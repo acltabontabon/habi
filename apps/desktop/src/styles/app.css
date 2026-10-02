@@ -4274,9 +4274,17 @@ dl.facets,
 /* ---------- Sidebar: navigation first ---------- */
 
 /* Management actions appear where the pointer or focus is, not always. */
-.sidebar-reveal {
+.sidebar-reveal,
+.sidebar-row-action {
   opacity: 0;
   transition: opacity var(--duration) var(--ease);
+}
+
+/* Remove from list: on the row being pointed at, and always for a missing folder. */
+.sidebar-row:hover .sidebar-row-action,
+.sidebar-row-action:focus-visible,
+.sidebar-row.is-missing .sidebar-row-action {
+  opacity: 1;
 }
 
 .sidebar-group:hover .sidebar-reveal,
