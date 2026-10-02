@@ -1,0 +1,12 @@
+/target
+node_modules/
+dist/
+.DS_Store
+*.log
+/apps/desktop/src-tauri/gen/schemas/
+/.habi-dev/
+/.habi-dev-alt/
+coverage/
+/habi-test-data/
+/.claude/
+/.local/

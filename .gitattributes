@@ -1,0 +1,11 @@
+# Text files use LF on every platform, so formatters, digests and fixtures
+# behave the same on Windows checkouts (core.autocrlf) as elsewhere.
+* text=auto eol=lf
+
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,18 @@
+habi: 1
+name: Example team library
+owner: Platform Guild (example)
+description: Shared review workflows and conventions for the example team's Java services and web apps.
+contact: "#platform-guild (example channel)"
+skills_root: skills
+instructions:
+  - id: java-service-conventions
+    title: Java service conventions
+    description: Baseline conventions every Java service follows. Installed as a managed section of AGENTS.md.
+    path: instructions/java-service-conventions.md
+    owner: Platform Guild (example)
+    requirement: required
+    scope: repository
+    applies_when:
+      any:
+        - tag: lang:java
+        - dependency: { name: "org.springframework.boot:*", ecosystem: jvm }

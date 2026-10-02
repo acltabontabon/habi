@@ -1,0 +1,728 @@
+{
+  "sourceId": "131206e11d9e",
+  "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+  "name": "Example team library",
+  "owner": "Platform Guild (example)",
+  "description": "Shared review workflows and conventions for the example team's Java services and web apps.",
+  "contact": "#platform-guild (example channel)",
+  "items": [
+    {
+      "key": "131206e11d9e/api-contract-review",
+      "sourceId": "131206e11d9e",
+      "id": "api-contract-review",
+      "kind": "workflow",
+      "title": "API contract review",
+      "name": "api-contract-review",
+      "description": "Review OpenAPI specification changes for breaking changes and consistency. Use when an openapi.yaml/json changes or when designing a new endpoint.",
+      "path": "skills/api-contract-review",
+      "owner": "API Guild (example)",
+      "license": "Apache-2.0",
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 15,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "tag",
+        "tag": "api:openapi"
+      },
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": {
+        "steps": [
+          {
+            "title": "Diff the specification",
+            "detail": "Compare the OpenAPI document with the base branch.",
+            "references": [],
+            "expected": null
+          },
+          {
+            "title": "Classify each change",
+            "detail": null,
+            "references": [
+              "references/breaking-changes.md"
+            ],
+            "expected": null
+          },
+          {
+            "title": "Check conventions",
+            "detail": "Naming, pagination, problem+json errors.",
+            "references": [],
+            "expected": null
+          }
+        ],
+        "artifacts": [
+          "Contract review notes in the pull request"
+        ]
+      },
+      "bindings": [],
+      "checks": [],
+      "evidence": [
+        {
+          "date": "2026-07-02",
+          "result": "passed",
+          "environment": "OpenAPI 3.1 specs, Cursor and Claude Code",
+          "summary": "Used across four services during the v2 API migration.",
+          "by": null
+        }
+      ],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:944429313eeacd9a8bd2e43ad4ba168fe1fcc364ee9b088432c2c125e00e71a5",
+          "size": 633,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:83a8c39f761c88601d1666f385282d25b4c231d8ca328d60661ed87b1d4a93dd",
+          "size": 666,
+          "executable": false
+        },
+        {
+          "path": "references/breaking-changes.md",
+          "digest": "sha256:f4ffab7cfe4feadcb0e47b25a3df6deb7decc690c338a0fdb30884ffd07f223b",
+          "size": 308,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:eb9b8cdb0722190388f819204256ba5c4d07d6a76f2cbf5953fdc3b48f9dbdc8",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/frontend-test-practices",
+      "sourceId": "131206e11d9e",
+      "id": "frontend-test-practices",
+      "kind": "skill",
+      "title": "Front-end test practices",
+      "name": "frontend-test-practices",
+      "description": "Write and review Vitest/Testing Library tests for web front ends. Use when adding or changing front-end tests.",
+      "path": "skills/frontend-test-practices",
+      "owner": "Web Guild (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 5,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "all",
+        "items": [
+          {
+            "op": "any",
+            "items": [
+              {
+                "op": "tag",
+                "tag": "framework:react"
+              },
+              {
+                "op": "tag",
+                "tag": "framework:vue"
+              }
+            ]
+          },
+          {
+            "op": "tag",
+            "tag": "test:vitest"
+          }
+        ]
+      },
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [
+        {
+          "id": "unit-tests",
+          "title": "Run the unit tests",
+          "description": "Runs the project's own test script. This executes repository code.",
+          "run": [
+            {
+              "type": "literal",
+              "value": "npm"
+            },
+            {
+              "type": "literal",
+              "value": "test"
+            },
+            {
+              "type": "literal",
+              "value": "--"
+            },
+            {
+              "type": "literal",
+              "value": "--run"
+            }
+          ],
+          "cwd": "module",
+          "timeoutSeconds": 600
+        }
+      ],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:88b89c5953e00d11c923e868c587b66b87783178c68c6f47d8d22b1981a7ab0a",
+          "size": 438,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:3571795e3bd581ee13d3ceefb5d8c3077f0f11871f9c1e3b0aa4649e272126ad",
+          "size": 416,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:9d8f38b2bcdbc5592f9ab8abe78ef111e7c581e5775cdee511fee3f7ad7448c6",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/github-pr-summary",
+      "sourceId": "131206e11d9e",
+      "id": "github-pr-summary",
+      "kind": "skill",
+      "title": "GitHub PR summary",
+      "name": "github-pr-summary",
+      "description": "Summarize a GitHub pull request — intent, risk and review focus — using the GitHub MCP server. Use when asked to summarize or triage a PR.",
+      "path": "skills/github-pr-summary",
+      "owner": "Developer Experience (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 0,
+      "scope": "repository",
+      "appliesWhen": {
+        "op": "tag",
+        "tag": "ci:github-actions"
+      },
+      "excludes": null,
+      "tools": [
+        {
+          "name": "GitHub CLI",
+          "commands": [
+            "gh"
+          ],
+          "purpose": "Optional; used to open the PR locally.",
+          "installHint": null
+        }
+      ],
+      "mcp": [
+        {
+          "name": "github",
+          "purpose": "Read pull requests, files and review comments.",
+          "server": {
+            "transport": "stdio",
+            "command": "npx",
+            "args": [
+              "-y",
+              "@modelcontextprotocol/server-github"
+            ],
+            "env": {
+              "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+            }
+          }
+        }
+      ],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:56d6cfcb1a142528b7fb5f49d32a761bce02342a0bc957d9c3b57ec3f120838a",
+          "size": 411,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:d55ced8471dd11c88c9a464e5e326d899aae59a713f2986b3602dd0e3095af14",
+          "size": 515,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:1896b1b98b30091db7d48589937b3d89fbd2c1cba05e5fe5064c9efbca6a9899",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/incident-notes",
+      "sourceId": "131206e11d9e",
+      "id": "incident-notes",
+      "kind": "skill",
+      "title": "Incident notes",
+      "name": "incident-notes",
+      "description": "Turn an incident chat log into a blameless timeline and follow-up list. Use after an incident when writing the review document.",
+      "path": "skills/incident-notes",
+      "owner": null,
+      "license": null,
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 0,
+      "scope": "module",
+      "appliesWhen": null,
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:83bf1ff8f8f6f58de779b8b8ec3b58effba7168ef39e9ad99a9dac2495c030d7",
+          "size": 341,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:904a22eb66a8a726e9ef66db273d3f8b031530a52fc012a053c58b96ae9b8b64",
+      "metadataStatus": "undeclared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/java-service-conventions",
+      "sourceId": "131206e11d9e",
+      "id": "java-service-conventions",
+      "kind": "instructions",
+      "title": "Java service conventions",
+      "name": "java-service-conventions",
+      "description": "Baseline conventions every Java service follows. Installed as a managed section of AGENTS.md.",
+      "path": "instructions/java-service-conventions.md",
+      "owner": "Platform Guild (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "required",
+      "priority": 0,
+      "scope": "repository",
+      "appliesWhen": {
+        "op": "any",
+        "items": [
+          {
+            "op": "tag",
+            "tag": "lang:java"
+          },
+          {
+            "op": "dependency",
+            "name": "org.springframework.boot:*",
+            "ecosystem": "jvm",
+            "version": null
+          }
+        ]
+      },
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "java-service-conventions.md",
+          "digest": "sha256:399b60a4bdbc805c28165831d5ab36c65b68e91f6dad4935b3fa94a4628d16ca",
+          "size": 424,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:b36146f40738771feb40384d0c253523614882c3399ad36c5481ba4302da2272",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/jooq-query-review",
+      "sourceId": "131206e11d9e",
+      "id": "jooq-query-review",
+      "kind": "skill",
+      "title": "jOOQ query review",
+      "name": "jooq-query-review",
+      "description": "Review jOOQ queries for correctness, index use and generated-code drift. Use when repository or query classes using jOOQ change.",
+      "path": "skills/jooq-query-review",
+      "owner": "Platform Guild (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 10,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "tag",
+        "tag": "db:jooq"
+      },
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:fe14e2f0344e5ea6edc8f879582386f17803b271ffe853aafa1c1dd5e1d51ced",
+          "size": 448,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:fdf558d73d0a0b31e04d5a4f6a3e6dc81245b82321c359b258d63c3f16696d37",
+          "size": 107,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:bf9712540cf443040cacb2de64124e27cb304a68e1041a4939ef4b405ff2fcb8",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/jpa-entity-review",
+      "sourceId": "131206e11d9e",
+      "id": "jpa-entity-review",
+      "kind": "skill",
+      "title": "JPA entity review",
+      "name": "jpa-entity-review",
+      "description": "Review JPA/Hibernate entity mappings for N+1 queries, fetch strategy and transaction boundaries. Use when entity classes or repositories change.",
+      "path": "skills/jpa-entity-review",
+      "owner": "Platform Guild (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 10,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "tag",
+        "tag": "orm:jpa"
+      },
+      "excludes": {
+        "op": "tag",
+        "tag": "db:jooq"
+      },
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:6a7fb280a4dbb91181f21eda6ce3fb27768ee8a2fb1bcd123b897a45f832fe0d",
+          "size": 543,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:b7048e72965413f6887221aa04000eec48e8d96098e3bbe1e2edbff51d9441e5",
+          "size": 146,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:d1c218fbd476891d7db5150c97c6dd4f5b2eddc237ba4599958ddb36da5e5bd0",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/liquibase-migration-review",
+      "sourceId": "131206e11d9e",
+      "id": "liquibase-migration-review",
+      "kind": "workflow",
+      "title": "Liquibase migration review",
+      "name": "liquibase-migration-review",
+      "description": "Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration.",
+      "path": "skills/liquibase-migration-review",
+      "owner": "Platform Guild (example)",
+      "license": "Apache-2.0",
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 20,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "all",
+        "items": [
+          {
+            "op": "tag",
+            "tag": "framework:spring-boot"
+          },
+          {
+            "op": "any",
+            "items": [
+              {
+                "op": "dependency",
+                "name": "org.liquibase:liquibase-core",
+                "ecosystem": "jvm",
+                "version": null
+              },
+              {
+                "op": "tag",
+                "tag": "db:liquibase"
+              }
+            ]
+          }
+        ]
+      },
+      "excludes": null,
+      "tools": [
+        {
+          "name": "Maven or Gradle wrapper",
+          "commands": [
+            "./mvnw",
+            "mvn",
+            "./gradlew",
+            "gradle"
+          ],
+          "purpose": "Runs Liquibase validation through the build.",
+          "installHint": null
+        }
+      ],
+      "mcp": [],
+      "clients": [
+        "claude-code",
+        "cursor",
+        "codex"
+      ],
+      "workflow": {
+        "steps": [
+          {
+            "title": "Locate the master changelog",
+            "detail": "Find db.changelog-master.* and confirm new changesets are included from it.",
+            "references": [],
+            "expected": null
+          },
+          {
+            "title": "Review each new changeset",
+            "detail": "Apply the checklist to every changeset added or modified by the change.",
+            "references": [
+              "references/checklist.md"
+            ],
+            "expected": null
+          },
+          {
+            "title": "Assess locking and rollback risk",
+            "detail": "Flag NOT NULL additions without defaults, large index builds, renames and missing rollbacks.",
+            "references": [],
+            "expected": null
+          },
+          {
+            "title": "Validate the changelog",
+            "detail": "Run the validation check below when a database-independent validation is available.",
+            "references": [],
+            "expected": "The validate goal exits successfully."
+          }
+        ],
+        "artifacts": [
+          "Review comment listing blocking issues, risks and suggestions with changeset ids"
+        ]
+      },
+      "bindings": [
+        {
+          "name": "changelog",
+          "kind": "file",
+          "glob": "**/db/changelog/db.changelog-master.*",
+          "description": "The master changelog to validate."
+        }
+      ],
+      "checks": [
+        {
+          "id": "changelog-is-wellformed",
+          "title": "Changelog parses as XML/YAML",
+          "description": "Confirms the master changelog is readable by Liquibase's parser via the Maven plugin (no database connection).",
+          "run": [
+            {
+              "type": "literal",
+              "value": "./mvnw"
+            },
+            {
+              "type": "literal",
+              "value": "-q"
+            },
+            {
+              "type": "literal",
+              "value": "-DskipTests"
+            },
+            {
+              "type": "literal",
+              "value": "liquibase:validate"
+            }
+          ],
+          "cwd": "module",
+          "timeoutSeconds": 600
+        }
+      ],
+      "evidence": [
+        {
+          "date": "2026-08-14",
+          "result": "passed",
+          "environment": "Spring Boot 3.3, Liquibase 4.29, Claude Code",
+          "summary": "Used on three billing-service migrations; caught one missing rollback.",
+          "by": "Platform Guild (example)"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Adding a nullable column with a backfill",
+          "description": "Two changesets — add the column, then backfill in batches.",
+          "path": null
+        }
+      ],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15",
+          "size": 1059,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669",
+          "size": 2079,
+          "executable": false
+        },
+        {
+          "path": "references/checklist.md",
+          "digest": "sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e",
+          "size": 437,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:431ae89301dbbaf488a43de063705de2643c3d8b452484d9c3f5667cf1974b25",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/react-component-review",
+      "sourceId": "131206e11d9e",
+      "id": "react-component-review",
+      "kind": "skill",
+      "title": "React component review",
+      "name": "react-component-review",
+      "description": "Review React components for accessibility, state management and rendering cost. Use when .tsx/.jsx components change.",
+      "path": "skills/react-component-review",
+      "owner": "Web Guild (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "recommended",
+      "priority": 15,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "tag",
+        "tag": "framework:react"
+      },
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": [
+        "claude-code",
+        "cursor",
+        "codex"
+      ],
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [
+        {
+          "date": "2026-09-03",
+          "result": "partial",
+          "environment": "React 18 + Vite, Cursor",
+          "summary": "Helpful on accessibility; rendering advice was too generic in one review.",
+          "by": null
+        }
+      ],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:d236139ec433b766394e2f8763decb10dca4e16a97b293b7598a418ec2742040",
+          "size": 556,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:c7d6f5924750ca7de0ea8ea6065a87efe4f89727b203176c8f8f152b6ca6f12e",
+          "size": 356,
+          "executable": false
+        },
+        {
+          "path": "references/a11y.md",
+          "digest": "sha256:08cdd104381e5016321916695a63be243518ec067fcf62d2267b6344f702f0ec",
+          "size": 224,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:d725ec702d709014a48aba4984c7dacea29e0f5091d4e70d82fdc622f28713db",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    },
+    {
+      "key": "131206e11d9e/service-observability",
+      "sourceId": "131206e11d9e",
+      "id": "service-observability",
+      "kind": "skill",
+      "title": "Service observability",
+      "name": "service-observability",
+      "description": "Add metrics, structured logs and traces to a Spring Boot service following team conventions. Use when adding endpoints or background jobs.",
+      "path": "skills/service-observability",
+      "owner": "SRE (example)",
+      "license": null,
+      "compatibility": null,
+      "requirement": "required",
+      "priority": 0,
+      "scope": "module",
+      "appliesWhen": {
+        "op": "tag",
+        "tag": "framework:spring-boot"
+      },
+      "excludes": null,
+      "tools": [],
+      "mcp": [],
+      "clients": null,
+      "workflow": null,
+      "bindings": [],
+      "checks": [],
+      "evidence": [],
+      "examples": [],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "digest": "sha256:2d410d6c13ab468422cf1c0caa67ad698dedeead82f8c5dc4045616bc27f11f5",
+          "size": 392,
+          "executable": false
+        },
+        {
+          "path": "habi.yaml",
+          "digest": "sha256:b3eaa33d1ad91d6721b075a034dd4a1584e76170ec31cee57c4c22e96f4381e2",
+          "size": 135,
+          "executable": false
+        }
+      ],
+      "contentDigest": "sha256:bd443a472466b850a7d3275a67bb3a6d00c02b8dd6a8d4535818cf9b9da66e54",
+      "metadataStatus": "declared",
+      "diagnostics": [],
+      "complete": true
+    }
+  ],
+  "diagnostics": []
+}

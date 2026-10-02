@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-invoice
+      author: billing-team
+      changes:
+        - createTable:
+            tableName: invoice
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true } }
+              - column: { name: amount_cents, type: bigint, constraints: { nullable: false } }
+      rollback:
+        - dropTable: { tableName: invoice }

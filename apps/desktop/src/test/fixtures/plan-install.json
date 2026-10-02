@@ -1,0 +1,2152 @@
+{
+  "id": "84fef9c2-d1f0-4614-804f-1f170afd19a9",
+  "action": "install",
+  "title": "Install for Claude Code and Codex in this project",
+  "project": "~/work/billing-service",
+  "createdAt": "2026-10-02T00:24:37Z",
+  "items": [
+    {
+      "key": "local:Example team library#liquibase-migration-review",
+      "title": "Liquibase migration review",
+      "kind": "workflow",
+      "source": "Example team library",
+      "version": "29bb01018b",
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
+      "notes": []
+    },
+    {
+      "key": "local:Example team library#java-service-conventions",
+      "title": "Java service conventions",
+      "kind": "instructions",
+      "source": "Example team library",
+      "version": "29bb01018b",
+      "clients": [
+        "claude-code",
+        "codex"
+      ],
+      "notes": []
+    }
+  ],
+  "changes": [
+    {
+      "path": ".agents/skills/liquibase-migration-review/habi.yaml",
+      "op": "create",
+      "kind": "skillFile",
+      "items": [
+        "Liquibase migration review"
+      ],
+      "clients": [
+        "codex"
+      ],
+      "before": null,
+      "after": "sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669",
+      "explanation": "Codex reads skills from .agents/skills.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,53 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "habi: 1"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": "title: Liquibase migration review"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "kind: workflow"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "owner: Platform Guild (example)"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "priority: 20"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "scope: module"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "applies_when:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "  all:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "    - tag: framework:spring-boot"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 10,
+                "text": "    - any:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 11,
+                "text": "        - dependency: { name: \"org.liquibase:liquibase-core\", ecosystem: jvm }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 12,
+                "text": "        - tag: db:liquibase"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 13,
+                "text": "requires:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 14,
+                "text": "  tools:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 15,
+                "text": "    - name: Maven or Gradle wrapper"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 16,
+                "text": "      commands: [./mvnw, mvn, ./gradlew, gradle]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 17,
+                "text": "      purpose: Runs Liquibase validation through the build."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 18,
+                "text": "  clients: [claude-code, cursor, codex]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 19,
+                "text": "workflow:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 20,
+                "text": "  steps:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 21,
+                "text": "    - title: Locate the master changelog"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 22,
+                "text": "      detail: Find db.changelog-master.* and confirm new changesets are included from it."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 23,
+                "text": "    - title: Review each new changeset"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 24,
+                "text": "      detail: Apply the checklist to every changeset added or modified by the change."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 25,
+                "text": "      references: [references/checklist.md]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 26,
+                "text": "    - title: Assess locking and rollback risk"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 27,
+                "text": "      detail: Flag NOT NULL additions without defaults, large index builds, renames and missing rollbacks."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 28,
+                "text": "    - title: Validate the changelog"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 29,
+                "text": "      detail: Run the validation check below when a database-independent validation is available."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 30,
+                "text": "      expected: The validate goal exits successfully."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 31,
+                "text": "  artifacts:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 32,
+                "text": "    - Review comment listing blocking issues, risks and suggestions with changeset ids"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 33,
+                "text": "bindings:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 34,
+                "text": "  - name: changelog"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 35,
+                "text": "    kind: file"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 36,
+                "text": "    glob: \"**/db/changelog/db.changelog-master.*\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 37,
+                "text": "    description: The master changelog to validate."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 38,
+                "text": "checks:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 39,
+                "text": "  - id: changelog-is-wellformed"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 40,
+                "text": "    title: Changelog parses as XML/YAML"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 41,
+                "text": "    description: Confirms the master changelog is readable by Liquibase's parser via the Maven plugin (no database connection)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 42,
+                "text": "    run: [\"./mvnw\", \"-q\", \"-DskipTests\", \"liquibase:validate\"]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 43,
+                "text": "    cwd: module"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 44,
+                "text": "    timeout_seconds: 600"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 45,
+                "text": "evidence:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 46,
+                "text": "  - date: 2026-08-14"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 47,
+                "text": "    result: passed"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 48,
+                "text": "    environment: Spring Boot 3.3, Liquibase 4.29, Claude Code"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 49,
+                "text": "    summary: Used on three billing-service migrations; caught one missing rollback."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 50,
+                "text": "    by: Platform Guild (example)"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 51,
+                "text": "examples:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 52,
+                "text": "  - title: Adding a nullable column with a backfill"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 53,
+                "text": "    description: Two changesets — add the column, then backfill in batches."
+              }
+            ]
+          }
+        ],
+        "added": 53,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/liquibase-migration-review/references/checklist.md",
+      "op": "create",
+      "kind": "skillFile",
+      "items": [
+        "Liquibase migration review"
+      ],
+      "clients": [
+        "codex"
+      ],
+      "before": null,
+      "after": "sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e",
+      "explanation": "Codex reads skills from .agents/skills.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,9 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "# Changelog checklist"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "- [ ] Changeset `id` and `author` are set and unique."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "- [ ] The changeset is included from the master changelog."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "- [ ] A rollback exists, or the comment explains why it is irreversible."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "- [ ] New `NOT NULL` columns have a default or a backfill step."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "- [ ] Large-table index creation will not lock writes."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "- [ ] No previously released changeset was modified (checksum change)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "- [ ] Data migrations are idempotent."
+              }
+            ]
+          }
+        ],
+        "added": 9,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/liquibase-migration-review/SKILL.md",
+      "op": "create",
+      "kind": "skillFile",
+      "items": [
+        "Liquibase migration review"
+      ],
+      "clients": [
+        "codex"
+      ],
+      "before": null,
+      "after": "sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15",
+      "explanation": "Codex reads skills from .agents/skills.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,26 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "---"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": "name: liquibase-migration-review"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "description: Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "license: Apache-2.0"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "metadata:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "  maintainer: platform-guild"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "---"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "# Liquibase migration review"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 10,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 11,
+                "text": "Use this skill when a change touches Liquibase changelogs (`db/changelog/**`)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 12,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 13,
+                "text": "## Procedure"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 14,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 15,
+                "text": "1. Find the master changelog and confirm every new changeset is included from it."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 16,
+                "text": "2. For each new changeset, check the items in [the checklist](references/checklist.md)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 17,
+                "text": "3. Never edit a changeset that may already be applied. Add a new one instead."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 18,
+                "text": "4. Confirm each changeset has a `rollback` or is explicitly marked irreversible"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 19,
+                "text": "   with a reason in its `comment`."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 20,
+                "text": "5. Flag locking risks: adding `NOT NULL` columns without defaults, building"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 21,
+                "text": "   indexes on large tables without `CONCURRENTLY` (PostgreSQL), renames."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 22,
+                "text": "6. Summarize findings as: blocking issues, risks, suggestions."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 23,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 24,
+                "text": "## Output"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 25,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 26,
+                "text": "A short review with file and changeset ids for every finding."
+              }
+            ]
+          }
+        ],
+        "added": 26,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": false
+    },
+    {
+      "path": ".claude/skills/liquibase-migration-review/habi.yaml",
+      "op": "create",
+      "kind": "skillFile",
+      "items": [
+        "Liquibase migration review"
+      ],
+      "clients": [
+        "claude-code"
+      ],
+      "before": null,
+      "after": "sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669",
+      "explanation": "Claude Code reads skills from .claude/skills.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,53 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "habi: 1"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": "title: Liquibase migration review"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "kind: workflow"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "owner: Platform Guild (example)"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "priority: 20"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "scope: module"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "applies_when:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "  all:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "    - tag: framework:spring-boot"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 10,
+                "text": "    - any:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 11,
+                "text": "        - dependency: { name: \"org.liquibase:liquibase-core\", ecosystem: jvm }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 12,
+                "text": "        - tag: db:liquibase"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 13,
+                "text": "requires:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 14,
+                "text": "  tools:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 15,
+                "text": "    - name: Maven or Gradle wrapper"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 16,
+                "text": "      commands: [./mvnw, mvn, ./gradlew, gradle]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 17,
+                "text": "      purpose: Runs Liquibase validation through the build."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 18,
+                "text": "  clients: [claude-code, cursor, codex]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 19,
+                "text": "workflow:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 20,
+                "text": "  steps:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 21,
+                "text": "    - title: Locate the master changelog"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 22,
+                "text": "      detail: Find db.changelog-master.* and confirm new changesets are included from it."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 23,
+                "text": "    - title: Review each new changeset"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 24,
+                "text": "      detail: Apply the checklist to every changeset added or modified by the change."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 25,
+                "text": "      references: [references/checklist.md]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 26,
+                "text": "    - title: Assess locking and rollback risk"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 27,
+                "text": "      detail: Flag NOT NULL additions without defaults, large index builds, renames and missing rollbacks."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 28,
+                "text": "    - title: Validate the changelog"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 29,
+                "text": "      detail: Run the validation check below when a database-independent validation is available."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 30,
+                "text": "      expected: The validate goal exits successfully."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 31,
+                "text": "  artifacts:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 32,
+                "text": "    - Review comment listing blocking issues, risks and suggestions with changeset ids"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 33,
+                "text": "bindings:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 34,
+                "text": "  - name: changelog"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 35,
+                "text": "    kind: file"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 36,
+                "text": "    glob: \"**/db/changelog/db.changelog-master.*\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 37,
+                "text": "    description: The master changelog to validate."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 38,
+                "text": "checks:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 39,
+                "text": "  - id: changelog-is-wellformed"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 40,
+                "text": "    title: Changelog parses as XML/YAML"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 41,
+                "text": "    description: Confirms the master changelog is readable by Liquibase's parser via the Maven plugin (no database connection)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 42,
+                "text": "    run: [\"./mvnw\", \"-q\", \"-DskipTests\", \"liquibase:validate\"]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 43,
+                "text": "    cwd: module"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 44,
+                "text": "    timeout_seconds: 600"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 45,
+                "text": "evidence:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 46,
+                "text": "  - date: 2026-08-14"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 47,
+                "text": "    result: passed"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 48,
+                "text": "    environment: Spring Boot 3.3, Liquibase 4.29, Claude Code"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 49,
+                "text": "    summary: Used on three billing-service migrations; caught one missing rollback."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 50,
+                "text": "    by: Platform Guild (example)"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 51,
+                "text": "examples:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 52,
+                "text": "  - title: Adding a nullable column with a backfill"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 53,
+                "text": "    description: Two changesets — add the column, then backfill in batches."
+              }
+            ]
+          }
+        ],
+        "added": 53,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": false
+    },
+    {
+      "path": ".claude/skills/liquibase-migration-review/references/checklist.md",
+      "op": "create",
+      "kind": "skillFile",
+      "items": [
+        "Liquibase migration review"
+      ],
+      "clients": [
+        "claude-code"
+      ],
+      "before": null,
+      "after": "sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e",
+      "explanation": "Claude Code reads skills from .claude/skills.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,9 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "# Changelog checklist"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "- [ ] Changeset `id` and `author` are set and unique."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "- [ ] The changeset is included from the master changelog."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "- [ ] A rollback exists, or the comment explains why it is irreversible."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "- [ ] New `NOT NULL` columns have a default or a backfill step."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "- [ ] Large-table index creation will not lock writes."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "- [ ] No previously released changeset was modified (checksum change)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "- [ ] Data migrations are idempotent."
+              }
+            ]
+          }
+        ],
+        "added": 9,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": false
+    },
+    {
+      "path": ".claude/skills/liquibase-migration-review/SKILL.md",
+      "op": "create",
+      "kind": "skillFile",
+      "items": [
+        "Liquibase migration review"
+      ],
+      "clients": [
+        "claude-code"
+      ],
+      "before": null,
+      "after": "sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15",
+      "explanation": "Claude Code reads skills from .claude/skills.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,26 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "---"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": "name: liquibase-migration-review"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "description: Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "license: Apache-2.0"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "metadata:"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "  maintainer: platform-guild"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "---"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "# Liquibase migration review"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 10,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 11,
+                "text": "Use this skill when a change touches Liquibase changelogs (`db/changelog/**`)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 12,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 13,
+                "text": "## Procedure"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 14,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 15,
+                "text": "1. Find the master changelog and confirm every new changeset is included from it."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 16,
+                "text": "2. For each new changeset, check the items in [the checklist](references/checklist.md)."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 17,
+                "text": "3. Never edit a changeset that may already be applied. Add a new one instead."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 18,
+                "text": "4. Confirm each changeset has a `rollback` or is explicitly marked irreversible"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 19,
+                "text": "   with a reason in its `comment`."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 20,
+                "text": "5. Flag locking risks: adding `NOT NULL` columns without defaults, building"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 21,
+                "text": "   indexes on large tables without `CONCURRENTLY` (PostgreSQL), renames."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 22,
+                "text": "6. Summarize findings as: blocking issues, risks, suggestions."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 23,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 24,
+                "text": "## Output"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 25,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 26,
+                "text": "A short review with file and changeset ids for every finding."
+              }
+            ]
+          }
+        ],
+        "added": 26,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": false
+    },
+    {
+      "path": "AGENTS.md",
+      "op": "create",
+      "kind": "instructionsSection",
+      "items": [
+        "Java service conventions"
+      ],
+      "clients": [
+        "codex"
+      ],
+      "before": null,
+      "after": "sha256:a1b3d59770a6a3b4b039a224858003c030bbc625bb73f32865368cc1a31c24c5",
+      "explanation": "Codex and Cursor read AGENTS.md natively; Claude Code reads it through the CLAUDE.md import.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,9 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "<!-- habi:begin id=java-service-conventions from Example team library — managed by Habi -->"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": "## Java service conventions"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "- Target the Java version declared in the build; do not raise it in unrelated changes."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "- Keep controllers thin: validation and mapping in the web layer, rules in services."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "- Every schema change ships as a reviewed migration; never edit an applied changeset."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "- Prefer constructor injection; avoid field injection."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "- Log with structured key/value pairs and never log credentials or personal data."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "<!-- habi:end id=java-service-conventions -->"
+              }
+            ]
+          }
+        ],
+        "added": 9,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    },
+    {
+      "path": "CLAUDE.md",
+      "op": "modify",
+      "kind": "claudeBridge",
+      "items": [
+        "Claude Code bridge"
+      ],
+      "clients": [
+        "claude-code"
+      ],
+      "before": "sha256:8c05674f9ba29e1dbf27234b75f59f18a1bf254f6c28c5a3e9b629f21a513ab1",
+      "after": "sha256:5e32f52b5e070c57f3ca6559f108ff7ef51bf895ed99608304da7408d01d43e0",
+      "explanation": "Claude Code reads CLAUDE.md; this import makes it read AGENTS.md too (documented, loaded once).",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -3,3 +3,7 @@",
+            "lines": [
+              {
+                "tag": "context",
+                "oldLine": 3,
+                "newLine": 3,
+                "text": "Team-written notes for Claude Code. Habi must preserve this file."
+              },
+              {
+                "tag": "context",
+                "oldLine": 4,
+                "newLine": 4,
+                "text": ""
+              },
+              {
+                "tag": "context",
+                "oldLine": 5,
+                "newLine": 5,
+                "text": "- Money is stored as `amount_cents` (long). Never use floating point for money."
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": ""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "<!-- habi:begin id=claude-code-agents-import lets Claude Code read AGENTS.md -->"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "@AGENTS.md"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "<!-- habi:end id=claude-code-agents-import -->"
+              }
+            ]
+          }
+        ],
+        "added": 4,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    },
+    {
+      "path": ".habi/lock.json",
+      "op": "create",
+      "kind": "lockFile",
+      "items": [],
+      "clients": [],
+      "before": null,
+      "after": "sha256:b80b85c01732b17b18e4e3c03e1cf962f5723214de6fb2d5daef701f8daef4cc",
+      "explanation": "Records what Habi installed (sources, versions, file digests) so it can detect updates and local edits. Safe to commit; contains no absolute paths or secrets.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,0 +1,119 @@",
+            "lines": [
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 1,
+                "text": "{"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 2,
+                "text": "  \"habiLock\": 1,"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 3,
+                "text": "  \"items\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 4,
+                "text": "    {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 5,
+                "text": "      \"source\": {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 6,
+                "text": "        \"identity\": \"habi:internal\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 7,
+                "text": "        \"name\": \"Habi\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 8,
+                "text": "        \"subdir\": null"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 9,
+                "text": "      },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 10,
+                "text": "      \"id\": \"claude-code-agents-import\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 11,
+                "text": "      \"kind\": \"instructions\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 12,
+                "text": "      \"title\": \"Claude Code import of AGENTS.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 13,
+                "text": "      \"snapshot\": \"\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 14,
+                "text": "      \"contentDigest\": \"\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 15,
+                "text": "      \"installedAt\": \"2026-10-02T00:24:37Z\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 16,
+                "text": "      \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 17,
+                "text": "        \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 18,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 19,
+                "text": "      \"files\": [],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 20,
+                "text": "      \"sections\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 21,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 22,
+                "text": "          \"file\": \"CLAUDE.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 23,
+                "text": "          \"marker\": \"claude-code-agents-import\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 24,
+                "text": "          \"digest\": \"sha256:336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 25,
+                "text": "        }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 26,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 27,
+                "text": "      \"mcp\": []"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 28,
+                "text": "    },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 29,
+                "text": "    {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 30,
+                "text": "      \"source\": {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 31,
+                "text": "        \"identity\": \"local:Example team library\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 32,
+                "text": "        \"name\": \"Example team library\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 33,
+                "text": "        \"subdir\": null"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 34,
+                "text": "      },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 35,
+                "text": "      \"id\": \"java-service-conventions\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 36,
+                "text": "      \"kind\": \"instructions\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 37,
+                "text": "      \"title\": \"Java service conventions\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 38,
+                "text": "      \"snapshot\": \"29bb01018b1a3d3a4aa298ea5147b05948141f1e\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 39,
+                "text": "      \"contentDigest\": \"sha256:b36146f40738771feb40384d0c253523614882c3399ad36c5481ba4302da2272\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 40,
+                "text": "      \"installedAt\": \"2026-10-02T00:24:37Z\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 41,
+                "text": "      \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 42,
+                "text": "        \"claude-code\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 43,
+                "text": "        \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 44,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 45,
+                "text": "      \"files\": [],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 46,
+                "text": "      \"sections\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 47,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 48,
+                "text": "          \"file\": \"AGENTS.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 49,
+                "text": "          \"marker\": \"java-service-conventions\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 50,
+                "text": "          \"digest\": \"sha256:399b60a4bdbc805c28165831d5ab36c65b68e91f6dad4935b3fa94a4628d16ca\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 51,
+                "text": "        }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 52,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 53,
+                "text": "      \"mcp\": []"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 54,
+                "text": "    },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 55,
+                "text": "    {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 56,
+                "text": "      \"source\": {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 57,
+                "text": "        \"identity\": \"local:Example team library\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 58,
+                "text": "        \"name\": \"Example team library\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 59,
+                "text": "        \"subdir\": null"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 60,
+                "text": "      },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 61,
+                "text": "      \"id\": \"liquibase-migration-review\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 62,
+                "text": "      \"kind\": \"workflow\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 63,
+                "text": "      \"title\": \"Liquibase migration review\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 64,
+                "text": "      \"snapshot\": \"29bb01018b1a3d3a4aa298ea5147b05948141f1e\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 65,
+                "text": "      \"contentDigest\": \"sha256:431ae89301dbbaf488a43de063705de2643c3d8b452484d9c3f5667cf1974b25\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 66,
+                "text": "      \"installedAt\": \"2026-10-02T00:24:37Z\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 67,
+                "text": "      \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 68,
+                "text": "        \"claude-code\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 69,
+                "text": "        \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 70,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 71,
+                "text": "      \"files\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 72,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 73,
+                "text": "          \"path\": \".agents/skills/liquibase-migration-review/SKILL.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 74,
+                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 75,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 76,
+                "text": "            \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 77,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 78,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 79,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 80,
+                "text": "          \"path\": \".agents/skills/liquibase-migration-review/habi.yaml\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 81,
+                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 82,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 83,
+                "text": "            \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 84,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 85,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 86,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 87,
+                "text": "          \"path\": \".agents/skills/liquibase-migration-review/references/checklist.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 88,
+                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 89,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 90,
+                "text": "            \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 91,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 92,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 93,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 94,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/SKILL.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 95,
+                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 96,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 97,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 98,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 99,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 100,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 101,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/habi.yaml\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 102,
+                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 103,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 104,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 105,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 106,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 107,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 108,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/references/checklist.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 109,
+                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 110,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 111,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 112,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 113,
+                "text": "        }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 114,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 115,
+                "text": "      \"sections\": [],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 116,
+                "text": "      \"mcp\": []"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 117,
+                "text": "    }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 118,
+                "text": "  ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 119,
+                "text": "}"
+              }
+            ]
+          }
+        ],
+        "added": 119,
+        "removed": 0,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    }
+  ],
+  "conflicts": [],
+  "notes": [],
+  "recovery": "Habi keeps every replaced or deleted file in its operation journal. Use Restore in the project's history (or `habi restore`) to put them back; restore also checks for edits made since."
+}

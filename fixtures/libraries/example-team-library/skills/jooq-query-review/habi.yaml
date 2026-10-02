@@ -1,0 +1,6 @@
+habi: 1
+title: jOOQ query review
+owner: Platform Guild (example)
+priority: 10
+applies_when:
+  tag: db:jooq
