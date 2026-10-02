@@ -56,7 +56,7 @@
   }
 }
 
-/* ---------- The loom: sources woven through projects (home) ---------- */
+/* ---------- The loom: libraries across projects (home) ---------- */
 
 .loom {
   position: relative;
@@ -81,8 +81,7 @@
 
 .loom-row-label,
 .loom-new,
-.loom-meta-cell,
-.loom-ghost-cell {
+.loom-meta-cell {
   height: var(--loom-row);
   display: flex;
   align-items: center;
@@ -233,14 +232,9 @@
   stroke: var(--ink-faint);
 }
 
-/* Rows not matched yet, and empty rows: quiet hairlines, no pattern. */
+/* Rows not matched yet: quiet hairlines, no pattern. */
 .loom-pick.is-unmatched {
   stroke-width: 1.5;
-}
-
-.loom-pick.is-ghost {
-  stroke-width: 1.5;
-  opacity: 0.55;
 }
 
 /* The next project: an unwoven saffron row. */
@@ -253,10 +247,6 @@
 
 .loom-strand.is-bare {
   opacity: 0.32;
-}
-
-.loom-float.is-bare {
-  opacity: 0.45;
 }
 
 .loom-float {

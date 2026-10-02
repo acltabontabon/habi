@@ -1,15 +1,16 @@
 /**
- * The loom: your knowledge, woven through your projects.
+ * The loom: your libraries across your projects.
  *
- * Warp threads (vertical) are knowledge sources — each library a bundle in
+ * Warp threads (vertical) are libraries — each a bundle in
  * its own dye, stitched when it is a community library; your own skills in
  * ink. More skills, more strands. Weft threads (horizontal) are your
- * projects. Where a source's knowledge applies to a project, its thread
+ * projects. Where a library's knowledge applies to a project, its thread
  * surfaces over the weft as a float in its dye; elsewhere the weft passes
  * over it. The pattern is the real fit between your team's knowledge and
  * your code. A saffron knot marks a crossing where something learned in that
  * project went back into that library. The last row is unwoven: the next
- * project you open.
+ * project you open. There are no empty rows; the start screen says in words
+ * what opening a project does.
  *
  * Rows and sources are real controls (open the project, open the library);
  * pointing at either brings what it is connected to forward. The loom
@@ -46,8 +47,6 @@ function strandsFor(skills: number): number {
 
 /** Columns drawn before the rest are summarized as "+N more". */
 const MAX_SOURCES = 10;
-/** Rows of cloth kept even with few projects, so the loom never thins out. */
-const MIN_ROWS = 3;
 
 export function Loom({
   sources: allSources,
@@ -92,15 +91,13 @@ export function Loom({
         ]
       : ordered;
   const hidden = allSources.length - sources.length;
-  // Faint, unlabeled rows of cloth above the next project when there are few.
-  const ghosts = Math.max(0, MIN_ROWS - projects.length);
-  const lines = projects.length + ghosts;
+  const lines = projects.length;
   const height = HEAD + (lines + 1) * ROW;
   const y = (i: number) => HEAD + i * ROW + ROW / 2;
   const bare = sources.length === 0;
   const columns = bare ? 9 : sources.length;
   const center = (j: number) => (width * (j + 0.5)) / columns;
-  // A bare loom still has colour: undyed threads waiting for sources.
+  // A bare loom still has colour: undyed threads waiting for libraries.
   const strands = bare
     ? Array.from({ length: 9 }, (_, j) => ({
         x: center(j),
@@ -155,17 +152,14 @@ export function Loom({
             {p.name}
           </button>
         ))}
-        {Array.from({ length: ghosts }, (_, i) => (
-          <div key={`g${i}`} className="loom-ghost-cell" aria-hidden="true" />
-        ))}
         <div className="loom-new">{newRow}</div>
       </div>
 
       <div className="loom-field" ref={field}>
         {bare ? (
-          <p className="loom-bare">libraries you connect become threads here</p>
+          <p className="loom-bare">libraries you connect appear here</p>
         ) : (
-          <nav className="loom-sources" aria-label="Knowledge sources">
+          <nav className="loom-sources" aria-label="Libraries">
             {sources.map((s, j) => (
               <button
                 key={s.id}
@@ -237,33 +231,6 @@ export function Loom({
                 )}
               </g>
             ))}
-            {Array.from({ length: ghosts }, (_, g) => (
-              <g key={`g${g}`}>
-                <line
-                  x1={0}
-                  y1={y(projects.length + g)}
-                  x2={width}
-                  y2={y(projects.length + g)}
-                  className="loom-pick is-ghost"
-                />
-                {/* Empty cloth keeps a faint twill, so the loom never looks blank. */}
-                {bare
-                  ? strands.map((s, j) =>
-                      (j + g) % 3 === 0 ? (
-                        <line
-                          key={`t${j}`}
-                          x1={s.x}
-                          y1={y(projects.length + g) - 11}
-                          x2={s.x}
-                          y2={y(projects.length + g) + 11}
-                          className="loom-float is-bare"
-                          style={{ stroke: s.tint ?? undefined }}
-                        />
-                      ) : null,
-                    )
-                  : null}
-              </g>
-            ))}
             <line x1={0} y1={y(lines)} x2={width} y2={y(lines)} className="loom-pick is-new" />
           </g>
         </svg>
@@ -276,9 +243,6 @@ export function Loom({
             <span>{p.meta}</span>
             <span className="loom-when">{p.when}</span>
           </div>
-        ))}
-        {Array.from({ length: ghosts }, (_, i) => (
-          <div key={`g${i}`} className="loom-ghost-cell" aria-hidden="true" />
         ))}
         <div className="loom-meta-cell">
           {moreProjects > 0 ? <span>+{moreProjects} more in the sidebar</span> : null}

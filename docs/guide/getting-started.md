@@ -9,7 +9,7 @@ There are no prebuilt downloads yet. Build Habi from source as described in the
 
 ## Try the sample workspace
 
-On the start screen, choose the sample workspace. Habi creates two example libraries and
+On the start screen, choose **Try the sample workspace**. Habi creates two example libraries and
 seven example projects in its own data folder, all labeled as samples, so you can see
 recommendations, installs and updates without touching your own repositories.
 
