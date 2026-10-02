@@ -29,9 +29,9 @@ import {
 import { useNav } from "../../lib/nav";
 import { useSkills } from "../../lib/queries";
 import { tabKeyHandler } from "../../lib/tabs";
+import { SkillReader } from "../reader/SkillReader";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { ChecksPanel } from "./ChecksPanel";
-import { ContentPanel } from "./ContentPanel";
 import { answerable, DeclareQuestion, MatchedReasons, ModuleExplanation, sentence } from "./Explain";
 import { WorkflowPanel } from "./WorkflowPanel";
 
@@ -63,6 +63,7 @@ export function ItemDetailPane({
   const { navigate } = useNav();
   const { addSkills } = useActions();
   const [fullRules, setFullRules] = useState(false);
+  const [contentFile, setContentFile] = useState<string | null>(null);
   const client = useQueryClient();
   const toast = useToast();
   const source = overview.sources.find((s) => s.id === r.item.sourceId);
@@ -570,7 +571,15 @@ export function ItemDetailPane({
             }
           />
         )}
-        {panel === "content" && <ContentPanel sourceId={r.item.sourceId} itemId={r.item.id} />}
+        {panel === "content" && (
+          <SkillReader
+            sourceId={r.item.sourceId}
+            itemId={r.item.id}
+            file={contentFile}
+            onFile={setContentFile}
+            title={r.item.title}
+          />
+        )}
         {panel === "checks" && <ChecksPanel overview={overview} recommendation={r} />}
       </div>
 
