@@ -6,6 +6,7 @@ import type { Recommendation } from "../../bindings/Recommendation";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
 import { Button, Facet, Label, Notice, Section, Status } from "../../components/ui";
+import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import {
   applicabilityLabel,
@@ -31,7 +32,7 @@ import { tabKeyHandler } from "../../lib/tabs";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { ChecksPanel } from "./ChecksPanel";
 import { ContentPanel } from "./ContentPanel";
-import { answerable, DeclareQuestion, ModuleExplanation, sentence } from "./Explain";
+import { answerable, DeclareQuestion, MatchedReasons, ModuleExplanation, sentence } from "./Explain";
 import { WorkflowPanel } from "./WorkflowPanel";
 
 type Panel = "why" | "workflow" | "content" | "checks";
@@ -60,6 +61,8 @@ export function ItemDetailPane({
   const [review, setReview] = useState<ReviewRequest | null>(null);
   const [showOtherModules, setShowOtherModules] = useState(false);
   const { navigate } = useNav();
+  const { addSkills } = useActions();
+  const [fullRules, setFullRules] = useState(false);
   const client = useQueryClient();
   const toast = useToast();
   const source = overview.sources.find((s) => s.id === r.item.sourceId);
@@ -144,11 +147,15 @@ export function ItemDetailPane({
     }, 0);
   };
 
+  // The installed skill folder (".claude/skills/<name>"), preferring the copy
+  // that holds this project's edits.
+  const installedCopy =
+    r.installation?.files.find((f) => f.state === "modified")?.path ?? r.installation?.files[0]?.path;
+  const installedFolder = installedCopy ? installedCopy.split("/").slice(0, 3).join("/") : null;
+
   const shareImprovement = async () => {
-    const copy =
-      r.installation?.files.find((f) => f.state === "modified")?.path ?? r.installation?.files[0]?.path;
-    if (!copy) return;
-    const folder = copy.split("/").slice(0, 3).join("/");
+    const folder = installedFolder;
+    if (!folder) return;
     try {
       const draft = await api.startContribution(r.item.sourceId, {
         type: "projectSkill",
@@ -266,6 +273,17 @@ export function ItemDetailPane({
               Edit in My skills
             </Button>
           ) : null}
+          {key && !isLocal && installedFolder && r.item.kind !== "instructions" ? (
+            <Button
+              icon="pencil"
+              title="Copies the installed files, with this project's edits, to My skills. It stays linked to the library."
+              onClick={() =>
+                addSkills({ source: "project", projectId: overview.project.id, preselect: installedFolder })
+              }
+            >
+              Edit a copy…
+            </Button>
+          ) : null}
           {key && !isLocal && (r.installState === "locallyModified" || r.installState === "conflict") ? (
             <Button icon="share" onClick={() => void shareImprovement()}>
               Share my edits with the team…
@@ -349,9 +367,24 @@ export function ItemDetailPane({
                           ) : null}
                         </h4>
                       ) : null}
-                      <ModuleExplanation match={m} overview={overview} />
+                      {a.applicability === "applies" && !fullRules ? (
+                        <MatchedReasons match={m} overview={overview} />
+                      ) : (
+                        <ModuleExplanation match={m} overview={overview} />
+                      )}
                     </div>
                   ))}
+                  {a.applicability === "applies" ? (
+                    <button
+                      type="button"
+                      className="link-btn rules-toggle"
+                      aria-expanded={fullRules}
+                      onClick={() => setFullRules((v) => !v)}
+                    >
+                      <Icon name={fullRules ? "chevronDown" : "chevronRight"} />
+                      {fullRules ? "Show only what matched" : "Show how every rule was evaluated"}
+                    </button>
+                  ) : null}
                   {otherModules.length > 0 ? (
                     <div className="other-modules">
                       <button

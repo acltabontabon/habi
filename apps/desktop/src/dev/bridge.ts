@@ -17,6 +17,7 @@ const PICKERS: Record<string, string> = {
   export_skill: "Folder to export the skill into",
   export_contribution: "Folder to save the patch in",
   add_skill_files: "File to add to the skill",
+  replace_skill_file: "File to replace it with",
 };
 
 function askPath(label: string): Promise<string | null> {

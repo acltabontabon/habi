@@ -254,7 +254,24 @@ impl Bridge {
                 &s("text")?,
                 arg::<Option<String>>(a, "baseDigest")?.as_deref(),
             )?),
-            "remove_skill_file" => out(h.skills().remove_file(&s("id")?, &s("path")?)?),
+            "remove_skill_path" => out(h.skills().remove_path(&s("id")?, &s("path")?)?),
+            "rename_skill_path" => {
+                out(h.skills().rename_path(&s("id")?, &s("from")?, &s("to")?)?)
+            }
+            "set_skill_file_executable" => {
+                out(h
+                    .skills()
+                    .set_executable(&s("id")?, &s("path")?, arg(a, "executable")?)?)
+            }
+            "replace_skill_file" => match picked(a)? {
+                Some(file) => out(Some(h.skills().replace_file(
+                    &s("id")?,
+                    &s("path")?,
+                    &file,
+                )?)),
+                None => Ok(Value::Null),
+            },
+            "open_skill_file" => out(h.skills().file_path(&s("id")?, &s("path")?).map(|_| ())?),
             "add_skill_files" => match picked(a)? {
                 Some(file) => out(Some(h.skills().add_files(
                     &s("id")?,

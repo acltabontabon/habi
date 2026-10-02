@@ -191,7 +191,13 @@ export const api = {
   readSkillFile: (id: string, path: string) => call<SkillFileContent>("read_skill_file", { id, path }),
   writeSkillFile: (id: string, path: string, text: string, baseDigest: string | null) =>
     call<LocalSkill>("write_skill_file", { id, path, text, baseDigest }),
-  removeSkillFile: (id: string, path: string) => call<LocalSkill>("remove_skill_file", { id, path }),
+  removeSkillPath: (id: string, path: string) => call<LocalSkill>("remove_skill_path", { id, path }),
+  renameSkillPath: (id: string, from: string, to: string) =>
+    call<LocalSkill>("rename_skill_path", { id, from, to }),
+  setSkillFileExecutable: (id: string, path: string, executable: boolean) =>
+    call<LocalSkill>("set_skill_file_executable", { id, path, executable }),
+  replaceSkillFile: (id: string, path: string) => call<LocalSkill | null>("replace_skill_file", { id, path }),
+  openSkillFile: (id: string, path: string) => call<void>("open_skill_file", { id, path }),
   addSkillFiles: (id: string, folder: string) => call<LocalSkill | null>("add_skill_files", { id, folder }),
   trashSkill: (id: string) => call<void>("trash_skill", { id }),
   restoreSkill: (id: string) => call<LocalSkill>("restore_skill", { id }),

@@ -193,6 +193,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
   };
 
   // Entry points that already know the source skip the first step.
+  const [showAll, setShowAll] = useState(false);
   const begun = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once for the dialog's starting source.
   useEffect(() => {
@@ -257,7 +258,10 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
       )
     : false;
   const fromLibrary = review?.from.type === "library";
-  const fromProject = review?.from.type === "project";
+  // Arriving with one skill in mind ("Edit a copy"): show that one first.
+  const focus = start.source === "project" || start.source === "library" ? (start.preselect ?? null) : null;
+  const focused = focus && review ? review.inspection.candidates.find((c) => c.path === focus) : undefined;
+  const listed = review && focused && !showAll ? [focused] : (review?.inspection.candidates ?? []);
   const gitSources = (sources.data ?? []).filter((s) => s.snapshot);
 
   return (
@@ -271,16 +275,20 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
         step.name === "git"
           ? "Connect a Git library"
           : review
-            ? fromLibrary
-              ? `Copy from ${review.inspection.origin} to edit`
-              : `Skills found in ${shortOrigin(review.inspection.origin)}`
+            ? focused
+              ? `Edit a copy of ${focused.title}`
+              : fromLibrary
+                ? `Copy from ${review.inspection.origin}`
+                : `Skills found in ${shortOrigin(review.inspection.origin)}`
             : "Add skills"
       }
       description={
         step.name === "choose"
-          ? "Habi looks first and shows what it found. Nothing is copied until you choose."
+          ? "Habi looks first. Nothing is copied until you choose."
           : review
-            ? "Importing makes independent, editable copies in My skills. The originals stay where they are."
+            ? fromLibrary
+              ? `Copies the whole package to My skills, linked to ${review.inspection.origin} so you can share edits back. The library stays as it is.`
+              : "Copies the whole package to My skills. The originals stay where they are."
             : undefined
       }
       footer={
@@ -320,8 +328,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
             <div className="source-choice-body">
               <h3 className="source-choice-title">From a project</h3>
               <p className="muted">
-                Skill folders already in a repository you opened, such as{" "}
-                <span className="mono">.claude/skills</span>.
+                Skill folders in a repository you opened (<span className="mono">.claude/skills</span>…).
               </p>
               {available.length > 0 ? (
                 <div className="input-row">
@@ -355,10 +362,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
             <Icon name="file" />
             <div className="source-choice-body">
               <h3 className="source-choice-title">From a folder</h3>
-              <p className="muted">
-                One skill folder, or a folder of skills — for example your personal agent skills directory.
-                Habi reads only the folder you pick.
-              </p>
+              <p className="muted">A skill folder, or a folder of skills such as your personal ones.</p>
               <Button onClick={() => void fromFolder()}>Choose a folder…</Button>
             </div>
           </li>
@@ -366,10 +370,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
             <Icon name="library" />
             <div className="source-choice-body">
               <h3 className="source-choice-title">From a Git repository</h3>
-              <p className="muted">
-                Connects it as a team library that stays up to date when you refresh. Its skills are
-                recommended for matching projects; copy one to My skills when you want to edit it.
-              </p>
+              <p className="muted">Connects it as a library that stays current when you refresh.</p>
               <div className="input-row">
                 <Button onClick={() => setStep({ name: "git" })}>Connect a repository…</Button>
                 {gitSources.length > 0 ? (
@@ -427,20 +428,8 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
               {n}
             </p>
           ))}
-          {fromProject && review.inspection.candidates.length > 0 ? (
-            <p className="muted">
-              These already work where they are for the agents that read those folders. Import one only to
-              edit your own copy or to reuse it elsewhere.
-            </p>
-          ) : null}
-          {fromLibrary ? (
-            <p className="muted">
-              The library copy is not changed. Your copy records where it came from, so you can share your
-              edits back for review.
-            </p>
-          ) : null}
           <ul className="candidates">
-            {review.inspection.candidates.map((c) => (
+            {listed.map((c) => (
               <CandidateRow
                 key={c.path}
                 candidate={c}
@@ -449,6 +438,13 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
               />
             ))}
           </ul>
+          {focused && review.inspection.candidates.length > 1 ? (
+            <button type="button" className="link-btn" onClick={() => setShowAll((v) => !v)}>
+              {showAll
+                ? `Show only ${focused.title}`
+                : `Show all ${review.inspection.candidates.length} skills in ${shortOrigin(review.inspection.origin)}`}
+            </button>
+          ) : null}
         </>
       ) : null}
     </Dialog>

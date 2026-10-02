@@ -209,6 +209,29 @@ export function answerable(
   return node.children.flatMap(answerable);
 }
 
+/** The conditions that held, outside any negation: what made the rule match. */
+function matchedLeaves(node: EvalNode): EvalNode[] {
+  if (node.condition.op === "not") return [];
+  if (node.condition.op === "all" || node.condition.op === "any") return node.children.flatMap(matchedLeaves);
+  return node.outcome === "true" ? [node] : [];
+}
+
+/**
+ * Only what matched, each with its evidence. The full evaluation (including
+ * what did not hold) is one click away in `ModuleExplanation`.
+ */
+export function MatchedReasons({ match, overview }: { match: ModuleMatch; overview: ProjectOverview }) {
+  const leaves = match.applies ? matchedLeaves(match.applies) : [];
+  if (leaves.length === 0) return null;
+  return (
+    <ul className="reasons reasons-root reasons-matched">
+      {leaves.map((leaf, i) => (
+        <EvalTree key={i} node={leaf} overview={overview} />
+      ))}
+    </ul>
+  );
+}
+
 export function ModuleExplanation({ match, overview }: { match: ModuleMatch; overview: ProjectOverview }) {
   return (
     <div className="module-explain">

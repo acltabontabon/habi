@@ -843,7 +843,7 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
             .write_file(&id, ".git/config", "x", None)
             .is_err()
     );
-    assert!(habi.skills().remove_file(&id, "SKILL.md").is_err());
+    assert!(habi.skills().remove_path(&id, "SKILL.md").is_err());
     #[cfg(unix)]
     {
         let dir = home.path().join(format!("skills/{id}/package"));
@@ -1253,4 +1253,227 @@ fn revising_a_shared_draft_takes_edits_made_after_revise() {
         ],
     );
     assert!(metadata.contains("framework:spring-boot"), "{metadata}");
+}
+
+/// The package editor's file operations: rename and move (files and
+/// folders), remove a folder, mark a script executable, replace a binary
+/// file, and preview an image. None of them can leave the package.
+#[test]
+fn package_files_can_be_renamed_moved_replaced_and_previewed() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(
+        &habi,
+        "Release check",
+        "Checks a release. Use before tagging.",
+        "Run it.",
+    );
+    let id = skill.summary.id.clone();
+    let skills = habi.skills();
+    skills
+        .write_file(&id, "scripts/check.sh", "#!/bin/sh\n", None)
+        .unwrap();
+    skills
+        .write_file(&id, "references/a.md", "a", None)
+        .unwrap();
+    skills
+        .write_file(&id, "references/b.md", "b", None)
+        .unwrap();
+
+    // Rename a file; the destination must not exist; SKILL.md stays put.
+    let s = skills
+        .rename_path(&id, "scripts/check.sh", "scripts/verify.sh")
+        .unwrap();
+    assert!(s.files.iter().any(|f| f.path == "scripts/verify.sh"));
+    assert!(!s.files.iter().any(|f| f.path == "scripts/check.sh"));
+    assert!(matches!(
+        skills.rename_path(&id, "references/a.md", "references/b.md"),
+        Err(HabiError::Conflict(_))
+    ));
+    assert!(skills.rename_path(&id, "SKILL.md", "README.md").is_err());
+    assert!(
+        skills
+            .rename_path(&id, "references/a.md", "SKILL.md")
+            .is_err()
+    );
+    assert!(
+        skills
+            .rename_path(&id, "references/a.md", "../a.md")
+            .is_err()
+    );
+    assert!(
+        skills
+            .rename_path(&id, "references", "references/inner")
+            .is_err()
+    );
+
+    // Move a whole folder; the old one disappears.
+    let s = skills
+        .rename_path(&id, "references", "docs/references")
+        .unwrap();
+    let paths: Vec<&str> = s.files.iter().map(|f| f.path.as_str()).collect();
+    assert!(paths.contains(&"docs/references/a.md") && paths.contains(&"docs/references/b.md"));
+    let package = home.path().join(format!("skills/{id}/package"));
+    assert!(!package.join("references").exists());
+
+    // Executable bit on and off.
+    let s = skills
+        .set_executable(&id, "scripts/verify.sh", true)
+        .unwrap();
+    assert!(
+        s.files
+            .iter()
+            .find(|f| f.path == "scripts/verify.sh")
+            .unwrap()
+            .executable
+    );
+    let s = skills
+        .set_executable(&id, "scripts/verify.sh", false)
+        .unwrap();
+    assert!(
+        !s.files
+            .iter()
+            .find(|f| f.path == "scripts/verify.sh")
+            .unwrap()
+            .executable
+    );
+
+    // Replace an image; it is previewed as a data URL. A 1x1 PNG.
+    let png: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    ];
+    let picked = tempfile::tempdir().unwrap();
+    std::fs::write(picked.path().join("logo.png"), png).unwrap();
+    skills
+        .add_files(&id, "assets", &[picked.path().join("logo.png")])
+        .unwrap();
+    let shown = skills.read_file(&id, "assets/logo.png").unwrap();
+    assert!(shown.binary);
+    assert!(
+        shown
+            .preview
+            .as_deref()
+            .unwrap()
+            .starts_with("data:image/png;base64,iVBORw0KGgo")
+    );
+    std::fs::write(picked.path().join("new.png"), [png, b"x"].concat()).unwrap();
+    let s = skills
+        .replace_file(&id, "assets/logo.png", &picked.path().join("new.png"))
+        .unwrap();
+    assert_eq!(
+        s.files
+            .iter()
+            .find(|f| f.path == "assets/logo.png")
+            .unwrap()
+            .size,
+        17
+    );
+    assert!(
+        skills
+            .replace_file(&id, "SKILL.md", &picked.path().join("new.png"))
+            .is_err()
+    );
+    assert!(
+        skills
+            .read_file(&id, "scripts/verify.sh")
+            .unwrap()
+            .preview
+            .is_none()
+    );
+
+    // Remove a folder with everything in it; SKILL.md cannot go.
+    let s = skills.remove_path(&id, "docs").unwrap();
+    assert!(!s.files.iter().any(|f| f.path.starts_with("docs/")));
+    assert!(!package.join("docs").exists());
+    assert!(skills.remove_path(&id, "SKILL.md").is_err());
+    assert!(skills.remove_path(&id, "../outside").is_err());
+}
+
+/// Copying a skill Habi installed from a library keeps the library item and
+/// the installed version as its origin — and the project's local edits.
+#[test]
+fn copying_an_installed_skill_keeps_its_library_and_local_edits() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    copy_tree(&fixture("libraries/example-team-library"), lib.path());
+    git(lib.path(), &["init", "-q", "-b", "main"]);
+    git(lib.path(), &["add", "-A"]);
+    git(lib.path(), &["commit", "-qm", "library"]);
+    let habi = open(home.path());
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Team".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    let fetched = habi
+        .sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let project_id = project(&habi, "billing-service", proj.path());
+    let plan = habi
+        .plan_install(
+            &project_id,
+            &[ItemRef {
+                source_id: source.id.clone(),
+                item_id: "liquibase-migration-review".into(),
+            }],
+            &[ClientId::ClaudeCode],
+            false,
+            &Decisions::new(),
+        )
+        .unwrap();
+    habi.apply(&plan.id).unwrap();
+    let installed = proj
+        .path()
+        .join(".claude/skills/liquibase-migration-review/SKILL.md");
+    let mut text = std::fs::read_to_string(&installed).unwrap();
+    text.push_str("\nLocal note: the billing DBA reviews every changeset.\n");
+    std::fs::write(&installed, &text).unwrap();
+
+    let from = ImportFrom::Project {
+        project_id: project_id.clone(),
+    };
+    let outcome = habi
+        .import_skills(
+            &from,
+            &[ImportSelection {
+                path: ".claude/skills/liquibase-migration-review".into(),
+                rename: None,
+            }],
+            &CancelToken::new(),
+        )
+        .unwrap();
+    let copied = &outcome.imported[0];
+    match &copied.origin {
+        SkillOrigin::Library {
+            source_name,
+            item_id,
+            snapshot,
+            ..
+        } => {
+            assert_eq!(source_name, "Team");
+            assert_eq!(item_id, "liquibase-migration-review");
+            assert_eq!(Some(snapshot), fetched.source.snapshot.as_ref());
+        }
+        other => panic!("expected a library origin, got {other:?}"),
+    }
+    let skill = habi.skills().get(&copied.id).unwrap();
+    assert!(
+        skill
+            .document
+            .body
+            .contains("the billing DBA reviews every changeset")
+    );
+    // Supporting files came along too.
+    assert!(
+        skill
+            .files
+            .iter()
+            .any(|f| f.path == "references/checklist.md")
+    );
 }

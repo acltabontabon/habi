@@ -6,9 +6,7 @@
 import { type ComponentProps, lazy, Suspense } from "react";
 
 const MarkdownImpl = lazy(() => import("./Markdown").then((m) => ({ default: m.Markdown })));
-const MarkdownEditorImpl = lazy(() =>
-  import("./MarkdownEditor").then((m) => ({ default: m.MarkdownEditor })),
-);
+const SourceEditorImpl = lazy(() => import("./SourceEditor").then((m) => ({ default: m.SourceEditor })));
 
 function Loading() {
   return <p className="muted lazy-loading">Loading…</p>;
@@ -22,10 +20,10 @@ export function Markdown(props: ComponentProps<typeof MarkdownImpl>) {
   );
 }
 
-export function MarkdownEditor(props: ComponentProps<typeof MarkdownEditorImpl>) {
+export function SourceEditor(props: ComponentProps<typeof SourceEditorImpl>) {
   return (
     <Suspense fallback={<Loading />}>
-      <MarkdownEditorImpl {...props} />
+      <SourceEditorImpl {...props} />
     </Suspense>
   );
 }
