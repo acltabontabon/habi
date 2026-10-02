@@ -1,8 +1,12 @@
 # Project status
 
-Habi is **pre-release (0.1.0)**. This page says what works today, how it is checked, and
-what is known not to be verified yet. Product principles live in
-[product.md](product.md); release requirements in [release.md](../dev/release.md).
+Habi is **pre-release (0.1.0)**. This page is the one place that says what works today, how
+it is checked, what is known not to work or not to be verified, and what still blocks the
+first release. Product principles live in [product.md](product.md); the release procedure in
+[release.md](../dev/release.md).
+
+Habi runs on macOS 11 or later (Apple Silicon and Intel) and on Windows. Linux is not
+supported; the core and CLI are still tested on Linux in CI.
 
 ## What works
 
@@ -30,29 +34,76 @@ what is known not to be verified yet. Product principles live in
 | Acceptance scenario (10 steps) | Passes | `tests/acceptance.rs` |
 | Docs, CI, release scaffolding | Done | — |
 
-## Known limitations and not yet verified
+## Known limitations
+
+Not verified yet:
 
 - **Agent tools loading what Habi installs.** Habi writes skills and instructions to the
-  documented locations for Claude Code, Cursor and Codex; whether a given client version
-  discovers them is checked with the smoke tests in [compatibility research](../dev/compatibility-research.md) §6,
-  which have not yet been run for this release.
+  documented locations for Claude Code, Cursor and Codex
+  ([agent tools](../guide/agent-tools.md)). Whether a given client version discovers and
+  loads them is checked by hand with the
+  [smoke tests](../dev/compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it),
+  which have not been run for this release. Habi does not claim that an agent follows the
+  instructions.
 - **Live Git hosts.** Opening pull/merge requests, reading status and comments, and updating
   a request with a revision are tested against programs that answer like the GitHub and GitLab
   REST APIs, not against live hosts. GitLab is the less exercised of the two.
-- **Windows.** CI builds the desktop app on macOS and Windows; it has mainly been used on
-  macOS so far. Linux is not supported (the core and CLI are still tested on Linux in CI).
+- **Windows.** CI builds and tests on Windows, but Habi has mainly been used on macOS.
 - **Native window.** Most screens were exercised through the development bridge in a browser;
   native file dialogs and window behavior have had less use.
-- **Signing.** Release artifacts are unsigned until signing credentials exist (see
-  [release.md](../dev/release.md)).
-- Smaller documented gaps: an update does not add an MCP server an item newly suggests
-  ([recovery](../guide/recovery.md)); turning an existing file into an OpenAPI specification is
-  noticed after a rescan ([detectors](../library-authors/detectors.md)); comments inside `habi.yaml` are not
-  kept when the share form rewrites it ([sharing](../guide/sharing.md)).
+
+By design, or not solved yet:
+
+- **What an agent does** with installed content is invisible to Habi, and Habi does not claim
+  to know.
+- **Running a check** executes code with your privileges. There is no sandbox.
+- **The secret scan** before sharing is pattern-based. It reduces the risk of sharing a
+  secret; it does not remove it.
+- **Another process running as you** could race between path validation and directory
+  creation while a plan is applied.
+- **Community libraries** usually need push access (or a fork) that you do not have. Habi
+  prepares the branch and offers *Export patch*; it does not create forks.
+- **Unsigned releases.** See [release blockers](#release-blockers).
+- Smaller gaps: an update does not add an MCP server an item newly suggests, and restoring a
+  case-only rename keeps the new letter case
+  ([recovery](../guide/recovery.md#known-limitations)); turning an existing file into an
+  OpenAPI specification is noticed after a rescan ([detectors](../library-authors/detectors.md));
+  comments inside `habi.yaml` are not kept when the share form rewrites it
+  ([sharing](../guide/sharing.md)).
+
+## Release blockers
+
+Open:
+
+- **Repository is public.** It is private until the first release. Going public also needs
+  these GitHub settings, done by hand: private vulnerability reporting, a ruleset on `main`
+  (required checks `core`, `frontend` and `licenses`; no force-push), HTTPS on the Pages
+  site, and Discussions.
+- **Name availability.** Trademark and domain availability for "Habi" has not been checked.
+- **Signing.** There are no macOS signing or notarization credentials, and Windows signing is
+  not implemented. Until both exist, installers are unsigned and users see Gatekeeper or
+  SmartScreen warnings. The `habi` command-line binary is not signed or notarized on either
+  platform.
+- **Client smoke tests** have not been run against installed Claude Code, Cursor and Codex.
+- **Manual Windows smoke test.** The Windows installers are built in CI but have not been
+  installed and used by hand.
+- **Live Git hosts.** Pull/merge request creation, status and revisions are tested against
+  stand-in `gh`/`glab` programs, not live GitHub or GitLab.
+
+Resolved:
+
+- **License:** Apache-2.0 (`LICENSE`, `NOTICE`, `license` in every manifest and the desktop
+  bundle). Third-party notices are generated by `node scripts/third-party-notices.mjs`,
+  checked in CI, and bundled with the app; dependency licenses are enforced by `deny.toml`.
+- **Identifiers:** bundle identifier `com.acltabontabon.habi`; data directory qualifier
+  `("com", "acltabontabon", "Habi")` in `crates/habi-core/src/brand.rs`. Changing either later
+  moves users' local data.
 
 ## Next
 
-1. Run the client smoke tests and record versions in [compatibility research](../dev/compatibility-research.md).
+1. Run the client smoke tests and record versions in
+   [compatibility research](../dev/compatibility-research.md).
 2. Exercise sharing against live GitHub and GitLab repositories.
-3. User-scope installation and Cursor `.mdc` rules (see [future direction](../future.md)).
+3. User-scope installation and Cursor `.mdc` rules (see
+   [future direction](product.md#future-direction)).
 4. `habi skill …` commands for local skills (list, export, import); the core supports them.
