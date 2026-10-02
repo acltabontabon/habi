@@ -705,6 +705,7 @@ pub fn build_index(
         };
         seen_ids.insert(id.clone(), dir.clone());
         let content_digest = item_digest(&item_files);
+        diags.extend(package_checks(dir, &content_digest, &item_files, read));
         let kind = metadata.kind.unwrap_or(if metadata.workflow.is_some() {
             ItemKind::Workflow
         } else {
@@ -865,6 +866,532 @@ pub fn item_digest(files: &[ItemFile]) -> String {
         })
         .collect();
     tree_digest(keyed.iter().map(|(p, d)| (p.as_str(), d.as_str())))
+}
+
+// ----- package checks ----------------------------------------------------------
+//
+// Static checks of a skill's own files, run wherever a package is indexed
+// (libraries, My skills, contributions, `habi validate`). They read files as
+// data only: Markdown is scanned for links, JSON and YAML are parsed. Nothing
+// is executed, and scripts are not checked at all. Passing these checks says
+// nothing about whether a skill is safe or correct.
+
+/// Markdown files read per skill for link checks.
+const MAX_MARKDOWN_FILES: usize = 64;
+/// JSON and YAML files parsed per skill.
+const MAX_DATA_FILES: usize = 64;
+/// Larger files are not scanned (reported as not checked).
+const MAX_CHECKED_BYTES: u64 = 512 * 1024;
+/// Missing-reference problems reported per skill before summarizing.
+const MAX_REFERENCE_PROBLEMS: usize = 20;
+
+/// Results by item content digest. A library is re-indexed often (every
+/// overview), and its content only changes on refresh, so each package is
+/// read and parsed once per process.
+fn check_memo() -> &'static std::sync::Mutex<HashMap<String, Vec<Diagnostic>>> {
+    static MEMO: std::sync::OnceLock<std::sync::Mutex<HashMap<String, Vec<Diagnostic>>>> =
+        std::sync::OnceLock::new();
+    MEMO.get_or_init(Default::default)
+}
+
+/// Diagnostics for a skill's files, with library-relative paths.
+fn package_checks(
+    dir: &str,
+    content_digest: &str,
+    files: &[ItemFile],
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> Vec<Diagnostic> {
+    let cached = check_memo()
+        .lock()
+        .ok()
+        .and_then(|m| m.get(content_digest).cloned());
+    let relative = match cached {
+        Some(d) => d,
+        None => {
+            let (diags, complete) = check_package_files(files, &|rel| read(&join(dir, rel)));
+            if complete && let Ok(mut memo) = check_memo().lock() {
+                if memo.len() > 8_192 {
+                    memo.clear();
+                }
+                memo.insert(content_digest.to_string(), diags.clone());
+            }
+            diags
+        }
+    };
+    relative
+        .into_iter()
+        .map(|d| Diagnostic {
+            path: d.path.map(|p| join(dir, &p)),
+            ..d
+        })
+        .collect()
+}
+
+/// Checks a package's files (package-relative paths). Returns the
+/// diagnostics and whether every file could be read.
+pub(crate) fn check_package_files(
+    files: &[ItemFile],
+    read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+) -> (Vec<Diagnostic>, bool) {
+    let mut diags = Vec::new();
+    let mut complete = true;
+    let paths: HashSet<&str> = files.iter().map(|f| f.path.as_str()).collect();
+    let lower_ext = |p: &str| {
+        p.rsplit_once('.')
+            .map(|(_, e)| e.to_ascii_lowercase())
+            .unwrap_or_default()
+    };
+    let mut text_of = |f: &ItemFile, what: &str, diags: &mut Vec<Diagnostic>| -> Option<String> {
+        if f.size > MAX_CHECKED_BYTES {
+            diags.push(Diagnostic::info(
+                format!(
+                    "{} was not checked as {what}: it is larger than {} KiB",
+                    f.path,
+                    MAX_CHECKED_BYTES / 1024
+                ),
+                Some(&f.path),
+            ));
+            return None;
+        }
+        match read(&f.path) {
+            Ok(bytes) => match String::from_utf8(bytes) {
+                Ok(t) => Some(t.strip_prefix('\u{feff}').map(str::to_string).unwrap_or(t)),
+                Err(_) => {
+                    diags.push(Diagnostic::warning(
+                        format!("{} is not UTF-8 text, so it is not valid {what}", f.path),
+                        Some(&f.path),
+                    ));
+                    None
+                }
+            },
+            Err(_) => {
+                complete = false;
+                None
+            }
+        }
+    };
+
+    // Local file references in Markdown.
+    let mut problems: Vec<Diagnostic> = Vec::new();
+    for f in files
+        .iter()
+        // Assets are often templates whose links are placeholders.
+        .filter(|f| lower_ext(&f.path) == "md" && !f.path.starts_with("assets/"))
+        .take(MAX_MARKDOWN_FILES)
+    {
+        let Some(text) = text_of(f, "Markdown", &mut diags) else {
+            continue;
+        };
+        let body = if f.path == SKILL_FILE {
+            split_frontmatter(&text).map(|(_, b)| b).unwrap_or(&text)
+        } else {
+            &text
+        };
+        let from_dir = dir_of(&f.path);
+        let mut seen: HashSet<String> = HashSet::new();
+        for reference in markdown_references(body) {
+            let problem = match &reference {
+                MarkdownRef::Link(raw) => match resolve_link(from_dir, raw) {
+                    None => None,
+                    Some(Err(())) => Some(format!(
+                        "{} links to `{raw}`, which points outside the skill; it will not resolve once the skill is installed or shared on its own",
+                        f.path
+                    )),
+                    Some(Ok(target)) if !package_has(&paths, &target) => Some(format!(
+                        "{} links to `{target}`, which is not in the skill",
+                        f.path
+                    )),
+                    Some(Ok(_)) => None,
+                },
+                MarkdownRef::Code(raw) => match code_path(raw) {
+                    Some(target)
+                        if !package_has(&paths, &target)
+                            && !resolve_link(from_dir, &target)
+                                .and_then(Result::ok)
+                                .is_some_and(|t| package_has(&paths, &t)) =>
+                    {
+                        Some(format!(
+                            "{} mentions `{target}`, which is not in the skill",
+                            f.path
+                        ))
+                    }
+                    _ => None,
+                },
+            };
+            if let Some(message) = problem
+                && seen.insert(message.clone())
+            {
+                problems.push(Diagnostic::warning(message, Some(&f.path)));
+            }
+        }
+    }
+    if problems.len() > MAX_REFERENCE_PROBLEMS {
+        let more = problems.len() - MAX_REFERENCE_PROBLEMS;
+        problems.truncate(MAX_REFERENCE_PROBLEMS);
+        problems.push(Diagnostic::warning(
+            format!("{more} more references to files that are not in the skill"),
+            None,
+        ));
+    }
+    diags.extend(problems);
+
+    // JSON and YAML must at least parse. habi.yaml is validated on its own.
+    for f in files
+        .iter()
+        .filter(|f| {
+            matches!(lower_ext(&f.path).as_str(), "json" | "yaml" | "yml")
+                && !SIDECAR_FILES.contains(&f.path.as_str())
+        })
+        .take(MAX_DATA_FILES)
+    {
+        let json = lower_ext(&f.path) == "json";
+        let what = if json { "JSON" } else { "YAML" };
+        let Some(text) = text_of(f, what, &mut diags) else {
+            continue;
+        };
+        if !json && text.len() > METADATA_LIMIT {
+            diags.push(Diagnostic::info(
+                format!(
+                    "{} was not checked as YAML: it is larger than {} KiB",
+                    f.path,
+                    METADATA_LIMIT / 1024
+                ),
+                Some(&f.path),
+            ));
+            continue;
+        }
+        let problem = if json {
+            check_json(&text).err()
+        } else {
+            check_yaml(&text).err()
+        };
+        if let Some(e) = problem {
+            diags.push(Diagnostic::warning(
+                format!("{} is not valid {what}: {e}", f.path),
+                Some(&f.path),
+            ));
+        }
+    }
+    (diags, complete)
+}
+
+fn package_has(paths: &HashSet<&str>, target: &str) -> bool {
+    let target = target.trim_end_matches('/');
+    target.is_empty()
+        || paths.contains(target)
+        || paths.iter().any(|p| {
+            p.len() > target.len() && p.starts_with(target) && p[target.len()..].starts_with('/')
+        })
+}
+
+fn check_json(text: &str) -> Result<(), String> {
+    match serde_json::from_str::<serde::de::IgnoredAny>(text) {
+        Ok(_) => Ok(()),
+        // Many tools read JSON with comments and trailing commas
+        // (tsconfig.json, editor settings); those are not reported.
+        Err(e) => match serde_json::from_str::<serde::de::IgnoredAny>(&strip_jsonc(text)) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(e.to_string()),
+        },
+    }
+}
+
+/// Removes `//` and `/* */` comments and trailing commas outside strings.
+fn strip_jsonc(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    let mut in_string = false;
+    while i < chars.len() {
+        let c = chars[i];
+        if in_string {
+            out.push(c);
+            if c == '\\' && i + 1 < chars.len() {
+                out.push(chars[i + 1]);
+                i += 1;
+            } else if c == '"' {
+                in_string = false;
+            }
+        } else if c == '"' {
+            in_string = true;
+            out.push(c);
+        } else if c == '/' && chars.get(i + 1) == Some(&'/') {
+            while i < chars.len() && chars[i] != '\n' {
+                i += 1;
+            }
+            continue;
+        } else if c == '/' && chars.get(i + 1) == Some(&'*') {
+            i += 2;
+            while i < chars.len() && !(chars[i] == '*' && chars.get(i + 1) == Some(&'/')) {
+                i += 1;
+            }
+            i += 2;
+            continue;
+        } else if c == ',' {
+            let next = chars[i + 1..].iter().find(|c| !c.is_whitespace());
+            if !matches!(next, Some('}') | Some(']')) {
+                out.push(c);
+            }
+        } else {
+            out.push(c);
+        }
+        i += 1;
+    }
+    out
+}
+
+fn check_yaml(text: &str) -> Result<(), String> {
+    serde_saphyr::from_multiple_with_options::<Value>(text, yaml_options())
+        .map(|_| ())
+        .map_err(|e| {
+            // Keep the first line: the full message may echo content.
+            e.to_string()
+                .lines()
+                .next()
+                .unwrap_or("invalid YAML")
+                .to_string()
+        })
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum MarkdownRef {
+    /// A link or image destination, as written.
+    Link(String),
+    /// The text of an inline code span.
+    Code(String),
+}
+
+/// Link destinations and inline code spans in Markdown, outside fenced code
+/// blocks and HTML comments. Deliberately simple: anything it is unsure
+/// about is left out rather than reported.
+fn markdown_references(text: &str) -> Vec<MarkdownRef> {
+    let mut out = Vec::new();
+    let mut fence: Option<(char, usize)> = None;
+    let mut in_comment = false;
+    for line in text.lines() {
+        let trimmed = line.trim_start_matches(' ');
+        let indent = line.len() - trimmed.len();
+        let fence_char = trimmed.chars().next().filter(|c| *c == '`' || *c == '~');
+        if indent <= 3
+            && let Some(ch) = fence_char
+        {
+            let run = trimmed.chars().take_while(|c| *c == ch).count();
+            if run >= 3 {
+                match fence {
+                    None => {
+                        fence = Some((ch, run));
+                        continue;
+                    }
+                    Some((open, len))
+                        if open == ch && run >= len && trimmed[run..].trim().is_empty() =>
+                    {
+                        fence = None;
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if fence.is_some() {
+            continue;
+        }
+        // Drop HTML comments, which may span lines.
+        let mut visible = String::new();
+        let mut rest = line;
+        loop {
+            if in_comment {
+                match rest.find("-->") {
+                    Some(end) => {
+                        rest = &rest[end + 3..];
+                        in_comment = false;
+                    }
+                    None => break,
+                }
+            } else {
+                match rest.find("<!--") {
+                    Some(start) => {
+                        visible.push_str(&rest[..start]);
+                        rest = &rest[start + 4..];
+                        in_comment = true;
+                    }
+                    None => {
+                        visible.push_str(rest);
+                        break;
+                    }
+                }
+            }
+        }
+        // Reference definitions: `[label]: destination`.
+        let def = visible.trim_start_matches(' ');
+        if visible.len() - def.len() <= 3
+            && def.starts_with('[')
+            && !def.starts_with("[^")
+            && let Some(close) = def.find("]:")
+        {
+            if let Some(dest) = def[close + 2..].split_whitespace().next() {
+                let dest = dest
+                    .strip_prefix('<')
+                    .and_then(|d| d.strip_suffix('>'))
+                    .unwrap_or(dest);
+                out.push(MarkdownRef::Link(dest.to_string()));
+            }
+            continue;
+        }
+        inline_references(&visible, &mut out);
+    }
+    out
+}
+
+fn inline_references(line: &str, out: &mut Vec<MarkdownRef>) {
+    let chars: Vec<char> = line.chars().collect();
+    let mut i = 0;
+    let mut open_brackets = 0usize;
+    while i < chars.len() {
+        match chars[i] {
+            '\\' => i += 1,
+            '`' => {
+                let run = chars[i..].iter().take_while(|c| **c == '`').count();
+                // Find the closing run of exactly the same length.
+                let mut j = i + run;
+                let mut close = None;
+                while j < chars.len() {
+                    if chars[j] == '`' {
+                        let r = chars[j..].iter().take_while(|c| **c == '`').count();
+                        if r == run {
+                            close = Some(j);
+                            break;
+                        }
+                        j += r;
+                    } else {
+                        j += 1;
+                    }
+                }
+                match close {
+                    Some(end) => {
+                        let code: String = chars[i + run..end].iter().collect();
+                        out.push(MarkdownRef::Code(code.trim().to_string()));
+                        i = end + run;
+                        continue;
+                    }
+                    None => i += run - 1,
+                }
+            }
+            '[' => open_brackets += 1,
+            ']' if open_brackets > 0 => {
+                open_brackets -= 1;
+                if chars.get(i + 1) == Some(&'(') {
+                    let mut j = i + 2;
+                    while j < chars.len() && chars[j] == ' ' {
+                        j += 1;
+                    }
+                    let mut dest = String::new();
+                    if chars.get(j) == Some(&'<') {
+                        j += 1;
+                        while j < chars.len() && chars[j] != '>' {
+                            dest.push(chars[j]);
+                            j += 1;
+                        }
+                    } else {
+                        let mut depth = 0usize;
+                        while j < chars.len() && !chars[j].is_whitespace() {
+                            match chars[j] {
+                                '(' => depth += 1,
+                                ')' if depth == 0 => break,
+                                ')' => depth -= 1,
+                                _ => {}
+                            }
+                            dest.push(chars[j]);
+                            j += 1;
+                        }
+                    }
+                    out.push(MarkdownRef::Link(dest));
+                    i = j;
+                    continue;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+}
+
+/// Resolves a link destination against the folder of the file it is in.
+/// `None`: not a reference to a package file (URL, anchor, absolute path,
+/// template). `Some(Err)`: it climbs out of the package.
+fn resolve_link(from_dir: &str, raw: &str) -> Option<Result<String, ()>> {
+    let raw = raw.trim();
+    let is_url = raw.split_once(':').is_some_and(|(scheme, _)| {
+        scheme
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic())
+            && scheme
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-'))
+    });
+    if raw.is_empty()
+        || is_url
+        || raw.starts_with(['#', '/', '\\', '~'])
+        || raw.contains(['{', '}', '*', '$', '<', '>', '|', '\\', '"', '\''])
+    {
+        return None;
+    }
+    let path = raw.split(['#', '?']).next().unwrap_or_default();
+    if path.is_empty() {
+        return None;
+    }
+    let path = percent_decode(path)?;
+    let mut parts: Vec<&str> = if from_dir.is_empty() {
+        Vec::new()
+    } else {
+        from_dir.split('/').collect()
+    };
+    for segment in path.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => {
+                if parts.pop().is_none() {
+                    return Some(Err(()));
+                }
+            }
+            s => parts.push(s),
+        }
+    }
+    Some(Ok(parts.join("/")))
+}
+
+fn percent_decode(s: &str) -> Option<String> {
+    if !s.contains('%') {
+        return Some(s.to_string());
+    }
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = s.get(i + 1..i + 3)?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+/// An inline code span that is plainly a path into the package's standard
+/// folders, such as `scripts/check.py`.
+fn code_path(code: &str) -> Option<String> {
+    let (folder, rest) = code.split_once('/')?;
+    let plain = !rest.is_empty()
+        && !code.chars().any(char::is_whitespace)
+        && !code.contains([
+            '*', '?', '{', '}', '<', '>', '[', ']', '(', ')', '$', '|', '\\', ':', ',', '=', '#',
+            '@',
+        ])
+        && !code.split('/').any(|s| s == "..");
+    (matches!(folder, "scripts" | "references" | "assets") && plain).then(|| code.to_string())
 }
 
 /// `liquibase-migration-review` -> `Liquibase migration review`.
