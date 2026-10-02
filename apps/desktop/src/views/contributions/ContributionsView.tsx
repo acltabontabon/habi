@@ -1245,7 +1245,8 @@ export function ContributionsView({ contributionId }: { contributionId?: string 
             </Button>
           }
         >
-          Improve a skill, then choose “Share” to send it to a library for review. Until then it stays on this machine.
+          Improve a skill, then choose “Share” to send it to a library for review. Until then it stays on this
+          machine.
         </Empty>
       ) : (
         <ul className="share-list" aria-label="Contributions">
