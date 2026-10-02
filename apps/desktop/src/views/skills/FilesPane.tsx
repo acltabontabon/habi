@@ -343,9 +343,12 @@ export function FilesPane({
   readOnly,
   beforeChange,
   onSkill,
+  request,
 }: {
   skill: LocalSkill;
   readOnly: boolean;
+  /** A file to open, asked for from elsewhere in the Studio. */
+  request?: { path: string; nonce: number } | null;
   /** Writes pending edits made elsewhere in the editor before files change. */
   beforeChange: () => Promise<void>;
   /** Called with the skill after a change; `path` names the file edited, if one. */
@@ -372,6 +375,11 @@ export function FilesPane({
       setError(e);
     }
   };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: opens once per request.
+  useEffect(() => {
+    if (request) void select(request.path);
+  }, [request?.nonce]);
 
   // Keep the open file in step when it disappears.
   useEffect(() => {

@@ -133,7 +133,7 @@ function FileRow({ file }: { file: UpstreamFile }) {
   );
 }
 
-function UpstreamReview({
+export function UpstreamReview({
   skillId,
   sourceName,
   onClose,

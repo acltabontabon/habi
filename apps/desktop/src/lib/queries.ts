@@ -21,6 +21,8 @@ export const keys = {
   checkRuns: (projectId: string, itemKey: string) => ["checkRuns", projectId, itemKey] as const,
   skills: ["skills"] as const,
   skill: (id: string) => ["skill", id] as const,
+  skillsOverview: ["skillsOverview"] as const,
+  skillTemplates: ["skillTemplates"] as const,
   knowledge: (projectId: string) => ["knowledge", projectId] as const,
 };
 
@@ -175,6 +177,29 @@ export function useSkills() {
   return useQuery({ queryKey: keys.skills, queryFn: api.listSkills });
 }
 
+/**
+ * Where each skill is installed and whether its library moved on. Reads every
+ * project's lock file, so it is shared and kept for a while rather than
+ * refetched with every list.
+ */
+export function useSkillsOverview(enabled = true) {
+  return useQuery({
+    queryKey: keys.skillsOverview,
+    queryFn: api.skillsOverview,
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/** The starters the editor offers; they ship with Habi. */
+export function useSkillTemplates() {
+  return useQuery({
+    queryKey: keys.skillTemplates,
+    queryFn: api.skillTemplates,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
 /** Skills and instruction files already in a project (read-only discovery). */
 export function useKnowledge(projectId: string | undefined, enabled = true) {
   return useQuery({
@@ -188,6 +213,7 @@ export function useKnowledge(projectId: string | undefined, enabled = true) {
 /** After local skills change: lists, and anything matched against projects. */
 export function invalidateSkills(client: QueryClient) {
   void client.invalidateQueries({ queryKey: keys.skills });
+  void client.invalidateQueries({ queryKey: keys.skillsOverview });
   void client.invalidateQueries({ queryKey: ["knowledge"] });
   void client.invalidateQueries({ queryKey: ["overview"] });
 }

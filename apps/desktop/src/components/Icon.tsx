@@ -39,6 +39,10 @@ const paths = {
   pencil: "M10.5 3l2.5 2.5L6 12.5H3.5V10z",
   trash: "M3.5 4.5h9M6.5 4.5V3h3v1.5M5 4.5l.5 8.5h5l.5-8.5",
   eye: "M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM8 10a2 2 0 100-4 2 2 0 000 4z",
+  more: "M3.5 8h.1M8 8h.1M12.5 8h.1",
+  panel: "M2.5 3.5h11v9h-11zM10 3.5v9",
+  outline: "M3 4h10M5.5 8h7.5M5.5 12h7.5",
+  upload: "M8 10.5V3M5 6l3-3 3 3M3.5 12.5h9",
 } as const;
 
 export type IconName = keyof typeof paths;

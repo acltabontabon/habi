@@ -58,7 +58,13 @@ describe("statementsFromCondition", () => {
     const tree = statementsFromCondition({
       op: "all",
       items: [
-        { op: "any", items: [{ op: "tag", tag: "lang:java" }, { op: "file", glob: "**/pom.xml" }] },
+        {
+          op: "any",
+          items: [
+            { op: "tag", tag: "lang:java" },
+            { op: "file", glob: "**/pom.xml" },
+          ],
+        },
         { op: "not", item: { op: "dependency", name: "lombok", ecosystem: "maven", version: null } },
       ],
     });

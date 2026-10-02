@@ -14,8 +14,9 @@ import { useActions } from "../../lib/actions";
 import { api, newJobId } from "../../lib/api";
 import { applicabilityTone, NO_RULES_PHRASE } from "../../lib/format";
 import { useRecentProjects } from "../../lib/queries";
+import type { NavTarget } from "../../lib/studioNav";
 import { ReviewDialog } from "../review/ReviewDialog";
-import { type FixTarget, Unfinished } from "./Unfinished";
+import { Unfinished } from "./Unfinished";
 
 const verdict: Record<Applicability, string> = {
   applies: "Applies",
@@ -33,7 +34,7 @@ export function UseSkillDialog({
   skill: LocalSkill;
   onClose: () => void;
   /** Opens the editor where an unfinished part is fixed. */
-  onFix?: (target: FixTarget) => void;
+  onFix?: (target: NavTarget) => void;
 }) {
   const projects = useRecentProjects();
   const { openProject } = useActions();

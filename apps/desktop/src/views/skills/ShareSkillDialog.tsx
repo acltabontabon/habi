@@ -16,9 +16,10 @@ import { relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { keys, useContributions, useSources } from "../../lib/queries";
 import { requestWord } from "../../lib/sharing";
+import type { NavTarget } from "../../lib/studioNav";
 import { StateChip } from "../contributions/StateChip";
 import { ConnectLibrary } from "../sources/ConnectLibrary";
-import { type FixTarget, Unfinished } from "./Unfinished";
+import { Unfinished } from "./Unfinished";
 
 export function ShareSkillDialog({
   skill,
@@ -28,7 +29,7 @@ export function ShareSkillDialog({
   skill: LocalSkill;
   onClose: () => void;
   /** Opens the editor where an unfinished part is fixed. */
-  onFix?: (target: FixTarget) => void;
+  onFix?: (target: NavTarget) => void;
 }) {
   const sources = useSources();
   const contributions = useContributions();

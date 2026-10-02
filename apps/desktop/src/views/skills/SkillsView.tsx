@@ -13,7 +13,7 @@ import { invalidateSkills, useSkills } from "../../lib/queries";
 import { originShort } from "../../lib/skills";
 import { SkillsEmpty } from "./SkillsEmpty";
 
-const SkillEditor = lazy(() => import("./SkillEditor").then((m) => ({ default: m.SkillEditor })));
+const SkillStudio = lazy(() => import("./studio/SkillStudio").then((m) => ({ default: m.SkillStudio })));
 
 function state(s: LocalSkillSummary) {
   if (s.errors > 0) return <Status tone="muted">Draft · {plural(s.errors, "thing")} to finish</Status>;
@@ -50,7 +50,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
   if (skillId) {
     return (
       <Suspense fallback={<Working>Opening the skill…</Working>}>
-        <SkillEditor key={skillId} id={skillId} />
+        <SkillStudio key={skillId} id={skillId} />
       </Suspense>
     );
   }
