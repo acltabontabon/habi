@@ -20,7 +20,7 @@ pub struct DiagnosticBundle {
 }
 
 fn host_only(location: &str) -> String {
-    if location.starts_with('/') || location.starts_with('~') {
+    if crate::source::is_local_location(location) {
         return "local folder".into();
     }
     match crate::contribute::remote_repo(location) {
@@ -132,4 +132,18 @@ pub fn bundle(habi: &Habi, app_version: &str) -> Result<DiagnosticBundle> {
         ),
         text: crate::redact::redact(&t),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_folders_are_not_named() {
+        assert_eq!(host_only("/Users/ana/skills"), "local folder");
+        assert_eq!(host_only("~/skills"), "local folder");
+        assert!(host_only("https://example.com/team/skills.git").starts_with("example.com"));
+        #[cfg(windows)]
+        assert_eq!(host_only(r"C:\Users\ana\skills"), "local folder");
+    }
 }

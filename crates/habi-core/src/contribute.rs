@@ -1886,7 +1886,7 @@ impl<'a> Contributions<'a> {
         };
         if identity == crate::source::portable_identity(destination)
             || identity.starts_with("local:")
-            || identity.starts_with('/')
+            || crate::source::is_local_location(&identity)
         {
             return None;
         }
@@ -2829,7 +2829,7 @@ impl<'a> Contributions<'a> {
             )?;
         }
         let mut outcome = PublishOutcome {
-            remote: crate::redact::redact(&if url.starts_with('/') {
+            remote: crate::redact::redact(&if crate::source::is_local_location(&url) {
                 display_path(Path::new(&url))
             } else {
                 url.clone()
