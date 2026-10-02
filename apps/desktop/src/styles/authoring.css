@@ -1184,7 +1184,7 @@
 }
 
 /* The open file. */
-.file-view-head {
+.pkg-view-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1194,7 +1194,7 @@
   min-height: 44px;
 }
 
-.file-view-path {
+.pkg-view-path {
   min-width: 0;
   font-size: var(--text-sm);
   font-weight: 500;
@@ -1203,7 +1203,7 @@
   white-space: nowrap;
 }
 
-.file-view-actions {
+.pkg-view-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
