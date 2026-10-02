@@ -1221,6 +1221,31 @@ impl Habi {
         self.skills().import_packages(packages, selections)
     }
 
+    /// For a skill copied from a library: whether that library item changed,
+    /// was removed, or cannot be compared. `None` for other skills.
+    pub fn skill_upstream(
+        &self,
+        id: &str,
+    ) -> Result<Option<crate::skills::upstream::UpstreamStatus>> {
+        self.skills().upstream_status(id, &self.sources)
+    }
+
+    /// File-by-file comparison of a library copy with the library. Writes nothing.
+    pub fn plan_upstream_sync(&self, id: &str) -> Result<crate::skills::upstream::UpstreamPlan> {
+        self.skills().plan_upstream_sync(id, &self.sources)
+    }
+
+    /// Takes the reviewed library changes; conflicts follow `decisions`.
+    pub fn apply_upstream_sync(
+        &self,
+        id: &str,
+        token: &str,
+        decisions: &std::collections::BTreeMap<String, crate::skills::upstream::UpstreamChoice>,
+    ) -> Result<LocalSkill> {
+        self.skills()
+            .apply_upstream_sync(id, &self.sources, token, decisions)
+    }
+
     fn preview_conditions(
         &self,
         request: &PreviewRequest,

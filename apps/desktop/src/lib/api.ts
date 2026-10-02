@@ -49,6 +49,9 @@ import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
 import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
+import type { UpstreamChoice } from "../bindings/UpstreamChoice";
+import type { UpstreamPlan } from "../bindings/UpstreamPlan";
+import type { UpstreamStatus } from "../bindings/UpstreamStatus";
 
 export type Decisions = Record<string, Resolution>;
 
@@ -217,6 +220,13 @@ export const api = {
     call<ImportInspection>("inspect_import", { from, jobId: jobId ?? null }),
   importSkills: (from: ImportFrom, selections: ImportSelection[], jobId?: string) =>
     call<ImportOutcome>("import_skills", { from, selections, jobId: jobId ?? null }),
+  /** For a copy of a library item: has that item changed, been removed, or can it not be compared? */
+  skillUpstream: (id: string) => call<UpstreamStatus | null>("skill_upstream", { id }),
+  /** File-by-file comparison with the library; writes nothing. */
+  planUpstreamSync: (id: string) => call<UpstreamPlan>("plan_upstream_sync", { id }),
+  /** Takes the reviewed library changes; every conflict needs a choice in `decisions`. */
+  applyUpstreamSync: (id: string, token: string, decisions: Record<string, UpstreamChoice>) =>
+    call<LocalSkill>("apply_upstream_sync", { id, token, decisions }),
 
   diagnosticsPreview: () => call<DiagnosticBundle>("diagnostics_preview"),
   diagnosticsSave: () => call<string | null>("diagnostics_save"),
