@@ -6,7 +6,7 @@ import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { useToast } from "../../components/Toasts";
 import { Button, Empty, ErrorNotice, Notice, Section, Status, Working } from "../../components/ui";
 import { api } from "../../lib/api";
-import { clientsPhrase, installLabel, installTone, relativeTime, shortId } from "../../lib/format";
+import { clientsPhrase, installLabel, installTone, plural, relativeTime, shortId } from "../../lib/format";
 import { invalidateProjectData, useHistory } from "../../lib/queries";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 
@@ -71,8 +71,13 @@ export function InstalledView({ overview }: { overview: ProjectOverview }) {
     try {
       const ops = await api.recover(projectId);
       invalidateProjectData(client, projectId);
+      const attention = ops.filter((op) => op.state === "needsAttention").length;
       toast.show(
-        ops.length === 0 ? "No interrupted operations." : `Recovered ${ops.length} interrupted operation(s).`,
+        ops.length === 0
+          ? "No interrupted operations."
+          : attention > 0
+            ? `Found ${plural(ops.length, "interrupted operation")}; ${attention} need${attention === 1 ? "s" : ""} attention. See History.`
+            : `Recovered ${plural(ops.length, "interrupted operation")}.`,
       );
     } catch (e) {
       toast.show(e instanceof Error ? e.message : String(e), "danger");
@@ -148,7 +153,13 @@ export function InstalledView({ overview }: { overview: ProjectOverview }) {
                         : "in progress"}
                 </Status>
                 <p className="muted">
-                  {relativeTime(op.createdAt)} · {op.files.length} file{op.files.length === 1 ? "" : "s"}
+                  {/* An unreadable record knows neither its time nor its files. */}
+                  {[
+                    op.createdAt ? relativeTime(op.createdAt) : null,
+                    op.action === "unreadable" ? "files not known" : plural(op.files.length, "file"),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 {op.problems.map((p) => (
                   <p key={p} className="history-problem">
