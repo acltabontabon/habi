@@ -18,6 +18,7 @@ import { initTheme, useTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
 import { CommandPalette } from "../views/CommandPalette";
 import { ProjectView } from "../views/project/ProjectView";
+import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
 import { SkillEditor } from "../views/skills/SkillEditor";
 import { ConnectLibrary } from "../views/sources/ConnectLibrary";
@@ -529,6 +530,30 @@ describe("the sample workspace", () => {
     handlers.list_sources = () => [library({ sample: true })];
     wrap(<CommandPalette open onOpenChange={() => {}} />);
     expect(await screen.findByRole("option", { name: "Remove sample workspace…" })).toBeInTheDocument();
+  });
+});
+
+describe("free up space", () => {
+  it("says what was removed and how much space it freed", async () => {
+    handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
+    handlers.get_settings = () => ({ autoRefreshHours: 12, defaultClients: ["claude-code"] });
+    handlers.free_up_space = vi.fn(() => ({
+      operationsRemoved: 0,
+      snapshotsRemoved: 2,
+      objectsRemoved: 12,
+      bytesFreed: 3_565_158,
+      skippedBusy: 1,
+    }));
+    wrap(<SettingsView />, { name: "settings" });
+    await userEvent.click(await screen.findByRole("button", { name: "Free up space" }));
+    expect(handlers.free_up_space).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText(
+        "Removed 2 old library snapshots and 12 stored file versions, freed 3.4 MB. 1 project or library was in use and skipped; try again later.",
+      ),
+    ).toBeInTheDocument();
+    // Without a sample workspace, there is nothing to remove.
+    expect(screen.queryByRole("button", { name: "Remove sample workspace…" })).toBeNull();
   });
 });
 

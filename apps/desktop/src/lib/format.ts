@@ -8,6 +8,7 @@ import type { Group } from "../bindings/Group";
 import type { InstallState } from "../bindings/InstallState";
 import type { ItemKind } from "../bindings/ItemKind";
 import type { PrerequisiteStatus } from "../bindings/PrerequisiteStatus";
+import type { PruneReport } from "../bindings/PruneReport";
 import type { ReadinessState } from "../bindings/ReadinessState";
 import type { Source } from "../bindings/Source";
 
@@ -185,6 +186,32 @@ export function freshnessText(source: Source): { text: string; tone: Tone } {
 
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
+}
+
+/** Bytes in a short human form (one decimal from MB up). */
+export function sizeLabel(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} bytes`;
+}
+
+/** What Free up space did, in one or two sentences. */
+export function pruneSummary(r: PruneReport): string {
+  const parts = [
+    r.operationsRemoved > 0 ? plural(r.operationsRemoved, "old operation record") : null,
+    r.snapshotsRemoved > 0 ? plural(r.snapshotsRemoved, "old library snapshot") : null,
+    r.objectsRemoved > 0 ? plural(r.objectsRemoved, "stored file version") : null,
+  ].filter((p): p is string => p !== null);
+  const last = parts.pop();
+  const removed = last ? (parts.length > 0 ? `${parts.join(", ")} and ${last}` : last) : null;
+  const freed = sizeLabel(r.bytesFreed);
+  let done = "Nothing to clean up.";
+  if (removed) done = `Removed ${removed}, freed ${freed}.`;
+  else if (r.bytesFreed > 0) done = `Freed ${freed}.`;
+  if (r.skippedBusy === 0) return done;
+  const busy =
+    r.skippedBusy === 1 ? "1 project or library was" : `${r.skippedBusy} projects or libraries were`;
+  return `${done} ${busy} in use and skipped; try again later.`;
 }
 
 export function moduleLabel(id: string, name: string): string {
