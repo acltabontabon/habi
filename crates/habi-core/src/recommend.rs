@@ -98,7 +98,8 @@ pub struct EvidenceSummary {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub enum Group {
-    /// Designated required by the team.
+    /// Designated required by the team, and its conditions hold (or could
+    /// not be established, or it declares none).
     Required,
     Relevant,
     NeedsInformation,
@@ -383,12 +384,15 @@ pub fn recommend(
                 .as_ref()
                 .map(|i| i.state)
                 .unwrap_or(InstallState::NotInstalled);
+            // A team requirement whose conditions do not hold for this project
+            // is listed with the other items that do not apply: a Java-only
+            // rule is not a requirement for a React project.
             let group = match (item.requirement, applicability.applicability) {
+                (_, Applicability::DoesNotApply) => Group::NotApplicable,
                 (Requirement::Required, _) => Group::Required,
                 (_, Applicability::Applies) => Group::Relevant,
                 (_, Applicability::NeedsInformation) => Group::NeedsInformation,
                 (_, Applicability::Undeclared) => Group::Available,
-                (_, Applicability::DoesNotApply) => Group::NotApplicable,
             };
             let next_action = match install_state {
                 InstallState::NotInstalled if !installable(item) => NextAction::None,
@@ -400,9 +404,6 @@ pub fn recommend(
                         NextAction::SetUpPrerequisites
                     }
                     Applicability::Applies | Applicability::Undeclared => NextAction::Install,
-                    Applicability::DoesNotApply if item.requirement == Requirement::Required => {
-                        NextAction::None
-                    }
                     Applicability::DoesNotApply => NextAction::None,
                 },
                 _ => NextAction::None,

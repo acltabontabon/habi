@@ -1,16 +1,16 @@
 {
-  "id": "44293bc6-31e5-4d85-9f4d-ce4c867a5d6e",
+  "id": "7a60d968-6e3e-4c1f-8c2f-3defcf6c9c55",
   "action": "install",
   "title": "Install for Claude Code and Codex in this project",
   "project": "~/work/billing-service",
-  "createdAt": "2026-10-02T09:49:26Z",
+  "createdAt": "2026-10-02T11:08:31Z",
   "items": [
     {
       "key": "local:Example team library#liquibase-migration-review",
       "title": "Liquibase migration review",
       "kind": "workflow",
       "source": "Example team library",
-      "version": "79f421fabb",
+      "version": "fecbe35bc0",
       "clients": [
         "claude-code",
         "codex"
@@ -22,7 +22,7 @@
       "title": "Java service conventions",
       "kind": "instructions",
       "source": "Example team library",
-      "version": "79f421fabb",
+      "version": "fecbe35bc0",
       "clients": [
         "claude-code",
         "codex"
@@ -1414,7 +1414,7 @@
       "items": [],
       "clients": [],
       "before": null,
-      "after": "sha256:17cd071138949cc9ef0ea1cdc0be837c150b6d79667f37f88e836f00b4e8c22c",
+      "after": "sha256:0b8868d0be201e4f6be1081a0d3a32957902341c66440252833f3f9f32eecc98",
       "explanation": "Records what Habi installed (sources, versions, file digests) so it can detect updates and local edits. Safe to commit; contains no absolute paths or secrets.",
       "diff": {
         "hunks": [
@@ -1509,7 +1509,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 15,
-                "text": "      \"installedAt\": \"2026-10-02T09:49:26Z\","
+                "text": "      \"installedAt\": \"2026-10-02T11:08:31Z\","
               },
               {
                 "tag": "added",
@@ -1653,7 +1653,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 39,
-                "text": "      \"snapshot\": \"79f421fabbe23363dfb22b9320e4e5cca82a5073\","
+                "text": "      \"snapshot\": \"fecbe35bc08269616e8892a14eaa15be5c6e462e\","
               },
               {
                 "tag": "added",
@@ -1665,7 +1665,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 41,
-                "text": "      \"installedAt\": \"2026-10-02T09:49:26Z\","
+                "text": "      \"installedAt\": \"2026-10-02T11:08:31Z\","
               },
               {
                 "tag": "added",
@@ -1815,7 +1815,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 66,
-                "text": "      \"snapshot\": \"79f421fabbe23363dfb22b9320e4e5cca82a5073\","
+                "text": "      \"snapshot\": \"fecbe35bc08269616e8892a14eaa15be5c6e462e\","
               },
               {
                 "tag": "added",
@@ -1827,7 +1827,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 68,
-                "text": "      \"installedAt\": \"2026-10-02T09:49:26Z\","
+                "text": "      \"installedAt\": \"2026-10-02T11:08:31Z\","
               },
               {
                 "tag": "added",

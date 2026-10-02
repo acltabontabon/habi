@@ -10,6 +10,7 @@ use habi_core::clients::ClientId;
 use habi_core::contribute::{ContributionOrigin, ContributionState};
 use habi_core::install::plan::{ConflictKind, Decisions, Resolution};
 use habi_core::install::status::InstallState;
+use habi_core::library::model::Requirement;
 use habi_core::library::parse_frontmatter;
 use habi_core::matching::Applicability;
 use habi_core::recommend::{Group, ReadinessState};
@@ -128,6 +129,19 @@ fn acceptance_scenario() {
         Applicability::DoesNotApply
     );
     assert_eq!(react.group, Group::NotApplicable);
+
+    // A team requirement whose conditions do not hold is listed with what does
+    // not apply, still marked required — never as a requirement of this project.
+    let storefront = habi.open_project(&other_dir).unwrap();
+    let front = habi.overview(&storefront.id, true, &cancel).unwrap();
+    let java = front
+        .recommendations
+        .iter()
+        .find(|r| r.item.id == "java-service-conventions")
+        .unwrap();
+    assert_eq!(java.applicability.applicability, Applicability::DoesNotApply);
+    assert_eq!(java.group, Group::NotApplicable);
+    assert_eq!(java.item.requirement, Requirement::Required);
 
     // 4. A relevant skill with a missing prerequisite: applicability and readiness stay separate.
     let pr = rec("github-pr-summary");

@@ -11,7 +11,7 @@ use habi_core::install::apply::{JournalState, OperationSummary};
 use habi_core::install::diff::LineTag;
 use habi_core::install::plan::{ChangeOp, Plan};
 use habi_core::install::status::{FileState, InstallState};
-use habi_core::library::model::{DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem};
+use habi_core::library::model::{DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem, Requirement};
 use habi_core::matching::Applicability;
 use habi_core::matching::eval::{Declaration, DeclaredSubject, EvalNode, Tri};
 use habi_core::recommend::{
@@ -397,16 +397,6 @@ pub fn inspection(i: &ProjectInspection) {
     );
 }
 
-/// The group an item is listed under. A team requirement that does not apply
-/// to this project is listed with the other items that do not apply.
-fn display_group(r: &Recommendation) -> Group {
-    if r.applicability.applicability == Applicability::DoesNotApply {
-        Group::NotApplicable
-    } else {
-        r.group
-    }
-}
-
 fn group_label(g: Group) -> &'static str {
     match g {
         Group::Required => "Team requirements",
@@ -441,7 +431,7 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         let members: Vec<&Recommendation> = o
             .recommendations
             .iter()
-            .filter(|r| display_group(r) == group)
+            .filter(|r| r.group == group)
             .filter(|r| {
                 all || group != Group::Available || r.install_state != InstallState::NotInstalled
             })
@@ -452,7 +442,7 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         println!("\n{}", group_label(group));
         for r in members {
             shown += 1;
-            let required = if r.group == Group::Required && group != Group::Required {
+            let required = if r.item.requirement == Requirement::Required && group != Group::Required {
                 " (team requirement)"
             } else {
                 ""
@@ -479,11 +469,11 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
     let hidden = o
         .recommendations
         .iter()
-        .filter(|r| display_group(r) == Group::NotApplicable)
+        .filter(|r| r.group == Group::NotApplicable)
         .count();
     let mut unmatched: BTreeMap<&str, usize> = BTreeMap::new();
     for r in o.recommendations.iter().filter(|r| {
-        display_group(r) == Group::Available && r.install_state == InstallState::NotInstalled
+        r.group == Group::Available && r.install_state == InstallState::NotInstalled
     }) {
         *unmatched.entry(r.item.source_name.as_str()).or_default() += 1;
     }
