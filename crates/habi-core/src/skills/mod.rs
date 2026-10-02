@@ -16,13 +16,15 @@
 //! - Nothing here executes package content.
 
 pub mod intake;
+pub mod lineage;
 pub mod upstream;
 
 use crate::contribute::{ShareForm, apply_form, form_from, slug};
 use crate::error::{HabiError, Result};
 use crate::fsutil::{Bounded, atomic_write_mode, read_bounded, sha256};
 use crate::library::model::{
-    Diagnostic, DiagnosticLevel, LibraryIndex, LibraryItem, MetadataStatus, SnapshotFile,
+    Diagnostic, DiagnosticCode, DiagnosticLevel, LibraryIndex, LibraryItem, MetadataStatus,
+    SnapshotFile,
 };
 use crate::library::{self, SIDECAR_FILES, SKILL_FILE};
 use crate::matching::Scope;
@@ -101,27 +103,174 @@ pub struct Upstream {
     pub catalog_id: Option<String>,
 }
 
+/// Optional starting structures for the instructions. Each is a shape that
+/// works for an agent as written; the author fills in what is specific to
+/// their code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub enum SkillTemplate {
     #[default]
     Blank,
+    /// A step-by-step procedure with a definition of done.
+    Workflow,
+    /// Narrowing a problem down from symptom to cause.
+    Troubleshooting,
+    /// Shown as "Code review".
     ReviewProcedure,
+    /// A procedure built around scripts in the package.
+    ToolAssisted,
+    /// Still accepted for drafts made before the starters above; no longer offered.
     ImplementationGuide,
 }
+
+/// A starter as the editor offers it.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct TemplateInfo {
+    pub template: SkillTemplate,
+    pub label: String,
+    /// One line on when this shape fits.
+    pub summary: String,
+    pub body: String,
+}
+
+const WORKFLOW_BODY: &str = "\
+## When to use this
+
+Use this when …
+
+## Steps
+
+1. Read the relevant code before changing anything, and say which files you looked at.
+2. 
+3. 
+
+## Done when
+
+- The change builds and the existing tests pass.
+- 
+
+## Never
+
+- Skip a step because it seems unnecessary — say why instead.
+";
+
+const TROUBLESHOOTING_BODY: &str = "\
+## Symptoms
+
+What the person sees: error messages, failing commands, wrong output.
+
+- 
+
+## First, gather facts
+
+1. Reproduce the problem and record the exact command and output.
+2. Note what changed recently (dependencies, configuration, environment).
+3. 
+
+## Likely causes, most common first
+
+| Cause | How to confirm | Fix |
+| --- | --- | --- |
+|  |  |  |
+
+## Report
+
+Say which cause you confirmed and how, what you changed, and anything you ruled out.
+Do not guess: if nothing was confirmed, say what to check next.
+";
+
+const REVIEW_BODY: &str = "\
+## Before you start
+
+- Read the change as a whole first; note its stated purpose.
+- 
+
+## Check
+
+1. **Correctness** — does it do what it says, including edge cases and failure paths?
+2. **Risk** — data loss, security, concurrency, compatibility.
+3. **Fit** — follows this codebase's conventions: 
+4. **Tests** — the behaviour that changed is covered.
+
+## Report
+
+List findings by severity, each with the file and line and why it matters.
+Say what you checked, what you found, and what you could not verify.
+";
+
+const TOOL_ASSISTED_BODY: &str = "\
+## Tools this uses
+
+- `scripts/…` — what it does, what it reads and writes.
+
+Read a script before running it. Run scripts only from this skill's folder.
+
+## Steps
+
+1. 
+2. Run the script and read its output before acting on it.
+3. 
+
+## Never without asking
+
+- Run anything that writes outside the project, deletes data, or uses the network.
+- 
+
+## Report
+
+Say which commands you ran, what they printed, and what you concluded.
+";
+
+const IMPLEMENTATION_BODY: &str = "## Context\n\n\n\n## Steps\n\n1. \n\n## Done when\n\n- \n";
 
 impl SkillTemplate {
     fn body(self) -> &'static str {
         match self {
             SkillTemplate::Blank => "",
-            SkillTemplate::ReviewProcedure => {
-                "## Before you start\n\n- \n\n## Review steps\n\n1. \n\n## Report\n\nSay what you checked, what you found, and what you could not verify.\n"
-            }
-            SkillTemplate::ImplementationGuide => {
-                "## Context\n\n\n\n## Steps\n\n1. \n\n## Done when\n\n- \n"
-            }
+            SkillTemplate::Workflow => WORKFLOW_BODY,
+            SkillTemplate::Troubleshooting => TROUBLESHOOTING_BODY,
+            SkillTemplate::ReviewProcedure => REVIEW_BODY,
+            SkillTemplate::ToolAssisted => TOOL_ASSISTED_BODY,
+            SkillTemplate::ImplementationGuide => IMPLEMENTATION_BODY,
         }
+    }
+
+    /// The starters the editor offers, in order.
+    pub fn offered() -> Vec<TemplateInfo> {
+        [
+            (SkillTemplate::Blank, "Blank", "Start from an empty page."),
+            (
+                SkillTemplate::Workflow,
+                "Workflow",
+                "A procedure the agent follows step by step, with a clear finish.",
+            ),
+            (
+                SkillTemplate::Troubleshooting,
+                "Troubleshooting",
+                "From a symptom to a confirmed cause, without guessing.",
+            ),
+            (
+                SkillTemplate::ReviewProcedure,
+                "Code review",
+                "What to check in a change and how to report it.",
+            ),
+            (
+                SkillTemplate::ToolAssisted,
+                "Tool-assisted",
+                "Steps built around scripts that ship with the skill.",
+            ),
+        ]
+        .into_iter()
+        .map(|(template, label, summary)| TemplateInfo {
+            template,
+            label: label.into(),
+            summary: summary.into(),
+            body: template.body().into(),
+        })
+        .collect()
     }
 }
 
@@ -165,6 +314,10 @@ pub struct LocalSkillSummary {
     pub has_applicability: bool,
     pub file_count: u32,
     pub content_digest: String,
+    /// For an imported copy, whether its files differ from what was copied
+    /// (or from the library version it last took). `None` for skills
+    /// written here.
+    pub modified_locally: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -436,12 +589,22 @@ pub(crate) fn describe_tree(tree: &Tree) -> Described {
     let dir = if valid_name { name.as_str() } else { "skill" };
     let index = index_tree(tree, dir, LOCAL_SOURCE_ID);
     let lead = format!("{dir}/");
-    let relative = |d: &Diagnostic| Diagnostic {
-        path: d
+    let relative = |d: &Diagnostic| {
+        let path = d
             .path
             .as_deref()
-            .map(|p| p.strip_prefix(&lead).unwrap_or(p).to_string()),
-        ..d.clone()
+            .map(|p| p.strip_prefix(&lead).unwrap_or(p).to_string());
+        // Rule problems are all fixed in one place.
+        let code = d.code.or_else(|| {
+            (d.level == DiagnosticLevel::Error
+                && path.as_deref().is_some_and(|p| SIDECAR_FILES.contains(&p)))
+            .then_some(DiagnosticCode::InvalidMetadata)
+        });
+        Diagnostic {
+            path,
+            code,
+            ..d.clone()
+        }
     };
     let item = index.items.into_iter().next();
     let mut diagnostics: Vec<Diagnostic> = item
@@ -466,6 +629,7 @@ pub(crate) fn describe_tree(tree: &Tree) -> Described {
             ),
             d.path.as_deref(),
         )
+        .with_code(DiagnosticCode::UnreadableFile)
     }));
     Described {
         item,
@@ -526,11 +690,49 @@ pub(crate) fn rename_in_skill_md(text: &str, name: &str) -> Result<String> {
     render_skill_md(&ordered, body)
 }
 
+/// One file of an imported copy as it was when Habi made it (or when it last
+/// took an update from its library). The bytes are in the blob store, so the
+/// copy's own changes stay inspectable even after its source is gone.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BaselineFile {
+    pub path: String,
+    pub digest: String,
+    #[serde(default)]
+    pub executable: bool,
+}
+
+/// Stores every file of `tree` in the blob store and lists them.
+pub(crate) fn keep_baseline(paths: &AppPaths, tree: &Tree) -> Result<Vec<BaselineFile>> {
+    let blobs = crate::store::cas::Blobs::new(&paths.blobs());
+    tree.files
+        .iter()
+        .map(|(path, bytes)| {
+            Ok(BaselineFile {
+                path: path.clone(),
+                digest: blobs.put(bytes)?,
+                executable: tree.executables.contains(path),
+            })
+        })
+        .collect()
+}
+
+/// Whether a package differs from its baseline, file by file.
+fn differs_from(baseline: &[BaselineFile], files: &[SkillFileEntry]) -> bool {
+    baseline.len() != files.len()
+        || baseline.iter().any(|b| {
+            !files
+                .iter()
+                .any(|f| f.path == b.path && f.digest == b.digest && f.executable == b.executable)
+        })
+}
+
 struct Row {
     id: String,
     title: String,
     origin: SkillOrigin,
     origin_digest: Option<String>,
+    baseline: Option<Vec<BaselineFile>>,
     created_at: String,
     updated_at: String,
     deleted_at: Option<String>,
@@ -549,7 +751,8 @@ impl<'a> Skills<'a> {
     fn rows(&self) -> Result<Vec<Row>> {
         let conn = self.store.conn()?;
         let mut stmt = conn.prepare(
-            "SELECT id, title, origin_json, origin_digest, created_at, updated_at, deleted_at
+            "SELECT id, title, origin_json, origin_digest, created_at, updated_at, deleted_at,
+                    baseline_json
              FROM local_skills ORDER BY updated_at DESC, id",
         )?;
         let rows = stmt.query_map([], |r| {
@@ -562,6 +765,9 @@ impl<'a> Skills<'a> {
                 created_at: r.get(4)?,
                 updated_at: r.get(5)?,
                 deleted_at: r.get(6)?,
+                baseline: r
+                    .get::<_, Option<String>>(7)?
+                    .and_then(|json| serde_json::from_str(&json).ok()),
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -634,10 +840,10 @@ impl<'a> Skills<'a> {
             ),
         };
         if document_error.is_none() && document.body.trim().is_empty() {
-            diagnostics.push(Diagnostic::warning(
-                "The instructions are empty.",
-                Some(SKILL_FILE),
-            ));
+            diagnostics.push(
+                Diagnostic::warning("The instructions are empty.", Some(SKILL_FILE))
+                    .with_code(DiagnosticCode::EmptyInstructions),
+            );
         }
         if !document.name.is_empty()
             && row.deleted_at.is_none()
@@ -645,20 +851,26 @@ impl<'a> Skills<'a> {
                 .iter()
                 .any(|(id, n)| id != &row.id && n == &document.name)
         {
-            diagnostics.push(Diagnostic::error(
-                format!(
-                    "Another of your skills already uses the identifier `{}`. Identifiers must be unique.",
-                    document.name
-                ),
-                Some(SKILL_FILE),
-            ));
+            diagnostics.push(
+                Diagnostic::error(
+                    format!(
+                        "Another of your skills already uses the identifier `{}`. Identifiers must be unique.",
+                        document.name
+                    ),
+                    Some(SKILL_FILE),
+                )
+                .with_code(DiagnosticCode::DuplicateName),
+            );
         }
         for (path, bytes) in &tree.files {
             if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes)) {
-                diagnostics.push(Diagnostic::warning(
-                    format!("{path} appears to contain {what}. Remove it before sharing."),
-                    Some(path),
-                ));
+                diagnostics.push(
+                    Diagnostic::warning(
+                        format!("{path} appears to contain {what}. Remove it before sharing."),
+                        Some(path),
+                    )
+                    .with_code(DiagnosticCode::PossibleSecret),
+                );
             }
         }
         let sidecar_name = SIDECAR_FILES
@@ -712,6 +924,11 @@ impl<'a> Skills<'a> {
                 warnings: count(&diagnostics, DiagnosticLevel::Warning),
                 has_applicability,
                 file_count: files.len() as u32,
+                modified_locally: match (&row.baseline, &row.origin_digest) {
+                    (Some(baseline), _) => Some(differs_from(baseline, &files)),
+                    (None, Some(origin)) => Some(origin != &content_digest),
+                    (None, None) => None,
+                },
                 content_digest,
             },
             document_digest: skill_md.map(|b| sha256(b)),
@@ -790,6 +1007,7 @@ impl<'a> Skills<'a> {
         origin: &SkillOrigin,
         origin_digest: Option<&str>,
         tree: &Tree,
+        baseline: Option<&[BaselineFile]>,
     ) -> Result<String> {
         if tree.files.len() > MAX_FILES {
             return Err(HabiError::invalid(format!(
@@ -820,14 +1038,19 @@ impl<'a> Skills<'a> {
         }
         let now = crate::time::now();
         self.store.conn()?.execute(
-            "INSERT INTO local_skills (id, title, origin_json, origin_digest, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+            "INSERT INTO local_skills (id, title, origin_json, origin_digest, created_at, updated_at,
+                                       baseline_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)",
             params![
                 id,
                 title.trim().chars().take(120).collect::<String>(),
                 serde_json::to_string(origin).map_err(|e| HabiError::Internal(e.to_string()))?,
                 origin_digest,
-                now
+                now,
+                baseline
+                    .map(serde_json::to_string)
+                    .transpose()
+                    .map_err(|e| HabiError::Internal(e.to_string()))?,
             ],
         )?;
         Ok(id)
@@ -863,7 +1086,7 @@ impl<'a> Skills<'a> {
             SKILL_FILE.into(),
             render_skill_md(&front, body)?.into_bytes(),
         );
-        let id = self.insert(&title, &origin, None, &tree)?;
+        let id = self.insert(&title, &origin, None, &tree, None)?;
         self.get(&id)
     }
 

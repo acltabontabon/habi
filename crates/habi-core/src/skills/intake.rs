@@ -6,7 +6,9 @@
 //! licence fields included) and never modifies or removes the original.
 //! Nothing found here is executed.
 
-use super::{Skills, Tree, TreeLimits, describe_tree, read_tree, rename_in_skill_md};
+use super::{
+    Skills, Tree, TreeLimits, describe_tree, keep_baseline, read_tree, rename_in_skill_md,
+};
 use crate::clients::{ClientId, layout};
 use crate::error::{HabiError, Result};
 use crate::fsutil::{Bounded, read_bounded};
@@ -674,11 +676,15 @@ impl Skills<'_> {
                 .or_else(|| described.item.as_ref().map(|i| i.title.clone()))
                 .filter(|_| wanted == described.name)
                 .unwrap_or_else(|| library::humanize(&wanted));
+            // The copy as written (renamed, if it was) is what local changes
+            // are measured against.
+            let baseline = keep_baseline(self.paths, &tree)?;
             let id = self.insert(
                 &title,
                 &package.origin,
                 (!digest.is_empty()).then_some(digest.as_str()),
                 &tree,
+                Some(&baseline),
             )?;
             outcome.imported.push(self.get(&id)?.summary);
         }

@@ -572,7 +572,10 @@ pub fn build_index(
         let name = match &front.name {
             Some(n) => {
                 if let Err(e) = check_skill_name(n) {
-                    diags.push(Diagnostic::error(format!("`name` {e}"), Some(&skill_md)));
+                    diags.push(
+                        Diagnostic::error(format!("`name` {e}"), Some(&skill_md))
+                            .with_code(DiagnosticCode::InvalidName),
+                    );
                 }
                 if n != &dir_name {
                     diags.push(Diagnostic::warning(
@@ -585,25 +588,31 @@ pub fn build_index(
                 n.clone()
             }
             None => {
-                diags.push(Diagnostic::error("SKILL.md has no `name`", Some(&skill_md)));
+                diags.push(
+                    Diagnostic::error("SKILL.md has no `name`", Some(&skill_md))
+                        .with_code(DiagnosticCode::InvalidName),
+                );
                 dir_name.clone()
             }
         };
         let description = match &front.description {
             Some(d) if !d.is_empty() => {
                 if d.chars().count() > 1024 {
-                    diags.push(Diagnostic::warning(
-                        "`description` is longer than 1024 characters",
-                        Some(&skill_md),
-                    ));
+                    diags.push(
+                        Diagnostic::warning(
+                            "`description` is longer than 1024 characters",
+                            Some(&skill_md),
+                        )
+                        .with_code(DiagnosticCode::DescriptionTooLong),
+                    );
                 }
                 d.clone()
             }
             _ => {
-                diags.push(Diagnostic::error(
-                    "SKILL.md has no `description`",
-                    Some(&skill_md),
-                ));
+                diags.push(
+                    Diagnostic::error("SKILL.md has no `description`", Some(&skill_md))
+                        .with_code(DiagnosticCode::MissingDescription),
+                );
                 String::new()
             }
         };
@@ -941,6 +950,12 @@ fn package_checks(
         .collect()
 }
 
+/// 1-based line of the first occurrence of `needle` in `text`.
+fn line_of(text: &str, needle: &str) -> Option<u32> {
+    let at = text.find(needle)?;
+    u32::try_from(text.get(..at)?.matches('\n').count() + 1).ok()
+}
+
 /// Checks a package's files (package-relative paths). Returns the
 /// diagnostics and whether every file could be read.
 pub(crate) fn check_package_files(
@@ -971,10 +986,13 @@ pub(crate) fn check_package_files(
             Ok(bytes) => match String::from_utf8(bytes) {
                 Ok(t) => Some(t.strip_prefix('\u{feff}').map(str::to_string).unwrap_or(t)),
                 Err(_) => {
-                    diags.push(Diagnostic::warning(
-                        format!("{} is not UTF-8 text, so it is not valid {what}", f.path),
-                        Some(&f.path),
-                    ));
+                    diags.push(
+                        Diagnostic::warning(
+                            format!("{} is not UTF-8 text, so it is not valid {what}", f.path),
+                            Some(&f.path),
+                        )
+                        .with_code(DiagnosticCode::UnreadableFile),
+                    );
                     None
                 }
             },
@@ -996,46 +1014,66 @@ pub(crate) fn check_package_files(
         let Some(text) = text_of(f, "Markdown", &mut diags) else {
             continue;
         };
+        // Lines in SKILL.md count in the instructions as an editor shows
+        // them: after the frontmatter and the blank lines that follow it.
         let body = if f.path == SKILL_FILE {
-            split_frontmatter(&text).map(|(_, b)| b).unwrap_or(&text)
+            split_frontmatter(&text)
+                .map(|(_, b)| b.trim_start_matches(['\n', '\r']))
+                .unwrap_or(&text)
         } else {
             &text
         };
         let from_dir = dir_of(&f.path);
         let mut seen: HashSet<String> = HashSet::new();
         for reference in markdown_references(body) {
-            let problem = match &reference {
-                MarkdownRef::Link(raw) => match resolve_link(from_dir, raw) {
-                    None => None,
-                    Some(Err(())) => Some(format!(
-                        "{} links to `{raw}`, which points outside the skill; it will not resolve once the skill is installed or shared on its own",
-                        f.path
-                    )),
-                    Some(Ok(target)) if !package_has(&paths, &target) => Some(format!(
-                        "{} links to `{target}`, which is not in the skill",
-                        f.path
-                    )),
-                    Some(Ok(_)) => None,
-                },
-                MarkdownRef::Code(raw) => match code_path(raw) {
-                    Some(target)
-                        if !package_has(&paths, &target)
-                            && !resolve_link(from_dir, &target)
-                                .and_then(Result::ok)
-                                .is_some_and(|t| package_has(&paths, &t)) =>
-                    {
-                        Some(format!(
-                            "{} mentions `{target}`, which is not in the skill",
-                            f.path
-                        ))
-                    }
-                    _ => None,
-                },
+            let (problem, raw) = match &reference {
+                MarkdownRef::Link(raw) => (
+                    match resolve_link(from_dir, raw) {
+                        None => None,
+                        Some(Err(())) => Some((
+                            format!(
+                                "{} links to `{raw}`, which points outside the skill; it will not resolve once the skill is installed or shared on its own",
+                                f.path
+                            ),
+                            DiagnosticCode::BrokenLink,
+                        )),
+                        Some(Ok(target)) if !package_has(&paths, &target) => Some((
+                            format!("{} links to `{target}`, which is not in the skill", f.path),
+                            DiagnosticCode::MissingReferencedFile,
+                        )),
+                        Some(Ok(_)) => None,
+                    },
+                    raw,
+                ),
+                MarkdownRef::Code(raw) => (
+                    match code_path(raw) {
+                        Some(target)
+                            if !package_has(&paths, &target)
+                                && !resolve_link(from_dir, &target)
+                                    .and_then(Result::ok)
+                                    .is_some_and(|t| package_has(&paths, &t)) =>
+                        {
+                            Some((
+                                format!(
+                                    "{} mentions `{target}`, which is not in the skill",
+                                    f.path
+                                ),
+                                DiagnosticCode::MissingReferencedFile,
+                            ))
+                        }
+                        _ => None,
+                    },
+                    raw,
+                ),
             };
-            if let Some(message) = problem
+            if let Some((message, code)) = problem
                 && seen.insert(message.clone())
             {
-                problems.push(Diagnostic::warning(message, Some(&f.path)));
+                problems.push(
+                    Diagnostic::warning(message, Some(&f.path))
+                        .with_code(code)
+                        .at_line(line_of(body, raw)),
+                );
             }
         }
     }
@@ -1080,10 +1118,17 @@ pub(crate) fn check_package_files(
             check_yaml(&text).err()
         };
         if let Some(e) = problem {
-            diags.push(Diagnostic::warning(
-                format!("{} is not valid {what}: {e}", f.path),
-                Some(&f.path),
-            ));
+            diags.push(
+                Diagnostic::warning(
+                    format!("{} is not valid {what}: {e}", f.path),
+                    Some(&f.path),
+                )
+                .with_code(if json {
+                    DiagnosticCode::InvalidJson
+                } else {
+                    DiagnosticCode::InvalidYaml
+                }),
+            );
         }
     }
     (diags, complete)

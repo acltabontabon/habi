@@ -1319,6 +1319,34 @@ pub async fn import_skills(
     blocking(habi, move |h| h.import_skills(&from, &selections, &cancel)).await
 }
 
+// ----- standing and lineage -------------------------------------------------------------
+
+/// Installed-in and upstream state for every skill; reads project lock files.
+#[tauri::command]
+pub async fn skills_overview(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<habi_core::service::SkillStanding>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.skills_overview()).await
+}
+
+#[tauri::command]
+pub async fn skill_local_changes(
+    state: State<'_, AppState>,
+    id: String,
+) -> CmdResult<habi_core::skills::lineage::LocalChanges> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.skill_local_changes(&id)).await
+}
+
+#[tauri::command]
+pub async fn skill_templates(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<habi_core::skills::TemplateInfo>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| Ok(h.skill_templates())).await
+}
+
 // ----- updates for library copies --------------------------------------------------------
 
 #[tauri::command]

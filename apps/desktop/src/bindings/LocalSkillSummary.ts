@@ -9,4 +9,10 @@ deletedAt: string | null,
 /**
  * Problems that block installing, exporting and sharing.
  */
-errors: number, warnings: number, hasApplicability: boolean, fileCount: number, contentDigest: string, };
+errors: number, warnings: number, hasApplicability: boolean, fileCount: number, contentDigest: string, 
+/**
+ * For an imported copy, whether its files differ from what was copied
+ * (or from the library version it last took). `None` for skills
+ * written here.
+ */
+modifiedLocally: boolean | null, };

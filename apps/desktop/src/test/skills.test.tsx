@@ -234,6 +234,7 @@ describe("applicability preview", () => {
         error: null,
         inspectedAt: "2026-10-02T00:00:00Z",
         incomplete: [],
+        prerequisites: [],
       },
       {
         project: project("p3", "reporting-service"),
@@ -241,6 +242,7 @@ describe("applicability preview", () => {
         error: null,
         inspectedAt: "2026-10-02T00:00:00Z",
         incomplete: [],
+        prerequisites: [],
       },
       {
         project: project("p1", "billing-service"),
@@ -248,6 +250,7 @@ describe("applicability preview", () => {
         error: null,
         inspectedAt: "2026-10-02T00:00:00Z",
         incomplete: [],
+        prerequisites: [],
       },
     ],
   });

@@ -44,6 +44,39 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use ts_rs::TS;
 
+/// A project one of My skills is installed in.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct InstalledIn {
+    pub project_id: String,
+    pub project_name: String,
+    pub clients: Vec<ClientId>,
+    /// Whether the installed copy is the skill as it is now.
+    pub current: bool,
+}
+
+/// Where one of My skills stands outside its own files.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SkillStanding {
+    pub skill_id: String,
+    pub installed_in: Vec<InstalledIn>,
+    /// For a library copy: how the library's version compares.
+    pub upstream: Option<crate::skills::upstream::UpstreamState>,
+}
+
+impl SkillStanding {
+    fn new(skill_id: &str) -> Self {
+        SkillStanding {
+            skill_id: skill_id.to_string(),
+            installed_in: Vec::new(),
+            upstream: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -152,6 +185,10 @@ pub struct PreviewRequest {
     pub skill_id: Option<String>,
     pub form: Option<ApplicabilityForm>,
     pub metadata_text: Option<String>,
+    /// Evaluate only this project (otherwise every recent one).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -166,6 +203,64 @@ pub struct ProjectPreview {
     /// Why the inspection is incomplete, if it is. Absence of evidence in an
     /// incomplete inspection is "not established", never "does not apply".
     pub incomplete: Vec<String>,
+    /// The tools the rules say the skill needs, looked up here (PATH and the
+    /// project; nothing is run). They never change whether it applies.
+    pub prerequisites: Vec<recommend::Prerequisite>,
+}
+
+/// The rules a preview evaluates, and the tools they say are needed.
+struct PreviewRules {
+    applies_when: Option<Condition>,
+    excludes: Option<Condition>,
+    scope: Scope,
+    tools: Vec<crate::library::model::ToolRequirement>,
+}
+
+impl PreviewRules {
+    fn none() -> Self {
+        PreviewRules {
+            applies_when: None,
+            excludes: None,
+            scope: Scope::Module,
+            tools: Vec::new(),
+        }
+    }
+}
+
+/// `requires.tools` of a habi.yaml value, as far as it is well formed.
+fn required_tools(value: &serde_json::Value) -> Vec<crate::library::model::ToolRequirement> {
+    let text = |v: &serde_json::Value, key: &str| {
+        v.get(key)
+            .and_then(|s| s.as_str())
+            .map(str::to_string)
+            .filter(|s| !s.trim().is_empty())
+    };
+    value
+        .get("requires")
+        .and_then(|r| r.get("tools"))
+        .and_then(|t| t.as_array())
+        .map(|tools| {
+            tools
+                .iter()
+                .filter_map(|t| {
+                    Some(crate::library::model::ToolRequirement {
+                        name: text(t, "name")?,
+                        commands: t
+                            .get("commands")
+                            .and_then(|c| c.as_array())
+                            .map(|c| {
+                                c.iter()
+                                    .filter_map(|s| s.as_str().map(str::to_string))
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        purpose: text(t, "purpose"),
+                        install_hint: text(t, "install_hint"),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// How the rules being edited evaluate against registered projects. This
@@ -1511,6 +1606,83 @@ impl Habi {
         self.skills().upstream_status(id, &self.sources)
     }
 
+    /// Where each of My skills stands beyond its own files: which projects
+    /// have it installed (from their lock files) and whether its library has
+    /// a newer version (from what is cached — nothing is fetched). Kept apart
+    /// from `list_skills` because it reads every project's lock file.
+    pub fn skills_overview(&self) -> Result<Vec<SkillStanding>> {
+        let skills = self.skills();
+        let (index, ids) = skills.library()?;
+        let identity = portable_identity(&self.local_source(&index.snapshot, index.items.len()));
+        let digests: HashMap<&str, &str> = index
+            .items
+            .iter()
+            .map(|i| (i.id.as_str(), i.content_digest.as_str()))
+            .collect();
+        let mut standing: HashMap<String, SkillStanding> = HashMap::new();
+        let project_ids: Vec<String> = {
+            let conn = self.store.conn()?;
+            let mut stmt = conn.prepare("SELECT id FROM projects ORDER BY last_opened_at DESC")?;
+            stmt.query_map([], |r| r.get(0))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        for project_id in project_ids {
+            let Ok(project) = self.project(&project_id) else {
+                continue;
+            };
+            let Ok(lock) = read_lock(&project.root) else {
+                continue;
+            };
+            for item in lock.items.iter().filter(|i| i.source.identity == identity) {
+                let Some(skill_id) = ids.get(&item.id) else {
+                    continue;
+                };
+                standing
+                    .entry(skill_id.clone())
+                    .or_insert_with(|| SkillStanding::new(skill_id))
+                    .installed_in
+                    .push(InstalledIn {
+                        project_id: project.id.clone(),
+                        project_name: project.name.clone(),
+                        clients: item.clients.clone(),
+                        current: digests.get(item.id.as_str())
+                            == Some(&item.content_digest.as_str()),
+                    });
+            }
+        }
+        for summary in skills.list()? {
+            if summary.deleted_at.is_some()
+                || !matches!(summary.origin, SkillOrigin::Library { .. })
+            {
+                continue;
+            }
+            let state = match skills.upstream_status(&summary.id, &self.sources) {
+                Ok(status) => status.map(|s| s.state),
+                Err(e) => {
+                    tracing::warn!(skill = %summary.id, error = %e, "could not compare a copy with its library");
+                    None
+                }
+            };
+            standing
+                .entry(summary.id.clone())
+                .or_insert_with(|| SkillStanding::new(&summary.id))
+                .upstream = state;
+        }
+        let mut out: Vec<SkillStanding> = standing.into_values().collect();
+        out.sort_by(|a, b| a.skill_id.cmp(&b.skill_id));
+        Ok(out)
+    }
+
+    /// What a copy changed since it was made or last updated. Writes nothing.
+    pub fn skill_local_changes(&self, id: &str) -> Result<crate::skills::lineage::LocalChanges> {
+        self.skills().local_changes(id, &self.sources)
+    }
+
+    /// The starters the skill editor offers.
+    pub fn skill_templates(&self) -> Vec<crate::skills::TemplateInfo> {
+        crate::skills::SkillTemplate::offered()
+    }
+
     /// File-by-file comparison of a library copy with the library. Writes nothing.
     pub fn plan_upstream_sync(&self, id: &str) -> Result<crate::skills::upstream::UpstreamPlan> {
         self.skills().plan_upstream_sync(id, &self.sources)
@@ -1527,10 +1699,7 @@ impl Habi {
             .apply_upstream_sync(id, &self.sources, token, decisions)
     }
 
-    fn preview_conditions(
-        &self,
-        request: &PreviewRequest,
-    ) -> Result<(Option<Condition>, Option<Condition>, Scope)> {
+    fn preview_conditions(&self, request: &PreviewRequest) -> Result<PreviewRules> {
         let stored = match &request.skill_id {
             Some(id) => Some(self.skills().get(id)?),
             None => None,
@@ -1552,11 +1721,16 @@ impl Habi {
             } else {
                 Scope::Module
             };
-            Ok((parse("applies_when")?, parse("excludes")?, scope))
+            Ok(PreviewRules {
+                applies_when: parse("applies_when")?,
+                excludes: parse("excludes")?,
+                scope,
+                tools: required_tools(value),
+            })
         };
         if let Some(text) = &request.metadata_text {
             if text.trim().is_empty() {
-                return Ok((None, None, Scope::Module));
+                return Ok(PreviewRules::none());
             }
             let value = crate::library::parse_yaml(text)
                 .map_err(|e| HabiError::invalid(format!("habi.yaml is not valid YAML: {e}")))?;
@@ -1573,12 +1747,22 @@ impl Habi {
                 .unwrap_or_default();
             return match Skills::form_to_sidecar(existing, form, &name)? {
                 Some(value) => from_value(&value),
-                None => Ok((None, None, Scope::Module)),
+                None => Ok(PreviewRules::none()),
             };
         }
         match stored {
-            Some(s) => Ok((s.applies_when, s.excludes, s.scope)),
-            None => Ok((None, None, Scope::Module)),
+            Some(s) => Ok(PreviewRules {
+                tools: s
+                    .metadata_text
+                    .as_deref()
+                    .and_then(|t| crate::library::parse_yaml(t).ok())
+                    .map(|v| required_tools(&v))
+                    .unwrap_or_default(),
+                applies_when: s.applies_when,
+                excludes: s.excludes,
+                scope: s.scope,
+            }),
+            None => Ok(PreviewRules::none()),
         }
     }
 
@@ -1590,7 +1774,12 @@ impl Habi {
         request: &PreviewRequest,
         cancel: &CancelToken,
     ) -> Result<SkillPreview> {
-        let (applies_when, excludes, scope) = match self.preview_conditions(request) {
+        let PreviewRules {
+            applies_when,
+            excludes,
+            scope,
+            tools,
+        } = match self.preview_conditions(request) {
             Ok(c) => c,
             Err(HabiError::InvalidInput(problem)) => {
                 return Ok(SkillPreview {
@@ -1604,7 +1793,11 @@ impl Habi {
             Err(e) => return Err(e),
         };
         let mut projects = Vec::new();
-        for project in self.recent_projects()?.into_iter().filter(|p| p.exists) {
+        let candidates = match &request.project_id {
+            Some(id) => vec![self.project(id)?],
+            None => self.recent_projects()?,
+        };
+        for project in candidates.into_iter().filter(|p| p.exists) {
             cancel.check()?;
             let inspected = self
                 .inspect(&project.id, false, cancel)
@@ -1638,14 +1831,22 @@ impl Habi {
                                 .unwrap_or_else(|| "not fully read".into())
                         ));
                     }
+                    let result = assess(
+                        applies_when.as_ref(),
+                        excludes.as_ref(),
+                        scope,
+                        &inspection,
+                        &declarations,
+                    );
+                    let modules: Vec<String> =
+                        result.modules.iter().map(|m| m.module.clone()).collect();
                     ProjectPreview {
-                        result: Some(assess(
-                            applies_when.as_ref(),
-                            excludes.as_ref(),
-                            scope,
-                            &inspection,
-                            &declarations,
-                        )),
+                        prerequisites: recommend::tool_prerequisites(
+                            &project.root,
+                            &tools,
+                            &modules,
+                        ),
+                        result: Some(result),
                         error: None,
                         inspected_at: Some(inspection.inspected_at.clone()),
                         incomplete,
@@ -1659,6 +1860,7 @@ impl Habi {
                     error: Some(e.to_info()),
                     inspected_at: None,
                     incomplete: Vec::new(),
+                    prerequisites: Vec::new(),
                 },
             });
         }
@@ -1690,6 +1892,7 @@ impl Habi {
                 skill_id: None,
                 form: None,
                 metadata_text: Some(text),
+                project_id: None,
             },
             cancel,
         )?;

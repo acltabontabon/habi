@@ -268,6 +268,7 @@ fn applicability_preview_distinguishes_applies_absent_and_unknown() {
                 skill_id: Some(id.clone()),
                 form: Some(liquibase_form("Migration review")),
                 metadata_text: None,
+                project_id: None,
             },
             &CancelToken::new(),
         )
@@ -306,6 +307,7 @@ fn applicability_preview_distinguishes_applies_absent_and_unknown() {
                 skill_id: Some(id.clone()),
                 form: Some(bad.clone()),
                 metadata_text: None,
+                project_id: None,
             },
             &CancelToken::new(),
         )
@@ -1143,7 +1145,7 @@ fn upgrading_the_database_keeps_existing_state() {
         .unwrap();
     }
     let habi = open(home.path());
-    assert_eq!(habi.store.schema_version().unwrap(), 7);
+    assert_eq!(habi.store.schema_version().unwrap(), 8);
     assert_eq!(habi.project("p1").unwrap().name, "billing");
     // Libraries connected before roles existed are the team's own.
     assert_eq!(
