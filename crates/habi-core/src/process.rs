@@ -123,6 +123,11 @@ fn drain<R: Read + Send + 'static>(mut reader: R, limit: usize) -> mpsc::Receive
     rx
 }
 
+/// `CREATE_NO_WINDOW`: console programs started from the desktop app (which
+/// has no console) would otherwise each flash a console window.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 /// Puts the child in a process group of its own so that stopping it also
 /// stops everything it started.
 fn isolate(cmd: &mut Command) {
@@ -135,7 +140,7 @@ fn isolate(cmd: &mut Command) {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP);
+        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW);
     }
 }
 
@@ -155,12 +160,14 @@ fn kill_tree(child: &mut Child) {
     }
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
         let taskkill = std::env::var_os("SystemRoot")
             .map(|root| PathBuf::from(root).join("System32").join("taskkill.exe"))
             .filter(|p| p.is_file())
             .unwrap_or_else(|| PathBuf::from("taskkill.exe"));
         let _ = Command::new(taskkill)
             .args(["/T", "/F", "/PID", &child.id().to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
