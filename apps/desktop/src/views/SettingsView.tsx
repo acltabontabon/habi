@@ -11,6 +11,7 @@ import { ALL_CLIENTS, clientLabel } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { useOpenExternal } from "../lib/safeInvoke";
 import { type ThemeChoice, useTheme } from "../lib/theme";
+import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
 
 /** The repository Habi is developed in (from package.json). */
 const REPOSITORY = pkg.repository.url.replace(/\.git$/, "");
@@ -24,6 +25,8 @@ export function SettingsView() {
   const openExternal = useOpenExternal();
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const hasSample = useHasSample();
+  const [removingSample, setRemovingSample] = useState(false);
   // Writes go one after another, each built on the latest settings, so two
   // quick toggles cannot overwrite each other with a stale copy.
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -114,6 +117,18 @@ export function SettingsView() {
           </div>
         </fieldset>
       </Section>
+
+      {hasSample ? (
+        <Section title="Data" id="data">
+          <div className="settings-row">
+            <p className="muted">
+              The sample workspace is here: example libraries and projects, labeled "sample".
+            </p>
+            <Button onClick={() => setRemovingSample(true)}>Remove sample workspace…</Button>
+          </div>
+          <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
+        </Section>
+      ) : null}
 
       <Section title="Diagnostics" id="diagnostics">
         <p className="muted">

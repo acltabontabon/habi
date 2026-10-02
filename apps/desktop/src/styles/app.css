@@ -1927,6 +1927,19 @@ select.input {
   gap: var(--s2);
 }
 
+/* Settings: a short explanation with its one action beside it. */
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+}
+
+.settings-row + .settings-row {
+  margin-top: var(--s3);
+}
+
 .token-list {
   display: flex;
   flex-wrap: wrap;
@@ -3367,6 +3380,10 @@ dl.facets,
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+}
+
+.library-reader > .notice {
+  margin: var(--s4) var(--s6) 0;
 }
 
 .reader {

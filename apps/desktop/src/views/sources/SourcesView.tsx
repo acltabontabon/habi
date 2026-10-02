@@ -92,7 +92,10 @@ function LibrariesOverview() {
                       onClick={() => navigate({ name: "sources", sourceId: s.id })}
                     >
                       <Strand dye={dyes(s.id)} size={18} />
-                      <span className="library-row-name">{s.name}</span>
+                      <span className="library-row-name">
+                        {s.name}
+                        {s.sample ? <span className="sidebar-tag">sample</span> : null}
+                      </span>
                       <span className="library-row-repo">{repositoryLabel(s.location)}</span>
                       <span className="library-row-kind">
                         {kind(s)} · {backing(s)}

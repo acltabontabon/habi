@@ -41,6 +41,7 @@ import {
 } from "../../lib/skillFacts";
 import { useMedia } from "../../lib/useMedia";
 import { ContentsToggle, SkillReader, usePackage } from "../reader/SkillReader";
+import { SampleBanner } from "../SampleWorkspace";
 import { AddToProjectDialog } from "./AddToProjectDialog";
 import { repositoryLabel, SourceSheet } from "./SourceSheet";
 
@@ -613,6 +614,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
       </aside>
 
       <section className="library-reader" ref={readerBox}>
+        {source.sample ? <SampleBanner /> : null}
         {!source.snapshot ? (
           <>
             <Empty

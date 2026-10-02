@@ -266,6 +266,7 @@ function LibraryItem({
       >
         <Strand dye={dye} />
         <span className="sidebar-item-text">{source.name}</span>
+        {source.sample ? <span className="sidebar-tag">sample</span> : null}
         {fresh.tone !== "muted" ? (
           <span className={`sidebar-dot tone-${fresh.tone}`}>
             <span className="visually-hidden">{fresh.text}</span>
