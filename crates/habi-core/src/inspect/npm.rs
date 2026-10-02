@@ -33,9 +33,9 @@ const SECTIONS: &[(&str, &str)] = &[
 fn line_of_key(text: &str, section: &str, key: &str) -> Option<u32> {
     let section_pos = text.find(&format!("\"{section}\""))?;
     let needle = format!("\"{key}\"");
-    let rel = text[section_pos..].find(&needle)?;
+    let rel = text.get(section_pos..)?.find(&needle)?;
     let pos = section_pos + rel;
-    Some(text[..pos].matches('\n').count() as u32 + 1)
+    Some(text.get(..pos)?.matches('\n').count() as u32 + 1)
 }
 
 pub fn parse(path: &str, module: &str, text: &str) -> Result<PackageJson, String> {
@@ -114,11 +114,10 @@ pub fn parse_package_lock(path: &str, lock_dir: &str, text: &str) -> Result<Lock
             continue;
         };
         // Keys look like "node_modules/react" or "packages/web/node_modules/react".
-        let Some(idx) = key.rfind("node_modules/") else {
+        let Some((owner, name)) = key.rsplit_once("node_modules/") else {
             continue;
         };
-        let name = &key[idx + "node_modules/".len()..];
-        let owner = key[..idx].trim_end_matches('/');
+        let owner = owner.trim_end_matches('/');
         let module = join_dir(lock_dir, owner);
         lock.versions
             .insert((module, name.to_string()), version.to_string());

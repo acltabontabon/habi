@@ -595,7 +595,12 @@ impl Sources {
                 "a source named `{name}` already exists"
             )));
         }
-        let id = uuid::Uuid::new_v4().simple().to_string()[..12].to_string();
+        let id: String = uuid::Uuid::new_v4()
+            .simple()
+            .to_string()
+            .chars()
+            .take(12)
+            .collect();
         let (ref_kind, ref_name) = new.tracked.to_columns();
         conn.execute(
             "INSERT INTO sources (id, name, kind, location, subdir, ref_kind, ref_name, created_at)

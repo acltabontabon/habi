@@ -279,20 +279,20 @@ impl Skills<'_> {
             .into_iter()
             .filter(|s| portable_identity(s) == source_identity)
             .collect();
-        if candidates.is_empty() {
+        // Prefer a connection that still has the copied version cached.
+        let Some(source) = candidates
+            .iter()
+            .find(|s| sources.snapshot_files(&s.id, &snapshot).is_ok())
+            .or_else(|| candidates.iter().find(|s| s.snapshot.is_some()))
+            .or(candidates.first())
+        else {
             return unavailable(
                 status,
                 format!(
                     "{source_name} is not connected on this machine, so Habi cannot check it for updates."
                 ),
             );
-        }
-        // Prefer a connection that still has the copied version cached.
-        let source = candidates
-            .iter()
-            .find(|s| sources.snapshot_files(&s.id, &snapshot).is_ok())
-            .or_else(|| candidates.iter().find(|s| s.snapshot.is_some()))
-            .unwrap_or(&candidates[0]);
+        };
         status.source_id = Some(source.id.clone());
         status.current_snapshot = source.snapshot.clone();
         let Some(current) = source.snapshot.clone() else {

@@ -19,14 +19,12 @@ pub fn lf_text(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
         return std::borrow::Cow::Borrowed(bytes);
     }
     let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'\r' && bytes.get(i + 1) == Some(&b'\n') {
-            i += 1;
+    let mut iter = bytes.iter().peekable();
+    while let Some(&b) = iter.next() {
+        if b == b'\r' && iter.peek() == Some(&&b'\n') {
             continue;
         }
-        out.push(bytes[i]);
-        i += 1;
+        out.push(b);
     }
     std::borrow::Cow::Owned(out)
 }
@@ -307,6 +305,10 @@ mod tests {
 }
 
 /// Standard base64 (RFC 4648, with padding), for data URLs of image previews.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "chunks(3) is never empty, and the alphabet index is masked to 0..64"
+)]
 pub fn base64(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);

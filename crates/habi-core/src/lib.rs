@@ -14,6 +14,10 @@
 //! - `service`: the facade both front ends call.
 //! - `paths`, `fsutil`, `process`, `redact`: safety primitives.
 
+// Slicing and indexing panic on a bad boundary or index; production code
+// uses checked access (`get`), or explains why the bound holds.
+#![cfg_attr(not(test), warn(clippy::string_slice, clippy::indexing_slicing))]
+
 pub mod brand;
 pub mod cancel;
 pub mod checks;

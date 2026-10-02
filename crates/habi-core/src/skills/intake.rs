@@ -105,6 +105,11 @@ fn convention(role: &str) -> &'static str {
 
 /// Headings of a Markdown document, each spanning up to the next heading of
 /// the same or a higher level. Fenced code is skipped.
+#[allow(
+    clippy::indexing_slicing,
+    clippy::string_slice,
+    reason = "heading positions and `#` counts come from the same lines"
+)]
 pub fn sections(lines: &[&str]) -> Vec<InstructionSection> {
     let mut headings: Vec<(usize, u8, String)> = Vec::new();
     let mut fence: Option<&str> = None;
@@ -385,7 +390,10 @@ pub fn select_lines(document: &InstructionDocument, start: u32, end: u32) -> Res
     if start == 0 || end < start || end > total {
         return Err(HabiError::invalid("select lines inside the file"));
     }
-    let chosen = &document.lines[(start - 1) as usize..end as usize];
+    let chosen = document
+        .lines
+        .get((start - 1) as usize..end as usize)
+        .unwrap_or_default();
     let text = chosen.join("\n");
     if text.trim().is_empty() {
         return Err(HabiError::invalid("the selection is empty"));
@@ -645,7 +653,11 @@ impl Skills<'_> {
                     skip(format!("the identifier `{wanted}` {e}"));
                     continue;
                 }
-                let text = String::from_utf8_lossy(&tree.files[SKILL_FILE]).into_owned();
+                let text = tree
+                    .files
+                    .get(SKILL_FILE)
+                    .map(|b| String::from_utf8_lossy(b).into_owned())
+                    .unwrap_or_default();
                 match rename_in_skill_md(&text, &wanted) {
                     Ok(renamed) => {
                         tree.files.insert(SKILL_FILE.into(), renamed.into_bytes());

@@ -121,6 +121,10 @@ fn json_entry(client: ClientId, spec: &McpServerSpec) -> Value {
     }
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "toml_edit IndexMut inserts missing keys; it does not panic"
+)]
 fn toml_entry(spec: &McpServerSpec) -> toml_edit::Table {
     let mut table = toml_edit::Table::new();
     match spec {
@@ -158,6 +162,10 @@ fn toml_entry(spec: &McpServerSpec) -> toml_edit::Table {
 /// Rejects JSON that would not survive a parse/serialize round trip
 /// unchanged in meaning: duplicate keys (serde keeps only the last) and
 /// numbers whose text would change (exponents, very large integers, `1.50`).
+#[allow(
+    clippy::indexing_slicing,
+    reason = "a scanner: every index is checked against the length first"
+)]
 fn check_fidelity(bytes: &[u8]) -> std::result::Result<(), String> {
     use serde::de::{DeserializeSeed, Deserializer, Error as _, MapAccess, SeqAccess, Visitor};
     struct NoDup;
@@ -347,6 +355,10 @@ pub fn is_configured(client: ClientId, existing: Option<&[u8]>, server: &str) ->
 }
 
 /// Adds the server entry. Returns the new file content and the entry digest.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "`mcp_servers` and the server entry are inserted before they are read"
+)]
 pub fn insert(
     client: ClientId,
     existing: Option<&[u8]>,

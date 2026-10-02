@@ -289,9 +289,14 @@ pub fn assess_in(
         .iter()
         .filter(|m| m.applicability == Applicability::Applies)
         .collect();
+    // `best` is `Applies` only when some module applies.
+    let first_reason = applying
+        .first()
+        .map(|m| m.reason.clone())
+        .unwrap_or_default();
     let reason = match best {
-        Applicability::Applies if scope == Scope::Repository => applying[0].reason.clone(),
-        Applicability::Applies if inspection.modules.len() == 1 => applying[0].reason.clone(),
+        Applicability::Applies if scope == Scope::Repository => first_reason,
+        Applicability::Applies if inspection.modules.len() == 1 => first_reason,
         Applicability::Applies => {
             let names: Vec<&str> = applying.iter().map(|m| m.module_name.as_str()).collect();
             format!(
@@ -299,7 +304,7 @@ pub fn assess_in(
                 applying.len(),
                 inspection.modules.len(),
                 names.join(", "),
-                applying[0].reason
+                first_reason
             )
         }
         Applicability::DoesNotApply if modules.len() > 1 => {

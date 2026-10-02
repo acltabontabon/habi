@@ -156,7 +156,7 @@ pub fn prepare(
                     spec.name
                 )));
             }
-            None if candidates.len() == 1 => Some(candidates[0].clone()),
+            None if candidates.len() == 1 => candidates.first().cloned(),
             None => None,
         };
         bindings.push(BindingChoice {

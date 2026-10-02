@@ -47,3 +47,6 @@ testing = []
 tempfile.workspace = true
 # The integration tests in tests/ need the `testing` feature.
 habi-core = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true

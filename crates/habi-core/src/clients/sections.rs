@@ -87,6 +87,10 @@ pub fn find(text: &str, id: &str) -> Result<Option<SectionSpan>> {
 }
 
 /// Content of a section, normalized to end with a newline.
+#[allow(
+    clippy::string_slice,
+    reason = "section spans come from the parser on the same text and end at ASCII markers"
+)]
 pub fn content<'a>(text: &'a str, span: &SectionSpan) -> &'a str {
     &text[span.content_start..span.content_end]
 }
@@ -126,6 +130,10 @@ pub fn line_ending(text: &str) -> &'static str {
 /// Returns `text` with section `id` set to `body` (inserted at the end if
 /// absent). The section uses the file's own line endings, so a CRLF file does
 /// not end up with mixed line endings.
+#[allow(
+    clippy::string_slice,
+    reason = "section spans come from the parser on the same text and end at ASCII markers"
+)]
 pub fn upsert(text: &str, id: &str, note: &str, body: &str) -> Result<String> {
     if body
         .lines()
@@ -171,6 +179,10 @@ pub fn upsert(text: &str, id: &str, note: &str, body: &str) -> Result<String> {
 }
 
 /// Returns `text` without section `id` (and without the blank line Habi added before it).
+#[allow(
+    clippy::string_slice,
+    reason = "section spans come from the parser on the same text and end at ASCII markers"
+)]
 pub fn remove(text: &str, id: &str) -> Result<String> {
     let Some(span) = find(text, id)? else {
         return Ok(text.to_string());

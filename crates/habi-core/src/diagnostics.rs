@@ -140,7 +140,7 @@ pub fn bundle(habi: &Habi, app_version: &str) -> Result<DiagnosticBundle> {
         let _ = writeln!(
             t,
             "  - project {}: {} operations, {} not committed",
-            &p.id[..8.min(p.id.len())],
+            p.id.get(..8).unwrap_or(&p.id),
             history.len(),
             unfinished
         );

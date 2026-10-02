@@ -418,14 +418,14 @@ impl Git {
                 continue;
             };
             let fields: Vec<&str> = meta.split_whitespace().collect();
-            if fields.len() < 4 {
+            let [mode, kind, oid, size, ..] = fields.as_slice() else {
                 continue;
-            }
+            };
             entries.push(TreeEntry {
-                mode: fields[0].to_string(),
-                kind: fields[1].to_string(),
-                oid: fields[2].to_string(),
-                size: fields[3].parse().ok(),
+                mode: mode.to_string(),
+                kind: kind.to_string(),
+                oid: oid.to_string(),
+                size: size.parse().ok(),
                 path: path.to_string(),
             });
         }
@@ -458,31 +458,37 @@ impl Git {
             ));
         }
         let mut blobs = Vec::with_capacity(oids.len());
-        let data = &out.stdout;
-        let mut pos = 0;
+        // Each blob: `<oid> blob <size>\n<content>\n`.
+        let mut rest: &[u8] = &out.stdout;
         for oid in oids {
-            let header_end = data[pos..]
+            let header_end = rest
                 .iter()
                 .position(|b| *b == b'\n')
-                .ok_or_else(|| HabiError::Internal("truncated git cat-file output".into()))?
-                + pos;
-            let header = String::from_utf8_lossy(&data[pos..header_end]).to_string();
+                .ok_or_else(|| HabiError::Internal("truncated git cat-file output".into()))?;
+            let (header, after) = rest.split_at(header_end);
+            let header = String::from_utf8_lossy(header).to_string();
             let fields: Vec<&str> = header.split(' ').collect();
-            if fields.len() != 3 || fields[0] != oid || fields[1] != "blob" {
+            let [name, "blob", size] = fields.as_slice() else {
+                return Err(HabiError::Internal(format!(
+                    "unexpected git cat-file header: {header}"
+                )));
+            };
+            if name != oid {
                 return Err(HabiError::Internal(format!(
                     "unexpected git cat-file header: {header}"
                 )));
             }
-            let size: usize = fields[2]
+            let size: usize = size
                 .parse()
                 .map_err(|_| HabiError::Internal("bad blob size from git".into()))?;
-            let start = header_end + 1;
-            let end = start + size;
-            if end > data.len() {
-                return Err(HabiError::Internal("truncated blob from git".into()));
-            }
-            blobs.push(data[start..end].to_vec());
-            pos = end + 1;
+            // Skip the header's newline; the content is followed by one too.
+            let (content, tail) = after
+                .get(1..)
+                .unwrap_or_default()
+                .split_at_checked(size)
+                .ok_or_else(|| HabiError::Internal("truncated blob from git".into()))?;
+            blobs.push(content.to_vec());
+            rest = tail.get(1..).unwrap_or_default();
         }
         Ok(blobs)
     }

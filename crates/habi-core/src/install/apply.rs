@@ -120,7 +120,8 @@ enum Fault {
 /// Stable identifier for a project directory.
 pub fn project_id(root: &Path) -> String {
     let digest = sha256(root.to_string_lossy().as_bytes());
-    digest["sha256:".len().."sha256:".len() + 16].to_string()
+    let hex = digest.strip_prefix("sha256:").unwrap_or(&digest);
+    hex.chars().take(16).collect()
 }
 
 pub(crate) fn journal_dir(paths: &AppPaths, project_id: &str) -> PathBuf {
@@ -543,16 +544,18 @@ impl<'a> Applier<'a> {
                 }
                 Err(e) => return Err(self.roll_back(root, &mut journal, e)),
             }
-            if let Err(e) = write_step(
-                root,
-                &journal.steps[index],
-                change.content.as_deref(),
-                change.executable,
-            ) {
+            // The journal has one step per change, built from the plan above.
+            let Some(step) = journal.steps.get(index).cloned() else {
+                let cause = HabiError::Internal("the journal does not match the plan".into());
+                return Err(self.roll_back(root, &mut journal, cause));
+            };
+            if let Err(e) = write_step(root, &step, change.content.as_deref(), change.executable) {
                 return Err(self.roll_back(root, &mut journal, e));
             }
             produced.insert(change.path.to_lowercase(), change.after.clone());
-            journal.steps[index].done = true;
+            if let Some(step) = journal.steps.get_mut(index) {
+                step.done = true;
+            }
             if let Err(e) = save(self.paths, &journal) {
                 return Err(self.roll_back(root, &mut journal, e));
             }
