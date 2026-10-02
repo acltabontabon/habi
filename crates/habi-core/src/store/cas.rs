@@ -21,11 +21,12 @@ impl Blobs {
     }
 
     fn path_for(&self, digest: &str) -> Result<PathBuf> {
-        let hex = digest
+        let (head, tail) = digest
             .strip_prefix("sha256:")
             .filter(|h| h.len() == 64 && h.chars().all(|c| c.is_ascii_hexdigit()))
+            .and_then(|h| h.split_at_checked(2))
             .ok_or_else(|| HabiError::invalid(format!("not a content digest: {digest}")))?;
-        Ok(self.root.join("sha256").join(&hex[..2]).join(&hex[2..]))
+        Ok(self.root.join("sha256").join(head).join(tail))
     }
 
     /// Stores `bytes` and returns their digest. Idempotent.

@@ -1774,11 +1774,7 @@ fn clients_phrase(clients: &[ClientId]) -> String {
         [] => "no client".into(),
         [one] => (*one).to_string(),
         [a, b] => format!("{a} and {b}"),
-        _ => format!(
-            "{} and {}",
-            names[..names.len() - 1].join(", "),
-            names[names.len() - 1]
-        ),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
     }
 }
 

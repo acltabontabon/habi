@@ -275,7 +275,7 @@ impl ProjectInspection {
             .get(id)
             .into_iter()
             .flatten()
-            .map(|&i| self.files[i as usize].as_str())
+            .filter_map(|&i| self.files.get(i as usize).map(String::as_str))
     }
 
     /// Facts recorded for module `id`.
@@ -285,7 +285,7 @@ impl ProjectInspection {
             .get(id)
             .into_iter()
             .flatten()
-            .map(|&i| &self.facts[i as usize])
+            .filter_map(|&i| self.facts.get(i as usize))
     }
 
     /// Coverage recorded for module `id`.
@@ -295,7 +295,7 @@ impl ProjectInspection {
             .get(id)
             .into_iter()
             .flatten()
-            .map(|&i| &self.coverage[i as usize])
+            .filter_map(|&i| self.coverage.get(i as usize))
     }
 
     /// Enclosing modules of `id`, nearest first, ending with the root.

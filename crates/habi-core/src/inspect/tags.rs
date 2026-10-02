@@ -344,8 +344,8 @@ pub fn wildcard_match(pattern: &str, value: &str) -> bool {
             }
         } else if i == parts.len() - 1 {
             return rest.ends_with(part);
-        } else if let Some(pos) = rest.find(part) {
-            rest = &rest[pos + part.len()..];
+        } else if let Some((_, after)) = rest.split_once(part) {
+            rest = after;
         } else {
             return false;
         }

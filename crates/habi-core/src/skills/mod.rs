@@ -643,8 +643,9 @@ impl<'a> Skills<'a> {
             .iter()
             .find(|s| tree.files.contains_key(**s))
             .copied();
-        let metadata_text =
-            sidecar_name.map(|s| String::from_utf8_lossy(&tree.files[s]).into_owned());
+        let metadata_text = sidecar_name
+            .and_then(|s| tree.files.get(s))
+            .map(|b| String::from_utf8_lossy(b).into_owned());
         let sidecar = metadata_text
             .as_deref()
             .and_then(|t| library::parse_yaml(t).ok());
@@ -695,7 +696,9 @@ impl<'a> Skills<'a> {
             document,
             document_error,
             form,
-            metadata_digest: sidecar_name.map(|s| sha256(&tree.files[s])),
+            metadata_digest: sidecar_name
+                .and_then(|s| tree.files.get(s))
+                .map(|b| sha256(b)),
             metadata_text,
             metadata_status: item
                 .map(|i| i.metadata_status)
@@ -771,7 +774,12 @@ impl<'a> Skills<'a> {
                 "a skill may hold at most {MAX_FILES} files"
             )));
         }
-        let id = uuid::Uuid::new_v4().simple().to_string()[..12].to_string();
+        let id: String = uuid::Uuid::new_v4()
+            .simple()
+            .to_string()
+            .chars()
+            .take(12)
+            .collect();
         let dir = package_dir(self.paths, &id)?;
         let written = (|| -> Result<()> {
             for (rel, bytes) in &tree.files {

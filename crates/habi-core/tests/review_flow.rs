@@ -101,6 +101,7 @@ fn review_loop_on_a_github_remote() {
     )
     .unwrap();
     // SAFETY: the only test in this binary; set before any thread starts.
+    #[allow(unsafe_code)] // Setting the environment is unsafe since Rust 2024.
     unsafe {
         std::env::set_var("GIT_CONFIG_GLOBAL", &config);
         std::env::set_var("GIT_CONFIG_NOSYSTEM", "1");

@@ -60,6 +60,11 @@ fn is_top_key(line: &str, key: &str) -> bool {
 
 /// Sets `metadata.based-on`, replacing an existing value. `None` when the
 /// file cannot be edited safely.
+#[allow(
+    clippy::indexing_slicing,
+    clippy::string_slice,
+    reason = "line indexes stay below the frontmatter end found in the same list; `metadata:` is ASCII"
+)]
 pub fn set(text: &str, value: &str) -> Option<String> {
     let newline = if text.contains("\r\n") { "\r\n" } else { "\n" };
     let lines: Vec<&str> = text.split(newline).collect();
@@ -98,6 +103,10 @@ pub fn set(text: &str, value: &str) -> Option<String> {
 }
 
 /// Removes `metadata.based-on` (and a `metadata:` line left empty).
+#[allow(
+    clippy::indexing_slicing,
+    reason = "line indexes stay below the frontmatter end found in the same list"
+)]
 pub fn remove(text: &str) -> String {
     let newline = if text.contains("\r\n") { "\r\n" } else { "\n" };
     let lines: Vec<&str> = text.split(newline).collect();

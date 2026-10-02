@@ -116,7 +116,7 @@ fn drain<R: Read + Send + 'static>(mut reader: R, limit: usize) -> mpsc::Receive
         loop {
             match reader.read(&mut buf) {
                 Ok(0) | Err(_) => break,
-                Ok(n) => tail.push(&buf[..n]),
+                Ok(n) => tail.push(buf.get(..n).unwrap_or_default()),
             }
         }
         let _ = tx.send(tail);
@@ -154,6 +154,7 @@ fn kill_tree(child: &mut Child) {
             // the group `isolate` created for this child; it is called before
             // the child is reaped, or while a group member still holds its
             // pipes, so the id cannot have been reused.
+            #[allow(unsafe_code)] // The standard library cannot signal a process group.
             unsafe {
                 libc::killpg(pgid, libc::SIGKILL);
             }

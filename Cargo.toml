@@ -51,6 +51,10 @@ tauri-plugin-opener = "2.7.0"
 notify-debouncer-mini = "0.7.0"
 ctrlc = "3.5.2"
 
+[workspace.lints.rust]
+# Unsafe code needs a scoped #[allow(unsafe_code)] with its reason.
+unsafe_code = "deny"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

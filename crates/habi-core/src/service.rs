@@ -729,7 +729,7 @@ impl Habi {
             path: rel,
             size: bytes.len() as u32,
             text: (!binary).then(|| {
-                String::from_utf8_lossy(&bytes[..bytes.len().min(512 * 1024)]).into_owned()
+                String::from_utf8_lossy(bytes.get(..512 * 1024).unwrap_or(&bytes)).into_owned()
             }),
             binary,
         })
