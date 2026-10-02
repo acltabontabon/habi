@@ -56,9 +56,32 @@ pub struct ProjectRecord {
     pub exclusions: Vec<String>,
     /// Part of the explicitly labeled sample workspace.
     pub sample: bool,
+    /// What fit when the project was last looked at; `None` until then.
+    pub summary: Option<ProjectSummary>,
     #[serde(skip)]
     #[ts(skip)]
     pub root: PathBuf,
+}
+
+/// A small record of a project's last overview, so lists can say what fits
+/// without inspecting every project again.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ProjectSummary {
+    /// Items that apply (team requirements included).
+    pub fits: u32,
+    /// Items whose applicability could not be established.
+    pub needs_information: u32,
+    /// Libraries those items come from (source ids), most items first.
+    pub sources: Vec<String>,
+    /// Items installed in the project by Habi.
+    pub installed: u32,
+    pub at: String,
+}
+
+fn summary_key(project_id: &str) -> String {
+    format!("project-summary:{project_id}")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -303,6 +326,7 @@ impl Habi {
                 let path: String = r.get(1)?;
                 let root = PathBuf::from(&path);
                 Ok(ProjectRecord {
+                    summary: None,
                     sample: root.starts_with(&sample_root),
                     id: r.get(0)?,
                     name: r.get(2)?,
@@ -316,6 +340,15 @@ impl Habi {
         )
         .optional()?
         .ok_or_else(|| HabiError::NotFound(format!("project {id}")))
+        .map(|mut p| {
+            p.summary = self
+                .store
+                .setting(&summary_key(id))
+                .ok()
+                .flatten()
+                .and_then(|json| serde_json::from_str(&json).ok());
+            p
+        })
     }
 
     fn existing_project(&self, id: &str) -> Result<ProjectRecord> {
@@ -344,6 +377,9 @@ impl Habi {
         self.store
             .conn()?
             .execute("DELETE FROM projects WHERE id = ?1", [id])?;
+        self.store
+            .conn()?
+            .execute("DELETE FROM settings WHERE key = ?1", [summary_key(id)])?;
         self.inspections
             .lock()
             .expect("inspection cache")
@@ -801,6 +837,43 @@ impl Habi {
             })
             .cloned()
             .collect();
+        // Remembered for lists (best effort: a failure here changes nothing else).
+        let summary = {
+            let mut by_source: Vec<(String, u32)> = Vec::new();
+            let mut fits = 0;
+            let mut needs_information = 0;
+            for r in &recommendations {
+                match r.applicability.applicability {
+                    Applicability::Applies => {
+                        fits += 1;
+                        match by_source.iter_mut().find(|(s, _)| *s == r.item.source_id) {
+                            Some((_, n)) => *n += 1,
+                            None => by_source.push((r.item.source_id.clone(), 1)),
+                        }
+                    }
+                    Applicability::NeedsInformation => needs_information += 1,
+                    _ => {}
+                }
+            }
+            by_source.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+            ProjectSummary {
+                fits,
+                needs_information,
+                sources: by_source.into_iter().map(|(s, _)| s).collect(),
+                installed: recommendations
+                    .iter()
+                    .filter(|r| r.installation.is_some())
+                    .count() as u32,
+                at: crate::time::now(),
+            }
+        };
+        if let Ok(json) = serde_json::to_string(&summary) {
+            let _ = self.store.set_setting(&summary_key(&project.id), &json);
+        }
+        let project = ProjectRecord {
+            summary: Some(summary),
+            ..project
+        };
         Ok(ProjectOverview {
             project,
             inspection,

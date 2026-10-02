@@ -213,6 +213,7 @@ describe("applicability preview", () => {
     lastOpenedAt: "2026-10-02T00:00:00Z",
     exclusions: [],
     sample: false,
+    summary: null,
   });
   const result = (applicability: "applies" | "doesNotApply" | "needsInformation", reason: string) => ({
     applicability,
@@ -477,7 +478,7 @@ describe("identifiers and technologies", () => {
 });
 
 describe("welcome", () => {
-  it("leads with opening a project and needs no library", async () => {
+  it("leads with one action, opening a project, and needs no library", async () => {
     const user = userEvent.setup();
     const { container } = wrap(<Welcome />);
     const open = screen.getByRole("button", { name: "Open a project…" });
@@ -485,10 +486,13 @@ describe("welcome", () => {
     expect(screen.queryByText(/Connect/)).toBeNull();
     await user.click(open);
     expect(actions.openProject).toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /Create a skill/ }));
-    expect(actions.newSkill).toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /Add existing skills/ }));
-    expect(actions.addSkills).toHaveBeenCalled();
+    // One primary action; creating and adding skills live in the sidebar,
+    // the palette and project views, with their shortcuts shown here.
+    expect(screen.queryByRole("button", { name: /Create a skill/ })).toBeNull();
+    expect(screen.getByText("new skill")).toBeInTheDocument();
+    expect(screen.getByText("read-only")).toBeInTheDocument();
+    // First run: the labeled sample workspace is offered.
+    expect(screen.getByRole("button", { name: "Explore a sample workspace" })).toBeInTheDocument();
     const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
