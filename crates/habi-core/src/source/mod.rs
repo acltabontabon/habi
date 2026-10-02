@@ -127,6 +127,29 @@ pub enum Freshness {
     Stale,
 }
 
+/// Who stands behind a library. Habi does not guess this from a URL: the
+/// user says so when connecting it, and can change it later.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum SourceRole {
+    /// The team's own library: its content is reviewed where it is maintained.
+    #[default]
+    Team,
+    /// Published by others (an open-source skills repository, say). Its
+    /// content has not been reviewed by the team.
+    Community,
+}
+
+impl SourceRole {
+    fn as_str(self) -> &'static str {
+        match self {
+            SourceRole::Team => "team",
+            SourceRole::Community => "community",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -134,6 +157,7 @@ pub struct Source {
     pub id: String,
     pub name: String,
     pub kind: SourceKind,
+    pub role: SourceRole,
     /// URL, or a local path shown with `~`.
     pub location: String,
     pub subdir: Option<String>,
@@ -374,6 +398,11 @@ fn row_to_source(row: &Row) -> rusqlite::Result<Source> {
         id: row.get("id")?,
         name: row.get("name")?,
         kind,
+        role: if row.get::<_, String>("role")? == "community" {
+            SourceRole::Community
+        } else {
+            SourceRole::Team
+        },
         location: display_location,
         subdir: row.get("subdir")?,
         tracked: TrackedRef::from_columns(&row.get::<_, String>("ref_kind")?, row.get("ref_name")?),
@@ -433,6 +462,19 @@ impl Sources {
                 r.get(0)
             })?,
         )
+    }
+
+    /// Records whether a library is the team's own or a community one.
+    pub fn set_role(&self, id: &str, role: SourceRole) -> Result<Source> {
+        let conn = self.store.conn()?;
+        let changed = conn.execute(
+            "UPDATE sources SET role = ?1 WHERE id = ?2",
+            params![role.as_str(), id],
+        )?;
+        if changed == 0 {
+            return Err(HabiError::NotFound(format!("no source with id {id}")));
+        }
+        self.get(id)
     }
 
     /// Registers a source. Does not fetch: fetching is an explicit action.

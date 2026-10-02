@@ -425,6 +425,16 @@ fn messages_say_what_to_do_next() {
     ] {
         assert!(!text.contains(internal), "{internal} in:\n{text}");
     }
+    // Items without applicability rules are summarized, not listed.
+    assert!(!text.contains("Incident notes"), "{text}");
+    assert!(
+        text.contains(
+            "1 item has no applicability rules, so Habi does not match it to projects (Fresh 1)"
+        ),
+        "{text}"
+    );
+    let all = stdout(&env.ok(&project, &["recommend", "--all"]));
+    assert!(all.contains("Incident notes"), "{all}");
 }
 
 #[test]

@@ -1,0 +1,148 @@
+/*
+ * The weave layer: threads, swatches and selvedges, and the surfaces that
+ * carry them. Loaded after app.css and authoring.css, so it can refine them.
+ */
+
+/* ---------- Strand: one library's thread ---------- */
+
+.strand {
+  flex: none;
+  overflow: visible;
+}
+
+.strand-weft {
+  stroke: var(--hairline-strong);
+  stroke-width: 1.2;
+}
+
+.sidebar-item .strand {
+  color: inherit;
+}
+
+.sidebar-item.is-active .strand-weft {
+  stroke: var(--thread);
+}
+
+/* ---------- Swatch: what a project is woven from ---------- */
+
+.swatch {
+  flex: none;
+  display: block;
+  border-radius: var(--radius-sm);
+}
+
+.swatch {
+  background: var(--paper-sunken);
+  padding: 0;
+}
+
+.swatch .swatch-weft {
+  fill: var(--hairline-strong);
+  opacity: 0.55;
+}
+
+/* ---------- Selvedge: the woven edge of a library ---------- */
+
+.selvedge {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--selvedge);
+  opacity: 0.9;
+}
+
+.selvedge.is-community {
+  background: repeating-linear-gradient(90deg, var(--selvedge) 0 10px, transparent 10px 16px);
+  opacity: 0.85;
+}
+
+/* ---------- Provenance chip: library name with its thread ---------- */
+
+.provenance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .swatch rect {
+    transition: fill 400ms var(--ease);
+  }
+}
+
+/* ---------- Loom: the welcome illustration ---------- */
+
+.loom {
+  width: 100%;
+  height: 100%;
+  max-height: 560px;
+}
+
+.loom-warp {
+  stroke: var(--hairline-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.loom-warp-over {
+  opacity: 1;
+}
+
+.loom-weft {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: draw-thread 1400ms var(--ease) 200ms forwards;
+}
+
+.loom-cell-warp {
+  fill: var(--hairline-strong);
+}
+
+.loom-cell-weft {
+  fill: var(--paper-raised);
+  stroke: var(--hairline);
+  stroke-width: 0.8;
+}
+
+.loom-cell-accent {
+  fill: var(--thread);
+  opacity: 0.85;
+}
+
+.loom-cloth > g {
+  opacity: 0;
+  animation: weave-row 500ms var(--ease) forwards;
+}
+
+@keyframes weave-row {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes draw-thread {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loom-weft {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .loom-cloth > g {
+    animation: none;
+    opacity: 1;
+  }
+}

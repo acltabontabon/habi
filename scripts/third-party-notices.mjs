@@ -122,7 +122,7 @@ Notes:
   available at the listed location.
 - Where a component offers a choice of licenses (for example "MIT OR Apache-2.0"), Habi uses
   it under the permissive option.
-- The bundled fonts (IBM Plex Sans, IBM Plex Mono, Newsreader) are under the SIL Open Font
+- The bundled fonts (IBM Plex Sans, IBM Plex Mono) are under the SIL Open Font
   License 1.1 and are distributed unmodified. "Plex" is a Reserved Font Name.
 
 ## Rust components (${rust.length})

@@ -4,31 +4,106 @@
  * a team library is optional.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toasts";
 import { Button, ErrorNotice, Kbd } from "../components/ui";
 import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
+import { type Dye, dyeMap } from "../lib/dye";
 import { relativeTime } from "../lib/format";
 import { useNav } from "../lib/nav";
-import { invalidateProjectData, keys, useRecentProjects, useSkills } from "../lib/queries";
+import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
 
-/** Decorative loom: fine warp lines with one weft thread drawn through once. */
-function Loom() {
-  const warps = Array.from({ length: 11 }, (_, i) => 20 + i * 26);
+/**
+ * Decorative loom. Its warp is your libraries — each one a thread color,
+ * community libraries stitched — with the ochre weft drawn through once and
+ * the woven cloth below. With no libraries, it is a bare loom.
+ */
+function Loom({ dyes }: { dyes: Dye[] }) {
+  const count = 12;
+  const pitch = 23;
+  const left = 24;
+  const xs = Array.from({ length: count }, (_, i) => left + i * pitch);
+  const threadDye = (i: number): Dye | undefined =>
+    dyes.length > 0 ? dyes[Math.floor((i * dyes.length) / count)] : undefined;
+  const weftY = 196;
+  const clothTop = 226;
+  const rows = 15;
+  const rowH = 11;
+  const over = (c: number, r: number) => (c + r) % 2 === 0;
   return (
-    <svg className="loom" viewBox="0 0 300 360" aria-hidden="true" focusable="false">
-      {warps.map((x) => (
-        <line key={x} x1={x} y1="0" x2={x} y2="360" className="loom-warp" />
-      ))}
+    <svg className="loom" viewBox="0 0 300 400" aria-hidden="true" focusable="false">
+      {xs.map((x, i) => {
+        const dye = threadDye(i);
+        return (
+          <line
+            key={x}
+            x1={x}
+            y1="0"
+            x2={x}
+            y2={clothTop}
+            className="loom-warp"
+            style={dye ? { stroke: dye.color } : undefined}
+            strokeDasharray={dye?.community ? "7 5" : undefined}
+          />
+        );
+      })}
       <path
         className="loom-weft"
-        d="M0 180 C 12 180, 14 170, 20 170 S 40 190, 46 190 S 66 170, 72 170 S 92 190, 98 190 S 118 170, 124 170 S 144 190, 150 190 S 170 170, 176 170 S 196 190, 202 190 S 222 170, 228 170 S 248 190, 254 190 S 274 170, 280 170 S 292 180, 300 180"
+        d={`M0 ${weftY} ${xs
+          .map(
+            (x, i) =>
+              `C ${x - 14} ${weftY + (i % 2 ? -9 : 9)}, ${x + 14} ${weftY + (i % 2 ? -9 : 9)}, ${x + pitch / 2} ${weftY}`,
+          )
+          .join(" ")} L 300 ${weftY}`}
       />
-      {warps.map((x, i) =>
-        i % 2 === 0 ? <circle key={`k${x}`} cx={x} cy={170} r="2.5" className="loom-knot" /> : null,
+      {xs.map((x, i) =>
+        i % 2 === 0 ? (
+          <line
+            key={`o${x}`}
+            x1={x}
+            y1={weftY - 7}
+            x2={x}
+            y2={weftY + 7}
+            className="loom-warp loom-warp-over"
+            style={threadDye(i) ? { stroke: threadDye(i)?.color } : undefined}
+          />
+        ) : null,
       )}
+      <g className="loom-cloth">
+        {Array.from({ length: rows }, (_, r) => {
+          const y = clothTop + r * rowH;
+          return (
+            <g key={r} style={{ animationDelay: `${900 + (rows - r) * 45}ms` }}>
+              <rect
+                x={left - pitch / 2}
+                y={y + 2}
+                width={count * pitch}
+                height={rowH - 4}
+                rx="3.5"
+                className={r % 5 === 2 ? "loom-cell-accent" : "loom-cell-weft"}
+              />
+              {xs.map((x, c) => {
+                const dye = threadDye(c);
+                return over(c, r) ? (
+                  <rect
+                    key={x}
+                    x={x - 4.5}
+                    y={y - 1}
+                    width="9"
+                    height={rowH + 2}
+                    rx="4.5"
+                    className="loom-cell-warp"
+                    style={dye ? { fill: dye.color } : undefined}
+                    opacity={dye?.community ? 0.75 : undefined}
+                  />
+                ) : null;
+              })}
+            </g>
+          );
+        })}
+      </g>
     </svg>
   );
 }
@@ -38,6 +113,8 @@ export function Welcome() {
   const { openProject, newSkill, addSkills } = useActions();
   const recent = useRecentProjects();
   const skills = useSkills();
+  const sources = useSources();
+  const loomDyes = useMemo(() => [...dyeMap(sources.data ?? []).values()], [sources.data]);
   const client = useQueryClient();
   const toast = useToast();
   const [sampleBusy, setSampleBusy] = useState(false);
@@ -68,7 +145,9 @@ export function Welcome() {
     <div className="welcome">
       <div className="welcome-intro">
         <p className="eyebrow">Habi</p>
-        <h1 className="display">What does your team know that helps in this repository?</h1>
+        <h1 className="display">
+          What does your team know that helps in <em>this repository</em>?
+        </h1>
         <p className="lead">
           Open a project to see the skills and instructions that apply to it — and why. Start with just a
           repository and an idea.
@@ -83,6 +162,7 @@ export function Welcome() {
           <span className="welcome-shortcut muted">
             <Kbd>⌘O</Kbd> Read-only: nothing is built, run or changed.
           </span>
+          <span className="cli-hint">habi recommend -C path/to/project</span>
         </div>
 
         <ul className="welcome-paths" aria-label="Other ways to start">
@@ -172,7 +252,7 @@ export function Welcome() {
         </p>
       </div>
       <div className="welcome-art">
-        <Loom />
+        <Loom dyes={loomDyes} />
       </div>
     </div>
   );

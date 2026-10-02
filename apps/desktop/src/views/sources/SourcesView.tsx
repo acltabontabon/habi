@@ -4,11 +4,14 @@ import { useMemo, useState } from "react";
 import type { Condition } from "../../bindings/Condition";
 import type { LibraryItem } from "../../bindings/LibraryItem";
 import type { Source } from "../../bindings/Source";
+import type { SourceRole } from "../../bindings/SourceRole";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
 import { Button, Empty, ErrorNotice, Label, Notice, Section, Status, Working } from "../../components/ui";
+import { Selvedge } from "../../components/Weave";
 import { useActions } from "../../lib/actions";
 import { api, HabiError } from "../../lib/api";
+import { useDyes } from "../../lib/dye";
 import { freshnessText, kindLabel, NO_RULES_PHRASE, plural, relativeTime, shortId } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateProjectData, useLibrary, useRefreshSource, useSources } from "../../lib/queries";
@@ -38,10 +41,11 @@ function AddSource() {
   const toast = useToast();
   return (
     <div className="page narrow connect-page">
-      <h1 className="page-title">Connect a team library</h1>
+      <p className="kicker">Libraries</p>
+      <h1 className="page-title">Connect a library</h1>
       <p className="lead-sm">
-        A Git repository of skills your team maintains. Its skills are matched to your projects, and stay
-        current when you refresh.
+        A Git repository of Agent Skills — your team's own, or one the community publishes. Habi reads it into
+        its own cache and keeps it current when you refresh.
       </p>
       <ConnectLibrary
         onCancel={() => navigate({ name: "sources" })}
@@ -69,6 +73,13 @@ function AddSource() {
   );
 }
 
+const CODE_FILE = /(^scripts\/|\.(py|sh|js|mjs|cjs|ts|rb|pl|ps1)$)/;
+
+/** Whether a package ships code an agent could run. */
+export function shipsCode(item: LibraryItem): boolean {
+  return item.files.some((f) => f.executable || CODE_FILE.test(f.path));
+}
+
 function ItemRow({ item, active, onSelect }: { item: LibraryItem; active: boolean; onSelect: () => void }) {
   return (
     <li>
@@ -87,6 +98,11 @@ function ItemRow({ item, active, onSelect }: { item: LibraryItem; active: boolea
         <span className="rec-row-meta">
           {kindLabel[item.kind]}
           {item.owner ? ` · ${item.owner}` : ""}
+          <span className="row-facts">
+            {item.metadataStatus === "declared" ? <span className="fact-chip">rules</span> : null}
+            {shipsCode(item) ? <span className="fact-chip">scripts</span> : null}
+            {item.licenseRestricted ? <span className="fact-chip fact-chip-warn">proprietary</span> : null}
+          </span>
         </span>
       </button>
     </li>
@@ -114,7 +130,25 @@ function SourceDetail({ source, itemId }: { source: Source; itemId?: string }) {
         i.id.includes(q),
     );
   }, [library.data, query]);
-  const selected = library.data?.items.find((i) => i.id === itemId) ?? null;
+  const selected = library.data?.items.find((i) => i.id === itemId) ?? items[0] ?? null;
+  const dyes = useDyes();
+  const dye = dyes(source.id);
+  const community = source.role === "community";
+  const all = library.data?.items ?? [];
+  const stats = {
+    total: all.length,
+    rules: all.filter((i) => i.metadataStatus === "declared").length,
+    code: all.filter(shipsCode).length,
+    restricted: all.filter((i) => i.licenseRestricted).length,
+  };
+  const changeRole = async (role: SourceRole) => {
+    try {
+      await api.setSourceRole(source.id, role);
+      invalidateProjectData(client);
+    } catch (e) {
+      toast.show(`Could not change ${source.name}: ${e instanceof Error ? e.message : String(e)}`, "danger");
+    }
+  };
 
   const doRefresh = () =>
     refresh.mutate(source.id, {
@@ -143,8 +177,10 @@ function SourceDetail({ source, itemId }: { source: Source; itemId?: string }) {
 
   return (
     <div className="source">
+      <Selvedge dye={dye} />
       <header className="project-head">
         <div className="project-identity">
+          <p className="kicker">{community ? "Community library" : "Team library"}</p>
           <h1 className="project-title">{library.data?.name ?? source.name}</h1>
           <p className="project-path mono">
             {source.location}
@@ -161,9 +197,44 @@ function SourceDetail({ source, itemId }: { source: Source; itemId?: string }) {
               {source.snapshot ? ` · at ${shortId(source.snapshot)}` : ""}
             </span>
           </p>
-          {source.commitSummary ? <p className="muted">{source.commitSummary}</p> : null}
+          {source.commitSummary ? <p className="commit-line mono">{source.commitSummary}</p> : null}
+          {source.snapshot && library.data ? (
+            <dl className="stat-strip">
+              <div>
+                <dt>skills</dt>
+                <dd>{stats.total}</dd>
+              </div>
+              <div>
+                <dt>with rules</dt>
+                <dd>{stats.rules}</dd>
+              </div>
+              <div>
+                <dt>ship scripts</dt>
+                <dd>{stats.code}</dd>
+              </div>
+              {stats.restricted > 0 ? (
+                <div>
+                  <dt>proprietary</dt>
+                  <dd>{stats.restricted}</dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
         </div>
         <div className="project-actions">
+          <fieldset className="role-switch" aria-label="Whose library is this?">
+            {(["team", "community"] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={source.role === r}
+                className={`role-option${source.role === r ? " is-active" : ""}`}
+                onClick={() => (source.role === r ? undefined : void changeRole(r))}
+              >
+                {r === "team" ? "Team" : "Community"}
+              </button>
+            ))}
+          </fieldset>
           <Button size="sm" icon="refresh" busy={refresh.isPending} onClick={doRefresh}>
             {source.snapshot ? "Refresh" : "Fetch"}
           </Button>
@@ -190,6 +261,13 @@ function SourceDetail({ source, itemId }: { source: Source; itemId?: string }) {
           }
         >
           Habi removes its cached copy. Skills already installed in projects stay exactly as they are.
+        </Notice>
+      ) : null}
+      {community && source.snapshot ? (
+        <Notice tone="unknown" title="Published by others — not reviewed by your team">
+          Read a skill before you use it: agents follow its instructions and can run the scripts it ships.
+          Skills here have no rules for your projects, so Habi lists them without recommending them. To adopt
+          one, copy it to My skills, add where it applies, and share it with your team library.
         </Notice>
       ) : null}
       {source.warning ? (
@@ -350,8 +428,10 @@ export function SourcesView({ sourceId, itemId }: { sourceId?: string; itemId?: 
     <div className="page narrow">
       <header className="skills-head">
         <div>
-          <h1 className="page-title">Team libraries</h1>
-          <p className="lead-sm">Shared skills your team maintains in Git, matched to your projects.</p>
+          <h1 className="page-title">Libraries</h1>
+          <p className="lead-sm">
+            Skills in Git — your team's own and the community's — matched to your projects.
+          </p>
         </div>
         {sources.data.length > 0 ? (
           <div className="skills-actions">

@@ -1136,14 +1136,20 @@ fn upgrading_the_database_keeps_existing_state() {
              CREATE TABLE operations (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, kind TEXT NOT NULL, summary TEXT NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL, finished_at TEXT);
              CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
              INSERT INTO projects (id, path, name, last_opened_at) VALUES ('p1', '/nowhere/billing', 'billing', '2026-09-01T00:00:00Z');
+             INSERT INTO sources (id, name, kind, location, ref_kind, created_at) VALUES ('s1', 'Team', 'git', 'https://example.invalid/skills.git', 'default', '2026-09-01T00:00:00Z');
              INSERT INTO settings (key, value) VALUES ('desktop', '{}');
              PRAGMA user_version = 1;",
         )
         .unwrap();
     }
     let habi = open(home.path());
-    assert_eq!(habi.store.schema_version().unwrap(), 2);
+    assert_eq!(habi.store.schema_version().unwrap(), 3);
     assert_eq!(habi.project("p1").unwrap().name, "billing");
+    // Libraries connected before roles existed are the team's own.
+    assert_eq!(
+        habi.sources().get("s1").unwrap().role,
+        habi_core::source::SourceRole::Team
+    );
     assert_eq!(
         habi.store.setting("desktop").unwrap().as_deref(),
         Some("{}")

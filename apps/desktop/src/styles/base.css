@@ -19,7 +19,7 @@ body {
   line-height: var(--leading);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "kern", "liga";
+  font-feature-settings: "kern", "liga", "calt";
   overflow: hidden;
 }
 

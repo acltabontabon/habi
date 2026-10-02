@@ -856,6 +856,17 @@ impl<'a> Planner<'a> {
                 item.title
             )));
         }
+        if item.license_restricted && existing.is_none() {
+            self.notes.push(format!(
+                "{} declares a proprietary licence (\u{201c}{}\u{201d}). Installing copies it into this project; check its terms{} before committing it where others can see it.",
+                item.title,
+                item.license.as_deref().unwrap_or_default(),
+                item.license_file
+                    .as_deref()
+                    .map(|f| format!(" ({f} in the library)"))
+                    .unwrap_or_default()
+            ));
+        }
         let (dirs, dir_notes) = layout::skill_dirs(clients);
         self.notes.extend(dir_notes);
         let dirs = self.resolve_skill_dirs(dirs, item)?;

@@ -1,64 +1,85 @@
 /*
- * Habi design tokens.
+ * Habi design tokens — "Loom".
  *
- * Paper and ink, with one warm accent: the ochre "thread" that connects a
- * recommendation to the evidence behind it. Semantic colors are separate
- * from the brand accent and are always paired with words, never color alone.
+ * An instrument for developers: precise neutral surfaces, a sans for reading,
+ * a monospace voice for everything machine-shaped (labels, counts, paths,
+ * ids), and color only where it means something:
+ *
+ *  - the saffron *thread*: the one brand accent (selection, focus of
+ *    attention, the line from a reason to its evidence);
+ *  - *dyes*: one per library, its warp thread wherever its items appear;
+ *  - semantic colors, always paired with an icon and a word.
+ *
+ * Two themes: Daylight (light) and Graphite (dark).
  */
 
 :root {
   color-scheme: light;
 
-  /* Surfaces */
-  --paper: #f5f0e6;
-  --paper-raised: #fbf8f2;
-  --paper-sunken: #ede6d8;
-  --paper-selected: #fffdf8;
+  /* Surfaces — Daylight */
+  --paper: #f6f5f1;
+  --paper-raised: #fcfbf8;
+  --paper-sunken: #eeece6;
+  --paper-selected: #ffffff;
 
   /* Ink */
-  --ink: #1f1c19;
-  --ink-soft: #3d3832;
-  --ink-muted: #675f55; /* 5.5:1 on --paper, 5.1:1 on --paper-sunken */
-  --ink-faint: #8a8174; /* 3.4:1: decorative (line numbers) and disabled only */
-  --hairline: #ddd3c2;
-  --hairline-strong: #c9bda8;
+  --ink: #16161a;
+  --ink-soft: #34343b;
+  --ink-muted: #5f5f68; /* 5.9:1 on --paper, 5.4:1 on --paper-sunken */
+  --ink-faint: #8d8d95; /* 3.2:1: decorative (line numbers) and disabled only */
+  --hairline: #e2e0d9;
+  --hairline-strong: #cdcac1;
 
-  /* Brand accent: the thread */
-  --thread: #b5712a;
-  --thread-strong: #8f5519; /* 5.3:1 on --paper, for text */
-  --thread-wash: #f1e2cc;
+  /* Brand accent: the thread (saffron) */
+  --thread: #c96f12;
+  --thread-strong: #8f4c06; /* 5.6:1 on --paper, for text */
+  --thread-wash: #f7e7d0;
+
+  /*
+   * Dyes: one natural-dye color per library. They mark provenance and are
+   * always paired with the library's name. All reach 3:1 on --paper.
+   */
+  --dye-0: #3a5a96; /* indigo */
+  --dye-1: #b0452f; /* madder */
+  --dye-2: #4b7a40; /* moss */
+  --dye-3: #94396a; /* cochineal */
+  --dye-4: #23777a; /* woad */
+  --dye-5: #7a5530; /* walnut */
+  --dye-6: #82700c; /* weld */
+  --dye-7: #5c4c94; /* logwood */
 
   /* Semantic: always accompanied by text */
-  --ok-ink: #2c6440;
-  --ok-wash: #e1eddf;
-  --unknown-ink: #455474;
-  --unknown-wash: #e3e7f0;
-  --warn-ink: #7f5310;
-  --warn-wash: #f5e7c9;
-  --danger-ink: #962a22;
-  --danger-wash: #f5ded9;
-  --muted-wash: #ebe4d6;
+  --ok-ink: #22663e;
+  --ok-wash: #e0eee2;
+  --unknown-ink: #44557a;
+  --unknown-wash: #e4e8f1;
+  --warn-ink: #7c5108;
+  --warn-wash: #f6e8c8;
+  --danger-ink: #a12a20;
+  --danger-wash: #f7dfda;
+  --muted-wash: #ebe9e2;
 
   /* Interaction */
-  --focus: #1f1c19;
-  --focus-halo: #f5f0e6;
-  --button-ink: #1f1c19;
-  --button-ink-text: #fbf8f2;
-  --button-ink-hover: #3d3832;
-  --shadow-dialog: 0 24px 64px rgba(31, 28, 25, 0.18), 0 2px 8px rgba(31, 28, 25, 0.08);
-  --scrim: rgba(31, 28, 25, 0.32);
+  --focus: #16161a;
+  --focus-halo: #f6f5f1;
+  --button-ink: #16161a;
+  --button-ink-text: #fcfbf8;
+  --button-ink-hover: #34343b;
+  --shadow-dialog: 0 28px 72px rgba(22, 22, 26, 0.18), 0 2px 8px rgba(22, 22, 26, 0.08);
+  --shadow-raised: 0 1px 0 rgba(22, 22, 26, 0.04), 0 1px 2px rgba(22, 22, 26, 0.06);
+  --scrim: rgba(22, 22, 26, 0.34);
 
   /* Diff */
-  --diff-add: #e3efdf;
-  --diff-add-ink: #1f5132;
-  --diff-del: #f6e0db;
-  --diff-del-ink: #7f241d;
+  --diff-add: #e2f0e2;
+  --diff-add-ink: #1d5530;
+  --diff-del: #f7e1dc;
+  --diff-del-ink: #84241c;
 
   /* Type */
-  --font-display: "Newsreader Variable", "Newsreader", Georgia, "Times New Roman", serif;
   --font-ui: "IBM Plex Sans Variable", "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
+  --text-2xs: 10.5px;
   --text-xs: 11.5px;
   --text-sm: 12.5px;
   --text-md: 14px;
@@ -66,6 +87,7 @@
   --text-xl: 20px;
   --text-2xl: 28px;
   --text-3xl: 40px;
+  --text-4xl: 54px;
 
   --leading-tight: 1.2;
   --leading: 1.5;
@@ -84,8 +106,9 @@
   --radius: 6px;
   --radius-lg: 10px;
 
-  --sidebar-width: 232px;
+  --sidebar-width: 240px;
   --list-width: 400px;
+  --filter-height: 51px;
 
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --duration: 160ms;
@@ -93,44 +116,56 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #171513;
-  --paper-raised: #1f1c19;
-  --paper-sunken: #131110;
-  --paper-selected: #26221e;
 
-  --ink: #ece5d6;
-  --ink-soft: #d6cebf;
-  --ink-muted: #a69d8f; /* 6.8:1 on --paper, 6.3:1 on --paper-raised */
-  --ink-faint: #7a7266;
-  --hairline: #332e29;
-  --hairline-strong: #463f38;
+  /* Surfaces — Graphite */
+  --paper: #0f0f11;
+  --paper-raised: #16161a;
+  --paper-sunken: #0b0b0d;
+  --paper-selected: #1c1c21;
 
-  --thread: #d6944c;
-  --thread-strong: #e2a865;
-  --thread-wash: #33271a;
+  --ink: #ececef;
+  --ink-soft: #cacad2;
+  --ink-muted: #94949f; /* 6.6:1 on --paper, 6.1:1 on --paper-raised */
+  --ink-faint: #5e5e68;
+  --hairline: #232328;
+  --hairline-strong: #34343c;
 
-  --ok-ink: #95cfa3;
-  --ok-wash: #1f2d22;
-  --unknown-ink: #aeb9d9;
-  --unknown-wash: #222837;
-  --warn-ink: #e6bd6a;
-  --warn-wash: #33291a;
-  --danger-ink: #f0958a;
-  --danger-wash: #3a2120;
-  --muted-wash: #26221e;
+  --thread: #f2a541;
+  --thread-strong: #f7bb66;
+  --thread-wash: #2b2012;
 
-  --focus: #ece5d6;
-  --focus-halo: #171513;
-  --button-ink: #ece5d6;
-  --button-ink-text: #171513;
-  --button-ink-hover: #d6cebf;
-  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
-  --scrim: rgba(0, 0, 0, 0.5);
+  --dye-0: #8eaaf0;
+  --dye-1: #f08f75;
+  --dye-2: #95cf86;
+  --dye-3: #ea8cbf;
+  --dye-4: #6fd0cf;
+  --dye-5: #d6a36f;
+  --dye-6: #e2cc58;
+  --dye-7: #b1a2f0;
 
-  --diff-add: #1e2d22;
-  --diff-add-ink: #a5d8b1;
-  --diff-del: #3a2120;
-  --diff-del-ink: #f2a59b;
+  --ok-ink: #8fd6a2;
+  --ok-wash: #15251a;
+  --unknown-ink: #a9b8e2;
+  --unknown-wash: #1a2030;
+  --warn-ink: #eec36c;
+  --warn-wash: #2c2414;
+  --danger-ink: #f3958a;
+  --danger-wash: #331b19;
+  --muted-wash: #1c1c21;
+
+  --focus: #ececef;
+  --focus-halo: #0f0f11;
+  --button-ink: #ececef;
+  --button-ink-text: #0f0f11;
+  --button-ink-hover: #ffffff;
+  --shadow-dialog: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-raised: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  --diff-add: #142a1b;
+  --diff-add-ink: #a3dcb3;
+  --diff-del: #34191a;
+  --diff-del-ink: #f4a69c;
 }
 
 @media (prefers-reduced-motion: reduce) {

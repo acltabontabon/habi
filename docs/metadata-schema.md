@@ -9,7 +9,16 @@ metadata, not a new industry standard.
 - `habi-library.yaml` — at the library root (or configured subfolder). Schema: [`schema/habi-library.schema.json`](../schema/habi-library.schema.json)
 
 Skills without `habi.yaml` remain listed, searchable and installable. Their applicability is
-shown as *not matched*: Habi never infers rules from a title or prose.
+shown as *not matched*: Habi never infers rules from a title or prose. Because they are not
+recommendations, a project's list collapses them into a count per library (installed ones stay
+listed); `habi recommend --all` and *Show* list them. This keeps a large community library from
+burying what actually fits.
+
+Licences are reported, not interpreted: Habi shows the SKILL.md `license` as written and the
+nearest licence file in the skill's folder or one of its parents (`LICENSE`, `LICENSE.txt`,
+`COPYING`, `LICENSE-MIT`, …). A `license` that says *proprietary* adds a note to the install
+review and a warning before sharing. A library narrowed to a subfolder only sees licence files
+inside it.
 
 Examples that the test suite validates: [`schema/examples/valid`](../schema/examples/valid)
 and [`schema/examples/invalid`](../schema/examples/invalid).

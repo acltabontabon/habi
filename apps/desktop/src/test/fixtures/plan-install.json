@@ -1,16 +1,16 @@
 {
-  "id": "84fef9c2-d1f0-4614-804f-1f170afd19a9",
+  "id": "44293bc6-31e5-4d85-9f4d-ce4c867a5d6e",
   "action": "install",
   "title": "Install for Claude Code and Codex in this project",
   "project": "~/work/billing-service",
-  "createdAt": "2026-10-02T00:24:37Z",
+  "createdAt": "2026-10-02T09:49:26Z",
   "items": [
     {
       "key": "local:Example team library#liquibase-migration-review",
       "title": "Liquibase migration review",
       "kind": "workflow",
       "source": "Example team library",
-      "version": "29bb01018b",
+      "version": "79f421fabb",
       "clients": [
         "claude-code",
         "codex"
@@ -22,7 +22,7 @@
       "title": "Java service conventions",
       "kind": "instructions",
       "source": "Example team library",
-      "version": "29bb01018b",
+      "version": "79f421fabb",
       "clients": [
         "claude-code",
         "codex"
@@ -1414,12 +1414,12 @@
       "items": [],
       "clients": [],
       "before": null,
-      "after": "sha256:b80b85c01732b17b18e4e3c03e1cf962f5723214de6fb2d5daef701f8daef4cc",
+      "after": "sha256:17cd071138949cc9ef0ea1cdc0be837c150b6d79667f37f88e836f00b4e8c22c",
       "explanation": "Records what Habi installed (sources, versions, file digests) so it can detect updates and local edits. Safe to commit; contains no absolute paths or secrets.",
       "diff": {
         "hunks": [
           {
-            "header": "@@ -1,0 +1,119 @@",
+            "header": "@@ -1,0 +1,121 @@",
             "lines": [
               {
                 "tag": "added",
@@ -1509,7 +1509,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 15,
-                "text": "      \"installedAt\": \"2026-10-02T00:24:37Z\","
+                "text": "      \"installedAt\": \"2026-10-02T09:49:26Z\","
               },
               {
                 "tag": "added",
@@ -1563,582 +1563,594 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 24,
-                "text": "          \"digest\": \"sha256:336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49\""
+                "text": "          \"digest\": \"sha256:336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 25,
-                "text": "        }"
+                "text": "          \"created\": false"
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 26,
-                "text": "      ],"
+                "text": "        }"
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 27,
-                "text": "      \"mcp\": []"
+                "text": "      ],"
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 28,
-                "text": "    },"
+                "text": "      \"mcp\": []"
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 29,
-                "text": "    {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 30,
-                "text": "      \"source\": {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 31,
-                "text": "        \"identity\": \"local:Example team library\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 32,
-                "text": "        \"name\": \"Example team library\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 33,
-                "text": "        \"subdir\": null"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 34,
-                "text": "      },"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 35,
-                "text": "      \"id\": \"java-service-conventions\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 36,
-                "text": "      \"kind\": \"instructions\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 37,
-                "text": "      \"title\": \"Java service conventions\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 38,
-                "text": "      \"snapshot\": \"29bb01018b1a3d3a4aa298ea5147b05948141f1e\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 39,
-                "text": "      \"contentDigest\": \"sha256:b36146f40738771feb40384d0c253523614882c3399ad36c5481ba4302da2272\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 40,
-                "text": "      \"installedAt\": \"2026-10-02T00:24:37Z\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 41,
-                "text": "      \"clients\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 42,
-                "text": "        \"claude-code\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 43,
-                "text": "        \"codex\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 44,
-                "text": "      ],"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 45,
-                "text": "      \"files\": [],"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 46,
-                "text": "      \"sections\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 47,
-                "text": "        {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 48,
-                "text": "          \"file\": \"AGENTS.md\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 49,
-                "text": "          \"marker\": \"java-service-conventions\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 50,
-                "text": "          \"digest\": \"sha256:399b60a4bdbc805c28165831d5ab36c65b68e91f6dad4935b3fa94a4628d16ca\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 51,
-                "text": "        }"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 52,
-                "text": "      ],"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 53,
-                "text": "      \"mcp\": []"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 54,
                 "text": "    },"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 55,
+                "newLine": 30,
                 "text": "    {"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 56,
+                "newLine": 31,
                 "text": "      \"source\": {"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 57,
+                "newLine": 32,
                 "text": "        \"identity\": \"local:Example team library\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 58,
+                "newLine": 33,
                 "text": "        \"name\": \"Example team library\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 59,
+                "newLine": 34,
                 "text": "        \"subdir\": null"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 60,
+                "newLine": 35,
                 "text": "      },"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 61,
-                "text": "      \"id\": \"liquibase-migration-review\","
+                "newLine": 36,
+                "text": "      \"id\": \"java-service-conventions\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 62,
-                "text": "      \"kind\": \"workflow\","
+                "newLine": 37,
+                "text": "      \"kind\": \"instructions\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 63,
-                "text": "      \"title\": \"Liquibase migration review\","
+                "newLine": 38,
+                "text": "      \"title\": \"Java service conventions\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 64,
-                "text": "      \"snapshot\": \"29bb01018b1a3d3a4aa298ea5147b05948141f1e\","
+                "newLine": 39,
+                "text": "      \"snapshot\": \"79f421fabbe23363dfb22b9320e4e5cca82a5073\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 65,
-                "text": "      \"contentDigest\": \"sha256:431ae89301dbbaf488a43de063705de2643c3d8b452484d9c3f5667cf1974b25\","
+                "newLine": 40,
+                "text": "      \"contentDigest\": \"sha256:b36146f40738771feb40384d0c253523614882c3399ad36c5481ba4302da2272\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 66,
-                "text": "      \"installedAt\": \"2026-10-02T00:24:37Z\","
+                "newLine": 41,
+                "text": "      \"installedAt\": \"2026-10-02T09:49:26Z\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 67,
+                "newLine": 42,
                 "text": "      \"clients\": ["
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 68,
+                "newLine": 43,
                 "text": "        \"claude-code\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 69,
+                "newLine": 44,
                 "text": "        \"codex\""
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 70,
+                "newLine": 45,
                 "text": "      ],"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 71,
-                "text": "      \"files\": ["
+                "newLine": 46,
+                "text": "      \"files\": [],"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 72,
+                "newLine": 47,
+                "text": "      \"sections\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 48,
                 "text": "        {"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 73,
-                "text": "          \"path\": \".agents/skills/liquibase-migration-review/SKILL.md\","
+                "newLine": 49,
+                "text": "          \"file\": \"AGENTS.md\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 74,
-                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
+                "newLine": 50,
+                "text": "          \"marker\": \"java-service-conventions\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 75,
-                "text": "          \"clients\": ["
+                "newLine": 51,
+                "text": "          \"digest\": \"sha256:399b60a4bdbc805c28165831d5ab36c65b68e91f6dad4935b3fa94a4628d16ca\","
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 76,
-                "text": "            \"codex\""
+                "newLine": 52,
+                "text": "          \"created\": true"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 77,
-                "text": "          ]"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 78,
-                "text": "        },"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 79,
-                "text": "        {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 80,
-                "text": "          \"path\": \".agents/skills/liquibase-migration-review/habi.yaml\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 81,
-                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 82,
-                "text": "          \"clients\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 83,
-                "text": "            \"codex\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 84,
-                "text": "          ]"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 85,
-                "text": "        },"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 86,
-                "text": "        {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 87,
-                "text": "          \"path\": \".agents/skills/liquibase-migration-review/references/checklist.md\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 88,
-                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 89,
-                "text": "          \"clients\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 90,
-                "text": "            \"codex\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 91,
-                "text": "          ]"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 92,
-                "text": "        },"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 93,
-                "text": "        {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 94,
-                "text": "          \"path\": \".claude/skills/liquibase-migration-review/SKILL.md\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 95,
-                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 96,
-                "text": "          \"clients\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 97,
-                "text": "            \"claude-code\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 98,
-                "text": "          ]"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 99,
-                "text": "        },"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 100,
-                "text": "        {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 101,
-                "text": "          \"path\": \".claude/skills/liquibase-migration-review/habi.yaml\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 102,
-                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 103,
-                "text": "          \"clients\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 104,
-                "text": "            \"claude-code\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 105,
-                "text": "          ]"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 106,
-                "text": "        },"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 107,
-                "text": "        {"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 108,
-                "text": "          \"path\": \".claude/skills/liquibase-migration-review/references/checklist.md\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 109,
-                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 110,
-                "text": "          \"clients\": ["
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 111,
-                "text": "            \"claude-code\""
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 112,
-                "text": "          ]"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 113,
+                "newLine": 53,
                 "text": "        }"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 114,
+                "newLine": 54,
                 "text": "      ],"
               },
               {
                 "tag": "added",
                 "oldLine": null,
-                "newLine": 115,
-                "text": "      \"sections\": [],"
-              },
-              {
-                "tag": "added",
-                "oldLine": null,
-                "newLine": 116,
+                "newLine": 55,
                 "text": "      \"mcp\": []"
               },
               {
                 "tag": "added",
                 "oldLine": null,
+                "newLine": 56,
+                "text": "    },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 57,
+                "text": "    {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 58,
+                "text": "      \"source\": {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 59,
+                "text": "        \"identity\": \"local:Example team library\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 60,
+                "text": "        \"name\": \"Example team library\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 61,
+                "text": "        \"subdir\": null"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 62,
+                "text": "      },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 63,
+                "text": "      \"id\": \"liquibase-migration-review\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 64,
+                "text": "      \"kind\": \"workflow\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 65,
+                "text": "      \"title\": \"Liquibase migration review\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 66,
+                "text": "      \"snapshot\": \"79f421fabbe23363dfb22b9320e4e5cca82a5073\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 67,
+                "text": "      \"contentDigest\": \"sha256:431ae89301dbbaf488a43de063705de2643c3d8b452484d9c3f5667cf1974b25\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 68,
+                "text": "      \"installedAt\": \"2026-10-02T09:49:26Z\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 69,
+                "text": "      \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 70,
+                "text": "        \"claude-code\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 71,
+                "text": "        \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 72,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 73,
+                "text": "      \"files\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 74,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 75,
+                "text": "          \"path\": \".agents/skills/liquibase-migration-review/SKILL.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 76,
+                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 77,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 78,
+                "text": "            \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 79,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 80,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 81,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 82,
+                "text": "          \"path\": \".agents/skills/liquibase-migration-review/habi.yaml\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 83,
+                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 84,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 85,
+                "text": "            \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 86,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 87,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 88,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 89,
+                "text": "          \"path\": \".agents/skills/liquibase-migration-review/references/checklist.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 90,
+                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 91,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 92,
+                "text": "            \"codex\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 93,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 94,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 95,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 96,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/SKILL.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 97,
+                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 98,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 99,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 100,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 101,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 102,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 103,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/habi.yaml\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 104,
+                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 105,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 106,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 107,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 108,
+                "text": "        },"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 109,
+                "text": "        {"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 110,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/references/checklist.md\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 111,
+                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 112,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 113,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 114,
+                "text": "          ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 115,
+                "text": "        }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 116,
+                "text": "      ],"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
                 "newLine": 117,
-                "text": "    }"
+                "text": "      \"sections\": [],"
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 118,
-                "text": "  ]"
+                "text": "      \"mcp\": []"
               },
               {
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 119,
+                "text": "    }"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 120,
+                "text": "  ]"
+              },
+              {
+                "tag": "added",
+                "oldLine": null,
+                "newLine": 121,
                 "text": "}"
               }
             ]
           }
         ],
-        "added": 119,
+        "added": 121,
         "removed": 0,
         "binary": false,
         "truncated": false

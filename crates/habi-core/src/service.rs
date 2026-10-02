@@ -577,6 +577,7 @@ impl Habi {
             id: LOCAL_SOURCE_ID.into(),
             name: LOCAL_SOURCE_NAME.into(),
             kind: SourceKind::Directory,
+            role: crate::source::SourceRole::Team,
             location: crate::paths::display_path(&self.paths.skills()),
             subdir: None,
             tracked: TrackedRef::Default,

@@ -62,6 +62,8 @@ cargo install --path crates/habi-cli       # puts `habi` on your PATH
 habi source add Team git@github.com:your-team/skills.git --branch main
 # …or a library folder on this machine (relative paths are fine):
 habi source add Local ./fixtures/libraries/example-team-library
+# …or a community library (published by others, not reviewed by your team):
+habi source add Superpowers https://github.com/obra/superpowers --community
 habi source refresh
 
 cd path/to/project                         # any folder inside it works

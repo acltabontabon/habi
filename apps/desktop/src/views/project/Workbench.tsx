@@ -5,6 +5,8 @@ import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Recommendation } from "../../bindings/Recommendation";
 import { Icon } from "../../components/Icon";
 import { Empty, Status } from "../../components/ui";
+import { Strand } from "../../components/Weave";
+import { useDyes } from "../../lib/dye";
 import { groupHint, groupLabel, installLabel, installTone, kindLabel } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { ItemDetailPane } from "./ItemDetailPane";
@@ -25,8 +27,10 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
   const { navigate } = useNav();
   const [filter, setFilter] = useState("");
   const [showNotApplicable, setShowNotApplicable] = useState(false);
+  const [showAvailable, setShowAvailable] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const projectId = overview.project.id;
+  const dyes = useDyes();
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -39,7 +43,21 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
     );
   }, [overview.recommendations, filter]);
 
-  const navigable = visible.filter((r) => r.group !== "notApplicable" || showNotApplicable || filter);
+  // Items without applicability rules are not recommendations: unless shown,
+  // only installed ones (which may need an update) are listed.
+  const listed = (r: Recommendation) =>
+    filter ||
+    (r.group === "notApplicable"
+      ? showNotApplicable
+      : r.group !== "available" || showAvailable || r.installState !== "notInstalled");
+  const navigable = visible.filter(listed);
+  const unmatchedByLibrary = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of overview.recommendations)
+      if (r.group === "available" && r.installState === "notInstalled")
+        counts.set(r.item.sourceName, (counts.get(r.item.sourceName) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [overview.recommendations]);
   const selected =
     overview.recommendations.find((r) => r.item.key === itemKey) ??
     navigable[0] ??
@@ -88,57 +106,74 @@ export function Workbench({ overview, itemKey }: { overview: ProjectOverview; it
           <Empty title="Nothing matches that filter." />
         ) : (
           GROUPS.filter((g) => counts[g] > 0).map((group) => {
-            const collapsed = group === "notApplicable" && !showNotApplicable && !filter;
+            const collapsible = (group === "notApplicable" || group === "available") && !filter;
+            const shown = group === "notApplicable" ? showNotApplicable : showAvailable;
+            const setShown = group === "notApplicable" ? setShowNotApplicable : setShowAvailable;
+            const members = visible.filter((r) => r.group === group && listed(r));
+            const collapsed = collapsible && !shown;
             return (
               <section key={group} className="rec-group" aria-labelledby={`group-${group}`}>
-                <header className="rec-group-head">
+                <header className="rec-group-head" data-group={group} title={groupHint[group]}>
+                  <span className="rec-group-mark" aria-hidden="true" />
                   <h2 id={`group-${group}`} className="rec-group-title">
-                    {groupLabel[group]} <span className="rec-group-count">{counts[group]}</span>
+                    {groupLabel[group]}
                   </h2>
-                  {group === "notApplicable" && !filter ? (
+                  <span className="rec-group-count">
+                    {counts[group]}
+                    <span className="visually-hidden"> items</span>
+                  </span>
+                  {collapsible ? (
                     <button
                       type="button"
                       className="link-btn"
                       aria-expanded={!collapsed}
-                      onClick={() => setShowNotApplicable((s) => !s)}
+                      onClick={() => setShown((s) => !s)}
                     >
                       {collapsed ? "Show" : "Hide"}
                     </button>
                   ) : null}
                 </header>
                 {collapsed ? (
-                  <p className="rec-group-hint">{groupHint[group]}</p>
-                ) : (
+                  <p className="rec-group-hint">
+                    {groupHint[group]}
+                    {group === "available" && unmatchedByLibrary.length > 0
+                      ? ` From ${unmatchedByLibrary.map(([name, n]) => `${name} (${n})`).join(", ")}.`
+                      : null}
+                  </p>
+                ) : null}
+                {members.length > 0 ? (
                   <ul className="rec-list">
-                    {visible
-                      .filter((r) => r.group === group)
-                      .map((r) => {
-                        const active = r.item.key === selected?.item.key;
-                        return (
-                          <li key={r.item.key}>
-                            <button
-                              type="button"
-                              data-key={r.item.key}
-                              className={`rec-row${active ? " is-active" : ""}`}
-                              aria-current={active ? "true" : undefined}
-                              onClick={() => select(r)}
-                              onKeyDown={onKeyDown}
-                            >
-                              <span className="rec-row-top">
-                                <span className="rec-row-title">{r.item.title}</span>
-                                {rowStatus(r)}
+                    {members.map((r) => {
+                      const active = r.item.key === selected?.item.key;
+                      return (
+                        <li key={r.item.key}>
+                          <button
+                            type="button"
+                            data-key={r.item.key}
+                            className={`rec-row${active ? " is-active" : ""}`}
+                            aria-current={active ? "true" : undefined}
+                            onClick={() => select(r)}
+                            onKeyDown={onKeyDown}
+                          >
+                            <span className="rec-row-top">
+                              <span className="rec-row-title">{r.item.title}</span>
+                              {rowStatus(r)}
+                            </span>
+                            <span className="rec-row-reason">{r.applicability.reason}</span>
+                            <span className="rec-row-meta">
+                              <span className="provenance">
+                                <Strand dye={dyes(r.item.sourceId)} size={13} />
+                                {r.item.sourceName}
                               </span>
-                              <span className="rec-row-reason">{r.applicability.reason}</span>
-                              <span className="rec-row-meta">
-                                {kindLabel[r.item.kind]} · {r.item.sourceName}
-                                {r.item.requirement === "required" ? " · required" : ""}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
+                              <span>{kindLabel[r.item.kind]}</span>
+                              {r.item.requirement === "required" ? <span>required</span> : null}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
-                )}
+                ) : null}
               </section>
             );
           })

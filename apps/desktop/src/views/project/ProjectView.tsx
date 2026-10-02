@@ -1,10 +1,12 @@
 /** Project home: identity, a concise understanding, and the workbench. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { type CSSProperties, useEffect, useMemo } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
+import { Strand, Swatch } from "../../components/Weave";
 import { api } from "../../lib/api";
+import { useDyes } from "../../lib/dye";
 import { plural } from "../../lib/format";
 import { type ProjectTab, useNav } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
@@ -68,6 +70,21 @@ export function ProjectView({
 
   const data = overview.data;
   const facts = useMemo(() => (data ? understanding(data) : []), [data]);
+  const dyes = useDyes();
+  // The libraries this project is woven from: those with items that fit it
+  // (or that the team requires), in order of how much they contribute.
+  const weave = useMemo(() => {
+    const counts = new Map<string, { id: string; name: string; count: number }>();
+    for (const r of data?.recommendations ?? []) {
+      if (r.applicability.applicability !== "applies") continue;
+      const entry = counts.get(r.item.sourceId) ?? { id: r.item.sourceId, name: r.item.sourceName, count: 0 };
+      entry.count += 1;
+      counts.set(r.item.sourceId, entry);
+    }
+    return [...counts.values()]
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .map((w) => ({ ...w, dye: dyes(w.id) }));
+  }, [data, dyes]);
 
   if (overview.isPending) {
     return (
@@ -113,8 +130,22 @@ export function ProjectView({
 
   return (
     <div className="project">
-      <header className="project-head">
+      <header className="project-head project-head-woven">
+        <Swatch
+          dyes={weave.map((w) => w.dye)}
+          seed={project.id}
+          size={72}
+          label={
+            weave.length > 0
+              ? `Woven from ${weave.map((w) => w.name).join(", ")}`
+              : "Nothing from your libraries fits yet"
+          }
+        />
         <div className="project-identity">
+          <p className="kicker">
+            {inspection.repository.isMonorepo ? "Monorepo" : "Project"}
+            {project.sample ? " · sample" : ""}
+          </p>
           <div className="project-title-row">
             <h1 className="project-title">{project.name}</h1>
             {project.sample ? <Label tone="thread">Sample project</Label> : null}
@@ -127,16 +158,18 @@ export function ProjectView({
               </span>
             ) : null}
           </p>
-          <p className="project-understanding">
-            {facts.length > 0 ? facts.join(" · ") : "No recognized frameworks or languages"}
-            <span className="muted">
-              {" "}
-              —{" "}
-              {inspection.repository.isMonorepo
-                ? `monorepo, ${plural(modules.length, "module")}`
-                : plural(Math.max(modules.length, 1), "module")}
-            </span>
-          </p>
+          <ul className="stack-tokens" aria-label="What Habi recognized">
+            {facts.length > 0 ? (
+              facts.map((f) => (
+                <li key={f} className="stack-token">
+                  {f}
+                </li>
+              ))
+            ) : (
+              <li className="stack-token stack-token-quiet">no recognized frameworks or languages</li>
+            )}
+            <li className="stack-token stack-token-quiet">{plural(Math.max(modules.length, 1), "module")}</li>
+          </ul>
         </div>
         <div className="project-actions">
           <Button size="sm" icon="refresh" onClick={rescan} busy={overview.isFetching}>
@@ -152,6 +185,32 @@ export function ProjectView({
           </Button>
         </div>
       </header>
+
+      {weave.length > 0 ? (
+        <section className="composition" aria-label="What fits, by library">
+          <div className="composition-bar" aria-hidden="true">
+            {weave.map((w) => (
+              <span
+                key={w.id}
+                className={`composition-seg${w.dye.community ? " is-community" : ""}`}
+                style={{ flexGrow: w.count, "--seg": w.dye.color } as CSSProperties}
+              />
+            ))}
+          </div>
+          <ul className="composition-legend">
+            {weave.map((w) => (
+              <li key={w.id}>
+                <Strand dye={w.dye} size={14} />
+                <span>{w.name}</span>
+                <span className="mono composition-count">{w.count}</span>
+              </li>
+            ))}
+            <li className="composition-cli mono" title="The same view from the command line">
+              $ habi recommend
+            </li>
+          </ul>
+        </section>
+      ) : null}
 
       {changed.data && changed.data.length > 0 ? (
         <Notice

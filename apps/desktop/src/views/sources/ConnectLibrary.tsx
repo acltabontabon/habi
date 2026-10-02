@@ -6,9 +6,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { Source } from "../../bindings/Source";
+import type { SourceRole } from "../../bindings/SourceRole";
 import type { TrackedRef } from "../../bindings/TrackedRef";
 import { Button, ErrorNotice, Working } from "../../components/ui";
+import { Strand } from "../../components/Weave";
 import { api, HabiError, newJobId } from "../../lib/api";
+import { COMMUNITY_LIBRARIES } from "../../lib/community";
 import { invalidateProjectData, keys } from "../../lib/queries";
 
 /** "git@github.com:acme/team-skills.git" -> "team-skills". */
@@ -38,6 +41,7 @@ export function ConnectLibrary({
   const [subdir, setSubdir] = useState("");
   const [trackKind, setTrackKind] = useState<"default" | "branch" | "tag">("default");
   const [refName, setRefName] = useState("");
+  const [role, setRole] = useState<SourceRole>("team");
   const [registered, setRegistered] = useState<Source | null>(null);
   const [job, setJob] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,6 +102,7 @@ export function ConnectLibrary({
           subdir: subdir.trim() || null,
           tracked,
         });
+        if (role === "community") source = await api.setSourceRole(source.id, "community");
         setRegistered(source);
         void client.invalidateQueries({ queryKey: keys.sources });
       }
@@ -133,6 +138,43 @@ export function ConnectLibrary({
         if (valid && !busy) void submit();
       }}
     >
+      {!compact && !location.trim() ? (
+        <section className="well-known" aria-labelledby="well-known-title">
+          <h2 id="well-known-title" className="well-known-title">
+            Start from a community library
+          </h2>
+          <ul className="well-known-list">
+            {COMMUNITY_LIBRARIES.map((lib, i) => (
+              <li key={lib.url}>
+                <button
+                  type="button"
+                  className="well-known-row"
+                  onClick={() => {
+                    setLocation(lib.url);
+                    setName(lib.name);
+                    setNameEdited(true);
+                    setRole("community");
+                  }}
+                >
+                  <Strand dye={{ color: `var(--dye-${i % 8})`, community: true }} size={20} />
+                  <span className="well-known-text">
+                    <span className="well-known-name">
+                      {lib.name}{" "}
+                      <span className="mono muted">{lib.url.replace("https://github.com/", "")}</span>
+                    </span>
+                    <span className="well-known-summary">{lib.summary}</span>
+                    <span className="well-known-note">{lib.note}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="field-hint">
+            Published by others and not reviewed by your team. Habi lists their skills; it does not match them
+            to projects until someone adds rules.
+          </p>
+        </section>
+      ) : null}
       <div className="field">
         <label className="field-label" htmlFor="connect-location">
           Repository URL
@@ -177,6 +219,26 @@ export function ConnectLibrary({
         </label>
       ) : null}
 
+      {location.trim() ? (
+        <fieldset className="field" disabled={busy || Boolean(registered)}>
+          <legend className="field-label">Whose library is this?</legend>
+          <div className="segmented">
+            <label className="radio">
+              <input type="radio" name="role" checked={role === "team"} onChange={() => setRole("team")} />
+              Your team's — reviewed where it is maintained
+            </label>
+            <label className="radio">
+              <input
+                type="radio"
+                name="role"
+                checked={role === "community"}
+                onChange={() => setRole("community")}
+              />
+              Community — published by others
+            </label>
+          </div>
+        </fieldset>
+      ) : null}
       <details className="advanced" open={Boolean(subdir) || trackKind !== "default" || undefined}>
         <summary>Advanced options</summary>
         <div className="advanced-body">

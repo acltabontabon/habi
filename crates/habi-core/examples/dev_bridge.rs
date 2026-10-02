@@ -153,6 +153,7 @@ impl Bridge {
             }),
             "add_source" => out(h.sources().add(&arg(a, "source")?)?),
             "remove_source" => out(h.sources().remove(&s("sourceId")?)?),
+            "set_source_role" => out(h.sources().set_role(&s("sourceId")?, arg(a, "role")?)?),
             "refresh_source" => out(h.sources().refresh(&s("sourceId")?, cancel)?),
             "library" => out(h.sources().index(&s("sourceId")?)?),
             "item_detail" => out(h.item_detail(&s("sourceId")?, &s("itemId")?)?),

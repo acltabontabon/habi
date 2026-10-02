@@ -114,6 +114,11 @@ const MIGRATIONS: &[&str] = &[
         deleted_at TEXT
     );
     "#,
+    // v3: whether a library is the team's own or a community one (not
+    // reviewed by the team). A user's classification, changeable any time.
+    r#"
+    ALTER TABLE sources ADD COLUMN role TEXT NOT NULL DEFAULT 'team';
+    "#,
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

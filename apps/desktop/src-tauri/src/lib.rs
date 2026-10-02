@@ -89,6 +89,7 @@ pub fn run() {
             commands::pick_library_folder,
             commands::add_source,
             commands::remove_source,
+            commands::set_source_role,
             commands::refresh_source,
             commands::library,
             commands::item_detail,

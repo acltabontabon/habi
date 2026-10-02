@@ -192,6 +192,7 @@ describe("share dialog", () => {
     id: "team",
     name: "Team",
     kind: "git",
+    role: "team",
     location: "https://github.com/acme/skills.git",
     subdir: null,
     tracked: { kind: "default" },

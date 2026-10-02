@@ -248,10 +248,18 @@ export function ItemDetailPane({
 
         <div className="detail-actions">
           {primary}
-          {r.installState === "notInstalled" && (!primary || r.nextAction === "provideInformation") ? (
+          {r.installState === "notInstalled" &&
+          r.item.installable &&
+          (!primary || r.nextAction === "provideInformation") ? (
             <Button icon="download" onClick={() => setReview(installRequest)}>
               Install anyway…
             </Button>
+          ) : null}
+          {r.installState === "notInstalled" && !r.item.installable ? (
+            <span className="action-note">
+              <Icon name="warning" size={14} /> Cannot be installed: the package is incomplete or its SKILL.md
+              name is not a valid folder name. Details are listed under its problems.
+            </span>
           ) : null}
           {mine ? (
             <Button icon="pencil" onClick={() => navigate({ name: "skills", skillId: mine.id })}>
