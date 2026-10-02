@@ -34,7 +34,7 @@ Semantic versioning, separately for:
 
 1. Move the `CHANGELOG.md` entries under "Unreleased" to a new version heading, and set the
    version in the four manifests.
-2. Make sure CI is green on `main` (macOS, Windows and Linux).
+2. Make sure CI is green on `main` (macOS and Windows).
 3. Run the client [smoke tests](compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it)
    with current Claude Code, Cursor and Codex builds; record the client versions and date
    there.
