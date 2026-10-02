@@ -326,36 +326,46 @@ impl Habi {
     pub fn project(&self, id: &str) -> Result<ProjectRecord> {
         let conn = self.store.conn()?;
         let sample_root = crate::sample::root(&self.paths);
-        conn.query_row(
-            "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
-            [id],
-            |r| {
-                let path: String = r.get(1)?;
-                let root = PathBuf::from(&path);
-                Ok(ProjectRecord {
-                    summary: None,
-                    sample: root.starts_with(&sample_root),
-                    id: r.get(0)?,
-                    name: r.get(2)?,
-                    path: crate::paths::display_path(&root),
-                    exists: root.is_dir(),
-                    last_opened_at: r.get(3)?,
-                    exclusions: serde_json::from_str(&r.get::<_, String>(4)?).unwrap_or_default(),
-                    root,
-                })
-            },
-        )
-        .optional()?
-        .ok_or_else(|| HabiError::NotFound(format!("project {id}")))
-        .map(|mut p| {
-            p.summary = self
-                .store
-                .setting(&summary_key(id))
-                .ok()
-                .flatten()
-                .and_then(|json| serde_json::from_str(&json).ok());
-            p
-        })
+        let (mut record, exclusions) = conn
+            .query_row(
+                "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
+                [id],
+                |r| {
+                    let path: String = r.get(1)?;
+                    let root = PathBuf::from(&path);
+                    Ok((
+                        ProjectRecord {
+                            summary: None,
+                            sample: root.starts_with(&sample_root),
+                            id: r.get(0)?,
+                            name: r.get(2)?,
+                            path: crate::paths::display_path(&root),
+                            exists: root.is_dir(),
+                            last_opened_at: r.get(3)?,
+                            exclusions: Vec::new(),
+                            root,
+                        },
+                        r.get::<_, String>(4)?,
+                    ))
+                },
+            )
+            .optional()?
+            .ok_or_else(|| HabiError::NotFound(format!("project {id}")))?;
+        // Read as "no exclusions", a damaged list would let the next scan
+        // into folders the user excluded.
+        record.exclusions = serde_json::from_str(&exclusions).map_err(|e| {
+            HabiError::Conflict(format!(
+                "the folders excluded from scanning in {} could not be read ({e}); set them again",
+                record.name
+            ))
+        })?;
+        record.summary = self
+            .store
+            .setting(&summary_key(id))
+            .ok()
+            .flatten()
+            .and_then(|json| serde_json::from_str(&json).ok());
+        Ok(record)
     }
 
     fn existing_project(&self, id: &str) -> Result<ProjectRecord> {

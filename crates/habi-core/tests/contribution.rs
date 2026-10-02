@@ -236,6 +236,8 @@ fn secrets_block_a_contribution() {
     let skill = proj.path().join(".claude/skills/deploy-notes");
     std::fs::create_dir_all(&skill).unwrap();
     std::fs::write(skill.join("SKILL.md"), "---\nname: deploy-notes\ndescription: How we deploy.\n---\nUse key AKIAABCDEFGHIJKLMNOP for the bucket.\n").unwrap();
+    // A key file is refused by its name, whatever it contains.
+    std::fs::write(skill.join("deploy.pem"), "placeholder\n").unwrap();
     let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
     let source = habi
         .sources()
@@ -265,6 +267,15 @@ fn secrets_block_a_contribution() {
             .validation
             .iter()
             .any(|d| d.level == DiagnosticLevel::Error && d.message.contains("AWS"))
+    );
+    assert!(
+        draft
+            .validation
+            .iter()
+            .any(|d| d.level == DiagnosticLevel::Error
+                && d.message.contains("deploy.pem has a name used for keys")),
+        "{:?}",
+        draft.validation
     );
     assert!(
         habi.commit_contribution(&draft.id, &CancelToken::new())

@@ -142,7 +142,7 @@ pub fn remove(habi: &Habi) -> Result<()> {
             .collect::<rusqlite::Result<_>>()?
     };
     for id in ids {
-        if habi.project(&id)?.sample {
+        if habi.project(&id).is_ok_and(|p| p.sample) {
             habi.forget_project(&id)?;
             let journal = crate::install::apply::journal_dir(&habi.paths, &id);
             if journal.exists() {

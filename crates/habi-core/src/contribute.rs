@@ -2075,7 +2075,16 @@ impl<'a> Contributions<'a> {
         }
         out.extend(index.diagnostics);
         for (path, bytes) in outgoing {
-            if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes)) {
+            let name = path.rsplit('/').next().unwrap_or(path);
+            if crate::inspect::walk::is_secret_name(name) {
+                out.push(Diagnostic::error(
+                    format!(
+                        "{path} has a name used for keys, credentials or environment secrets. Remove it before sharing, or rename it if it holds none."
+                    ),
+                    Some(path),
+                ));
+            } else if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes))
+            {
                 out.push(Diagnostic::error(
                     format!("{path} appears to contain {what}. Remove it before sharing."),
                     Some(path),

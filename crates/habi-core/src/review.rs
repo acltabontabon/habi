@@ -656,6 +656,8 @@ pub fn open_request(
     cancel: &CancelToken,
 ) -> std::result::Result<String, String> {
     let host = tools.resolve(repo, cancel)?;
+    // Title and message are the author's free text: attached with `=` so
+    // one starting with `-` is never read as an option.
     let args: Vec<String> = match host {
         ReviewHost::GitHub => vec![
             "pr".into(),
@@ -666,10 +668,8 @@ pub fn open_request(
             branch.into(),
             "--base".into(),
             base.into(),
-            "--title".into(),
-            title.into(),
-            "--body".into(),
-            body.into(),
+            format!("--title={title}"),
+            format!("--body={body}"),
         ],
         // `--repo host/group/repo` would be read as a group path; a full
         // URL is unambiguous for nested groups and self-hosted instances.
@@ -682,10 +682,8 @@ pub fn open_request(
             branch.into(),
             "--target-branch".into(),
             base.into(),
-            "--title".into(),
-            title.into(),
-            "--description".into(),
-            body.into(),
+            format!("--title={title}"),
+            format!("--description={body}"),
             "--yes".into(),
         ],
     };
