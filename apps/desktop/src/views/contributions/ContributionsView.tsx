@@ -30,6 +30,7 @@ import {
   useRecentProjects,
   useSources,
 } from "../../lib/queries";
+import { useOpenExternal } from "../../lib/safeInvoke";
 import {
   type FinalAction,
   finalAction,
@@ -1216,6 +1217,7 @@ function StartContribution() {
 /** One contribution: its state, where it goes, and the one thing to do next. */
 function ShareRow({ c }: { c: Contribution }) {
   const { navigate } = useNav();
+  const openExternal = useOpenExternal();
   const action = nextAction(c);
   const details = () => navigate({ name: "contributions", contributionId: c.id });
   const attention = sharingChip(c).state === "attention";
@@ -1240,7 +1242,7 @@ function ShareRow({ c }: { c: Contribution }) {
         variant={attention ? "primary" : "secondary"}
         icon={action.kind === "open" ? "external" : undefined}
         aria-label={`${action.label}: ${c.title}`}
-        onClick={() => (action.kind === "open" ? void api.openExternal(action.url) : details())}
+        onClick={() => (action.kind === "open" ? openExternal(action.url) : details())}
       >
         {action.label}
       </Button>

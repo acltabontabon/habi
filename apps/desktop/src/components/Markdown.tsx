@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import { api } from "../lib/api";
+import { useOpenExternal } from "../lib/safeInvoke";
 
 function isRelative(url: string): boolean {
   return Boolean(url) && !url.startsWith("#") && !url.startsWith("/") && !/^[a-z][a-z0-9+.-]*:/i.test(url);
@@ -55,6 +55,7 @@ export function Markdown({
   /** The skill's files, to tell a working local link from a broken one. */
   files?: string[];
 }) {
+  const openExternal = useOpenExternal();
   return (
     <div className="prose">
       <ReactMarkdown
@@ -71,7 +72,7 @@ export function Markdown({
                   title={`Opens ${url} in your browser`}
                   onClick={(event) => {
                     event.preventDefault();
-                    void api.openExternal(url);
+                    openExternal(url);
                   }}
                 >
                   {children}
