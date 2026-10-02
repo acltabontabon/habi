@@ -32,12 +32,13 @@ impl Tail {
 
     fn push(&mut self, chunk: &[u8]) {
         self.total += chunk.len() as u64;
-        for b in chunk {
-            if self.bytes.len() == self.capacity {
-                self.bytes.pop_front();
-            }
-            self.bytes.push_back(*b);
-        }
+        // Only the last `capacity` bytes of the chunk can survive; drop
+        // as many old bytes as needed in one go, then append in one go.
+        let keep = chunk.len().min(self.capacity);
+        let chunk = chunk.get(chunk.len() - keep..).unwrap_or_default();
+        let overflow = (self.bytes.len() + keep).saturating_sub(self.capacity);
+        self.bytes.drain(..overflow);
+        self.bytes.extend(chunk);
     }
 }
 
@@ -291,6 +292,31 @@ pub fn run(spec: Spec, cancel: &CancelToken) -> Result<Output> {
         timed_out,
         duration: started.elapsed(),
     })
+}
+
+#[cfg(test)]
+mod tail_tests {
+    use super::Tail;
+
+    #[test]
+    fn keeps_the_last_bytes_across_chunks() {
+        let mut tail = Tail::new(5);
+        tail.push(b"abc");
+        assert_eq!(tail.bytes, b"abc");
+        tail.push(b"de");
+        assert_eq!(tail.bytes, b"abcde");
+        tail.push(b"fg");
+        assert_eq!(tail.bytes, b"cdefg");
+        tail.push(b"0123456789");
+        assert_eq!(tail.bytes, b"56789");
+        tail.push(b"");
+        assert_eq!(tail.bytes, b"56789");
+        assert_eq!(tail.total, 17);
+        let mut none = Tail::new(0);
+        none.push(b"abc");
+        assert!(none.bytes.is_empty());
+        assert_eq!(none.total, 3);
+    }
 }
 
 #[cfg(all(test, unix))]

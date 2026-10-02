@@ -188,6 +188,29 @@ fn rank(a: Applicability) -> u8 {
     }
 }
 
+/// What conditions are evaluated against in one project: the repository as
+/// a whole and each module. Built once and shared by every item assessed
+/// against the project (see `assess_in`).
+pub struct Views<'a> {
+    inspection: &'a ProjectInspection,
+    repository: View<'a>,
+    modules: Vec<View<'a>>,
+}
+
+impl<'a> Views<'a> {
+    pub fn new(inspection: &'a ProjectInspection, declarations: &'a [Declaration]) -> Self {
+        Views {
+            inspection,
+            repository: View::repository(inspection, declarations),
+            modules: inspection
+                .modules
+                .iter()
+                .map(|m| View::module(inspection, &m.id, declarations))
+                .collect(),
+        }
+    }
+}
+
 /// Evaluates an item's conditions against a project.
 pub fn assess(
     applies_when: Option<&Condition>,
@@ -196,6 +219,22 @@ pub fn assess(
     inspection: &ProjectInspection,
     declarations: &[Declaration],
 ) -> ApplicabilityResult {
+    assess_in(
+        applies_when,
+        excludes,
+        scope,
+        &Views::new(inspection, declarations),
+    )
+}
+
+/// `assess` with views built beforehand, for assessing many items.
+pub fn assess_in(
+    applies_when: Option<&Condition>,
+    excludes: Option<&Condition>,
+    scope: Scope,
+    views: &Views,
+) -> ApplicabilityResult {
+    let inspection = views.inspection;
     if applies_when.is_none() && excludes.is_none() {
         return ApplicabilityResult {
             applicability: Applicability::Undeclared,
@@ -206,9 +245,9 @@ pub fn assess(
         };
     }
 
-    let evaluate_view = |view: View, module: &str, name: String| {
-        let a = applies_when.map(|c| evaluate(c, &view));
-        let e = excludes.map(|c| evaluate(c, &view));
+    let evaluate_view = |view: &View, module: &str, name: String| {
+        let a = applies_when.map(|c| evaluate(c, view));
+        let e = excludes.map(|c| evaluate(c, view));
         let (applicability, reason) = decide(a.as_ref(), e.as_ref());
         let spec = a.as_ref().map(specificity).unwrap_or(0);
         ModuleMatch {
@@ -224,20 +263,15 @@ pub fn assess(
 
     let mut modules: Vec<ModuleMatch> = match scope {
         Scope::Repository => vec![evaluate_view(
-            View::repository(inspection, declarations),
+            &views.repository,
             "*",
             inspection.name.clone(),
         )],
         Scope::Module => inspection
             .modules
             .iter()
-            .map(|m| {
-                evaluate_view(
-                    View::module(inspection, &m.id, declarations),
-                    &m.id,
-                    m.name.clone(),
-                )
-            })
+            .zip(&views.modules)
+            .map(|(m, view)| evaluate_view(view, &m.id, m.name.clone()))
             .collect(),
     };
     modules.sort_by(|a, b| {
