@@ -28,7 +28,7 @@ use habi_core::source::{NewSource, RefreshOutcome, Source, SourceRole};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
@@ -71,6 +71,11 @@ pub struct AppInfo {
 
 #[tauri::command]
 pub async fn app_info(state: State<'_, AppState>) -> CmdResult<AppInfo> {
+    // Looking up tools spawns processes; keep that off the async runtime.
+    let (git_available, gh_available, glab_available) =
+        tauri::async_runtime::spawn_blocking(|| (which("git"), which("gh"), which("glab")))
+            .await
+            .map_err(|e| internal(format!("background task failed: {e}")))?;
     Ok(AppInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         data_dir: state
@@ -79,9 +84,9 @@ pub async fn app_info(state: State<'_, AppState>) -> CmdResult<AppInfo> {
             .map(|h| habi_core::paths::display_path(&h.paths.root))
             .unwrap_or_default(),
         platform: std::env::consts::OS.to_string(),
-        git_available: which("git"),
-        gh_available: which("gh"),
-        glab_available: which("glab"),
+        git_available,
+        gh_available,
+        glab_available,
         startup_error: state.startup_error.clone(),
     })
 }
@@ -235,13 +240,17 @@ pub async fn watch_project(
 ) -> CmdResult<()> {
     let habi = state.habi()?;
     let project = blocking(habi, move |h| h.project(&project_id)).await?;
-    crate::watch::start(&app, &state, &project.id, &project.root)
-        .map_err(|e| internal(format!("could not watch the project for changes: {e}")))
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::watch::start(&app, &project.id, &project.root)
+    })
+    .await
+    .map_err(|e| internal(format!("background task failed: {e}")))?
+    .map_err(|e| internal(format!("could not watch the project for changes: {e}")))
 }
 
 #[tauri::command]
-pub async fn unwatch_project(state: State<'_, AppState>) -> CmdResult<()> {
-    crate::watch::stop(&state);
+pub async fn unwatch_project(state: State<'_, AppState>, project_id: String) -> CmdResult<()> {
+    crate::watch::stop(&state, Some(&project_id));
     Ok(())
 }
 
@@ -347,7 +356,7 @@ pub async fn pick_library_folder(
     state
         .picked_folders
         .lock()
-        .expect("picked folders")
+        .unwrap_or_else(PoisonError::into_inner)
         .insert(canonical.clone());
     Ok(Some(canonical.to_string_lossy().into_owned()))
 }
@@ -359,7 +368,10 @@ pub async fn add_source(state: State<'_, AppState>, source: NewSource) -> CmdRes
     use habi_core::source::{Location, parse_location};
     match parse_location(&source.location).map_err(|e| e.to_info())? {
         Location::LocalGit(path) | Location::LocalDir(path) => {
-            let picked = state.picked_folders.lock().expect("picked folders");
+            let picked = state
+                .picked_folders
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
             if !picked.contains(&path) {
                 return Err(HabiError::invalid(
                     "choose local library folders with the folder picker",
@@ -1125,7 +1137,7 @@ pub async fn pick_import_folder(
     state
         .picked_folders
         .lock()
-        .expect("picked folders")
+        .unwrap_or_else(PoisonError::into_inner)
         .insert(canonical.clone());
     Ok(Some(canonical.to_string_lossy().into_owned()))
 }
@@ -1138,7 +1150,7 @@ fn check_import_source(state: &AppState, from: &ImportFrom) -> CmdResult<()> {
         if !state
             .picked_folders
             .lock()
-            .expect("picked folders")
+            .unwrap_or_else(PoisonError::into_inner)
             .contains(&canonical)
         {
             return Err(HabiError::invalid("choose the folder with the folder picker").to_info());

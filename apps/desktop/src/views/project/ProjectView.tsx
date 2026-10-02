@@ -1,6 +1,6 @@
 /** Project home: identity, a concise understanding, and the workbench. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, useEffect, useMemo } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
@@ -56,10 +56,16 @@ export function ProjectView({
   });
 
   // Watch this project for changes while it is open.
+  const [watchError, setWatchError] = useState<unknown>(null);
   useEffect(() => {
-    void api.watchProject(projectId).catch(() => undefined);
+    let live = true;
+    setWatchError(null);
+    api.watchProject(projectId).catch((e: unknown) => {
+      if (live) setWatchError(e);
+    });
     return () => {
-      void api.unwatchProject().catch(() => undefined);
+      live = false;
+      void api.unwatchProject(projectId).catch(() => undefined);
     };
   }, [projectId]);
 
@@ -232,6 +238,13 @@ export function ProjectView({
           <span className="mono">{changed.data.slice(0, 3).join(", ")}</span>
           {changed.data.length > 3 ? ` and ${changed.data.length - 3} more` : ""}. Recommendations may be out
           of date.
+        </Notice>
+      ) : null}
+
+      {watchError ? (
+        <Notice tone="unknown" title="Habi is not following changes in this project">
+          Use Rescan after you change files.
+          {watchError instanceof Error ? <span className="muted"> ({watchError.message})</span> : null}
         </Notice>
       ) : null}
 

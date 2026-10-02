@@ -102,7 +102,7 @@ export const api = {
   projectOverview: (projectId: string, rescan: boolean, jobId?: string) =>
     call<ProjectOverview>("project_overview", { projectId, rescan, jobId: jobId ?? null }),
   watchProject: (projectId: string) => call<void>("watch_project", { projectId }),
-  unwatchProject: () => call<void>("unwatch_project"),
+  unwatchProject: (projectId: string) => call<void>("unwatch_project", { projectId }),
   readProjectExcerpt: (projectId: string, path: string, line: number | null) =>
     call<Excerpt>("read_project_excerpt", { projectId, path, line }),
   revealProjectPath: (projectId: string, path: string | null) =>
