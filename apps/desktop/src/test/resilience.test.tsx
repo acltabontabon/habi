@@ -7,8 +7,9 @@ import { App } from "../App";
 import type { LocalSkill } from "../bindings/LocalSkill";
 import type { ProjectRecord } from "../bindings/ProjectRecord";
 import type { Source } from "../bindings/Source";
+import { Dialog } from "../components/Dialog";
 import { ErrorBoundary } from "../components/ErrorBoundary";
-import { ToastProvider } from "../components/Toasts";
+import { ToastProvider, useToast } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { HabiError } from "../lib/api";
 import { guardWindowClose } from "../lib/closing";
@@ -435,5 +436,54 @@ describe("connecting a library", () => {
     view.unmount();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(handlers.remove_source).not.toHaveBeenCalled();
+  });
+});
+
+describe("toasts and dialogs", () => {
+  it("announces errors at once, and keeps a hovered toast until the pointer leaves", async () => {
+    vi.useFakeTimers();
+    function Shout() {
+      const toast = useToast();
+      return (
+        <>
+          <button type="button" onClick={() => toast.show("Copied")}>
+            ok
+          </button>
+          <button type="button" onClick={() => toast.show("Not saved", "danger")}>
+            fail
+          </button>
+        </>
+      );
+    }
+    render(
+      <ToastProvider>
+        <Shout />
+      </ToastProvider>,
+    );
+    act(() => screen.getByRole("button", { name: "fail" }).click());
+    expect(screen.getByRole("alert")).toHaveTextContent("Not saved");
+    act(() => screen.getByRole("button", { name: "ok" }).click());
+    const copied = screen.getByText("Copied").parentElement as HTMLElement;
+    expect(copied).not.toHaveAttribute("role");
+
+    act(() => copied.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })));
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByText("Copied")).toBeInTheDocument();
+    act(() => copied.dispatchEvent(new MouseEvent("mouseout", { bubbles: true })));
+    act(() => vi.advanceTimersByTime(6_000));
+    expect(screen.queryByText("Copied")).toBeNull();
+    expect(screen.getByText("Not saved")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("describes a dialog by its description, when it has one", () => {
+    render(
+      <Dialog open onOpenChange={() => {}} title="Remove" description="Nothing is deleted from disk.">
+        <p>body</p>
+      </Dialog>,
+    );
+    expect(screen.getByRole("dialog", { name: "Remove" })).toHaveAccessibleDescription(
+      "Nothing is deleted from disk.",
+    );
   });
 });

@@ -198,7 +198,7 @@ describe("condition builder", () => {
 
   it("has no detectable accessibility violations", async () => {
     const { container } = wrap(<Harness onForm={() => {}} />);
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 });
@@ -414,7 +414,7 @@ describe("welcome", () => {
     expect(screen.getByText("read-only")).toBeInTheDocument();
     // First run: the labeled sample workspace is offered.
     expect(screen.getByRole("button", { name: "Explore a sample workspace" })).toBeInTheDocument();
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 });
