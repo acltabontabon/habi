@@ -1,8 +1,8 @@
 name: Website
 
 # Builds website/ and publishes it to GitHub Pages
-# (https://acltabontabon.github.io/habi/). Pages must be set to deploy from
-# GitHub Actions in the repository settings.
+# (https://acltabontabon.com/habi/). Pages deploys from GitHub Actions
+# (repository settings → Pages → Source).
 
 on:
   push:
