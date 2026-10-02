@@ -5,7 +5,7 @@
  * then, and nothing is sent anywhere.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BackLink } from "../../components/BackLink";
 import { Button, ErrorNotice, Working } from "../../components/ui";
 import { Strand } from "../../components/Weave";
@@ -13,13 +13,26 @@ import { api, HabiError, newJobId } from "../../lib/api";
 import type { CommunityLibrary } from "../../lib/community";
 import { useNav } from "../../lib/nav";
 import { invalidateProjectData, keys, useSources } from "../../lib/queries";
+import { useOpenExternal } from "../../lib/safeInvoke";
 
 export function CommunityPreview({ library }: { library: CommunityLibrary }) {
   const { navigate } = useNav();
+  const openExternal = useOpenExternal();
   const client = useQueryClient();
   const sources = useSources();
   const [job, setJob] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  // Leaving while fetching cancels the fetch (which then unregisters the
+  // library), and a fetch that finishes late does not navigate.
+  const mounted = useRef(true);
+  const jobRef = useRef<string | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (jobRef.current) void api.cancelJob(jobRef.current);
+    };
+  }, []);
   const connected = (sources.data ?? []).find(
     (s) => s.location.toLowerCase().replace(/\.git$/, "") === library.url.toLowerCase(),
   );
@@ -28,6 +41,7 @@ export function CommunityPreview({ library }: { library: CommunityLibrary }) {
     setError(null);
     const id = newJobId();
     setJob(id);
+    jobRef.current = id;
     let registered: string | null = null;
     try {
       const added = await api.addSource({
@@ -41,13 +55,14 @@ export function CommunityPreview({ library }: { library: CommunityLibrary }) {
       void client.invalidateQueries({ queryKey: keys.sources });
       await api.refreshSource(added.id, id);
       invalidateProjectData(client);
-      navigate({ name: "sources", sourceId: added.id });
+      if (mounted.current) navigate({ name: "sources", sourceId: added.id });
     } catch (e) {
       // A library that could not be fetched is not left half-connected.
       if (registered) await api.removeSource(registered).catch(() => undefined);
       invalidateProjectData(client);
       setError(e);
     } finally {
+      jobRef.current = null;
       setJob(null);
     }
   };
@@ -92,7 +107,7 @@ export function CommunityPreview({ library }: { library: CommunityLibrary }) {
             <Button variant="primary" icon="download" onClick={() => void connect()}>
               Connect library
             </Button>
-            <button type="button" className="link-quiet" onClick={() => void api.openExternal(library.url)}>
+            <button type="button" className="link-quiet" onClick={() => openExternal(library.url)}>
               View on GitHub
             </button>
           </>
