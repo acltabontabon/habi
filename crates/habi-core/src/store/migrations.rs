@@ -119,6 +119,12 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE sources ADD COLUMN role TEXT NOT NULL DEFAULT 'team';
     "#,
+    // v4: changed files the author leaves out of a contribution (a JSON list
+    // of paths in the skill folder). A column of its own, so saving the
+    // reviewer form never overwrites a selection made meanwhile.
+    r#"
+    ALTER TABLE contributions ADD COLUMN excluded_json TEXT NOT NULL DEFAULT '[]';
+    "#,
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
