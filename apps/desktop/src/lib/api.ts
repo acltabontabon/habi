@@ -243,6 +243,8 @@ export const api = {
   diagnosticsPreview: () => call<DiagnosticBundle>("diagnostics_preview"),
   diagnosticsSave: () => call<string | null>("diagnostics_save"),
   createSampleWorkspace: () => call<SampleWorkspace>("create_sample_workspace"),
+  /** Removes the sample libraries, the sample projects and their folder; nothing else. */
+  removeSampleWorkspace: () => call<void>("remove_sample_workspace"),
 };
 
 export type Api = typeof api;

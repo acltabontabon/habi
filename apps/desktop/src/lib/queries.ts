@@ -1,7 +1,6 @@
 /** Data fetching with TanStack Query: caching, loading and error states. */
-import { type QueryClient, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import type { Source } from "../bindings/Source";
 import { api, newJobId } from "./api";
 
 export const keys = {
@@ -35,15 +34,6 @@ export function useRecentProjects() {
 
 export function useSources() {
   return useQuery({ queryKey: keys.sources, queryFn: api.listSources });
-}
-
-/** The fetched libraries' indexes, for views that span all of them. */
-export function useLibraries(sources: Source[]) {
-  return useQueries({
-    queries: sources
-      .filter((s) => s.snapshot)
-      .map((s) => ({ queryKey: keys.library(s.id), queryFn: () => api.library(s.id) })),
-  });
 }
 
 export function useLibrary(sourceId: string | undefined, enabled = true) {

@@ -592,7 +592,7 @@
 
 /* ---------- Home ---------- */
 
-/* The question, the lifecycle at a glance, then the loom. */
+/* The question, where things stand, then the loom. */
 .home {
   min-height: 100%;
   display: grid;
@@ -603,9 +603,6 @@
 
 .home-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--s6);
 }
 
 .home-title {
@@ -628,34 +625,12 @@
   font-size: var(--text-lg);
 }
 
-/* Find · refine · share: where knowledge is right now. */
-.home-cycle {
-  margin: 0;
-  display: grid;
-  gap: 6px;
-  padding-left: var(--s5);
-  border-left: 1px solid var(--hairline-strong);
-}
-
-.home-cycle > div {
-  display: grid;
-  grid-template-columns: 76px auto;
-  align-items: baseline;
-}
-
-.home-cycle dt {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.home-cycle dd {
-  margin: 0;
+/* Libraries · your skills · shared: one plain line, links only where there is something. */
+.home-status {
+  margin-top: var(--s4);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  white-space: nowrap;
+  color: var(--ink-muted);
 }
 
 .link-quiet {
@@ -690,6 +665,31 @@
   cursor: help;
 }
 
+/* First run: what opening a project does, the sample, and two quiet links. */
+.home-start {
+  display: grid;
+  gap: var(--s4);
+  max-width: 68ch;
+}
+
+.home-next {
+  color: var(--ink-soft);
+}
+
+.home-sample {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.home-more {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
 .home-foot {
   display: grid;
   gap: var(--s3);
@@ -708,16 +708,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-@media (max-width: 900px) {
-  .home-head {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .home-cycle {
-    padding-left: 0;
-    border-left: 0;
-  }
 }
 
 .welcome-paths {

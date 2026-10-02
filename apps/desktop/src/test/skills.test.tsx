@@ -403,6 +403,7 @@ describe("welcome", () => {
     const { container } = wrap(<Welcome />);
     const open = await screen.findByRole("button", { name: "Open a project…" });
     expect(open).toHaveClass("btn-primary");
+    expect(container.querySelectorAll(".btn-primary")).toHaveLength(1);
     // A library is optional: offered as a quiet link, never as the main action.
     expect(screen.getByRole("button", { name: "Connect a library" })).toHaveClass("link-quiet");
     await user.click(open);
@@ -412,8 +413,14 @@ describe("welcome", () => {
     expect(screen.queryByRole("button", { name: /Create a skill/ })).toBeNull();
     expect(screen.getByText("new skill")).toBeInTheDocument();
     expect(screen.getByText("read-only")).toBeInTheDocument();
-    // First run: the labeled sample workspace is offered.
-    expect(screen.getByRole("button", { name: "Explore a sample workspace" })).toBeInTheDocument();
+    // First run: the labeled sample workspace is the one alternative, and
+    // where things stand is a plain line.
+    expect(screen.getByRole("button", { name: "Try the sample workspace" })).not.toHaveClass("btn-primary");
+    expect(screen.getByRole("button", { name: "Write a skill" })).toHaveClass("link-quiet");
+    expect(container.querySelector(".home-status")).toHaveTextContent(
+      "0 libraries · 0 of your skills · nothing shared yet",
+    );
+    expect(screen.getByText(/Nothing changes until you review a plan/)).toBeInTheDocument();
     const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });

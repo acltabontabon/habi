@@ -12,7 +12,7 @@ import { COMMUNITY_LIBRARIES, catalogEntryFor } from "../../lib/community";
 import { useDyes } from "../../lib/dye";
 import { freshnessText, plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
-import { useLibraries, useSources } from "../../lib/queries";
+import { useSources } from "../../lib/queries";
 import { CommunityPreview } from "./CommunityPreview";
 import { ConnectLibrary } from "./ConnectLibrary";
 import { LibraryView } from "./LibraryView";
@@ -48,13 +48,8 @@ function ConnectOwn({ mode }: { mode: "git" | "folder" }) {
 
 function LibrariesOverview() {
   const sources = useSources();
-  const indexes = useLibraries(sources.data ?? []);
   const dyes = useDyes();
   const { navigate } = useNav();
-  const skillCount = (id: string) => {
-    const items = indexes.find((q) => q.data?.sourceId === id)?.data?.items;
-    return items ? items.filter((i) => i.kind !== "instructions").length : null;
-  };
   if (sources.isPending) return <Working>Loading libraries…</Working>;
   if (sources.isError) return <ErrorNotice error={sources.error} />;
   const connected = sources.data;
@@ -103,7 +98,7 @@ function LibrariesOverview() {
                         {kind(s)} · {backing(s)}
                       </span>
                       <span className="library-row-count">
-                        {skillCount(s.id) === null ? "—" : plural(skillCount(s.id) ?? 0, "skill")}
+                        {s.snapshot ? plural(s.skillCount, "item") : "—"}
                       </span>
                       <span
                         className={`library-row-state${fresh.tone === "muted" || fresh.tone === "ok" ? "" : ` tone-${fresh.tone}`}`}
