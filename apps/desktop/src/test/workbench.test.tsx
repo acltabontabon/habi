@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Plan } from "../bindings/Plan";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
 import { ToastProvider } from "../components/Toasts";
+import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider, useNav } from "../lib/nav";
 import { Workbench } from "../views/project/Workbench";
 import { ReviewDialog } from "../views/review/ReviewDialog";
@@ -16,12 +17,20 @@ import monorepo from "./fixtures/overview-platform-monorepo.json";
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
 
+const actions: Actions = {
+  openProject: vi.fn(async () => undefined),
+  newSkill: vi.fn(),
+  addSkills: vi.fn(),
+};
+
 function wrap(ui: ReactNode, projectId: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <NavProvider initial={{ name: "project", projectId, tab: "recommendations" }}>{ui}</NavProvider>
+        <NavProvider initial={{ name: "project", projectId, tab: "recommendations" }}>
+          <ActionsContext.Provider value={actions}>{ui}</ActionsContext.Provider>
+        </NavProvider>
       </ToastProvider>
     </QueryClientProvider>,
   );

@@ -2838,3 +2838,12 @@ dl.facets,
   font-size: var(--text-xs);
   color: var(--ink-muted);
 }
+
+.rules-toggle {
+  margin-top: var(--s2);
+  font-size: var(--text-sm);
+}
+
+.reasons-matched {
+  margin-top: var(--s2);
+}

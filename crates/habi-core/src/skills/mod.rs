@@ -164,6 +164,24 @@ pub struct SkillFileContent {
     pub size: u32,
     pub binary: bool,
     pub digest: String,
+    /// A `data:` URL for images Habi can show (PNG, JPEG, GIF, WebP, SVG
+    /// under 2 MB). Shown in an `<img>`, where SVG scripts never run.
+    pub preview: Option<String>,
+}
+
+const PREVIEW_LIMIT: usize = 2 * 1024 * 1024;
+
+/// The media type of an image Habi previews, by file extension.
+fn image_type(path: &str) -> Option<&'static str> {
+    let ext = path.rsplit_once('.')?.1.to_ascii_lowercase();
+    Some(match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        _ => return None,
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -1072,12 +1090,16 @@ impl<'a> Skills<'a> {
             }
         };
         let binary = !crate::fsutil::is_probably_text(&bytes);
+        let preview = image_type(rel.as_str())
+            .filter(|_| bytes.len() <= PREVIEW_LIMIT)
+            .map(|mime| format!("data:{mime};base64,{}", crate::fsutil::base64(&bytes)));
         Ok(SkillFileContent {
             path: rel.to_string(),
             size: bytes.len() as u32,
             digest: sha256(&bytes),
             text: (!binary).then(|| String::from_utf8_lossy(&bytes).into_owned()),
             binary,
+            preview,
         })
     }
 
@@ -1171,8 +1193,9 @@ impl<'a> Skills<'a> {
         self.get(id)
     }
 
-    /// Removes a supporting file. SKILL.md cannot be removed.
-    pub fn remove_file(&self, id: &str, rel: &str) -> Result<LocalSkill> {
+    /// Removes a supporting file, or a folder with everything in it.
+    /// SKILL.md (and so the package root) cannot be removed.
+    pub fn remove_path(&self, id: &str, rel: &str) -> Result<LocalSkill> {
         let _lock = self.lock(id)?;
         let (_, dir) = self.editable(id)?;
         let rel = RelPath::new(rel)?;
@@ -1180,19 +1203,118 @@ impl<'a> Skills<'a> {
             return Err(HabiError::invalid("a skill needs its SKILL.md"));
         }
         let path = crate::paths::resolve_for_read(&dir, &rel)?
+            .ok_or_else(|| HabiError::NotFound(rel.to_string()))?;
+        if path.is_dir() {
+            std::fs::remove_dir_all(&path)
+                .map_err(|e| HabiError::io(format!("removing {rel}"), e))?;
+        } else {
+            std::fs::remove_file(&path).map_err(|e| HabiError::io(format!("removing {rel}"), e))?;
+        }
+        Self::prune_empty_parents(&dir, &path);
+        self.touch(id)?;
+        self.get(id)
+    }
+
+    /// Renames or moves a file or folder inside the package. Nothing is
+    /// replaced: the destination must not exist. SKILL.md stays where it is.
+    pub fn rename_path(&self, id: &str, from: &str, to: &str) -> Result<LocalSkill> {
+        let _lock = self.lock(id)?;
+        let (_, dir) = self.editable(id)?;
+        let from = RelPath::new(from)?;
+        let to = RelPath::new(to)?;
+        if from.as_str() == SKILL_FILE || to.as_str() == SKILL_FILE {
+            return Err(HabiError::invalid("SKILL.md keeps its name and place"));
+        }
+        if to.starts_with(&from) {
+            return Err(HabiError::invalid(format!(
+                "`{from}` cannot move into itself"
+            )));
+        }
+        let source = crate::paths::resolve_for_read(&dir, &from)?
+            .ok_or_else(|| HabiError::NotFound(from.to_string()))?;
+        let target = resolve_for_write(&dir, &to)?;
+        if std::fs::symlink_metadata(&target).is_ok() {
+            return Err(HabiError::Conflict(format!(
+                "`{to}` already exists in this skill"
+            )));
+        }
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| HabiError::io(format!("creating {}", display_path(parent)), e))?;
+        }
+        std::fs::rename(&source, &target)
+            .map_err(|e| HabiError::io(format!("renaming {from} to {to}"), e))?;
+        Self::prune_empty_parents(&dir, &source);
+        self.touch(id)?;
+        self.get(id)
+    }
+
+    /// Marks a file as executable (scripts the agent runs directly) or not.
+    pub fn set_executable(&self, id: &str, rel: &str, executable: bool) -> Result<LocalSkill> {
+        let _lock = self.lock(id)?;
+        let (_, dir) = self.editable(id)?;
+        let rel = RelPath::new(rel)?;
+        let path = crate::paths::resolve_for_read(&dir, &rel)?
             .filter(|p| p.is_file())
             .ok_or_else(|| HabiError::NotFound(rel.to_string()))?;
-        std::fs::remove_file(&path).map_err(|e| HabiError::io(format!("removing {rel}"), e))?;
-        // Drop folders the removal left empty.
-        let mut parent = path.parent();
+        crate::fsutil::set_executable(&path, executable)?;
+        self.touch(id)?;
+        self.get(id)
+    }
+
+    /// Replaces a file's content with a file the user picked (a new version
+    /// of an image, say). Its executable bit is kept.
+    pub fn replace_file(&self, id: &str, rel: &str, source: &Path) -> Result<LocalSkill> {
+        let _lock = self.lock(id)?;
+        let (_, dir) = self.editable(id)?;
+        let rel = RelPath::new(rel)?;
+        if rel.as_str() == SKILL_FILE {
+            return Err(HabiError::invalid("edit SKILL.md in the editor instead"));
+        }
+        let target = crate::paths::resolve_for_read(&dir, &rel)?
+            .filter(|p| p.is_file())
+            .ok_or_else(|| HabiError::NotFound(rel.to_string()))?;
+        let meta = std::fs::symlink_metadata(source)
+            .map_err(|e| HabiError::io(format!("reading {}", display_path(source)), e))?;
+        if !meta.is_file() {
+            return Err(HabiError::invalid(format!(
+                "{} is not a regular file",
+                display_path(source)
+            )));
+        }
+        let bytes = match read_bounded(source, MAX_FILE_BYTES)? {
+            Bounded::Content(b) => b,
+            Bounded::TooLarge(n) => {
+                return Err(HabiError::invalid(format!(
+                    "{} is {n} bytes; skill files may be at most {MAX_FILE_BYTES} bytes",
+                    display_path(source)
+                )));
+            }
+        };
+        atomic_write_mode(&target, &bytes, Some(crate::fsutil::is_executable(&target)))?;
+        self.touch(id)?;
+        self.get(id)
+    }
+
+    /// The package path of a file, for opening it in a text editor.
+    pub fn file_path(&self, id: &str, rel: &str) -> Result<PathBuf> {
+        let dir = package_dir(self.paths, id)?;
+        self.row(id)?;
+        let rel = RelPath::new(rel)?;
+        crate::paths::resolve_for_read(&dir, &rel)?
+            .filter(|p| p.is_file())
+            .ok_or_else(|| HabiError::NotFound(rel.to_string()))
+    }
+
+    /// Drops folders a removal or move left empty, up to the package root.
+    fn prune_empty_parents(root: &Path, removed: &Path) {
+        let mut parent = removed.parent();
         while let Some(p) = parent {
-            if p == dir || std::fs::remove_dir(p).is_err() {
+            if p == root || std::fs::remove_dir(p).is_err() {
                 break;
             }
             parent = p.parent();
         }
-        self.touch(id)?;
-        self.get(id)
     }
 
     /// Moves a skill to the trash. Its files stay on disk until purged.

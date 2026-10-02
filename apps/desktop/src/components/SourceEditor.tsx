@@ -1,24 +1,69 @@
 /**
- * Markdown source editor (CodeMirror 6): soft wrapping, undo history,
- * Markdown-aware highlighting and a few formatting shortcuts. Tab moves
- * focus, as everywhere else, so the editor is never a keyboard trap.
+ * Source editor for everything in a skill package (CodeMirror 6): Markdown
+ * with formatting shortcuts, and highlighting for YAML, JSON, JavaScript,
+ * TypeScript, Python, shell and Ruby, chosen from the file name. Soft
+ * wrapping and undo history everywhere. Tab moves focus, as everywhere else,
+ * so the editor is never a keyboard trap.
  */
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { javascript } from "@codemirror/lang-javascript";
+import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { python } from "@codemirror/lang-python";
+import { yaml } from "@codemirror/lang-yaml";
+import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
+import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, placeholder as placeholderExtension } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import { useEffect, useRef } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
+import type { SourceLanguage } from "../lib/languages";
 
+function languageExtension(language: SourceLanguage): Extension[] {
+  switch (language) {
+    case "markdown":
+      return [markdown()];
+    case "yaml":
+      return [yaml()];
+    case "json":
+      return [json()];
+    case "javascript":
+      return [javascript({ jsx: true })];
+    case "typescript":
+      return [javascript({ typescript: true, jsx: true })];
+    case "python":
+      return [python()];
+    case "shell":
+      return [StreamLanguage.define(shell)];
+    case "ruby":
+      return [StreamLanguage.define(ruby)];
+    case "plain":
+      return [];
+  }
+}
+
+/** Prose and code in the Loom palette: dyes for code, ink for prose. */
 const highlight = HighlightStyle.define([
   { tag: tags.heading, fontWeight: "600", color: "var(--ink)" },
   { tag: tags.strong, fontWeight: "600" },
-  { tag: tags.emphasis, fontStyle: "italic" },
   { tag: [tags.link, tags.url], color: "var(--thread-strong)" },
-  { tag: tags.monospace, color: "var(--unknown-ink)" },
+  { tag: tags.monospace, color: "var(--dye-4)" },
   { tag: [tags.processingInstruction, tags.meta, tags.quote], color: "var(--ink-muted)" },
+  { tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword, tags.modifier], color: "var(--dye-7)" },
+  { tag: [tags.string, tags.special(tags.string), tags.regexp], color: "var(--dye-2)" },
+  { tag: [tags.number, tags.bool, tags.null, tags.atom], color: "var(--dye-1)" },
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "var(--ink-muted)" },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "var(--dye-0)" },
+  { tag: [tags.propertyName, tags.attributeName], color: "var(--dye-4)" },
+  { tag: [tags.typeName, tags.className], color: "var(--dye-5)" },
+  { tag: tags.variableName, color: "var(--ink)" },
 ]);
+
+/** Lets a parent insert text where the caret is (a file link, say). */
+export type SourceEditorHandle = {
+  insert: (text: string) => void;
+};
 
 const theme = EditorView.theme({
   "&": { color: "var(--ink)", backgroundColor: "transparent", fontSize: "13.5px" },
@@ -57,22 +102,24 @@ function toggleWrap(mark: string) {
   };
 }
 
-export function MarkdownEditor({
+export function SourceEditor({
   value,
   onChange,
   label,
   placeholder,
   readOnly = false,
-  plain = false,
+  language = "markdown",
+  handle,
 }: {
   value: string;
   onChange: (value: string) => void;
   label: string;
   placeholder?: string;
   readOnly?: boolean;
-  /** Plain text (YAML, scripts): no Markdown highlighting or shortcuts. */
-  plain?: boolean;
+  language?: SourceLanguage;
+  handle?: Ref<SourceEditorHandle>;
 }) {
+  const prose = language === "markdown";
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -84,7 +131,7 @@ export function MarkdownEditor({
     const extensions: Extension[] = [
       history(),
       keymap.of([
-        ...(plain
+        ...(!prose
           ? []
           : [
               { key: "Mod-b", run: toggleWrap("**") },
@@ -96,13 +143,13 @@ export function MarkdownEditor({
       ]),
       EditorView.lineWrapping,
       theme,
-      EditorView.contentAttributes.of({ "aria-label": label, spellcheck: plain ? "false" : "true" }),
+      EditorView.contentAttributes.of({ "aria-label": label, spellcheck: prose ? "true" : "false" }),
       EditorState.readOnly.of(readOnly),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onChangeRef.current(update.state.doc.toString());
       }),
     ];
-    if (!plain) extensions.push(markdown(), syntaxHighlighting(highlight));
+    extensions.push(...languageExtension(language), syntaxHighlighting(highlight));
     if (placeholder) extensions.push(placeholderExtension(placeholder));
     const created = new EditorView({
       parent: host.current,
@@ -113,7 +160,23 @@ export function MarkdownEditor({
       created.destroy();
       view.current = null;
     };
-  }, [label, placeholder, readOnly, plain]);
+  }, [label, placeholder, readOnly, language]);
+
+  useImperativeHandle(
+    handle,
+    () => ({
+      insert: (text: string) => {
+        const current = view.current;
+        if (!current) return;
+        current.dispatch(current.state.replaceSelection(text), {
+          scrollIntoView: true,
+          userEvent: "input",
+        });
+        current.focus();
+      },
+    }),
+    [],
+  );
 
   // Apply a value that came from outside (a reload), keeping the caret sane.
   useEffect(() => {
@@ -125,5 +188,5 @@ export function MarkdownEditor({
     }
   }, [value]);
 
-  return <div className="md-editor" ref={host} />;
+  return <div className="source-editor" ref={host} />;
 }

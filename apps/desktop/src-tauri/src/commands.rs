@@ -833,13 +833,97 @@ pub async fn write_skill_file(
 }
 
 #[tauri::command]
-pub async fn remove_skill_file(
+pub async fn remove_skill_path(
     state: State<'_, AppState>,
     id: String,
     path: String,
 ) -> CmdResult<LocalSkill> {
     let habi = state.habi()?;
-    blocking(habi, move |h| h.skills().remove_file(&id, &path)).await
+    blocking(habi, move |h| h.skills().remove_path(&id, &path)).await
+}
+
+#[tauri::command]
+pub async fn rename_skill_path(
+    state: State<'_, AppState>,
+    id: String,
+    from: String,
+    to: String,
+) -> CmdResult<LocalSkill> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.skills().rename_path(&id, &from, &to)).await
+}
+
+#[tauri::command]
+pub async fn set_skill_file_executable(
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+    executable: bool,
+) -> CmdResult<LocalSkill> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.skills().set_executable(&id, &path, executable)
+    })
+    .await
+}
+
+/// Replaces a file in the package with one the user picks in a native dialog.
+#[tauri::command]
+pub async fn replace_skill_file(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+) -> CmdResult<Option<LocalSkill>> {
+    let habi = state.habi()?;
+    let title = format!("Replace {path}");
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog().file().set_title(title).blocking_pick_file()
+    })
+    .await
+    .map_err(|e| internal(e.to_string()))?;
+    let Some(file) = picked else {
+        return Ok(None);
+    };
+    let source = file.into_path().map_err(|e| internal(e.to_string()))?;
+    blocking(habi, move |h| {
+        h.skills().replace_file(&id, &path, &source).map(Some)
+    })
+    .await
+}
+
+/// Opens a package file in the system's text editor. Never with the file's
+/// default application: for a script that could be a terminal that runs it.
+/// Where no text editor can be named (Linux), the file is revealed instead.
+#[tauri::command]
+pub async fn open_skill_file(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+) -> CmdResult<()> {
+    let habi = state.habi()?;
+    let file: PathBuf = blocking(habi, move |h| h.skills().file_path(&id, &path)).await?;
+    let spawned = if cfg!(target_os = "macos") {
+        Some(
+            std::process::Command::new("/usr/bin/open")
+                .arg("-t")
+                .arg(&file)
+                .spawn(),
+        )
+    } else if cfg!(target_os = "windows") {
+        Some(std::process::Command::new("notepad.exe").arg(&file).spawn())
+    } else {
+        None
+    };
+    match spawned {
+        Some(Ok(_)) => Ok(()),
+        Some(Err(e)) => Err(internal(format!("could not open a text editor: {e}"))),
+        None => app
+            .opener()
+            .reveal_item_in_dir(&file)
+            .map_err(|e| internal(format!("could not reveal the file: {e}"))),
+    }
 }
 
 /// Copies files the user picks in a native dialog into the skill package.

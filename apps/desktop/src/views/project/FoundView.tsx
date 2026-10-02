@@ -74,7 +74,7 @@ function SkillRow({ skill, project }: { skill: DiscoveredSkill; project: Project
             size="sm"
             onClick={() => addSkills({ source: "project", projectId: project.id, preselect: skill.path })}
           >
-            Copy to My skills…
+            Edit a copy…
           </Button>
         )}
       </div>

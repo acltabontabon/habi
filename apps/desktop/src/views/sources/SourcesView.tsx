@@ -374,10 +374,11 @@ function SourceDetail({ source, itemId }: { source: Source; itemId?: string }) {
                           addSkills({ source: "library", sourceId: source.id, preselect: selected.id })
                         }
                       >
-                        Copy to My skills to edit…
+                        Edit a copy…
                       </Button>
                       <span className="action-hint">
-                        The library copy stays as it is. Share your edits back when they are ready.
+                        Copies the whole package to My skills, linked to {source.name}. The library stays as
+                        it is.
                       </span>
                     </div>
                   ) : null}

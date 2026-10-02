@@ -1106,6 +1106,11 @@ impl Habi {
             ImportFrom::Project { project_id } => {
                 let p = self.existing_project(project_id)?;
                 let knowledge = self.discover(project_id, cancel)?;
+                // A skill Habi installed from a library keeps that library and
+                // the installed version as its origin, so edits can go back
+                // to it (and later library changes can be compared).
+                let lock = crate::install::plan::read_lock(&p.root).unwrap_or_default();
+                let mine = portable_identity(&self.local_source(""));
                 let mut packages = Vec::new();
                 for found in knowledge.skills {
                     cancel.check()?;
@@ -1113,11 +1118,23 @@ impl Habi {
                     let Some(dir) = crate::paths::resolve_for_read(&p.root, &rel)? else {
                         continue;
                     };
+                    let skill_md = format!("{}/{}", found.path, crate::library::SKILL_FILE);
+                    let installed = lock.items.iter().find(|i| {
+                        i.source.identity != mine && i.files.iter().any(|f| f.path == skill_md)
+                    });
                     packages.push(Package {
                         tree: crate::skills::read_tree(&dir, &TreeLimits::PACKAGE)?,
-                        origin: SkillOrigin::Project {
-                            project_name: p.name.clone(),
-                            path: found.path.clone(),
+                        origin: match installed {
+                            Some(i) => SkillOrigin::Library {
+                                source_name: i.source.name.clone(),
+                                source_identity: i.source.identity.clone(),
+                                item_id: i.id.clone(),
+                                snapshot: i.snapshot.clone(),
+                            },
+                            None => SkillOrigin::Project {
+                                project_name: p.name.clone(),
+                                path: found.path.clone(),
+                            },
                         },
                         path: found.path,
                         title: None,

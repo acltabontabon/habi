@@ -139,7 +139,10 @@ fn acceptance_scenario() {
         .iter()
         .find(|r| r.item.id == "java-service-conventions")
         .unwrap();
-    assert_eq!(java.applicability.applicability, Applicability::DoesNotApply);
+    assert_eq!(
+        java.applicability.applicability,
+        Applicability::DoesNotApply
+    );
     assert_eq!(java.group, Group::NotApplicable);
     assert_eq!(java.item.requirement, Requirement::Required);
 

@@ -12,8 +12,9 @@ import type { ShareForm } from "../../bindings/ShareForm";
 import type { SkillDocument } from "../../bindings/SkillDocument";
 import { BackLink } from "../../components/BackLink";
 import { Icon } from "../../components/Icon";
-import { Markdown, MarkdownEditor } from "../../components/lazy";
+import { Markdown, SourceEditor } from "../../components/lazy";
 import { SaveIndicator } from "../../components/SaveIndicator";
+import type { SourceEditorHandle } from "../../components/SourceEditor";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { useActions } from "../../lib/actions";
@@ -26,13 +27,14 @@ import { type SaveState, useAutosave } from "../../lib/useAutosave";
 import { ApplicabilityPreview } from "./ApplicabilityPreview";
 import { ConditionBuilder } from "./ConditionBuilder";
 import { FilesPane } from "./FilesPane";
+import { PackageRefs } from "./PackageRefs";
 import { ShareSkillDialog } from "./ShareSkillDialog";
 import { UseSkillDialog } from "./UseSkillDialog";
 
 type Tab = "purpose" | "instructions" | "applicability" | "files";
 const TABS: { id: Tab; label: string }[] = [
-  { id: "purpose", label: "Purpose" },
   { id: "instructions", label: "Instructions" },
+  { id: "purpose", label: "Purpose" },
   { id: "applicability", label: "Applicability" },
   { id: "files", label: "Files" },
 ];
@@ -99,7 +101,8 @@ function Loaded({ initial }: { initial: LocalSkill }) {
   const [form, setForm] = useState<ShareForm>({ ...initial.form, title: initial.summary.title });
   const [yaml, setYaml] = useState(initial.metadataText ?? "");
   const [yamlMode, setYamlMode] = useState(false);
-  const [tab, setTab] = useState<Tab>("purpose");
+  const [tab, setTab] = useState<Tab>("instructions");
+  const bodyEditor = useRef<SourceEditorHandle>(null);
   const [writing, setWriting] = useState(true);
   const [showProblems, setShowProblems] = useState(false);
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
@@ -618,21 +621,33 @@ function Loaded({ initial }: { initial: LocalSkill }) {
                       </span>
                     )}
                   </div>
-                  {writing ? (
-                    <MarkdownEditor
-                      label="Instructions (Markdown)"
-                      value={document.body}
-                      readOnly={trashed}
-                      placeholder="Write what the agent should do, step by step. Be specific to your codebase: name the files, commands and checks that matter."
-                      onChange={(body) => setDocument((d) => ({ ...d, body }))}
-                    />
-                  ) : document.body.trim() ? (
-                    <div className="instructions-preview">
-                      <Markdown text={document.body} />
+                  <div className="instructions-body">
+                    <div className="instructions-text">
+                      {writing ? (
+                        <SourceEditor
+                          handle={bodyEditor}
+                          label="Instructions (Markdown)"
+                          value={document.body}
+                          readOnly={trashed}
+                          placeholder="Write what the agent should do, step by step. Be specific to your codebase: name the files, commands and checks that matter."
+                          onChange={(body) => setDocument((d) => ({ ...d, body }))}
+                        />
+                      ) : document.body.trim() ? (
+                        <div className="instructions-preview">
+                          <Markdown text={document.body} />
+                        </div>
+                      ) : (
+                        <p className="muted editor-pad">Nothing to preview yet.</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="muted editor-pad">Nothing to preview yet.</p>
-                  )}
+                    <PackageRefs
+                      files={supporting}
+                      body={document.body}
+                      canInsert={writing && !trashed}
+                      onInsert={(text) => bodyEditor.current?.insert(text)}
+                      onManage={() => setTab("files")}
+                    />
+                  </div>
                 </div>
               )
             ) : null}
@@ -667,8 +682,8 @@ function Loaded({ initial }: { initial: LocalSkill }) {
                 </div>
                 {yamlMode ? (
                   <>
-                    <MarkdownEditor
-                      plain
+                    <SourceEditor
+                      language="yaml"
                       label="habi.yaml"
                       value={yaml}
                       readOnly={trashed}
