@@ -4,6 +4,7 @@ mod common;
 
 use common::*;
 use habi_core::cancel::CancelToken;
+use habi_core::service::Habi;
 use habi_core::source::{Freshness, NewSource, SourceKind, SourceRole, Sources, TrackedRef};
 use habi_core::store::{AppPaths, Store};
 use std::path::Path;
@@ -141,7 +142,46 @@ fn register_fetch_update_and_go_offline() {
         sources.index(&source.id).unwrap().items.len() > 5,
         "cached library still browsable"
     );
+    // Lists say how many items a library has without building its index.
+    assert_eq!(
+        stale.skill_count as usize,
+        sources.index(&source.id).unwrap().items.len()
+    );
     std::fs::rename(&gone, remote.path()).unwrap();
+}
+
+#[test]
+fn item_counts_recorded_before_upgrading_are_filled_in() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    copy_tree(&fixture("libraries/example-team-library"), lib.path());
+    let paths = AppPaths::at(home.path().to_path_buf());
+    let habi = Habi::open(paths.clone()).unwrap();
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Team".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let counted = habi.sources().get(&source.id).unwrap().skill_count;
+    assert!(counted > 5);
+    habi.store
+        .conn()
+        .unwrap()
+        .execute("UPDATE snapshots SET item_count = NULL", [])
+        .unwrap();
+    assert_eq!(habi.sources().get(&source.id).unwrap().skill_count, 0);
+    let reopened = Habi::open(paths).unwrap();
+    assert_eq!(
+        reopened.sources().get(&source.id).unwrap().skill_count,
+        counted
+    );
 }
 
 #[test]

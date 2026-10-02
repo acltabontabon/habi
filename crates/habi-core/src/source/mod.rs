@@ -175,6 +175,9 @@ pub struct Source {
     /// Part of the explicitly labeled sample workspace. Sample libraries are
     /// matched only against sample projects.
     pub sample: bool,
+    /// Items (skills, workflows, instructions) in the cached snapshot; 0
+    /// before the first fetch.
+    pub skill_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -438,10 +441,14 @@ fn row_to_source(row: &Row) -> rusqlite::Result<Source> {
         last_error,
         warning: row.get("warning")?,
         sample: row.get::<_, i64>("sample")? != 0,
+        skill_count: row
+            .get::<_, Option<i64>>("item_count")?
+            .and_then(|n| u32::try_from(n).ok())
+            .unwrap_or(0),
     })
 }
 
-const SELECT_SOURCE: &str = "SELECT s.*, (SELECT commit_summary FROM snapshots n WHERE n.source_id = s.id AND n.snapshot = s.snapshot) AS commit_summary FROM sources s";
+const SELECT_SOURCE: &str = "SELECT s.*, n.commit_summary, n.item_count FROM sources s LEFT JOIN snapshots n ON n.source_id = s.id AND n.snapshot = s.snapshot";
 
 impl Sources {
     pub fn new(paths: &AppPaths, store: &Store) -> Self {
@@ -486,6 +493,25 @@ impl Sources {
                 r.get(0)
             })?,
         )
+    }
+
+    /// Counts the items of current snapshots fetched before snapshots
+    /// recorded their item count (a one-time cost after upgrading).
+    pub(crate) fn count_uncounted(&self) -> Result<()> {
+        let pending: Vec<(String, String)> = {
+            let conn = self.store.conn()?;
+            let mut stmt = conn.prepare(
+                "SELECT n.source_id, n.snapshot FROM snapshots n JOIN sources s
+                 ON s.id = n.source_id AND s.snapshot = n.snapshot WHERE n.item_count IS NULL",
+            )?;
+            stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        for (id, snapshot) in pending {
+            let index = self.index_at(&id, &snapshot)?;
+            set_item_count(&self.store.conn()?, &id, &snapshot, index.items.len())?;
+        }
+        Ok(())
     }
 
     /// Marks a library as part of the sample workspace.
@@ -647,8 +673,9 @@ impl Sources {
                      last_error_code = NULL, last_error = NULL, warning = ?4 WHERE id = ?1",
                     params![id, snapshot, attempt_at, warning],
                 )?;
-                let source = self.get(id)?;
                 let index = self.index(id)?;
+                set_item_count(&conn, id, &snapshot, index.items.len())?;
+                let source = self.get(id)?;
                 let (added, removed, updated) = diff_indexes(previous_index.as_ref(), &index);
                 Ok(RefreshOutcome {
                     changed: before.snapshot.as_deref() != Some(snapshot.as_str()),
@@ -1006,6 +1033,19 @@ impl Sources {
     }
 }
 
+fn set_item_count(
+    conn: &rusqlite::Connection,
+    id: &str,
+    snapshot: &str,
+    count: usize,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE snapshots SET item_count = ?3 WHERE source_id = ?1 AND snapshot = ?2",
+        params![id, snapshot, i64::try_from(count).unwrap_or(i64::MAX)],
+    )?;
+    Ok(())
+}
+
 fn too_large() -> HabiError {
     HabiError::Unsupported(format!(
         "the library is larger than Habi's limits ({MAX_FILES} files, {} MiB). Narrow the source to a subfolder; the previous snapshot is kept.",
@@ -1115,6 +1155,7 @@ mod tests {
             warning: None,
             freshness: Freshness::NeverFetched,
             sample: false,
+            skill_count: 0,
         }
     }
 

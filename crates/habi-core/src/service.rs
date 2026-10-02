@@ -256,6 +256,10 @@ impl Habi {
         if let Err(e) = sources.mark_samples_under(&crate::sample::root(&paths)) {
             tracing::warn!(error = %e, "could not mark the sample libraries");
         }
+        // Snapshots fetched before item counts were recorded.
+        if let Err(e) = sources.count_uncounted() {
+            tracing::warn!(error = %e, "could not count library items");
+        }
         // `gh`/`glab` run in an empty folder of Habi's own, never in whatever
         // repository Habi was started from.
         let review_tools = ReviewTools {
@@ -606,7 +610,7 @@ impl Habi {
         // installed and updated through the same code as team items.
         match self.skills().library() {
             Ok((index, _)) if !index.items.is_empty() => {
-                out.push((self.local_source(&index.snapshot), index))
+                out.push((self.local_source(&index.snapshot, index.items.len()), index))
             }
             Ok(_) => {}
             Err(e) => tracing::warn!(error = %e, "could not read local skills"),
@@ -621,7 +625,7 @@ impl Habi {
         }
     }
 
-    fn local_source(&self, snapshot: &str) -> Source {
+    fn local_source(&self, snapshot: &str, items: usize) -> Source {
         Source {
             id: LOCAL_SOURCE_ID.into(),
             name: LOCAL_SOURCE_NAME.into(),
@@ -639,13 +643,14 @@ impl Habi {
             warning: None,
             freshness: Freshness::Current,
             sample: false,
+            skill_count: u32::try_from(items).unwrap_or(u32::MAX),
         }
     }
 
     fn source_of(&self, source_id: &str) -> Result<Source> {
         if source_id == LOCAL_SOURCE_ID {
             let (index, _) = self.skills().library()?;
-            return Ok(self.local_source(&index.snapshot));
+            return Ok(self.local_source(&index.snapshot, index.items.len()));
         }
         self.sources.get(source_id)
     }
@@ -1206,7 +1211,7 @@ impl Habi {
                 // the installed version as its origin, so edits can go back
                 // to it (and later library changes can be compared).
                 let lock = crate::install::plan::read_lock(&p.root).unwrap_or_default();
-                let mine = portable_identity(&self.local_source(""));
+                let mine = portable_identity(&self.local_source("", 0));
                 let mut packages = Vec::new();
                 for found in knowledge.skills {
                     cancel.check()?;
