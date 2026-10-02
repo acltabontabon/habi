@@ -38,10 +38,11 @@ jobs:
     name: Build (${{ matrix.os }})
     needs: test
     timeout-minutes: 90
+    # Habi ships for macOS and Windows; Linux is not a release target.
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [macos-15, windows-2025]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -56,11 +57,6 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
-      - name: Linux system libraries
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
       # Signing and notarization are configured only when the secrets exist; otherwise the
@@ -101,7 +97,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          find target/release/bundle -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*-setup.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} dist/ \;
+          find target/release/bundle -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*-setup.exe" \) -exec cp {} dist/ \;
           case "${{ runner.os }}" in
             Windows) cli=habi.exe ;;
             *) cli=habi ;;

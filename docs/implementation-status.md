@@ -39,8 +39,8 @@ what is known not to be verified yet. Product principles live in
 - **Live Git hosts.** Opening pull/merge requests, reading status and comments, and updating
   a request with a revision are tested against programs that answer like the GitHub and GitLab
   REST APIs, not against live hosts. GitLab is the less exercised of the two.
-- **Windows and Linux.** CI builds and tests all three platforms; the desktop app has mainly
-  been used on macOS so far.
+- **Windows.** CI builds the desktop app on macOS and Windows; it has mainly been used on
+  macOS so far. Linux is not supported (the core and CLI are still tested on Linux in CI).
 - **Native window.** Most screens were exercised through the development bridge in a browser;
   native file dialogs and window behavior have had less use.
 - **Signing.** Release artifacts are unsigned until signing credentials exist (see

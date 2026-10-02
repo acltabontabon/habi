@@ -131,6 +131,7 @@ First working version.
   install/share dialogs that say what to fix and take you there.
 
 ### Also
+- Releases are built for macOS and Windows; Linux is not a release target.
 - `habi` command-line tool with the same capabilities.
 - Verification checks you can preview and run explicitly.
 - Light and dark themes, keyboard navigation and a command palette (⌘K).

@@ -26,8 +26,8 @@ Prerequisites:
 - [Node.js](https://nodejs.org) 24 or newer, with `corepack enable` (provides pnpm 12).
 - Git.
 - For the desktop app: the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
-  for your platform (Xcode Command Line Tools on macOS; WebKitGTK and friends on Linux;
-  Microsoft C++ Build Tools and WebView2 on Windows).
+  for your platform (Xcode Command Line Tools on macOS; Microsoft C++ Build Tools and
+  WebView2 on Windows). Linux is not supported.
 
 ```sh
 git clone https://github.com/acltabontabon/habi.git
