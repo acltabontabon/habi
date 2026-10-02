@@ -189,7 +189,7 @@ export function CommandPalette({
                   value="share contribute"
                   onSelect={() => run(() => navigate({ name: "contributions" }))}
                 >
-                  <Icon name="share" /> <span>Sharing activity</span>
+                  <Icon name="share" /> <span>Contributions</span>
                 </Command.Item>
                 <Command.Item
                   value="theme dark light"

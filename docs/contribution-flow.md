@@ -123,7 +123,7 @@ next attempt succeeds. Retrying is safe: the branch name is fixed per contributi
 never overwrites commits, and a request is opened only when the host does not already show
 one for the branch.
 
-## Sharing activity
+## Contributions
 
 One row per contribution with one state — *Draft*, *Ready to submit* (branch prepared, not
 pushed), *Branch pushed* (no request), *Open PR/MR*, *Changes requested*, *Merged*, *Closed*,

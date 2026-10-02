@@ -2510,7 +2510,7 @@ details > summary.change-head::-webkit-details-marker {
   color: var(--ink-muted);
 }
 
-/* Sharing activity: one dense row per contribution. */
+/* Contributions: one dense row per contribution. */
 .share-list {
   list-style: none;
   margin: 0;

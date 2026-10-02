@@ -2021,7 +2021,7 @@ impl<'a> Contributions<'a> {
             .inspect_err(|e| self.record_attention(id, AttentionKind::Prepare, e))
     }
 
-    /// Remembers that preparing or sending failed, so Sharing activity can
+    /// Remembers that preparing or sending failed, so Contributions can
     /// say so until the next attempt succeeds. Problems the author fixes in
     /// the form (validation, nothing to share) and cancellation are not
     /// recorded; they are reported where the author acted.

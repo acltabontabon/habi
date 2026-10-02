@@ -38,7 +38,7 @@ Quick start:
 #[command(
     name = "habi",
     version,
-    about = "Your team's know-how, matched to your codebase.",
+    about = "Find what applies. Improve what works. Share what you learn.",
     after_help = QUICK_START
 )]
 struct Cli {
@@ -52,12 +52,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Manage team libraries (sources of skills and workflows).
+    /// Manage libraries: your team's and community ones (sources of skills and workflows).
     #[command(subcommand)]
     Source(SourceCmd),
     /// Show what Habi detects in a project, with evidence.
     Inspect(ProjectArg),
-    /// List team skills and workflows that fit a project.
+    /// List the skills and workflows that fit a project, from every library and My skills.
     Recommend {
         #[command(flatten)]
         project: ProjectArg,
@@ -189,7 +189,7 @@ Examples:
         #[command(flatten)]
         project: ProjectArg,
     },
-    /// Prepare contributions back to a team library.
+    /// Share what you improved back to a library, as a reviewed branch or request.
     #[command(subcommand)]
     Contribute(ContributeCmd),
     /// Validate a library folder (for maintainers).

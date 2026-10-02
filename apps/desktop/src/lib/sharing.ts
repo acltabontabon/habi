@@ -89,7 +89,7 @@ export function sharingChip(c: Contribution): SharingChip {
 
 export type NextAction = { kind: "details"; label: string } | { kind: "open"; label: string; url: string };
 
-/** The one thing to do next from Sharing activity. */
+/** The one thing to do next from Contributions. */
 export function nextAction(c: Contribution): NextAction {
   const chip = sharingChip(c);
   if (chip.state === "attention") return { kind: "details", label: "Retry" };

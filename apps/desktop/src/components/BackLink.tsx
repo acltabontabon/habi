@@ -16,7 +16,7 @@ function useRouteLabel(route: Route | undefined): string | null {
     case "skills":
       return route.skillId ? "the skill" : "My skills";
     case "contributions":
-      return route.contributionId ? "the contribution" : "Sharing activity";
+      return route.contributionId ? "the contribution" : "Contributions";
     case "sources":
       return route.sourceId ? "the library" : "Team libraries";
     case "settings":

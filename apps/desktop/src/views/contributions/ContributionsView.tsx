@@ -1,5 +1,5 @@
 /**
- * Sharing activity: what was prepared for the team and what actually
+ * Contributions: what was prepared for the team and what actually
  * happened to it. A contribution is reviewed file by file before anything
  * leaves the machine; a prepared branch, a pushed branch and an opened
  * review request are reported as the three different things they are.
@@ -703,7 +703,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
   return (
     <div className="page contribution">
       <header className="contribution-head">
-        <BackLink fallback={{ name: "contributions" }} fallbackLabel="Sharing activity" />
+        <BackLink fallback={{ name: "contributions" }} fallbackLabel="Contributions" />
         <p className="kicker">
           Contribution · {c.sourceName} · <span className="mono">{c.itemPath}</span>
         </p>
@@ -1229,7 +1229,7 @@ export function ContributionsView({ contributionId }: { contributionId?: string 
   const items = list.data ?? [];
   return (
     <div className="page narrow sharing">
-      <h1 className="page-title">Sharing activity</h1>
+      <h1 className="page-title">Contributions</h1>
       <p className="lead-sm">
         What you prepared for your team and what the Git host reported. Nothing joins a library until a
         maintainer merges it.
@@ -1245,7 +1245,7 @@ export function ContributionsView({ contributionId }: { contributionId?: string 
             </Button>
           }
         >
-          Open a skill and choose “Share with team” when it is ready. Until then it stays on this machine.
+          Improve a skill, then choose “Share” to send it to a library for review. Until then it stays on this machine.
         </Empty>
       ) : (
         <ul className="share-list" aria-label="Contributions">

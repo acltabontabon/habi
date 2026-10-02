@@ -181,7 +181,7 @@ matched by their rules like library items.
    is installed and signed in, opens a pull or merge request. **Export patch** is the fallback
    when you cannot push.
 
-Sharing activity reports what actually happened: *Prepared locally*, *Patch exported*, *Branch
+Contributions reports what actually happened: *Prepared locally*, *Patch exported*, *Branch
 pushed — no review request*, *Review requested*, and *In the library* once a refresh shows the
 library contains those files. Habi never merges and never reports a submission it did not make.
 
