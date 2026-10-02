@@ -14,6 +14,7 @@ use habi_core::install::status::{FileState, InstallState};
 use habi_core::library::model::{
     DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem, Requirement,
 };
+use habi_core::maintenance::PruneReport;
 use habi_core::matching::Applicability;
 use habi_core::matching::eval::{Declaration, DeclaredSubject, EvalNode, Tri};
 use habi_core::recommend::{
@@ -741,7 +742,8 @@ pub fn history(ops: &[OperationSummary]) {
     for o in ops {
         println!(
             "{}  {}  {}  {}  ({})",
-            &o.id[..8.min(o.id.len())],
+            // An unreadable journal is listed under its file name.
+            o.id.get(..8).unwrap_or(&o.id),
             o.created_at,
             journal_state(o.state),
             o.title,
@@ -753,6 +755,42 @@ pub fn history(ops: &[OperationSummary]) {
     }
     if !ops.is_empty() {
         println!("\nUndo one with: habi restore <operation>");
+    }
+}
+
+/// Bytes in a short human form (1 decimal for MB and above).
+pub fn size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    match bytes {
+        b if b >= MB => format!("{:.1} MB", b as f64 / MB as f64),
+        b if b >= KB => format!("{} KB", b / KB),
+        b => format!("{b} bytes"),
+    }
+}
+
+pub fn prune_report(r: &PruneReport) {
+    let removed = r.operations_removed + r.snapshots_removed + r.objects_removed;
+    if removed == 0 && r.bytes_freed == 0 {
+        println!("Nothing to remove.");
+    } else {
+        println!(
+            "Removed {}, {} and {} ({} freed).",
+            plural(r.operations_removed as usize, "old operation record"),
+            plural(r.snapshots_removed as usize, "old library snapshot"),
+            plural(r.objects_removed as usize, "stored file version"),
+            size(r.bytes_freed)
+        );
+    }
+    if r.skipped_busy > 0 {
+        println!(
+            "{} in use by another Habi operation and skipped; run `habi gc` again later.",
+            if r.skipped_busy == 1 {
+                "1 project or library was".to_string()
+            } else {
+                format!("{} projects or libraries were", r.skipped_busy)
+            }
+        );
     }
 }
 
