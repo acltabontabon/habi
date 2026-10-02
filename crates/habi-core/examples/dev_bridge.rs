@@ -288,6 +288,11 @@ impl Bridge {
             "import_skills" => {
                 out(h.import_skills(&arg(a, "from")?, &arg::<Vec<_>>(a, "selections")?, cancel)?)
             }
+            "skill_upstream" => out(h.skill_upstream(&s("id")?)?),
+            "plan_upstream_sync" => out(h.plan_upstream_sync(&s("id")?)?),
+            "apply_upstream_sync" => {
+                out(h.apply_upstream_sync(&s("id")?, &s("token")?, &arg(a, "decisions")?)?)
+            }
 
             "diagnostics_preview" => out(habi_core::diagnostics::bundle(h, version)?),
             "diagnostics_save" => Ok(Value::Null),

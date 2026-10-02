@@ -16,6 +16,7 @@
 //! - Nothing here executes package content.
 
 pub mod intake;
+pub mod upstream;
 
 use crate::contribute::{ShareForm, apply_form, form_from, slug};
 use crate::error::{HabiError, Result};

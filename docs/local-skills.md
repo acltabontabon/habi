@@ -144,6 +144,17 @@ where each came from. Originals are never changed.
 - **Incomplete packages** (symbolic links, oversized files): shown, not importable — a partial
   copy would silently lose content.
 
+### Updates from the library a copy came from
+
+A skill copied from a team library remembers the library, the item and the snapshot it was
+copied at. When that item changes in the library, the editor says *Updated in <library> since
+you copied it*; **Review update…** compares three versions of every file — as copied, the
+library's now, and yours. Files only the library changed are taken; files only you changed
+are kept; a file changed on both sides needs your choice (*Keep mine* or *Take the
+library's*) before anything is written. After the update, later comparisons start from the
+library version you just reviewed. If the item was removed, the library is not connected, or
+the copied version is no longer cached, the editor says so and offers nothing.
+
 ## Using a skill
 
 *Use in a project…* lists your projects with what the skill's rules say about each, then opens
