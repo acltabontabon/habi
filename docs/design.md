@@ -15,8 +15,8 @@ its one signature — used only where it carries meaning.
 - **One accent: the saffron thread** (`--thread`). It marks selection and the line from a
   reason to the evidence behind it. It never fills large areas.
 - **Dyes mark provenance.** Each library gets a natural-dye color (`--dye-0…7`, in the order
-  libraries were connected): its *strand* in the sidebar and on every item row, its
-  *selvedge* along the top of its page, its warp in the welcome loom. Team libraries are
+  libraries were connected): its *strand* in the sidebar and on every item row, its warp
+  down the library's index (and its spine), its warp in the welcome loom. Team libraries are
   solid threads; **community libraries are stitched (dashed)** — published by others, not
   reviewed by the team. A dye is always next to the library's name; color is never the only
   signal.
@@ -82,16 +82,27 @@ its one signature — used only where it carries meaning.
   freshness), *Discover* (a short curated list of community libraries not yet connected, each
   previewed — what it covers, about how many skills, licence, trust — before *Connect
   library*), and *Your own* (connect a Git repository, use a folder; each a focused page).
-- **Library** — two areas. The index: the library's identity in a few lines (kind, name,
-  repository, "15 skills · 5 with scripts · updated 4 h ago", "not reviewed by your team" for
-  community) over a scannable list of skills (title, one line of purpose, quiet mono marks for
-  rules and scripts; ↑/↓ or j/k). The reader: **one document surface at a time** — the skill's
-  introduction (purpose, one primary action *Add to a project…*, *Edit a copy* as a quiet link,
-  a facts list: applies · package · runs · source · licence · lineage) above SKILL.md, or one of
-  its files in place of it (← back or Esc). Prose renders; code reads as highlighted code. The
-  package sits beside the reader as a light tree and folds above it on narrower windows. Git
-  details (repository, revision, refresh, who reviews it, disconnect) live in a sheet opened
-  from the library's address. The same reader shows an item's content inside a project.
+- **Library** — an index of knowledge and one reading surface. The index is the library's
+  warp: its thread runs down the rail (stitched for community) and each skill is a pick across
+  it — a hanging initial, the title, a one-line purpose (agent trigger text left out), quiet
+  mono marks for rules and scripts; the chosen skill is crossed by the saffron weft. The
+  library itself is two lines (name and count; repository · team/community · freshness).
+  Typing in the index filters it ("/" from anywhere); ↑/↓ or j/k move, Enter reads. While
+  reading, the rest of the index steps back until pointed at. The reader: **one document
+  surface at a time** — the skill's head (library · trust · position; title with *Add to a
+  project…* and *Edit a copy*; the human summary; a signature line: scripts emphasized,
+  files, languages, rules, lineage; *Details* and *Contents*) above SKILL.md, or one of its
+  files in place of it (← or Esc returns to the same scroll position). *Details* unfolds the
+  full description as written, rules, needs, licence, source and notes. *Contents* (⌘I,
+  remembered for the session) opens the package as an inspector beside the document: root
+  files, language folders as an index line when there are several, other folders with
+  counts, and *Runs* — the files an agent could run. While it is open the index folds into
+  the library's spine (name set vertically on its thread, position below), which opens over
+  the reader on hover, focus or click. Below 980 px the index is a bar above the reader
+  ("Anthropic / Claude API · 5 / 20 ▾") and the inspector comes in over the reader's edge.
+  Git details (repository, revision, refresh, who reviews it, disconnect) live in a sheet
+  opened from the library's address. The same reader shows an item's content inside a
+  project, with a quiet package line in place of the head.
 - **Contributions** — one dense row per contribution: a single state chip (with "checked …
   ago" for host-reported states), destination, last update and one next action. A
   contribution's page puts the file list beside the selected diff (stacked on narrow

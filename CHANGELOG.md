@@ -70,8 +70,18 @@ First working version.
 ### Libraries
 - **Libraries** is a destination: what is connected, community libraries to discover (previewed
   before connecting), and your own (a Git repository or a folder, each on its own page).
-- Reading a skill shows one document at a time with its package beside it; files open in
-  place of SKILL.md, code reads as code.
+- A library reads as an index of knowledge: skills as picks across the library's thread, with
+  initials, a one-line purpose and quiet marks for rules and scripts. Type to filter, ↑/↓ or
+  j/k to move, Enter to read; ⌘K lists the open library's skills first.
+- A skill opens with what it is, one primary action and a one-line signature (scripts,
+  files, languages, rules, lineage). Trigger instructions written for agents stay in
+  *Details*, exactly as written; the document starts right below.
+- The package is an inspector beside the document (*Contents* or ⌘I, remembered for the
+  session): root files, language folders as an index line, other folders with counts, and
+  the files an agent could run. The library's index folds into its spine while it is open.
+  Files open in place of SKILL.md; ← or Esc returns to the same scroll position.
+- Only code counts as a script (schemas and templates under `scripts/` do not), and titles
+  derived from names keep initialisms (*Claude API*, *MCP builder*).
 - Shared copies record their lineage (`metadata.based-on`) so knowledge keeps its origin.
 
 ### Design

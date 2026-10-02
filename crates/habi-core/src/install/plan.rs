@@ -897,7 +897,8 @@ impl<'a> Planner<'a> {
             .unwrap_or_default();
         for dir in &dirs {
             let names: Vec<&str> = dir.clients.iter().map(|c| c.label()).collect();
-            let why = format!("{} reads skills from {}.", names.join(" and "), dir.base);
+            let verb = if names.len() == 1 { "reads" } else { "read" };
+            let why = format!("{} {verb} skills from {}.", names.join(" and "), dir.base);
             for file in &p.files {
                 let (rel, bytes) = (&file.path, &file.bytes);
                 let target =

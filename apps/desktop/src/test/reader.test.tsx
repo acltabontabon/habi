@@ -5,7 +5,8 @@ import axe from "axe-core";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../components/Toasts";
-import { SkillReader } from "../views/reader/SkillReader";
+import { setInspectorOpen } from "../lib/inspector";
+import { ContentsToggle, SkillReader } from "../views/reader/SkillReader";
 import details from "./fixtures/item-details.json";
 
 const invoke = vi.fn();
@@ -14,6 +15,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(
 const detail = (details as Record<string, unknown>)["api-contract-review"];
 
 beforeEach(() => {
+  sessionStorage.clear();
+  setInspectorOpen(false);
   invoke.mockReset();
   invoke.mockImplementation(async (cmd: string, args: { path?: string }) => {
     if (cmd === "item_detail") return detail;
@@ -37,7 +40,12 @@ function Reader() {
       title="API contract review"
       file={file}
       onFile={setFile}
-      intro={<h2>Skill overview</h2>}
+      head={
+        <>
+          <h2>Skill overview</h2>
+          <ContentsToggle />
+        </>
+      }
     />
   );
 }
@@ -54,27 +62,45 @@ function wrap() {
 }
 
 describe("skill reader", () => {
-  it("shows one document at a time: a file replaces the skill, and Esc returns", async () => {
+  it("opens the package beside the skill; a file replaces the skill, and Esc steps back", async () => {
     const user = userEvent.setup();
     const { container } = wrap();
     expect(await screen.findByRole("heading", { name: "Skill overview" })).toBeInTheDocument();
-    expect(container.querySelectorAll(".reader-main")).toHaveLength(1);
+    // The package is one action away, not a permanent column.
+    expect(screen.queryByRole("region", { name: "Package contents" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /Contents/ }));
+    expect(screen.getByRole("region", { name: "Package contents" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Contents/ })).toHaveAttribute("aria-expanded", "true");
 
     await user.click(screen.getByRole("button", { name: /breaking-changes\.md/ }));
     expect(await screen.findByRole("heading", { name: "Breaking changes" })).toBeInTheDocument();
-    // The skill's introduction and SKILL.md are gone, not stacked beside it.
+    // One document surface: the skill's head and SKILL.md are not shown beside it.
     expect(screen.queryByRole("heading", { name: "Skill overview" })).toBeNull();
+    expect(container.querySelectorAll(".reader-main")).toHaveLength(1);
     expect(screen.getByRole("heading", { name: "references/breaking-changes.md" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /breaking-changes\.md/ })).toHaveAttribute(
       "aria-current",
       "page",
     );
 
+    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+
+    // Esc: back to the skill, with the package still open…
     await user.keyboard("{Escape}");
     expect(await screen.findByRole("heading", { name: "Skill overview" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /SKILL\.md/ })).toHaveAttribute("aria-current", "page");
+    // …then Esc closes the package.
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: /Contents/ })).toHaveAttribute("aria-expanded", "false");
+  });
 
-    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
-    expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+  it("toggles the package with ⌘I and remembers it for the session", async () => {
+    const user = userEvent.setup();
+    wrap();
+    await screen.findByRole("heading", { name: "Skill overview" });
+    await user.keyboard("{Meta>}i{/Meta}");
+    expect(screen.getByRole("region", { name: "Package contents" })).toBeInTheDocument();
+    expect(sessionStorage.getItem("habi.packageInspector")).toBe("open");
   });
 });

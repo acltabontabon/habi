@@ -553,3 +553,17 @@ fn markdown_reference_scanner_handles_nesting_and_titles() {
     assert_eq!(resolve_link("", "x/../y.md"), Some(Ok("y.md".into())));
     assert_eq!(resolve_link("", "HTTP://EXAMPLE.COM"), None);
 }
+
+#[test]
+fn humanize_keeps_initialisms_readable() {
+    assert_eq!(
+        humanize("liquibase-migration-review"),
+        "Liquibase migration review"
+    );
+    assert_eq!(humanize("claude-api"), "Claude API");
+    assert_eq!(humanize("mcp-builder"), "MCP builder");
+    assert_eq!(humanize("pdf"), "PDF");
+    assert_eq!(humanize("github-pr-summary"), "Github PR summary");
+    assert_eq!(humanize("slack_gif.creator"), "Slack GIF creator");
+    assert_eq!(humanize(""), "");
+}
