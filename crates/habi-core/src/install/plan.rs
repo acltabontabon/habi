@@ -1000,7 +1000,7 @@ impl<'a> Planner<'a> {
 
     /// Accounts for skill folders that are symbolic links inside the project.
     /// A link from one skills folder to the other (the layout in
-    /// `docs/dev/compatibility-research.md`, e.g. `.claude/skills -> ../.agents/skills`)
+    /// `docs/guide/agent-tools.md`, e.g. `.claude/skills -> ../.agents/skills`)
     /// means one copy serves both, so Habi writes it once, in the real
     /// folder. Any other link is a conflict that says how to proceed.
     fn resolve_skill_dirs(
