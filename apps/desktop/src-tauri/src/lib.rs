@@ -99,7 +99,10 @@ fn merge_login_path() -> Vec<String> {
         // SAFETY: called first thing in `run`, before Habi starts any other
         // thread that could read the environment (the reader thread above
         // only reads a pipe).
-        unsafe { std::env::set_var("PATH", entries.join(":")) };
+        #[allow(unsafe_code)] // Setting the environment is unsafe since Rust 2024.
+        unsafe {
+            std::env::set_var("PATH", entries.join(":"))
+        };
     }
     added
 }
