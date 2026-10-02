@@ -4,7 +4,7 @@ mod common;
 
 use common::*;
 use habi_core::cancel::CancelToken;
-use habi_core::source::{Freshness, NewSource, SourceKind, Sources, TrackedRef};
+use habi_core::source::{Freshness, NewSource, SourceKind, SourceRole, Sources, TrackedRef};
 use habi_core::store::{AppPaths, Store};
 use std::path::Path;
 use std::process::Command;
@@ -271,4 +271,26 @@ fn credential_urls_are_rejected() {
         .unwrap_err();
     assert!(err.to_string().contains("password"));
     assert!(!err.to_info().message.contains("secret"));
+}
+
+#[test]
+fn a_library_is_the_teams_until_marked_community() {
+    let home = tempfile::tempdir().unwrap();
+    let remote = tempfile::tempdir().unwrap();
+    library_repo(remote.path());
+    let sources = services(home.path());
+    let source = sources
+        .add(&NewSource {
+            name: "Community skills".into(),
+            location: remote.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    assert_eq!(source.role, SourceRole::Team);
+
+    let marked = sources.set_role(&source.id, SourceRole::Community).unwrap();
+    assert_eq!(marked.role, SourceRole::Community);
+    assert_eq!(sources.get(&source.id).unwrap().role, SourceRole::Community);
+    assert!(sources.set_role("missing", SourceRole::Team).is_err());
 }

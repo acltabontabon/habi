@@ -24,7 +24,7 @@ use habi_core::skills::intake::{
     ImportInspection, ImportOutcome, ImportSelection, InstructionDocument, ProjectKnowledge,
 };
 use habi_core::skills::{LocalSkill, LocalSkillSummary, NewSkill, SkillDocument, SkillFileContent};
-use habi_core::source::{NewSource, RefreshOutcome, Source};
+use habi_core::source::{NewSource, RefreshOutcome, Source, SourceRole};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -377,6 +377,16 @@ pub async fn add_source(state: State<'_, AppState>, source: NewSource) -> CmdRes
 pub async fn remove_source(state: State<'_, AppState>, source_id: String) -> CmdResult<()> {
     let habi = state.habi()?;
     blocking(habi, move |h| h.sources().remove(&source_id)).await
+}
+
+#[tauri::command]
+pub async fn set_source_role(
+    state: State<'_, AppState>,
+    source_id: String,
+    role: SourceRole,
+) -> CmdResult<Source> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.sources().set_role(&source_id, role)).await
 }
 
 #[tauri::command]

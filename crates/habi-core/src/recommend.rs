@@ -140,6 +140,9 @@ pub struct ItemSummary {
     pub clients: Option<Vec<ClientId>>,
     pub has_checks: bool,
     pub has_workflow: bool,
+    /// False when installing would be refused (an incomplete package, or a
+    /// SKILL.md name clients cannot use as a folder name).
+    pub installable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -177,7 +180,16 @@ pub fn summarize(item: &LibraryItem, source_name: &str, snapshot: &str) -> ItemS
         clients: item.clients.clone(),
         has_checks: !item.checks.is_empty(),
         has_workflow: item.workflow.is_some(),
+        installable: installable(item),
     }
+}
+
+/// Mirrors the refusals in install planning, so an item that cannot be
+/// installed is never offered for installation.
+pub fn installable(item: &LibraryItem) -> bool {
+    item.complete
+        && (item.kind == ItemKind::Instructions
+            || crate::library::check_skill_name(&item.name).is_ok())
 }
 
 /// Checks prerequisites without executing anything: tools are looked up on
@@ -379,6 +391,7 @@ pub fn recommend(
                 (_, Applicability::DoesNotApply) => Group::NotApplicable,
             };
             let next_action = match install_state {
+                InstallState::NotInstalled if !installable(item) => NextAction::None,
                 InstallState::Conflict => NextAction::ResolveConflict,
                 InstallState::UpdateAvailable => NextAction::Update,
                 InstallState::NotInstalled => match applicability.applicability {
@@ -427,6 +440,7 @@ pub fn recommend(
                     .cmp(&a.applicability.specificity),
             )
             .then(readiness_rank(a.readiness.state).cmp(&readiness_rank(b.readiness.state)))
+            .then(b.item.installable.cmp(&a.item.installable))
             .then(
                 a.item
                     .title

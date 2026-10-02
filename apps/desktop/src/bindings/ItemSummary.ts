@@ -4,4 +4,9 @@ import type { ItemKind } from "./ItemKind";
 import type { MetadataStatus } from "./MetadataStatus";
 import type { Requirement } from "./Requirement";
 
-export type ItemSummary = { key: string, sourceId: string, sourceName: string, id: string, title: string, name: string, description: string, kind: ItemKind, owner: string | null, requirement: Requirement, priority: number, snapshot: string, metadataStatus: MetadataStatus, diagnostics: number, clients: Array<ClientId> | null, hasChecks: boolean, hasWorkflow: boolean, };
+export type ItemSummary = { key: string, sourceId: string, sourceName: string, id: string, title: string, name: string, description: string, kind: ItemKind, owner: string | null, requirement: Requirement, priority: number, snapshot: string, metadataStatus: MetadataStatus, diagnostics: number, clients: Array<ClientId> | null, hasChecks: boolean, hasWorkflow: boolean, 
+/**
+ * False when installing would be refused (an incomplete package, or a
+ * SKILL.md name clients cannot use as a folder name).
+ */
+installable: boolean, };

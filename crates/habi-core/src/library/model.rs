@@ -232,7 +232,17 @@ pub struct LibraryItem {
     /// Library-relative directory (skills) or file (instructions).
     pub path: String,
     pub owner: Option<String>,
+    /// SKILL.md `license`, as the author wrote it.
     pub license: Option<String>,
+    /// Library-relative path of the nearest licence file in the item's folder
+    /// or one of its parents (a repository's root `LICENSE`, say). Habi points
+    /// at the terms; it does not interpret them.
+    #[serde(default)]
+    pub license_file: Option<String>,
+    /// The author declared the item proprietary (in `license`). Copying or
+    /// sharing it may not be permitted.
+    #[serde(default)]
+    pub license_restricted: bool,
     pub compatibility: Option<String>,
     pub requirement: Requirement,
     pub priority: i32,

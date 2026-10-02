@@ -3,10 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Icon } from "../../components/Icon";
 import { Markdown } from "../../components/lazy";
-import { ErrorNotice, Working } from "../../components/ui";
+import { ErrorNotice, Notice, Working } from "../../components/ui";
 import { api } from "../../lib/api";
 import { levelLabel } from "../../lib/format";
 import { useItemDetail } from "../../lib/queries";
+
+/** What the author declared and where the terms are; never an interpretation. */
+function licenseText(declared: string | null, file: string | null): string {
+  if (declared && file) return `${declared} (terms: ${file})`;
+  if (declared) return declared;
+  if (file) return `not declared in SKILL.md; terms in ${file}`;
+  return "none found in the skill or its library";
+}
 
 export function FileViewer({
   sourceId,
@@ -104,7 +112,13 @@ export function ContentPanel({ sourceId, itemId }: { sourceId: string; itemId: s
             </li>
           ))}
         </ul>
-        {item.license ? <p className="muted">License: {item.license}</p> : null}
+        <p className="muted">License: {licenseText(item.license, item.licenseFile)}</p>
+        {item.licenseRestricted ? (
+          <Notice tone="warn" title="Declared proprietary">
+            Check its terms before copying it into a repository others can see or sharing it with a team
+            library.
+          </Notice>
+        ) : null}
       </div>
       <div className="content-body">
         <h4 className="explain-heading">{isInstructions ? "Instructions" : "SKILL.md"}</h4>

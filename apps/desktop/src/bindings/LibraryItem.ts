@@ -27,7 +27,22 @@ name: string, description: string,
 /**
  * Library-relative directory (skills) or file (instructions).
  */
-path: string, owner: string | null, license: string | null, compatibility: string | null, requirement: Requirement, priority: number, scope: Scope, appliesWhen: Condition | null, excludes: Condition | null, tools: Array<ToolRequirement>, mcp: Array<McpRequirement>, 
+path: string, owner: string | null, 
+/**
+ * SKILL.md `license`, as the author wrote it.
+ */
+license: string | null, 
+/**
+ * Library-relative path of the nearest licence file in the item's folder
+ * or one of its parents (a repository's root `LICENSE`, say). Habi points
+ * at the terms; it does not interpret them.
+ */
+licenseFile: string | null, 
+/**
+ * The author declared the item proprietary (in `license`). Copying or
+ * sharing it may not be permitted.
+ */
+licenseRestricted: boolean, compatibility: string | null, requirement: Requirement, priority: number, scope: Scope, appliesWhen: Condition | null, excludes: Condition | null, tools: Array<ToolRequirement>, mcp: Array<McpRequirement>, 
 /**
  * `None` when not restricted.
  */

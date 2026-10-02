@@ -4,7 +4,7 @@
     "name": "platform-monorepo",
     "path": "~/work/platform-monorepo",
     "exists": true,
-    "lastOpenedAt": "2026-10-02T00:24:37Z",
+    "lastOpenedAt": "2026-10-02T09:49:26Z",
     "exclusions": [],
     "sample": false
   },
@@ -13,7 +13,7 @@
     "name": "platform-monorepo",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "main",
+      "branch": "community-skills-relevance",
       "repositoryRoot": "~/Workspace/habi",
       "isMonorepo": true,
       "workspaceSignals": [
@@ -728,8 +728,20 @@
         "notes": []
       },
       {
+        "module": ".",
+        "area": "content",
+        "status": "complete",
+        "notes": []
+      },
+      {
         "module": "apps/web",
         "area": "files",
+        "status": "complete",
+        "notes": []
+      },
+      {
+        "module": "apps/web",
+        "area": "content",
         "status": "complete",
         "notes": []
       },
@@ -740,8 +752,20 @@
         "notes": []
       },
       {
+        "module": "services/catalog",
+        "area": "content",
+        "status": "complete",
+        "notes": []
+      },
+      {
         "module": "services/inventory",
         "area": "files",
+        "status": "complete",
+        "notes": []
+      },
+      {
+        "module": "services/inventory",
+        "area": "content",
         "status": "complete",
         "notes": []
       }
@@ -757,14 +781,14 @@
       "elapsedMs": 1
     },
     "fingerprint": "sha256:d57ecf8a745d7841e71f5651818739efc8daf0aa544f9fe0a2742d98e5e60403",
-    "inspectedAt": "2026-10-02T00:24:37Z"
+    "inspectedAt": "2026-10-02T09:49:26Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "131206e11d9e/java-service-conventions",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/java-service-conventions",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -774,12 +798,13 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "required",
       "applicability": {
@@ -878,8 +903,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/service-observability",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/service-observability",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -889,12 +914,13 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "required",
       "applicability": {
@@ -1017,8 +1043,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/liquibase-migration-review",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/liquibase-migration-review",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -1028,7 +1054,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1037,7 +1063,8 @@
           "codex"
         ],
         "hasChecks": true,
-        "hasWorkflow": true
+        "hasWorkflow": true,
+        "installable": true
       },
       "group": "relevant",
       "applicability": {
@@ -1547,8 +1574,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/react-component-review",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/react-component-review",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1558,7 +1585,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1567,7 +1594,8 @@
           "codex"
         ],
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "relevant",
       "applicability": {
@@ -1693,8 +1721,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/jooq-query-review",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/jooq-query-review",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1704,12 +1732,13 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "relevant",
       "applicability": {
@@ -1827,8 +1856,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/frontend-test-practices",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/frontend-test-practices",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -1838,12 +1867,13 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": true,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "relevant",
       "applicability": {
@@ -2304,8 +2334,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/github-pr-summary",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/github-pr-summary",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -2315,12 +2345,13 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "relevant",
       "applicability": {
@@ -2389,8 +2420,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/incident-notes",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/incident-notes",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -2400,12 +2431,13 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "available",
       "applicability": {
@@ -2431,8 +2463,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/api-contract-review",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/api-contract-review",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -2442,12 +2474,13 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": true
+        "hasWorkflow": true,
+        "installable": true
       },
       "group": "notApplicable",
       "applicability": {
@@ -2570,8 +2603,8 @@
     },
     {
       "item": {
-        "key": "131206e11d9e/jpa-entity-review",
-        "sourceId": "131206e11d9e",
+        "key": "63eeb3f26e33/jpa-entity-review",
+        "sourceId": "63eeb3f26e33",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -2581,12 +2614,13 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+        "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
         "hasChecks": false,
-        "hasWorkflow": false
+        "hasWorkflow": false,
+        "installable": true
       },
       "group": "notApplicable",
       "applicability": {
@@ -2757,7 +2791,7 @@
   ],
   "sources": [
     {
-      "id": "131206e11d9e",
+      "id": "63eeb3f26e33",
       "name": "Example team library",
       "kind": "git",
       "location": "git@example.invalid:team/skills.git",
@@ -2766,11 +2800,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T00:24:36Z",
-      "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
-      "snapshotAt": "2026-10-02T00:24:36Z",
+      "createdAt": "2026-10-02T09:49:25Z",
+      "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
+      "snapshotAt": "2026-10-02T09:49:25Z",
       "commitSummary": "Example library — Example, 2026-10-02",
-      "lastAttemptAt": "2026-10-02T00:24:36Z",
+      "lastAttemptAt": "2026-10-02T09:49:25Z",
       "lastError": null,
       "warning": null,
       "freshness": "current"

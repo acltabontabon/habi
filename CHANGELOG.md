@@ -36,8 +36,29 @@ First working version.
   instruction files, and understands monorepos module by module.
 - Recommendations grouped as team requirements, fits this project, needs information,
   available, and does not apply — each with the reasons and the exact files behind them.
+- Skills without applicability rules are collapsed into a count per library, so connecting a
+  large community library (hundreds of skills) does not bury what fits. Items that cannot be
+  installed (incomplete, or an invalid SKILL.md name) no longer offer to install.
+- Licences: each item shows its declared licence and the nearest licence file, including a
+  repository's root `LICENSE`. Skills declared proprietary get a note in the install review
+  and a warning before sharing.
 - Tell Habi what it could not establish (for example, a dependency inherited from a company
   parent POM). Your answers are labeled as yours and can be undone.
+
+### Community libraries
+- A library is your team's own or a community one (`habi source add … --community`,
+  `habi source role`, or *Whose library is this?* when connecting). Community libraries are
+  listed separately and labeled as not reviewed by your team.
+- Connecting offers a short list of well-known community libraries (Anthropic, Superpowers,
+  Addy Osmani, wshobson, Vercel). Aggregators that re-host other people's skills are left out.
+- A library page shows how many skills have rules, ship scripts, or are declared proprietary.
+
+### Design
+- New visual language, *Loom*: Daylight and Graphite themes, IBM Plex Sans with a monospace
+  voice for labels and counts, and one dye color per library that follows its items
+  everywhere (solid for team, stitched for community). Each project gets a woven swatch from
+  the libraries that fit it, with a composition strip under its header.
+- Recommendation groups are sticky section bars with a tone mark and count.
 
 ### Adopt
 - Install skills and workflows for Claude Code, Cursor and Codex into the current project,

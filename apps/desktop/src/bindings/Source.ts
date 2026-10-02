@@ -2,9 +2,10 @@
 import type { ErrorInfo } from "./ErrorInfo";
 import type { Freshness } from "./Freshness";
 import type { SourceKind } from "./SourceKind";
+import type { SourceRole } from "./SourceRole";
 import type { TrackedRef } from "./TrackedRef";
 
-export type Source = { id: string, name: string, kind: SourceKind, 
+export type Source = { id: string, name: string, kind: SourceKind, role: SourceRole, 
 /**
  * URL, or a local path shown with `~`.
  */

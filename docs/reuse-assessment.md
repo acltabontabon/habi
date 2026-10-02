@@ -9,7 +9,7 @@
 | Accessible primitives | Radix Dialog, cmdk | MIT | Focus management and keyboard behavior done right; visually unstyled, so Habi's design is its own. |
 | Data fetching | TanStack Query | MIT | Loading/error/caching states without hand-rolled stores. |
 | Markdown | react-markdown, remark-gfm, rehype-sanitize | MIT | Renders skills without raw HTML; sanitization on top. |
-| Fonts | Newsreader, IBM Plex Sans, IBM Plex Mono via Fontsource | OFL-1.1 | Bundled, no runtime CDN. |
+| Fonts | IBM Plex Sans, IBM Plex Mono via Fontsource | OFL-1.1 | Bundled, no runtime CDN. |
 | SQLite | rusqlite (bundled SQLite) | MIT | Simple, synchronous, WAL for concurrent desktop + CLI. |
 | YAML | serde-saphyr | MIT OR Apache-2.0 | Pure Rust, maintained, explicit resource budgets (anti-YAML-bomb). `serde_yaml` is archived. |
 | JSON Schema | jsonschema (no default features) | MIT | Draft 2020-12, offline (no remote `$ref` fetching). |

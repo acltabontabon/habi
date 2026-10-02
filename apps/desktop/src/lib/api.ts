@@ -48,6 +48,7 @@ import type { SkillDocument } from "../bindings/SkillDocument";
 import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
 import type { Source } from "../bindings/Source";
+import type { SourceRole } from "../bindings/SourceRole";
 
 export type Decisions = Record<string, Resolution>;
 
@@ -117,6 +118,7 @@ export const api = {
   pickLibraryFolder: () => call<string | null>("pick_library_folder"),
   addSource: (source: NewSource) => call<Source>("add_source", { source }),
   removeSource: (sourceId: string) => call<void>("remove_source", { sourceId }),
+  setSourceRole: (sourceId: string, role: SourceRole) => call<Source>("set_source_role", { sourceId, role }),
   refreshSource: (sourceId: string, jobId?: string) =>
     call<RefreshOutcome>("refresh_source", { sourceId, jobId: jobId ?? null }),
   library: (sourceId: string) => call<LibraryIndex>("library", { sourceId }),

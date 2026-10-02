@@ -19,7 +19,7 @@ use habi_core::library::model::LibraryItem;
 use habi_core::matching::eval::{Declaration, DeclaredSubject};
 use habi_core::paths::display_path;
 use habi_core::service::{Habi, ItemRef, ProjectRecord};
-use habi_core::source::{NewSource, TrackedRef};
+use habi_core::source::{NewSource, SourceRole, TrackedRef};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -61,7 +61,8 @@ enum Command {
     Recommend {
         #[command(flatten)]
         project: ProjectArg,
-        /// Also list items that do not apply.
+        /// Also list items that do not apply, and items without applicability
+        /// rules that are not installed.
         #[arg(long)]
         all: bool,
     },
@@ -245,6 +246,17 @@ enum SourceCmd {
         /// Track this tag instead of a branch.
         #[arg(long)]
         tag: Option<String>,
+        /// A community library (published by others, not reviewed by your team).
+        #[arg(long)]
+        community: bool,
+    },
+    /// Mark a library as your team's own or as a community library.
+    Role {
+        /// Library name (see `habi source list`).
+        name: String,
+        /// `team` or `community`.
+        #[arg(value_parser = ["team", "community"])]
+        role: String,
     },
     /// List connected libraries.
     List,
@@ -1331,6 +1343,7 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
             subdir,
             branch,
             tag,
+            community,
         } => {
             let tracked = match (branch, tag) {
                 (Some(b), _) => TrackedRef::Branch { name: b },
@@ -1343,6 +1356,11 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
                 subdir,
                 tracked,
             })?;
+            let s = if community {
+                habi.sources().set_role(&s.id, SourceRole::Community)?
+            } else {
+                s
+            };
             emit(ctx, &s, || {
                 println!(
                     "Connected `{}`. Fetch it with: habi source refresh {}",
@@ -1409,6 +1427,25 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
                 println!(
                     "Removed `{}`. Installed content in projects was not changed.",
                     s.name
+                )
+            })
+        }
+        SourceCmd::Role { name, role } => {
+            let s = source_by_name(habi, &name)?;
+            let role = if role == "community" {
+                SourceRole::Community
+            } else {
+                SourceRole::Team
+            };
+            let s = habi.sources().set_role(&s.id, role)?;
+            emit(ctx, &s, || {
+                println!(
+                    "`{}` is now {}.",
+                    s.name,
+                    match s.role {
+                        SourceRole::Team => "a team library",
+                        SourceRole::Community => "a community library (not reviewed by your team)",
+                    }
                 )
             })
         }

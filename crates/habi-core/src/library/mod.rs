@@ -383,6 +383,40 @@ pub fn read_metadata(v: &Value, path: &str, diags: &mut Vec<Diagnostic>) -> Meta
     }
 }
 
+/// Whether a file name is a licence file: `LICENSE`, `LICENCE`, `COPYING`,
+/// `UNLICENSE` or a variant such as `LICENSE-MIT` or `LICENSE.txt`.
+pub fn is_license_file(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    let (stem, ext) = match lower.rsplit_once('.') {
+        Some((s, e)) => (s, e),
+        None => (lower.as_str(), ""),
+    };
+    let stem_ok = ["license", "licence", "copying", "unlicense"]
+        .iter()
+        .any(|s| stem == *s || stem.starts_with(&format!("{s}-")));
+    stem_ok && matches!(ext, "" | "md" | "txt" | "rst")
+}
+
+/// Whether a declared licence says the content is proprietary. Only what the
+/// author declared counts; licence texts are not interpreted.
+pub fn is_restricted_license(declared: &str) -> bool {
+    declared.to_ascii_lowercase().contains("proprietary")
+}
+
+/// The nearest licence file at or above `dir` (library-relative).
+fn nearest_license(dir: &str, license_files: &BTreeMap<String, Vec<String>>) -> Option<String> {
+    let mut current = dir;
+    loop {
+        if let Some(name) = license_files.get(current).and_then(|names| names.first()) {
+            return Some(join(current, name));
+        }
+        if current.is_empty() {
+            return None;
+        }
+        current = dir_of(current);
+    }
+}
+
 fn dir_of(path: &str) -> &str {
     path.rsplit_once('/').map(|(d, _)| d).unwrap_or("")
 }
@@ -415,6 +449,20 @@ pub fn build_index(
     };
     let by_path: HashMap<&str, &SnapshotFile> =
         files.iter().map(|f| (f.path.as_str(), f)).collect();
+    // Licence files by folder, so each item can point at the nearest one.
+    let mut license_files: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for f in files {
+        let name = f.path.rsplit('/').next().unwrap_or(&f.path);
+        if is_license_file(name) {
+            license_files
+                .entry(dir_of(&f.path).to_string())
+                .or_default()
+                .push(name.to_string());
+        }
+    }
+    for names in license_files.values_mut() {
+        names.sort();
+    }
     let read_text = |path: &str| -> Result<String, String> {
         let bytes = read(path)?;
         if bytes.len() > METADATA_LIMIT * 4 {
@@ -672,6 +720,8 @@ pub fn build_index(
             description,
             path: dir.clone(),
             owner: metadata.owner,
+            license_file: nearest_license(dir, &license_files),
+            license_restricted: front.license.as_deref().is_some_and(is_restricted_license),
             license: front.license,
             compatibility: front.compatibility,
             requirement: metadata.requirement,
@@ -741,6 +791,7 @@ pub fn build_index(
             executable: file.executable,
         }];
         let content_digest = item_digest(&item_files);
+        let license_file = nearest_license(dir_of(&path), &license_files);
         index.items.push(LibraryItem {
             key: format!("{source_id}/{id}"),
             source_id: source_id.to_string(),
@@ -752,6 +803,8 @@ pub fn build_index(
             path,
             owner: md.owner,
             license: None,
+            license_file,
+            license_restricted: false,
             compatibility: None,
             requirement: md.requirement,
             priority: md.priority,

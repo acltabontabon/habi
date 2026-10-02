@@ -1540,6 +1540,15 @@ impl<'a> Contributions<'a> {
         });
         for item in &index.items {
             out.extend(item.diagnostics.iter().cloned());
+            if item.license_restricted {
+                out.push(Diagnostic::warning(
+                    format!(
+                        "SKILL.md declares a proprietary licence (\u{201c}{}\u{201d}). Sharing it copies it into the library; make sure its terms allow that.",
+                        item.license.as_deref().unwrap_or_default()
+                    ),
+                    Some("SKILL.md"),
+                ));
+            }
         }
         out.extend(index.diagnostics);
         for (path, bytes) in staged {

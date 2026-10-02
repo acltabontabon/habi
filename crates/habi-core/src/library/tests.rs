@@ -264,3 +264,56 @@ fn documented_schema_examples_validate_as_described() {
         );
     }
 }
+
+#[test]
+fn licence_file_is_the_nearest_one_up_the_tree() {
+    let skill = |name: &str, license: &str| {
+        format!("---\nname: {name}\ndescription: A skill.\n{license}---\nBody\n")
+    };
+    let own = skill(
+        "own",
+        "license: Proprietary. LICENSE.txt has complete terms\n",
+    );
+    let inherited = skill("inherited", "");
+    let bare = skill("bare", "");
+    let idx = index(&[
+        ("LICENSE", "MIT License"),
+        ("LICENSE-check.sh", "#!/bin/sh"),
+        ("plugins/p/skills/own/SKILL.md", &own),
+        ("plugins/p/skills/own/LICENSE.txt", "All rights reserved"),
+        ("plugins/p/skills/inherited/SKILL.md", &inherited),
+    ]);
+    let get = |id: &str| idx.items.iter().find(|i| i.id == id).unwrap();
+    assert_eq!(
+        get("own").license_file.as_deref(),
+        Some("plugins/p/skills/own/LICENSE.txt")
+    );
+    assert!(get("own").license_restricted);
+    assert_eq!(get("inherited").license_file.as_deref(), Some("LICENSE"));
+    assert!(!get("inherited").license_restricted);
+
+    let alone = index(&[("skills/bare/SKILL.md", &bare)]);
+    assert_eq!(alone.items[0].license_file, None);
+}
+
+#[test]
+fn licence_file_names() {
+    for yes in [
+        "LICENSE",
+        "license.md",
+        "LICENCE.txt",
+        "COPYING",
+        "LICENSE-MIT",
+        "UNLICENSE",
+    ] {
+        assert!(is_license_file(yes), "{yes}");
+    }
+    for no in [
+        "LICENSE-check.sh",
+        "licenses.json",
+        "README.md",
+        "license_test.py",
+    ] {
+        assert!(!is_license_file(no), "{no}");
+    }
+}

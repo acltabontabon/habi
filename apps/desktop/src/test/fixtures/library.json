@@ -1,14 +1,14 @@
 {
-  "sourceId": "131206e11d9e",
-  "snapshot": "29bb01018b1a3d3a4aa298ea5147b05948141f1e",
+  "sourceId": "63eeb3f26e33",
+  "snapshot": "79f421fabbe23363dfb22b9320e4e5cca82a5073",
   "name": "Example team library",
   "owner": "Platform Guild (example)",
   "description": "Shared review workflows and conventions for the example team's Java services and web apps.",
   "contact": "#platform-guild (example channel)",
   "items": [
     {
-      "key": "131206e11d9e/api-contract-review",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/api-contract-review",
+      "sourceId": "63eeb3f26e33",
       "id": "api-contract-review",
       "kind": "workflow",
       "title": "API contract review",
@@ -17,6 +17,8 @@
       "path": "skills/api-contract-review",
       "owner": "API Guild (example)",
       "license": "Apache-2.0",
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 15,
@@ -94,8 +96,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/frontend-test-practices",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/frontend-test-practices",
+      "sourceId": "63eeb3f26e33",
       "id": "frontend-test-practices",
       "kind": "skill",
       "title": "Front-end test practices",
@@ -104,6 +106,8 @@
       "path": "skills/frontend-test-practices",
       "owner": "Web Guild (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 5,
@@ -185,8 +189,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/github-pr-summary",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/github-pr-summary",
+      "sourceId": "63eeb3f26e33",
       "id": "github-pr-summary",
       "kind": "skill",
       "title": "GitHub PR summary",
@@ -195,6 +199,8 @@
       "path": "skills/github-pr-summary",
       "owner": "Developer Experience (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 0,
@@ -257,8 +263,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/incident-notes",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/incident-notes",
+      "sourceId": "63eeb3f26e33",
       "id": "incident-notes",
       "kind": "skill",
       "title": "Incident notes",
@@ -267,6 +273,8 @@
       "path": "skills/incident-notes",
       "owner": null,
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 0,
@@ -295,8 +303,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/java-service-conventions",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/java-service-conventions",
+      "sourceId": "63eeb3f26e33",
       "id": "java-service-conventions",
       "kind": "instructions",
       "title": "Java service conventions",
@@ -305,6 +313,8 @@
       "path": "instructions/java-service-conventions.md",
       "owner": "Platform Guild (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "required",
       "priority": 0,
@@ -347,8 +357,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/jooq-query-review",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/jooq-query-review",
+      "sourceId": "63eeb3f26e33",
       "id": "jooq-query-review",
       "kind": "skill",
       "title": "jOOQ query review",
@@ -357,6 +367,8 @@
       "path": "skills/jooq-query-review",
       "owner": "Platform Guild (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 10,
@@ -394,8 +406,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/jpa-entity-review",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/jpa-entity-review",
+      "sourceId": "63eeb3f26e33",
       "id": "jpa-entity-review",
       "kind": "skill",
       "title": "JPA entity review",
@@ -404,6 +416,8 @@
       "path": "skills/jpa-entity-review",
       "owner": "Platform Guild (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 10,
@@ -444,8 +458,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/liquibase-migration-review",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/liquibase-migration-review",
+      "sourceId": "63eeb3f26e33",
       "id": "liquibase-migration-review",
       "kind": "workflow",
       "title": "Liquibase migration review",
@@ -454,6 +468,8 @@
       "path": "skills/liquibase-migration-review",
       "owner": "Platform Guild (example)",
       "license": "Apache-2.0",
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 20,
@@ -612,8 +628,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/react-component-review",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/react-component-review",
+      "sourceId": "63eeb3f26e33",
       "id": "react-component-review",
       "kind": "skill",
       "title": "React component review",
@@ -622,6 +638,8 @@
       "path": "skills/react-component-review",
       "owner": "Web Guild (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "recommended",
       "priority": 15,
@@ -677,8 +695,8 @@
       "complete": true
     },
     {
-      "key": "131206e11d9e/service-observability",
-      "sourceId": "131206e11d9e",
+      "key": "63eeb3f26e33/service-observability",
+      "sourceId": "63eeb3f26e33",
       "id": "service-observability",
       "kind": "skill",
       "title": "Service observability",
@@ -687,6 +705,8 @@
       "path": "skills/service-observability",
       "owner": "SRE (example)",
       "license": null,
+      "licenseFile": null,
+      "licenseRestricted": false,
       "compatibility": null,
       "requirement": "required",
       "priority": 0,

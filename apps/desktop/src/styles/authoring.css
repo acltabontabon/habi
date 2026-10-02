@@ -319,13 +319,9 @@
   flex: none;
 }
 
-.skills-empty {
-  display: grid;
-  gap: var(--s3);
-  justify-items: start;
-  max-width: 560px;
-  padding: var(--s5) 0;
-  border-top: 1px solid var(--hairline-strong);
+.skills-start {
+  margin-top: var(--s5);
+  max-width: 720px;
 }
 
 .skills-filter {
@@ -371,10 +367,10 @@
 }
 
 .skill-row-title {
-  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 580;
   overflow-wrap: anywhere;
+  letter-spacing: -0.012em;
 }
 
 .skill-row-desc {
@@ -460,10 +456,9 @@
   border: 0;
   border-bottom: 1px solid transparent;
   background: transparent;
-  font-family: var(--font-display);
   font-size: 30px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-weight: 620;
+  letter-spacing: -0.022em;
   line-height: 1.2;
 }
 
@@ -700,9 +695,9 @@
 }
 
 .builder-title {
-  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 580;
+  letter-spacing: -0.012em;
 }
 
 .rules {
@@ -836,9 +831,9 @@
 }
 
 .preview-title {
-  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 580;
+  letter-spacing: -0.012em;
 }
 
 .preview-sub {
@@ -1062,10 +1057,9 @@
 }
 
 .found-headline {
-  font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 500;
-  letter-spacing: -0.006em;
+  font-weight: 580;
+  letter-spacing: -0.012em;
 }
 
 .found-lead .lead-sm {

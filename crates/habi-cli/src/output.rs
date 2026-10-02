@@ -20,7 +20,8 @@ use habi_core::recommend::{
 };
 use habi_core::review::ReviewState;
 use habi_core::service::ProjectOverview;
-use habi_core::source::{Freshness, RefreshOutcome, Source};
+use habi_core::source::{Freshness, RefreshOutcome, Source, SourceRole};
+use std::collections::BTreeMap;
 
 // ----- plain-language labels -------------------------------------------------
 
@@ -244,8 +245,13 @@ pub fn sources(list: &[Source]) {
     for s in list {
         let snapshot = s.snapshot.as_deref().map(short).unwrap_or("not fetched");
         println!(
-            "{}  ({}, {})",
+            "{}  ({}{}, {})",
             s.name,
+            if s.role == SourceRole::Community {
+                "community, not reviewed by your team; "
+            } else {
+                ""
+            },
             freshness(s.freshness),
             s.tracked.label()
         );
@@ -430,10 +436,15 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         if group == Group::NotApplicable && !all {
             continue;
         }
+        // Items without applicability rules are not recommendations: only
+        // installed ones (which may need an update) are listed by default.
         let members: Vec<&Recommendation> = o
             .recommendations
             .iter()
             .filter(|r| display_group(r) == group)
+            .filter(|r| {
+                all || group != Group::Available || r.install_state != InstallState::NotInstalled
+            })
             .collect();
         if members.is_empty() {
             continue;
@@ -470,6 +481,31 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         .iter()
         .filter(|r| display_group(r) == Group::NotApplicable)
         .count();
+    let mut unmatched: BTreeMap<&str, usize> = BTreeMap::new();
+    for r in o.recommendations.iter().filter(|r| {
+        display_group(r) == Group::Available && r.install_state == InstallState::NotInstalled
+    }) {
+        *unmatched.entry(r.item.source_name.as_str()).or_default() += 1;
+    }
+    if !all && !unmatched.is_empty() {
+        let total: usize = unmatched.values().sum();
+        let mut by_library: Vec<(&str, usize)> = unmatched.into_iter().collect();
+        by_library.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+        let libraries: Vec<String> = by_library
+            .iter()
+            .map(|(name, n)| format!("{name} {n}"))
+            .collect();
+        println!(
+            "\n{} no applicability rules, so Habi does not match {} to projects ({}).\nList them with --all, or browse a library with: habi source items <library>",
+            if total == 1 {
+                "1 item has".to_string()
+            } else {
+                format!("{total} items have")
+            },
+            if total == 1 { "it" } else { "them" },
+            libraries.join(", ")
+        );
+    }
     if !all && hidden > 0 {
         println!(
             "\n{} not apply (show with --all).",
@@ -508,6 +544,16 @@ fn tree(node: &EvalNode, depth: usize) {
     }
 }
 
+/// What the author declared and where the terms are; never an interpretation.
+fn licence(item: &LibraryItem) -> String {
+    match (&item.license, &item.license_file) {
+        (Some(declared), Some(file)) => format!("{declared} (terms: {file})"),
+        (Some(declared), None) => declared.clone(),
+        (None, Some(file)) => format!("not declared in SKILL.md; terms in {file}"),
+        (None, None) => "none found in the skill or its library".to_string(),
+    }
+}
+
 pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
     println!("{} ({}/{})", r.item.title, r.item.source_name, r.item.id);
     println!("{}\n", r.item.description);
@@ -542,6 +588,16 @@ pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
         );
     }
     println!("Installation: {}", install_state(r.install_state));
+    if !r.item.installable {
+        println!(
+            "  Cannot be installed: {}",
+            match item {
+                Some(i) if !i.complete =>
+                    "some of its files were skipped while reading the library",
+                _ => "its SKILL.md name is not a valid skill folder name",
+            }
+        );
+    }
     println!("Evidence: {}", evidence(r.evidence.state));
     for e in &r.evidence.declared {
         println!(
@@ -550,6 +606,12 @@ pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
             e.result,
             e.summary.clone().unwrap_or_default()
         );
+    }
+    if let Some(item) = item {
+        println!("Licence: {}", licence(item));
+        if item.license_restricted {
+            println!("  Declared proprietary: check the terms before copying or sharing it.");
+        }
     }
     if let Some(item) = item
         && !item.checks.is_empty()

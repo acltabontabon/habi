@@ -78,33 +78,45 @@ export function SkillsView({ skillId }: { skillId?: string }) {
             Drafts and editable copies on this machine. They are yours until you install or share them.
           </p>
         </div>
-        <div className="skills-actions">
-          <Button variant="primary" icon="pencil" onClick={() => newSkill()}>
-            Create a skill
-          </Button>
-          <Button icon="plus" onClick={() => addSkills()}>
-            Add skills…
-          </Button>
-        </div>
-      </header>
-      {error ? <ErrorNotice error={error} /> : null}
-
-      {total === 0 ? (
-        <div className="skills-empty">
-          <p className="empty-title">Nothing here yet</p>
-          <p className="empty-text">
-            Write down something your team keeps explaining — a review routine, a migration recipe — or bring
-            in skills you already have. A title is enough to start.
-          </p>
+        {total > 0 ? (
           <div className="skills-actions">
             <Button variant="primary" icon="pencil" onClick={() => newSkill()}>
               Create a skill
             </Button>
             <Button icon="plus" onClick={() => addSkills()}>
-              Add existing skills…
+              Add skills…
             </Button>
           </div>
-        </div>
+        ) : null}
+      </header>
+      {error ? <ErrorNotice error={error} /> : null}
+
+      {total === 0 ? (
+        <ul className="welcome-paths skills-start" aria-label="Start your first skill">
+          <li>
+            <button type="button" className="welcome-path" onClick={() => newSkill()}>
+              <Icon name="pencil" />
+              <span>
+                <span className="welcome-path-title">Create a skill</span>
+                <span className="welcome-path-detail">
+                  Write down something your team keeps explaining — a review routine, a migration recipe. A
+                  title is enough to start.
+                </span>
+              </span>
+            </button>
+          </li>
+          <li>
+            <button type="button" className="welcome-path" onClick={() => addSkills()}>
+              <Icon name="plus" />
+              <span>
+                <span className="welcome-path-title">Add existing skills</span>
+                <span className="welcome-path-detail">
+                  From a project, a folder, or a Git repository — inspected before anything is copied.
+                </span>
+              </span>
+            </button>
+          </li>
+        </ul>
       ) : (
         <>
           {total > 6 ? (

@@ -59,8 +59,23 @@ describe("workbench", () => {
     expect(group).not.toBeNull();
     expect(within(group as HTMLElement).getByText("Liquibase migration review")).toBeInTheDocument();
     const notApplicable = screen.getByRole("heading", { name: /Does not apply/ });
-    expect(notApplicable.closest("section")?.querySelector("ul")).toBeNull();
-    expect(screen.getByRole("button", { name: "Show" })).toHaveAttribute("aria-expanded", "false");
+    const notApplicableGroup = notApplicable.closest("section") as HTMLElement;
+    expect(notApplicableGroup.querySelector("ul")).toBeNull();
+    expect(within(notApplicableGroup).getByRole("button", { name: "Show" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("collapses items without applicability rules and says which libraries they come from", async () => {
+    const user = userEvent.setup();
+    wrap(<RoutedWorkbench overview={billingOverview} />, billingOverview.project.id);
+    const available = screen.getByRole("heading", { name: /Available to use manually/ });
+    const group = available.closest("section") as HTMLElement;
+    expect(group.querySelector("ul")).toBeNull();
+    expect(within(group).getByText(/From Example team library \(1\)/)).toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "Show" }));
+    expect(group.querySelector("ul")).not.toBeNull();
   });
 
   it("explains why an item fits, down to the file and line", async () => {
