@@ -230,7 +230,7 @@ export function ItemDetailPane({
 
         <dl className="facets" aria-label="Status">
           <Facet
-            label="Applicability"
+            label="Fit"
             value={applicabilityLabel[a.applicability]}
             tone={applicabilityTone[a.applicability]}
             detail={
@@ -507,7 +507,7 @@ export function ItemDetailPane({
               ) : null}
             </Section>
 
-            <Section title="Source and scope" id="source">
+            <Section title="Library and scope" id="source">
               <dl className="meta-grid">
                 <dt>Library</dt>
                 <dd>

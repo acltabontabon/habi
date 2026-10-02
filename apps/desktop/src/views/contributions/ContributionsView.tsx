@@ -464,7 +464,7 @@ function MetadataForm({
           />
         </>
       ) : (
-        <Notice tone="unknown" title="Applicability is kept as written">
+        <Notice tone="unknown" title="The rules for when it applies are kept as written">
           This skill's conditions are more detailed than this form can express. They are preserved unchanged;
           edit
           <span className="mono"> habi.yaml</span> in the library to change them.
@@ -909,7 +909,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                 {rehearsalNote ? <p className="field-hint">{rehearsalNote}</p> : null}
                 {local ? (
                   <p className="field-hint">
-                    Applicability comes from the skill itself; change it in My skills.
+                    The rules for when it applies come from the skill itself; change them in My skills.
                   </p>
                 ) : null}
                 {autosave.state === "error" || autosave.state === "conflict" ? (

@@ -55,7 +55,7 @@ export function CommandPalette({
       );
     } else {
       toast.show(
-        `Could not refresh ${failed.join(", ")}. Open Team libraries for details; the offline copy stays available.`,
+        `Could not refresh ${failed.join(", ")}. Open the library for details; the offline copy stays available.`,
         "danger",
       );
     }

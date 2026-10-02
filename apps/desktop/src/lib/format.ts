@@ -17,7 +17,7 @@ export const applicabilityLabel: Record<Applicability, string> = {
   applies: "Applies",
   doesNotApply: "Does not apply",
   needsInformation: "Needs information",
-  undeclared: "No applicability rules",
+  undeclared: "No rules for when it applies",
 };
 
 export const applicabilityTone: Record<Applicability, Tone> = {
@@ -27,8 +27,8 @@ export const applicabilityTone: Record<Applicability, Tone> = {
   undeclared: "muted",
 };
 
-/** One phrase, everywhere, for an item whose author declared no applicability rules. */
-export const NO_RULES_PHRASE = "No applicability rules — use it deliberately";
+/** One phrase, everywhere, for an item whose author declared no rules for when it applies. */
+export const NO_RULES_PHRASE = "No rules for when it applies — use it deliberately";
 
 export const checkStatusLabel: Record<CheckStatus, string> = {
   passed: "Passed",
@@ -129,7 +129,7 @@ export const groupHint: Record<Group, string> = {
   required: "Designated required by the team. Always listed, whatever the match.",
   relevant: "Conditions declared by the author hold for this project.",
   needsInformation: "Habi could not establish everything a condition needs.",
-  available: "No applicability rules — use them deliberately. Habi does not match these.",
+  available: "No rules for when they apply — use them deliberately. Habi does not match these.",
   notApplicable: "Conditions do not hold, or an exclusion applies.",
 };
 

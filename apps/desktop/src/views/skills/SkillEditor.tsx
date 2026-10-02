@@ -37,7 +37,7 @@ type Tab = "purpose" | "instructions" | "applicability" | "files";
 const TABS: { id: Tab; label: string }[] = [
   { id: "instructions", label: "Instructions" },
   { id: "purpose", label: "Purpose" },
-  { id: "applicability", label: "Applicability" },
+  { id: "applicability", label: "When it applies" },
   { id: "files", label: "Files" },
 ];
 
@@ -573,7 +573,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
                     {supporting.length > 0 ? ` and ${plural(supporting.length, "supporting file")}` : ""}.
                     Works without Habi.
                   </dd>
-                  <dt>Applicability</dt>
+                  <dt>When it applies</dt>
                   <dd>
                     {skill.summary.hasApplicability ? (
                       "Rules declared — see the preview."

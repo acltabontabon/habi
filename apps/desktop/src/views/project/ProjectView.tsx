@@ -145,7 +145,7 @@ export function ProjectView({
           size={72}
           label={
             weave.length > 0
-              ? `Woven from ${weave.map((w) => w.name).join(", ")}`
+              ? `Skills from ${weave.map((w) => w.name).join(", ")}`
               : "Nothing from your libraries fits yet"
           }
         />
@@ -220,9 +220,6 @@ export function ProjectView({
                 <span className="mono composition-count">{w.count}</span>
               </li>
             ))}
-            <li className="composition-cli mono" title="The same view from the command line">
-              $ habi recommend
-            </li>
           </ul>
         </section>
       ) : null}
