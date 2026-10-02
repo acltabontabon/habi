@@ -57,6 +57,50 @@ Neither is overwritten silently.
 *Move to trash* is reversible from My skills; *Delete permanently* is a separate, confirmed
 step.
 
+## Checks
+
+The editor lists problems as you work ("Draft — 2 things to finish…", "3 notes"). They come
+from the same checks Habi runs on every package it reads — library items, My skills,
+contributions before a branch is prepared, and `habi validate`. Each problem has a level:
+
+- **Error** — blocks installing, exporting and sharing a skill from My skills, and preparing a
+  contribution. A library item with errors stays listed, with its problems shown.
+- **Warning** — should be fixed; nothing is blocked.
+- **Info** — a suggestion, or something that was not checked (and why).
+
+What is checked, exactly:
+
+| Check | Level |
+|---|---|
+| `SKILL.md` exists and starts with YAML frontmatter that parses | error |
+| `name` is present and valid (lowercase letters, digits, hyphens; 1–64) | error |
+| `description` is present | error |
+| `name` matches the folder name; `description` is at most 1024 characters | warning |
+| `habi.yaml` parses, matches the schema, has valid conditions, and its checks use declared bindings (otherwise the metadata is ignored as a whole) | error |
+| Files named in `workflow.steps[].references` exist | warning |
+| **Links and images** in `SKILL.md` (body) and the other `.md` files — except under `assets/`, where Markdown is usually a template — whose target is a relative path point to a file or folder in the skill. Targets resolve from the folder of the file that contains them; `#fragment` and `?query` are ignored. | warning, naming the file with the link and the missing path |
+| A relative link that climbs out of the skill (`../shared/README.md`) | warning: it will not resolve once the skill is installed or shared on its own |
+| **Inline code** that is plainly a package path — `scripts/…`, `references/…` or `assets/…` with no spaces, wildcards, placeholders or line numbers — names a file in the skill | warning |
+| `.json` files parse (JSON with comments and trailing commas, as `tsconfig.json` uses, is accepted) | warning with the parser's message |
+| `.yaml` / `.yml` files (other than `habi.yaml`) parse, with the same size and complexity limits as `habi.yaml`; several documents in one file are fine | warning with the parser's message |
+| A text file too large to scan (over 512 KiB; YAML over 256 KiB), or a non-UTF-8 `.json`/`.yaml` | info (not checked) / warning |
+| The `SKILL.md` body is very long | info |
+| Symbolic links or oversized files (the package would be incomplete) | error |
+| My skills only: another of your skills uses the same identifier | error |
+| My skills only: the instructions are empty; a file looks like it contains a secret (an **error** when sharing) | warning |
+
+The link check is deliberately conservative: URLs (`https:`, `mailto:` and any other scheme),
+`#anchors`, absolute and home paths, templated targets (`{{…}}`, `*`, `$`), fenced code
+blocks, inline code containing link syntax, HTML comments and footnotes are never reported.
+
+**Not checked:** scripts. Shell, Python and other scripts are stored as files; Habi does not
+parse, lint or run them (not even a syntax check such as `bash -n`), because that would
+execute or interpret package content.
+
+Passing every check proves neither **security** nor **correctness**: a package with no
+problems can still be wrong, unsafe, or not do what its description says. The checks only
+catch structural mistakes before someone else trips over them.
+
 ## Turning instructions into a skill
 
 In a project's **In this project** tab, *Turn part into a skill…* shows the instruction file
@@ -99,6 +143,17 @@ where each came from. Originals are never changed.
 - **Same identifier, different content:** imported only under a new identifier, so both are kept.
 - **Incomplete packages** (symbolic links, oversized files): shown, not importable — a partial
   copy would silently lose content.
+
+### Updates from the library a copy came from
+
+A skill copied from a team library remembers the library, the item and the snapshot it was
+copied at. When that item changes in the library, the editor says *Updated in <library> since
+you copied it*; **Review update…** compares three versions of every file — as copied, the
+library's now, and yours. Files only the library changed are taken; files only you changed
+are kept; a file changed on both sides needs your choice (*Keep mine* or *Take the
+library's*) before anything is written. After the update, later comparisons start from the
+library version you just reviewed. If the item was removed, the library is not connected, or
+the copied version is no longer cached, the editor says so and offers nothing.
 
 ## Using a skill
 

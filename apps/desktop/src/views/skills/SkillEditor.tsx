@@ -29,6 +29,7 @@ import { ConditionBuilder } from "./ConditionBuilder";
 import { FilesPane } from "./FilesPane";
 import { PackageRefs } from "./PackageRefs";
 import { ShareSkillDialog } from "./ShareSkillDialog";
+import { UpstreamPanel } from "./UpstreamPanel";
 import { UseSkillDialog } from "./UseSkillDialog";
 
 type Tab = "purpose" | "instructions" | "applicability" | "files";
@@ -417,6 +418,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
           </div>
         )}
       </header>
+      <UpstreamPanel skill={skill} beforeReview={flushAll} onApplied={reloadFromDisk} />
 
       {showProblems && errors.length + warnings.length > 0 ? (
         <ul className="editor-problems">

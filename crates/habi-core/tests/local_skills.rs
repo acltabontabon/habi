@@ -1477,3 +1477,258 @@ fn copying_an_installed_skill_keeps_its_library_and_local_edits() {
             .any(|f| f.path == "references/checklist.md")
     );
 }
+
+// ----- updates from the library a copy came from --------------------------------------
+
+fn put(root: &Path, rel: &str, text: &str) {
+    let path = root.join(rel);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, text).unwrap();
+}
+
+#[cfg(unix)]
+fn make_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+const REVIEW_SKILL: &str =
+    "---\nname: review\ndescription: Review changes before merge.\n---\n\nRead references/a.md.\n";
+
+/// A directory library with one skill, connected and fetched, and a copy of
+/// that skill in My skills.
+fn library_copy(habi: &Habi, lib: &Path) -> (String, String) {
+    put(lib, "skills/review/SKILL.md", REVIEW_SKILL);
+    put(lib, "skills/review/references/a.md", "A1\n");
+    put(lib, "skills/review/references/b.md", "B1\n");
+    put(lib, "skills/review/references/c.md", "C1\n");
+    put(lib, "skills/review/scripts/run.sh", "#!/bin/sh\necho 1\n");
+    #[cfg(unix)]
+    make_executable(&lib.join("skills/review/scripts/run.sh"));
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Team".into(),
+            location: lib.to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let copied = habi
+        .import_skills(
+            &ImportFrom::Library {
+                source_id: source.id.clone(),
+            },
+            &[ImportSelection {
+                path: "review".into(),
+                rename: None,
+            }],
+            &CancelToken::new(),
+        )
+        .unwrap();
+    (source.id, copied.imported[0].id.clone())
+}
+
+fn edit(habi: &Habi, id: &str, rel: &str, text: &str) {
+    let current = habi.skills().read_file(id, rel).unwrap();
+    habi.skills()
+        .write_file(id, rel, text, Some(&current.digest))
+        .unwrap();
+}
+
+fn text(habi: &Habi, id: &str, rel: &str) -> String {
+    habi.skills().read_file(id, rel).unwrap().text.unwrap()
+}
+
+#[test]
+fn library_updates_take_untouched_files_and_never_overwrite_edits_silently() {
+    use habi_core::skills::upstream::{UpstreamChoice, UpstreamFileStatus, UpstreamState};
+    use std::collections::BTreeMap;
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let (source_id, id) = library_copy(&habi, lib.path());
+
+    // Fresh copy: nothing to take. A draft has no library at all.
+    let status = habi.skill_upstream(&id).unwrap().unwrap();
+    assert_eq!(status.state, UpstreamState::Unchanged);
+    assert_eq!(status.source_id.as_deref(), Some(source_id.as_str()));
+    let own = draft(&habi, "Own", "Written here.", "Body.\n");
+    assert!(habi.skill_upstream(&own.summary.id).unwrap().is_none());
+
+    // Your edits alone are not an update.
+    edit(&habi, &id, "references/b.md", "B mine\n");
+    edit(&habi, &id, "references/c.md", "C mine\n");
+    assert_eq!(
+        habi.skill_upstream(&id).unwrap().unwrap().state,
+        UpstreamState::Unchanged
+    );
+    assert!(habi.apply_upstream_sync(&id, "", &BTreeMap::new()).is_err());
+
+    // The library changes a file you did not touch, one you did, adds one
+    // and changes a script.
+    put(lib.path(), "skills/review/references/a.md", "A2\n");
+    put(lib.path(), "skills/review/references/c.md", "C2\n");
+    put(lib.path(), "skills/review/references/new.md", "New\n");
+    put(
+        lib.path(),
+        "skills/review/scripts/run.sh",
+        "#!/bin/sh\necho 2\n",
+    );
+    habi.sources()
+        .refresh(&source_id, &CancelToken::new())
+        .unwrap();
+    let current_snapshot = habi.sources().get(&source_id).unwrap().snapshot.unwrap();
+
+    let status = habi.skill_upstream(&id).unwrap().unwrap();
+    assert_eq!(status.state, UpstreamState::Changed);
+    assert_ne!(status.origin_snapshot, current_snapshot);
+
+    let plan = habi.plan_upstream_sync(&id).unwrap();
+    let by_path: BTreeMap<&str, UpstreamFileStatus> = plan
+        .files
+        .iter()
+        .map(|f| (f.path.as_str(), f.status))
+        .collect();
+    assert_eq!(by_path["references/a.md"], UpstreamFileStatus::Library);
+    assert_eq!(by_path["references/new.md"], UpstreamFileStatus::Library);
+    assert_eq!(by_path["scripts/run.sh"], UpstreamFileStatus::Library);
+    assert_eq!(by_path["references/b.md"], UpstreamFileStatus::Yours);
+    assert_eq!(by_path["references/c.md"], UpstreamFileStatus::Conflict);
+    assert!(!by_path.contains_key("SKILL.md"));
+    assert_eq!(
+        (plan.take, plan.keep, plan.conflicts, plan.unchanged),
+        (3, 1, 1, 1)
+    );
+    let conflict = plan
+        .files
+        .iter()
+        .find(|f| f.path == "references/c.md")
+        .unwrap();
+    assert_eq!(conflict.library_diff.as_ref().unwrap().added, 1);
+    assert_eq!(conflict.your_diff.as_ref().unwrap().added, 1);
+    assert!(plan.blocked.is_none());
+
+    // A conflict needs an explicit choice; without one nothing is written.
+    let err = habi
+        .apply_upstream_sync(&id, &plan.token, &BTreeMap::new())
+        .unwrap_err();
+    assert!(err.to_string().contains("references/c.md"), "{err}");
+    assert_eq!(text(&habi, &id, "references/a.md"), "A1\n");
+    // A plan that no longer matches what is on disk is refused.
+    edit(&habi, &id, "references/b.md", "B mine, again\n");
+    let decisions = BTreeMap::from([("references/c.md".to_string(), UpstreamChoice::KeepMine)]);
+    assert!(matches!(
+        habi.apply_upstream_sync(&id, &plan.token, &decisions),
+        Err(HabiError::Conflict(_))
+    ));
+    let plan = habi.plan_upstream_sync(&id).unwrap();
+
+    let updated = habi
+        .apply_upstream_sync(&id, &plan.token, &decisions)
+        .unwrap();
+    assert_eq!(text(&habi, &id, "references/a.md"), "A2\n");
+    assert_eq!(text(&habi, &id, "references/new.md"), "New\n");
+    assert_eq!(text(&habi, &id, "scripts/run.sh"), "#!/bin/sh\necho 2\n");
+    assert_eq!(text(&habi, &id, "references/b.md"), "B mine, again\n");
+    assert_eq!(text(&habi, &id, "references/c.md"), "C mine\n");
+    #[cfg(unix)]
+    assert!(
+        updated
+            .files
+            .iter()
+            .find(|f| f.path == "scripts/run.sh")
+            .unwrap()
+            .executable
+    );
+
+    // The origin now names the library's current snapshot, so the next
+    // comparison starts from what was just reviewed.
+    assert!(matches!(
+        &updated.summary.origin,
+        SkillOrigin::Library { snapshot, .. } if snapshot == &current_snapshot
+    ));
+    let status = habi.skill_upstream(&id).unwrap().unwrap();
+    assert_eq!(status.state, UpstreamState::Unchanged);
+    assert_eq!(status.origin_snapshot, current_snapshot);
+
+    // A later library change to the file you kept is again a conflict —
+    // measured from C2, not C1 — and taking the library's version is a
+    // choice you make.
+    put(lib.path(), "skills/review/references/c.md", "C3\n");
+    habi.sources()
+        .refresh(&source_id, &CancelToken::new())
+        .unwrap();
+    let plan = habi.plan_upstream_sync(&id).unwrap();
+    assert_eq!((plan.take, plan.conflicts), (0, 1));
+    let conflict = &plan
+        .files
+        .iter()
+        .find(|f| f.status == UpstreamFileStatus::Conflict)
+        .unwrap();
+    assert_eq!(conflict.path, "references/c.md");
+    let removed: Vec<String> = conflict
+        .library_diff
+        .as_ref()
+        .unwrap()
+        .hunks
+        .iter()
+        .flat_map(|h| h.lines.iter())
+        .filter(|l| l.tag == habi_core::install::diff::LineTag::Removed)
+        .map(|l| l.text.clone())
+        .collect();
+    assert_eq!(removed, ["C2"]);
+    habi.apply_upstream_sync(
+        &id,
+        &plan.token,
+        &BTreeMap::from([("references/c.md".to_string(), UpstreamChoice::TakeLibrary)]),
+    )
+    .unwrap();
+    assert_eq!(text(&habi, &id, "references/c.md"), "C3\n");
+    assert_eq!(text(&habi, &id, "references/b.md"), "B mine, again\n");
+}
+
+#[test]
+fn removed_and_unreachable_library_items_are_reported_not_guessed() {
+    use habi_core::skills::upstream::UpstreamState;
+    use std::collections::BTreeMap;
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let (source_id, id) = library_copy(&habi, lib.path());
+    let before = habi.skills().get(&id).unwrap();
+
+    // Removed from the library: said plainly, nothing to apply, copy intact.
+    std::fs::remove_dir_all(lib.path().join("skills/review")).unwrap();
+    put(
+        lib.path(),
+        "skills/other/SKILL.md",
+        "---\nname: other\ndescription: Another skill.\n---\n\nBody.\n",
+    );
+    habi.sources()
+        .refresh(&source_id, &CancelToken::new())
+        .unwrap();
+    let status = habi.skill_upstream(&id).unwrap().unwrap();
+    assert_eq!(status.state, UpstreamState::Removed);
+    assert!(status.detail.unwrap().contains("no longer in Team"));
+    let plan = habi.plan_upstream_sync(&id).unwrap();
+    assert!(plan.files.is_empty());
+    assert!(
+        habi.apply_upstream_sync(&id, &plan.token, &BTreeMap::new())
+            .is_err()
+    );
+    assert_eq!(
+        habi.skills().get(&id).unwrap().files.len(),
+        before.files.len()
+    );
+
+    // The library is no longer connected: unavailable, with the reason.
+    habi.sources().remove(&source_id).unwrap();
+    let status = habi.skill_upstream(&id).unwrap().unwrap();
+    assert_eq!(status.state, UpstreamState::Unavailable);
+    assert!(status.detail.unwrap().contains("not connected"));
+    assert!(status.source_id.is_none());
+}
