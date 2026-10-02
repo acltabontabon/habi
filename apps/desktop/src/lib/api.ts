@@ -166,6 +166,8 @@ export const api = {
   /** Leaves changed files (library paths) out of the contribution; the rest are included. */
   selectContributionFiles: (id: string, excluded: string[]) =>
     call<Contribution>("select_contribution_files", { id, excluded }),
+  recordContributionLineage: (id: string, record: boolean) =>
+    call<Contribution>("record_contribution_lineage", { id, record }),
   commitContribution: (id: string, jobId?: string, buildOnRemote = false) =>
     call<Contribution>("commit_contribution", { id, jobId: jobId ?? null, buildOnRemote }),
   /** Reopens a sent contribution; the next branch and send update the same request. */

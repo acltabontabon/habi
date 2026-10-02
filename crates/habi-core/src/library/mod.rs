@@ -6,6 +6,7 @@
 //! portable instructions. Content is never executed or rewritten here.
 
 pub mod model;
+pub mod provenance;
 pub mod schema;
 
 use crate::clients::ClientId;
@@ -721,6 +722,7 @@ pub fn build_index(
             description,
             path: dir.clone(),
             owner: metadata.owner,
+            based_on: provenance::read(&front.raw),
             license_file: nearest_license(dir, &license_files),
             license_restricted: front.license.as_deref().is_some_and(is_restricted_license),
             license: front.license,
@@ -806,6 +808,7 @@ pub fn build_index(
             license: None,
             license_file,
             license_restricted: false,
+            based_on: None,
             compatibility: None,
             requirement: md.requirement,
             priority: md.priority,

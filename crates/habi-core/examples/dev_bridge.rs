@@ -205,6 +205,9 @@ impl Bridge {
             "select_contribution_files" => {
                 out(h.select_contribution_files(&s("id")?, &arg::<Vec<String>>(a, "excluded")?)?)
             }
+            "record_contribution_lineage" => {
+                out(h.record_contribution_lineage(&s("id")?, arg(a, "record")?)?)
+            }
             "commit_contribution" => out(h.commit_contribution_with(
                 &s("id")?,
                 a.get("buildOnRemote")

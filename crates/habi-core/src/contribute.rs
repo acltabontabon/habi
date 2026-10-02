@@ -220,6 +220,12 @@ pub struct Contribution {
     pub attention: Option<Attention>,
     /// When the branch was last pushed (and a request opened, if one was).
     pub published_at: Option<String>,
+    /// Where the skill was refined from, as recorded in the shared SKILL.md
+    /// (`metadata.based-on`); `None` when there is nothing to record.
+    pub based_on: Option<String>,
+    /// The lineage is written into the shared SKILL.md (the author can turn
+    /// it off).
+    pub based_on_recorded: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -299,6 +305,12 @@ struct Stored {
     attention: Option<Attention>,
     #[serde(default)]
     published_at: Option<String>,
+    /// `metadata.based-on` to record in the shared SKILL.md, if any.
+    #[serde(default)]
+    lineage: Option<String>,
+    /// The author chose not to record it.
+    #[serde(default)]
+    lineage_off: bool,
 }
 
 /// The contribution as it was before "Revise", to back out of a revision.
@@ -1310,6 +1322,8 @@ impl<'a> Contributions<'a> {
                 pushed_commit: stored.pushed_commit.clone(),
                 attention: stored.attention.clone(),
                 published_at: stored.published_at.clone(),
+                based_on: None,
+                based_on_recorded: false,
                 created_at: created,
                 updated_at: updated,
             },
@@ -1433,6 +1447,9 @@ impl<'a> Contributions<'a> {
         }
         let dir = staging(self.paths, &c.id);
         write_staging(&dir, &files, &executables)?;
+        if let (Some(value), false) = (&stored.lineage, stored.lineage_off) {
+            record_lineage(&dir, value)?;
+        }
         let fallback = stored.form.title.clone();
         let baseline = if reopening {
             // A project skill's metadata comes from the form; a skill from
@@ -1672,9 +1689,15 @@ impl<'a> Contributions<'a> {
             pushed_commit: None,
             attention: None,
             published_at: None,
+            based_on: None,
+            based_on_recorded: false,
             created_at: now.clone(),
             updated_at: now,
         };
+        let lineage = self.lineage_for(&contribution.origin, project_root, &source);
+        if let Some(value) = &lineage {
+            record_lineage(&dir, value)?;
+        }
         let stored = Stored {
             message: String::new(),
             synced_form: Some(form.clone()),
@@ -1692,6 +1715,8 @@ impl<'a> Contributions<'a> {
             excluded: BTreeSet::new(),
             attention: None,
             published_at: None,
+            lineage,
+            lineage_off: false,
         };
         self.save_row(&contribution, &stored)?;
         self.preview(&id)
@@ -1772,12 +1797,111 @@ impl<'a> Contributions<'a> {
     /// would leave the machine.
     pub fn preview(&self, id: &str) -> Result<Contribution> {
         let (mut c, stored) = self.load_row(id)?;
+        c.based_on = stored.lineage.clone();
+        c.based_on_recorded = stored.lineage.is_some() && !stored.lineage_off;
         let (cmp, base, staged) = self.comparison(&c, &stored)?;
         c.validation = self.validate(&c, &stored, &cmp, &base, &staged);
         c.in_library = self.matches_library(&c, &cmp.outgoing, None);
         c.files = cmp.files;
         c.remote = self.remote_info(&c);
         Ok(c)
+    }
+
+    /// Records (or stops recording) in the shared SKILL.md where the skill
+    /// was refined from. Only while the contribution is not prepared yet.
+    pub fn record_lineage(&self, id: &str, record: bool) -> Result<Contribution> {
+        let (mut c, mut stored) = self.load_active(id)?;
+        if c.state != ContributionState::Draft {
+            return Err(HabiError::invalid(
+                "this contribution's branch is already prepared; choose Revise to change it",
+            ));
+        }
+        let Some(value) = stored.lineage.clone() else {
+            return self.preview(id);
+        };
+        let dir = staging(self.paths, id);
+        if record {
+            record_lineage(&dir, &value)?;
+        } else {
+            forget_lineage(&dir, &value)?;
+        }
+        stored.lineage_off = !record;
+        c.updated_at = crate::time::now();
+        self.save_row(&c, &stored)?;
+        self.preview(id)
+    }
+
+    /// The immediate parent to record as `metadata.based-on`, if any: the
+    /// library item a copy came from (or that an installed copy belongs
+    /// to), when it is not the library being contributed to. Machine-local
+    /// sources are never named, and a team library's address never goes
+    /// into a contribution to a community library.
+    fn lineage_for(
+        &self,
+        origin: &ContributionOrigin,
+        project_root: Option<&Path>,
+        destination: &crate::source::Source,
+    ) -> Option<String> {
+        let (identity, item, snapshot) = match origin {
+            ContributionOrigin::LibraryItem { .. } => return None,
+            ContributionOrigin::LocalSkill { skill_id } => {
+                let json: String = self
+                    .store
+                    .conn()
+                    .ok()?
+                    .query_row(
+                        "SELECT origin_json FROM local_skills WHERE id = ?1",
+                        [skill_id],
+                        |r| r.get(0),
+                    )
+                    .ok()?;
+                match serde_json::from_str::<crate::skills::SkillOrigin>(&json).ok()? {
+                    crate::skills::SkillOrigin::Library {
+                        source_identity,
+                        item_id,
+                        snapshot,
+                        ..
+                    } => (source_identity, item_id, snapshot),
+                    _ => return None,
+                }
+            }
+            ContributionOrigin::ProjectSkill { path, .. } => {
+                let bytes = match read_bounded(
+                    &project_root?.join(crate::brand::LOCK_FILE),
+                    MAX_FILE_BYTES,
+                )
+                .ok()?
+                {
+                    Bounded::Content(b) => b,
+                    Bounded::TooLarge(_) => return None,
+                };
+                let lock = crate::install::lock::LockFile::parse(&bytes).ok()?;
+                let owner = lock.owner_of(&format!("{path}/{SKILL_FILE}"))?;
+                (
+                    owner.source.identity.clone(),
+                    owner.id.clone(),
+                    owner.snapshot.clone(),
+                )
+            }
+        };
+        if identity == crate::source::portable_identity(destination)
+            || identity.starts_with("local:")
+            || identity.starts_with('/')
+        {
+            return None;
+        }
+        if destination.role == crate::source::SourceRole::Community {
+            let from_community = self.sources.list().ok()?.iter().any(|s| {
+                crate::source::portable_identity(s) == identity
+                    && s.role == crate::source::SourceRole::Community
+            });
+            if !from_community {
+                return None;
+            }
+        }
+        Some(library::provenance::lineage_value(
+            &identity, &item, &snapshot,
+        ))
     }
 
     /// Leaves changed files out of the contribution, or puts them back:
@@ -2824,6 +2948,36 @@ fn default_branch(git: &Git, url: &str, cancel: &CancelToken) -> Option<String> 
         .find_map(|l| l.strip_prefix("ref: refs/heads/"))
         .and_then(|rest| rest.split_whitespace().next())
         .map(str::to_string)
+}
+
+/// Writes `metadata.based-on` into the staged SKILL.md. A SKILL.md Habi
+/// cannot edit safely is left as it is.
+fn record_lineage(dir: &Path, value: &str) -> Result<()> {
+    let path = dir.join(SKILL_FILE);
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Ok(());
+    };
+    if let Some(updated) = library::provenance::set(&text, value)
+        && updated != text
+    {
+        crate::fsutil::atomic_write(&path, updated.as_bytes())?;
+    }
+    Ok(())
+}
+
+/// Removes the `metadata.based-on` Habi recorded (only that value).
+fn forget_lineage(dir: &Path, value: &str) -> Result<()> {
+    let path = dir.join(SKILL_FILE);
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Ok(());
+    };
+    let recorded = library::parse_frontmatter(&text)
+        .ok()
+        .and_then(|(fm, _)| library::provenance::read(&fm.raw));
+    if recorded.as_deref() == Some(value) {
+        crate::fsutil::atomic_write(&path, library::provenance::remove(&text).as_bytes())?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

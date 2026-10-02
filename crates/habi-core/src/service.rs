@@ -1661,6 +1661,10 @@ impl Habi {
         self.contributions().select_files(id, excluded)
     }
 
+    pub fn record_contribution_lineage(&self, id: &str, record: bool) -> Result<Contribution> {
+        self.contributions().record_lineage(id, record)
+    }
+
     pub fn commit_contribution(&self, id: &str, cancel: &CancelToken) -> Result<Contribution> {
         self.commit_contribution_with(id, false, cancel)
     }

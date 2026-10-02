@@ -107,6 +107,8 @@ const contribution: Contribution = {
   pushedCommit: null,
   attention: null,
   publishedAt: null,
+  basedOn: null,
+  basedOnRecorded: false,
   createdAt: "2026-10-02T00:00:00Z",
   updatedAt: "2026-10-02T00:00:00Z",
 };

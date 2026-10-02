@@ -1079,3 +1079,90 @@ fn retrying_never_creates_a_second_branch_or_commit() {
         "1"
     );
 }
+
+/// A copy shared into a library it did not come from carries its lineage in
+/// SKILL.md (`metadata.based-on`), visibly and only by choice; a team
+/// library's address never goes to a community library.
+#[test]
+fn shared_copies_carry_where_they_came_from() {
+    use habi_core::service::ImportFrom;
+    use habi_core::skills::intake::ImportSelection;
+    let s = setup();
+    let imported = s
+        .habi
+        .import_skills(
+            &ImportFrom::Library {
+                source_id: s.source.clone(),
+            },
+            &[ImportSelection {
+                path: "jpa-entity-review".into(),
+                rename: None,
+            }],
+            &CancelToken::new(),
+        )
+        .unwrap();
+    let skill_id = imported.imported[0].id.clone();
+    // Pretend the copy came from a public library elsewhere.
+    s.habi
+        .store
+        .conn()
+        .unwrap()
+        .execute(
+            "UPDATE local_skills SET origin_json = ?2 WHERE id = ?1",
+            [
+                skill_id.as_str(),
+                r#"{"type":"library","sourceName":"Acme","sourceIdentity":"github.com/acme/skills","itemId":"jpa-entity-review","snapshot":"8ca22dba9a94"}"#,
+            ],
+        )
+        .unwrap();
+
+    let c = s
+        .habi
+        .start_contribution(
+            &s.source,
+            ContributionOrigin::LocalSkill {
+                skill_id: skill_id.clone(),
+            },
+        )
+        .unwrap();
+    let lineage = "github.com/acme/skills#jpa-entity-review@8ca22db";
+    assert_eq!(c.based_on.as_deref(), Some(lineage));
+    assert!(c.based_on_recorded);
+    let staged = s.staging(&c.id).join("SKILL.md");
+    let text = std::fs::read_to_string(&staged).unwrap();
+    assert!(text.contains(&format!("based-on: \"{lineage}\"")), "{text}");
+    // The rest of the file is untouched.
+    let original = std::fs::read_to_string(
+        s.habi
+            .paths
+            .skills()
+            .join(&skill_id)
+            .join("package/SKILL.md"),
+    )
+    .unwrap();
+    assert_eq!(
+        habi_core::library::provenance::remove(&text),
+        original,
+        "only the lineage line was added"
+    );
+
+    // The author can leave it out, and put it back.
+    let off = s.habi.record_contribution_lineage(&c.id, false).unwrap();
+    assert!(!off.based_on_recorded);
+    assert_eq!(std::fs::read_to_string(&staged).unwrap(), original);
+    let on = s.habi.record_contribution_lineage(&c.id, true).unwrap();
+    assert!(on.based_on_recorded);
+    assert!(std::fs::read_to_string(&staged).unwrap().contains(lineage));
+
+    // To a community library, an address that is not itself community is
+    // never recorded.
+    s.habi
+        .sources()
+        .set_role(&s.source, habi_core::source::SourceRole::Community)
+        .unwrap();
+    let c2 = s
+        .habi
+        .start_contribution(&s.source, ContributionOrigin::LocalSkill { skill_id })
+        .unwrap();
+    assert_eq!(c2.based_on, None);
+}

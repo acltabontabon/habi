@@ -60,4 +60,14 @@ attention: Attention | null,
 /**
  * When the branch was last pushed (and a request opened, if one was).
  */
-publishedAt: string | null, createdAt: string, updatedAt: string, };
+publishedAt: string | null, 
+/**
+ * Where the skill was refined from, as recorded in the shared SKILL.md
+ * (`metadata.based-on`); `None` when there is nothing to record.
+ */
+basedOn: string | null, 
+/**
+ * The lineage is written into the shared SKILL.md (the author can turn
+ * it off).
+ */
+basedOnRecorded: boolean, createdAt: string, updatedAt: string, };

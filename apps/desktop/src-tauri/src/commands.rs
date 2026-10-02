@@ -629,6 +629,17 @@ pub async fn select_contribution_files(
     blocking(habi, move |h| h.select_contribution_files(&id, &excluded)).await
 }
 
+/// Records (or stops recording) where the skill came from in the shared SKILL.md.
+#[tauri::command]
+pub async fn record_contribution_lineage(
+    state: State<'_, AppState>,
+    id: String,
+    record: bool,
+) -> CmdResult<Contribution> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.record_contribution_lineage(&id, record)).await
+}
+
 #[tauri::command]
 pub async fn commit_contribution(
     state: State<'_, AppState>,

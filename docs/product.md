@@ -79,8 +79,6 @@ meaningfully different and explainable recommendations — is automated in
 
 - Contributing to a community library usually needs push access (or a fork) that the developer
   does not have. Habi prepares the branch and offers *Export patch*; it does not create forks.
-- Provenance is recorded per copy and per contribution, not yet carried inside the shared skill
-  itself (for example "based on community/x, refined in billing-service").
 
 ## Out of scope for this release
 
