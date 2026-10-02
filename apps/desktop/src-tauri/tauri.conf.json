@@ -46,8 +46,8 @@
     "homepage": "https://github.com/acltabontabon/habi",
     "license": "Apache-2.0",
     "licenseFile": "../../../LICENSE",
-    "shortDescription": "Your team's know-how, matched to your codebase.",
-    "longDescription": "Habi matches your team's shared skills and workflows to the repository you are working in, explains why they fit, and installs them safely for Claude Code, Cursor and Codex.",
+    "shortDescription": "Find what applies. Improve what works. Share what you learn.",
+    "longDescription": "Find what applies. Improve what works. Share what you learn. Habi shows which skills and instructions fit the repository you are working in, from My skills, team libraries and community libraries, and explains why. It installs them for Claude Code, Cursor and Codex with a preview of every file, and shares what you improve back to the library it came from as a reviewed change.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

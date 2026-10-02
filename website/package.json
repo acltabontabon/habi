@@ -18,8 +18,7 @@
     "build": "astro build",
     "preview": "astro preview --port 4321",
     "snapshot": "node scripts/snapshot.mjs",
-    "capture": "node scripts/capture.mjs",
-    "og": "\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630 --virtual-time-budget=4000 --screenshot=public/og.png http://localhost:4321/habi/og/"
+    "og": "node scripts/og.mjs"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "5.3.0",
