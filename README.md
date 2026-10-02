@@ -1,34 +1,51 @@
 # Habi
 
-**Your team's know-how, matched to your codebase.**
+**Find what applies. Improve what works. Share what you learn.**
 
 [![CI](https://github.com/acltabontabon/habi/actions/workflows/ci.yml/badge.svg)](https://github.com/acltabontabon/habi/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Open a repository and Habi shows which skills and instructions apply to it and *why* — down
-to the file and line. Turn what you know into a skill, preview where it applies across your
-projects, install it for the agent tools you already use (Claude Code, Cursor, Codex) with a
-preview of every change, and share it with your team when it is ready.
-
-A repository and an idea are enough to start; a team library is optional.
+Developers who work with AI coding agents keep learning useful things: a review checklist
+that catches what the old one missed, a script that makes a migration safe, the instruction a
+skill was lacking. Most of it stays on one machine. Habi is a local knowledge layer for that
+work. It brings the skills and instructions that already exist — yours, your team's, the
+community's — into the project you are working on, and carries what you refine there back to
+where the next developer will find it.
 
 ![Habi showing which team skills fit a Spring Boot service, and why, down to the file and line](docs/screenshots/02-project-recommendations.jpg)
 
-- **Create and improve.** Write skills in Habi, import the ones you already have, or turn part
-  of an `AGENTS.md` into a draft. Drafts are plain Agent Skills folders on your machine.
-- **See where it applies.** A live preview evaluates a skill's rules against your projects and
-  shows the evidence — or says what could not be established.
-- **Share and iterate.** Send a skill to your team's library as a pull/merge request (GitHub or
-  GitLab), read reviewers' comments in Habi, and revise on the same request.
-- **Repository first.** Habi reads your build files and structure (read-only; nothing is
-  built or run) and matches them against your team's library.
+Knowledge lives in several places; Habi keeps them apart and presents them as one layer:
+
+| | |
+|---|---|
+| **My skills** | Yours, on this machine: drafts, experiments, edited copies. |
+| **Team libraries** | Git repositories your team curates and reviews. |
+| **Community libraries** | Published by others and not reviewed by your team. |
+| **The project** | The repository you are working in: what it already contains, and which of the above applies to it. |
+
+- **Find.** Open a repository; Habi shows which skills and instructions apply and *why*, down
+  to the file and line. It reads build files and structure only — nothing is built or run.
+- **Apply.** Install for the agent tools you already use (Claude Code, Cursor, Codex) with a
+  preview of every file. Every install, update or removal is a reviewed plan that can be
+  restored.
+- **Refine.** Edit a copy as a complete package — instructions, scripts, references, assets.
+  It remembers where it came from, so your changes stay connected to the original.
+- **Share.** Send the refinement to a team library as a pull or merge request, read the
+  review in Habi, and revise on the same request. Without a host integration, export a patch.
+- **Reuse.** Teammates get it when they refresh. Installed copies update three ways, so local
+  adaptations are kept and conflicts are explained.
+
+Principles:
+
 - **Honest about evidence.** "Applies", "needs information" and "does not apply" are kept
   apart, and so are readiness, installation and evidence. Unknown is a valid answer.
 - **Standard formats.** Skills are ordinary [Agent Skills](https://agentskills.io) folders;
-  shared instructions go into `AGENTS.md`. Everything keeps working without Habi.
-- **Safe changes.** Every install, update or removal is a reviewed plan. Your edits are never
-  overwritten silently, and every operation can be restored.
-- **Local.** No account, no telemetry, no cloud service. Git uses your existing credentials.
+  shared instructions go into `AGENTS.md`. Habi metadata is an optional sidecar; everything
+  keeps working without Habi.
+- **Local.** No account, no telemetry, no cloud service, no model calls. Git uses your existing
+  credentials.
+
+A repository and an idea are enough to start; libraries are optional.
 
 > **Status: pre-release (0.1.0).** There are no prebuilt downloads yet — build from source
 > (below). See [what is verified](docs/implementation-status.md) and the
