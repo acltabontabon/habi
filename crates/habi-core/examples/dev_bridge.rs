@@ -326,6 +326,9 @@ impl Bridge {
             "import_skills" => {
                 out(h.import_skills(&arg(a, "from")?, &arg::<Vec<_>>(a, "selections")?, cancel)?)
             }
+            "skills_overview" => out(h.skills_overview()?),
+            "skill_local_changes" => out(h.skill_local_changes(&s("id")?)?),
+            "skill_templates" => out(h.skill_templates()),
             "skill_upstream" => out(h.skill_upstream(&s("id")?)?),
             "plan_upstream_sync" => out(h.plan_upstream_sync(&s("id")?)?),
             "apply_upstream_sync" => {

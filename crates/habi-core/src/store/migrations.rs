@@ -150,6 +150,14 @@ const MIGRATIONS: &[&str] = &[
     ALTER TABLE sources ADD COLUMN default_branch TEXT;
     ALTER TABLE snapshots ADD COLUMN summary_json TEXT;
     "#,
+    // v8: lineage. An imported copy remembers its files as they were when it
+    // was made (or last took an update), as a JSON list of {path, digest,
+    // executable} whose content is in the blob store. Local changes can then
+    // be shown whatever the copy came from. NULL for drafts and for copies
+    // made before Habi kept it.
+    r#"
+    ALTER TABLE local_skills ADD COLUMN baseline_json TEXT;
+    "#,
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

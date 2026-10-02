@@ -81,6 +81,7 @@ pub fn prune_keeping(paths: &AppPaths, store: &Store, keep: usize) -> Result<Pru
     }
     prune_previews(paths, store, &mut report)?;
     prune_snapshots(paths, store, keep, &mut report, &mut referenced)?;
+    add_baseline_refs(store, &mut referenced)?;
     remove_unreferenced(paths, &referenced, &mut report)?;
     store.set_setting(LAST_FULL_KEY, &crate::time::now())?;
     tracing::info!(?report, "pruned Habi's data");
@@ -107,6 +108,25 @@ pub fn after_apply(paths: &AppPaths, store: &Store, project_id: &str) -> Result<
         &mut HashSet::new(),
     );
     Ok(report)
+}
+
+/// What local copies were made from (their baselines), so their changes stay
+/// inspectable however long ago they were copied.
+fn add_baseline_refs(store: &Store, referenced: &mut HashSet<String>) -> Result<()> {
+    let conn = store.conn()?;
+    let mut stmt =
+        conn.prepare("SELECT baseline_json FROM local_skills WHERE baseline_json IS NOT NULL")?;
+    let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+    for json in rows {
+        let json = json?;
+        let files: Vec<crate::skills::BaselineFile> = serde_json::from_str(&json).map_err(|e| {
+            HabiError::Internal(format!(
+                "a copy's record of its original files is unreadable ({e}); nothing was removed from the content store"
+            ))
+        })?;
+        referenced.extend(files.into_iter().map(|f| f.digest));
+    }
+    Ok(())
 }
 
 /// Projects that have journals (folders under `<data>/journal`).

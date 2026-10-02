@@ -306,8 +306,19 @@ impl Skills<'_> {
             );
         };
         let base_index = match sources.index_at(&source.id, &snapshot) {
-            Ok(i) => i,
-            Err(HabiError::NotFound(_)) => {
+            Ok(i) => Some(i),
+            Err(HabiError::NotFound(_)) => None,
+            Err(e) => return Err(e),
+        };
+        let base_item = base_index
+            .as_ref()
+            .and_then(|index| index.items.iter().find(|i| i.id == item_id));
+        let current_index = sources.index_at(&source.id, &current)?;
+        let Some(base_item) = base_item else {
+            // The copied version is not cached (a one-off copy whose
+            // repository was connected later, or a pruned snapshot): the
+            // copy's own record of its original stands in for it.
+            let Some(baseline) = row.baseline.as_deref() else {
                 return unavailable(
                     status,
                     format!(
@@ -315,19 +326,46 @@ impl Skills<'_> {
                         short(&snapshot)
                     ),
                 );
+            };
+            let Some(item) = current_index.items.iter().find(|i| i.id == item_id) else {
+                status.state = UpstreamState::Removed;
+                status.detail = Some(format!(
+                    "This skill is no longer in {}. Your copy stays as it is.",
+                    source.name
+                ));
+                return Ok(Some(Resolved {
+                    status,
+                    sides: None,
+                }));
+            };
+            if !item.complete {
+                return unavailable(
+                    status,
+                    "Some of the library's files were skipped when it was fetched, so an update could lose content.".into(),
+                );
             }
-            Err(e) => return Err(e),
+            let same_as_baseline = item.files.len() == baseline.len()
+                && item.files.iter().all(|f| {
+                    baseline.iter().any(|b| {
+                        b.path == f.path && b.digest == f.digest && b.executable == f.executable
+                    })
+                });
+            status.state = if same_as_baseline {
+                UpstreamState::Unchanged
+            } else {
+                UpstreamState::Changed
+            };
+            let sides = if same_as_baseline {
+                None
+            } else {
+                Some(Sides {
+                    base: self.baseline_tree(baseline)?,
+                    theirs: item_tree(sources, item)?,
+                    theirs_digest: item.content_digest.clone(),
+                })
+            };
+            return Ok(Some(Resolved { status, sides }));
         };
-        let Some(base_item) = base_index.items.iter().find(|i| i.id == item_id) else {
-            return unavailable(
-                status,
-                format!(
-                    "The version you copied ({}) does not contain this item, so there is nothing to compare with.",
-                    short(&snapshot)
-                ),
-            );
-        };
-        let current_index = sources.index_at(&source.id, &current)?;
         let Some(item) = current_index.items.iter().find(|i| i.id == item_id) else {
             status.state = UpstreamState::Removed;
             status.detail = Some(format!(
@@ -539,13 +577,19 @@ impl Skills<'_> {
             snapshot: plan.status.current_snapshot.clone().unwrap_or_default(),
             upstream,
         };
+        // From now on, local changes are measured against the library's
+        // version the copy just took.
+        let baseline = super::keep_baseline(self.paths, &sides.theirs)?;
         self.store.conn()?.execute(
-            "UPDATE local_skills SET origin_json = ?2, origin_digest = ?3, updated_at = ?4 WHERE id = ?1",
+            "UPDATE local_skills SET origin_json = ?2, origin_digest = ?3, updated_at = ?4,
+                                     baseline_json = ?5
+             WHERE id = ?1",
             params![
                 id,
                 serde_json::to_string(&origin).map_err(|e| HabiError::Internal(e.to_string()))?,
                 sides.theirs_digest,
-                crate::time::now()
+                crate::time::now(),
+                serde_json::to_string(&baseline).map_err(|e| HabiError::Internal(e.to_string()))?,
             ],
         )?;
         self.get(id)

@@ -48,6 +48,29 @@ pub enum DiagnosticLevel {
     Info,
 }
 
+/// What kind of problem a diagnostic reports, so an editor can take the
+/// author to the place that fixes it. The message stays the explanation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum DiagnosticCode {
+    MissingDescription,
+    DescriptionTooLong,
+    InvalidName,
+    DuplicateName,
+    EmptyInstructions,
+    /// A Markdown link that leaves the package.
+    BrokenLink,
+    /// A link or code mention of a file the package does not have.
+    MissingReferencedFile,
+    InvalidMetadata,
+    InvalidJson,
+    InvalidYaml,
+    PossibleSecret,
+    /// A file that could not be read or kept (a link, too large, not text).
+    UnreadableFile,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -56,29 +79,42 @@ pub struct Diagnostic {
     pub message: String,
     /// Library-relative file the diagnostic is about.
     pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub code: Option<DiagnosticCode>,
+    /// 1-based line in `path`; for SKILL.md, in the instructions (the body
+    /// after the frontmatter).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub line: Option<u32>,
 }
 
 impl Diagnostic {
-    pub fn error(message: impl Into<String>, path: Option<&str>) -> Self {
+    fn new(level: DiagnosticLevel, message: impl Into<String>, path: Option<&str>) -> Self {
         Diagnostic {
-            level: DiagnosticLevel::Error,
+            level,
             message: message.into(),
             path: path.map(str::to_string),
+            code: None,
+            line: None,
         }
+    }
+    pub fn error(message: impl Into<String>, path: Option<&str>) -> Self {
+        Self::new(DiagnosticLevel::Error, message, path)
     }
     pub fn warning(message: impl Into<String>, path: Option<&str>) -> Self {
-        Diagnostic {
-            level: DiagnosticLevel::Warning,
-            message: message.into(),
-            path: path.map(str::to_string),
-        }
+        Self::new(DiagnosticLevel::Warning, message, path)
     }
     pub fn info(message: impl Into<String>, path: Option<&str>) -> Self {
-        Diagnostic {
-            level: DiagnosticLevel::Info,
-            message: message.into(),
-            path: path.map(str::to_string),
-        }
+        Self::new(DiagnosticLevel::Info, message, path)
+    }
+    pub fn with_code(mut self, code: DiagnosticCode) -> Self {
+        self.code = Some(code);
+        self
+    }
+    pub fn at_line(mut self, line: Option<u32>) -> Self {
+        self.line = line;
+        self
     }
 }
 

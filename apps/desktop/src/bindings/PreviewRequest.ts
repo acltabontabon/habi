@@ -5,4 +5,8 @@ import type { ShareForm } from "./ShareForm";
  * The applicability rules to preview: an unsaved form, unsaved raw
  * metadata, or (with neither) what the skill has stored.
  */
-export type PreviewRequest = { skillId: string | null, form: ShareForm | null, metadataText: string | null, };
+export type PreviewRequest = { skillId: string | null, form: ShareForm | null, metadataText: string | null, 
+/**
+ * Evaluate only this project (otherwise every recent one).
+ */
+projectId?: string, };

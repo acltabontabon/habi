@@ -198,6 +198,7 @@ function skill(): LocalSkill {
       hasApplicability: false,
       fileCount: 1,
       contentDigest: "d",
+      modifiedLocally: null,
     },
     document: { name: "review", description: "Reviews changes", body: "" },
     documentDigest: "doc",

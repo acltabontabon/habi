@@ -210,11 +210,16 @@ pub fn installable(item: &LibraryItem) -> bool {
             || crate::library::check_skill_name(&item.name).is_ok())
 }
 
-/// Checks prerequisites without executing anything: tools are looked up on
-/// PATH or in the project, MCP servers in the project's client configuration.
-pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String]) -> Readiness {
+/// Whether the tools a skill needs are available here, without executing
+/// anything: commands are looked up on PATH, `./` commands in the project
+/// root and the given modules.
+pub fn tool_prerequisites(
+    root: &Path,
+    tools: &[crate::library::model::ToolRequirement],
+    applicable_modules: &[String],
+) -> Vec<Prerequisite> {
     let mut prerequisites = Vec::new();
-    for tool in &item.tools {
+    for tool in tools {
         let mut found = None;
         for command in &tool.commands {
             if let Some(local) = command.strip_prefix("./") {
@@ -268,6 +273,13 @@ pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String])
             hint: tool.install_hint.clone(),
         });
     }
+    prerequisites
+}
+
+/// Checks prerequisites without executing anything: tools are looked up on
+/// PATH or in the project, MCP servers in the project's client configuration.
+pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String]) -> Readiness {
+    let mut prerequisites = tool_prerequisites(root, &item.tools, applicable_modules);
     for requirement in &item.mcp {
         let mut configured = Vec::new();
         let mut unreadable = Vec::new();

@@ -29,6 +29,7 @@ import type { InstructionDocument } from "../bindings/InstructionDocument";
 import type { ItemDetail } from "../bindings/ItemDetail";
 import type { ItemRef } from "../bindings/ItemRef";
 import type { LibraryIndex } from "../bindings/LibraryIndex";
+import type { LocalChanges } from "../bindings/LocalChanges";
 import type { LocalSkill } from "../bindings/LocalSkill";
 import type { LocalSkillSummary } from "../bindings/LocalSkillSummary";
 import type { NewSkill } from "../bindings/NewSkill";
@@ -51,9 +52,11 @@ import type { ShareForm } from "../bindings/ShareForm";
 import type { SkillDocument } from "../bindings/SkillDocument";
 import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
+import type { SkillStanding } from "../bindings/SkillStanding";
 import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
+import type { TemplateInfo } from "../bindings/TemplateInfo";
 import type { UpdateReport } from "../bindings/UpdateReport";
 import type { UpstreamChoice } from "../bindings/UpstreamChoice";
 import type { UpstreamPlan } from "../bindings/UpstreamPlan";
@@ -254,6 +257,11 @@ export const api = {
     call<ImportInspection>("inspect_import", { from, jobId: jobId ?? null }),
   importSkills: (from: ImportFrom, selections: ImportSelection[], jobId?: string) =>
     call<ImportOutcome>("import_skills", { from, selections, jobId: jobId ?? null }),
+  /** Where each skill is installed and whether its library has a newer version; reads lock files. */
+  skillsOverview: () => call<SkillStanding[]>("skills_overview"),
+  /** What a copy changed since it was made or last updated; writes nothing. */
+  skillLocalChanges: (id: string) => call<LocalChanges>("skill_local_changes", { id }),
+  skillTemplates: () => call<TemplateInfo[]>("skill_templates"),
   /** For a copy of a library item: has that item changed, been removed, or can it not be compared? */
   skillUpstream: (id: string) => call<UpstreamStatus | null>("skill_upstream", { id }),
   /** File-by-file comparison with the library; writes nothing. */
