@@ -17,7 +17,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LocalSkill } from "../../../bindings/LocalSkill";
 import { Icon } from "../../../components/Icon";
-import { SourceEditor } from "../../../components/lazy";
 import type { SourceEditorHandle } from "../../../components/SourceEditor";
 import { useToast } from "../../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
@@ -28,14 +27,15 @@ import { invalidateSkills, keys, useRecentProjects, useSkillsOverview } from "..
 import { useSafeInvoke } from "../../../lib/safeInvoke";
 import { type ScreenCommand, useRegisterScreenCommands } from "../../../lib/screenCommands";
 import type { NavTarget, StudioMode } from "../../../lib/studioNav";
-import { ApplicabilityPreview } from "../ApplicabilityPreview";
-import { ConditionBuilder } from "../ConditionBuilder";
+import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { FilesPane } from "../FilesPane";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
 import { InstructionsMode } from "./InstructionsMode";
 import { Masthead } from "./Masthead";
 import { InstructionsPanel, LineagePanel, SharePanel } from "./Panels";
+import { ProjectEvaluation } from "./ProjectEvaluation";
+import { RulesMode } from "./RulesMode";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
 
 const MODES: { id: StudioMode; label: string; short: string }[] = [
@@ -108,6 +108,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const projects = useRecentProjects();
   const overview = useSkillsOverview();
   const standing = overview.data?.find((s) => s.skillId === id);
+  const available = (projects.data ?? []).filter((p) => p.exists);
 
   const root = useRef<HTMLDivElement>(null);
   const width = useWidth(root);
@@ -123,6 +124,25 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
   const editor = useRef<SourceEditorHandle>(null);
   const tabs = useRef<HTMLDivElement>(null);
+
+  // The project the rules are checked against: the one the skill was written
+  // for or copied from, else the most recent.
+  const origin = skill.summary.origin;
+  const originProject =
+    origin.type === "createdForProject" || origin.type === "instructions" || origin.type === "project"
+      ? available.find((p) => p.name === origin.projectName)?.id
+      : undefined;
+  const [chosenProject, setChosenProject] = useState<string | null>(null);
+  const evalProject =
+    (chosenProject && available.some((p) => p.id === chosenProject) ? chosenProject : null) ??
+    originProject ??
+    available[0]?.id ??
+    null;
+  const evaluation = useRulesPreview(
+    draft.previewRequest(evalProject),
+    `${draft.rulesKey}|${evalProject ?? ""}`,
+    mode === "rules",
+  );
 
   // Docked when there is room; a sheet, closed until asked for, when there is not.
   const wasDocked = useRef(docked);
@@ -445,7 +465,18 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     onOpenFile={openFile}
                   />
                 ) : m.id === "rules" ? (
-                  <RulesMode draft={draft} />
+                  <RulesMode
+                    draft={draft}
+                    preview={evaluation.preview}
+                    suggestFrom={
+                      evalProject
+                        ? {
+                            id: evalProject,
+                            name: available.find((p) => p.id === evalProject)?.name ?? "the project",
+                          }
+                        : null
+                    }
+                  />
                 ) : (
                   <FilesPane
                     skill={skill}
@@ -540,10 +571,13 @@ function Studio({ initial }: { initial: LocalSkill }) {
                 onAddFile={() => go("files")}
               />
             ) : mode === "rules" ? (
-              <ApplicabilityPreview
-                request={draft.previewRequest(null)}
-                requestKey={`${draft.rulesKey}|${(projects.data ?? []).map((p) => p.id).join(",")}`}
-                hasProjects={(projects.data ?? []).some((p) => p.exists)}
+              <ProjectEvaluation
+                projects={available}
+                projectId={evalProject}
+                onProject={setChosenProject}
+                evaluation={evaluation}
+                allRequest={draft.previewRequest(null)}
+                allKey={`${draft.rulesKey}|${available.map((p) => p.id).join(",")}`}
                 onOpenProject={() => void openProject({ stay: true })}
               />
             ) : (
@@ -612,76 +646,6 @@ function StudioNotices({ draft, onRepair }: { draft: SkillDraft; onRepair: () =>
           {skill.documentError}. Repair the file as plain text; nothing was overwritten.
         </Notice>
       ) : null}
-    </div>
-  );
-}
-
-/** Rules: the builder, or the YAML as written. */
-function RulesMode({ draft }: { draft: SkillDraft }) {
-  const projects = useRecentProjects();
-  const { form, setForm, yaml, setYaml, yamlMode, switchYaml, trashed, skill } = draft;
-  const available = (projects.data ?? []).filter((p) => p.exists);
-  return (
-    <div className="studio-rules">
-      <div className="studio-rules-bar">
-        <p className="muted">
-          Optional. Stored next to the skill in <span className="mono">habi.yaml</span> — other tools ignore
-          it.
-        </p>
-        <fieldset className="studio-switch">
-          <legend className="visually-hidden">How to edit the rules</legend>
-          <button
-            type="button"
-            aria-pressed={!yamlMode}
-            className={!yamlMode ? "is-on" : undefined}
-            onClick={() => void switchYaml(false)}
-          >
-            Builder
-          </button>
-          <button
-            type="button"
-            aria-pressed={yamlMode}
-            className={yamlMode ? "is-on" : undefined}
-            onClick={() => void switchYaml(true)}
-          >
-            YAML
-          </button>
-        </fieldset>
-      </div>
-      {yamlMode ? (
-        <>
-          <SourceEditor
-            language="yaml"
-            label="habi.yaml"
-            value={yaml}
-            readOnly={trashed}
-            placeholder={"habi: 1\napplies_when:\n  tag: framework:spring-boot"}
-            onChange={setYaml}
-          />
-          <p className="field-hint">
-            Saved exactly as typed, including keys Habi does not know.
-            {skill.metadataStatus === "invalid"
-              ? " It is not valid yet, so it is ignored for matching until fixed."
-              : ""}
-          </p>
-        </>
-      ) : form.conditionsEditable ? (
-        <fieldset className="builder-fieldset" disabled={trashed}>
-          <ConditionBuilder form={form} onChange={setForm} projects={available} />
-        </fieldset>
-      ) : (
-        <Notice
-          tone="unknown"
-          title="These rules use combinations the builder cannot show"
-          action={
-            <Button size="sm" onClick={() => void switchYaml(true)}>
-              Edit as YAML
-            </Button>
-          }
-        >
-          They are kept exactly as written and still evaluated in the preview.
-        </Notice>
-      )}
     </div>
   );
 }

@@ -271,4 +271,120 @@ describe("the Skill Studio", () => {
     expect(await within(panel).findByText("1 file changed · 1 as copied")).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Prepare a contribution…" })).toBeInTheDocument();
   });
+
+  it("keeps rules the sentences cannot edit as written, and reads them out", async () => {
+    const save = vi.fn();
+    handlers.get_skill = () => ({
+      ...skill({ body: "Steps." }),
+      summary: { ...skill().summary, hasApplicability: true },
+      form: { ...skill().form, conditionsEditable: false },
+      metadataText:
+        "habi: 1\napplies_when:\n  all:\n    - any: [{tag: lang:java}, {file: '**/pom.xml'}]\n    - not: {tag: build:gradle}\n",
+      metadataDigest: "m",
+      metadataStatus: "declared",
+      appliesWhen: {
+        op: "all",
+        items: [
+          {
+            op: "any",
+            items: [
+              { op: "tag", tag: "lang:java" },
+              { op: "file", glob: "**/pom.xml" },
+            ],
+          },
+          { op: "not", item: { op: "tag", tag: "build:gradle" } },
+        ],
+      },
+    });
+    handlers.save_skill_applicability = save;
+    handlers.save_skill_metadata = save;
+    handlers.preview_skill = () => ({
+      appliesWhen: null,
+      excludes: null,
+      scope: "module",
+      problem: null,
+      projects: [],
+    });
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    const rules = document.getElementById("studio-mode-rules") as HTMLElement;
+    expect(within(rules).getByText("it contains Java code")).toBeInTheDocument();
+    expect(within(rules).getByText("**/pom.xml")).toBeInTheDocument();
+    expect(within(rules).getByText("not when")).toBeInTheDocument();
+    expect(within(rules).getByText(/kept exactly as written/)).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 900));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("says in one project whether Habi would suggest it, and what it needs, without running anything", async () => {
+    handlers.get_skill = () => skill({ body: "Steps." });
+    handlers.recent_projects = () => [
+      {
+        id: "p1",
+        name: "billing",
+        path: "~/work/billing",
+        exists: true,
+        lastOpenedAt: "2026-10-02T00:00:00Z",
+        exclusions: [],
+        sample: false,
+        summary: null,
+      },
+    ];
+    const preview = vi.fn((args: Record<string, unknown>) => ({
+      appliesWhen: { op: "tag", tag: "lang:java" },
+      excludes: null,
+      scope: "module",
+      problem: null,
+      projects: [
+        {
+          project: {
+            id: "p1",
+            name: "billing",
+            path: "~/work/billing",
+            exists: true,
+            lastOpenedAt: "2026-10-02T00:00:00Z",
+            exclusions: [],
+            sample: false,
+            summary: null,
+          },
+          result: {
+            applicability: "applies",
+            scope: "module",
+            modules: [],
+            reason: "Contains Java code (Billing.java)",
+            specificity: 1,
+          },
+          error: null,
+          inspectedAt: "2026-10-02T00:00:00Z",
+          incomplete: [],
+          prerequisites: [
+            {
+              kind: "tool",
+              name: "Maven",
+              status: "missing",
+              detail: "none of mvn found on PATH or in the project",
+              purpose: null,
+              hint: "brew install maven",
+            },
+          ],
+        },
+      ],
+      request: args,
+    }));
+    handlers.preview_skill = preview;
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    const panel = await screen.findByRole("complementary", { name: "Would Habi suggest it?" });
+    expect(
+      await within(panel).findByText("Habi would suggest it here", {}, { timeout: 2000 }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByText(/Maven/)).toBeInTheDocument();
+    expect(within(panel).getByText(/nothing was run/)).toBeInTheDocument();
+    expect(within(panel).getByText(/not whether an agent loads or runs it/)).toBeInTheDocument();
+    // Only the chosen project was evaluated.
+    const request = preview.mock.calls[0]?.[0].request as { projectId?: string } | undefined;
+    expect(request?.projectId).toBe("p1");
+  });
 });

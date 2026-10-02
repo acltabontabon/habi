@@ -1,53 +1,73 @@
 /**
- * Applicability as readable sentences, backed by the same `habi.yaml`
- * conditions the matcher evaluates. Authors never write YAML here; rules
- * the builder cannot express are kept as written and edited in the raw view.
+ * When Habi should suggest a skill, as sentences — backed by the same
+ * `habi.yaml` conditions the matcher evaluates. Each saved condition reads
+ * as a statement; adding one opens only what that statement needs. Authors
+ * never write YAML here; rules the builder cannot express are kept as written
+ * and edited in the YAML view.
+ *
+ * Required tools are said apart from the conditions: they never change
+ * whether Habi suggests a skill, only whether it is ready to use.
  */
 import { useQuery } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ConditionSuggestion } from "../../bindings/ConditionSuggestion";
-import type { ProjectRecord } from "../../bindings/ProjectRecord";
 import type { ShareForm } from "../../bindings/ShareForm";
 import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui";
 import { api } from "../../lib/api";
-import { TAG_LABELS, tagFromInput, tagPhrase } from "../../lib/tags";
+import { type ConditionKind, conditionPhrase, type Phrase, toolPhrase } from "../../lib/applicability";
+import { TAG_LABELS, tagFromInput } from "../../lib/tags";
 
-type Kind = "tag" | "dependency" | "file";
-
-const kindLabel: Record<Kind, string> = {
+const kindLabel: Record<ConditionKind, string> = {
   tag: "Technology",
   dependency: "Dependency",
   file: "Files",
 };
 
-const kindPlaceholder: Record<Kind, string> = {
+const kindPlaceholder: Record<ConditionKind, string> = {
   tag: "Spring Boot, TypeScript, Liquibase…",
   dependency: "org.liquibase:liquibase-core or a package name",
   file: "**/db/changelog/**",
 };
 
-type Row = { kind: Kind; value: string };
+type Row = { kind: ConditionKind; value: string };
 
-function rowText(row: Row): { lead: string; value: string } {
-  if (row.kind === "tag") return { lead: "", value: tagPhrase(row.value) };
-  if (row.kind === "dependency") return { lead: "depends on", value: row.value };
-  return { lead: "has files matching", value: row.value };
+export function PhraseText({ phrase }: { phrase: Phrase }) {
+  return (
+    <>
+      {phrase.text}
+      {phrase.code ? (
+        <>
+          {" "}
+          <code>{phrase.code}</code>
+        </>
+      ) : null}
+      {phrase.after ? <span className="rb-after"> {phrase.after}</span> : null}
+    </>
+  );
+}
+
+function words(p: Phrase) {
+  return [p.text, p.code, p.after].filter(Boolean).join(" ");
 }
 
 function Adder({
   kinds,
   label,
   onAdd,
+  onClose,
 }: {
-  kinds: Kind[];
+  kinds: ConditionKind[];
   label: string;
   onAdd: (row: Row) => string | null;
+  onClose: () => void;
 }) {
-  const [kind, setKind] = useState<Kind>(kinds[0] ?? "tag");
+  const [kind, setKind] = useState<ConditionKind>(kinds[0] ?? "tag");
   const [text, setText] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
-  const listId = useId();
+  const id = useId();
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => input.current?.focus(), []);
   const add = () => {
     const raw = text.trim();
     if (!raw) return;
@@ -68,17 +88,17 @@ function Adder({
     setText("");
   };
   return (
-    <div className="rule-adder">
-      <div className="rule-adder-row">
-        <label className="visually-hidden" htmlFor={`${listId}-kind`}>
+    <div className="rb-adder">
+      <div className="rb-adder-row">
+        <label className="visually-hidden" htmlFor={`${id}-kind`}>
           {label}: kind
         </label>
         <select
-          id={`${listId}-kind`}
-          className="input rule-kind"
+          id={`${id}-kind`}
+          className="input rb-kind"
           value={kind}
           onChange={(e) => {
-            setKind(e.target.value as Kind);
+            setKind(e.target.value as ConditionKind);
             setProblem(null);
           }}
         >
@@ -88,18 +108,19 @@ function Adder({
             </option>
           ))}
         </select>
-        <label className="visually-hidden" htmlFor={`${listId}-value`}>
+        <label className="visually-hidden" htmlFor={`${id}-value`}>
           {label}
         </label>
         <input
-          id={`${listId}-value`}
+          ref={input}
+          id={`${id}-value`}
           className={`input${kind === "tag" ? "" : " mono"}`}
           value={text}
-          list={kind === "tag" ? `${listId}-known` : undefined}
+          list={kind === "tag" ? `${id}-known` : undefined}
           placeholder={kindPlaceholder[kind]}
           spellCheck={false}
           aria-invalid={problem ? true : undefined}
-          aria-describedby={problem ? `${listId}-problem` : undefined}
+          aria-describedby={problem ? `${id}-problem` : undefined}
           onChange={(e) => {
             setText(e.target.value);
             setProblem(null);
@@ -108,20 +129,27 @@ function Adder({
             if (e.key === "Enter") {
               e.preventDefault();
               add();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
             }
           }}
         />
-        <datalist id={`${listId}-known`}>
+        <datalist id={`${id}-known`}>
           {Object.values(TAG_LABELS).map((l) => (
             <option key={l} value={l} />
           ))}
         </datalist>
-        <Button size="sm" icon="plus" onClick={add} disabled={!text.trim()}>
+        <Button size="sm" onClick={add} disabled={!text.trim()}>
           Add
+        </Button>
+        <Button size="sm" variant="quiet" onClick={onClose}>
+          Done
         </Button>
       </div>
       {problem ? (
-        <p id={`${listId}-problem`} className="field-problem" role="alert">
+        <p id={`${id}-problem`} className="field-problem" role="alert">
           {problem}
         </p>
       ) : null}
@@ -129,47 +157,75 @@ function Adder({
   );
 }
 
-function Rows({ rows, onRemove, empty }: { rows: Row[]; onRemove: (row: Row) => void; empty: string }) {
-  if (rows.length === 0) return <p className="rule-empty">{empty}</p>;
+function Statements({ rows }: { rows: { key: string; phrase: Phrase; remove: () => void }[] }) {
   return (
-    <ul className="rules">
-      {rows.map((row) => {
-        const t = rowText(row);
-        return (
-          <li key={`${row.kind}:${row.value}`} className="rule">
-            <span className="rule-knot" aria-hidden="true" />
-            <span className="rule-text">
-              {t.lead ? <span className="rule-lead">{t.lead} </span> : null}
-              <span className={row.kind === "tag" ? "rule-value" : "rule-value mono"}>{t.value}</span>
-            </span>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={`Remove: ${t.lead} ${t.value}`.replace(/\s+/g, " ")}
-              onClick={() => onRemove(row)}
-            >
-              <Icon name="close" size={13} />
-            </button>
-          </li>
-        );
-      })}
+    <ul className="rb-rows">
+      {rows.map((row) => (
+        <li key={row.key} className="rb-row">
+          <span className="rb-knot" aria-hidden="true" />
+          <span className="rb-text">
+            <PhraseText phrase={row.phrase} />
+          </span>
+          <button
+            type="button"
+            className="rb-remove"
+            aria-label={`Remove: ${words(row.phrase)}`}
+            onClick={row.remove}
+          >
+            <Icon name="close" size={13} />
+          </button>
+        </li>
+      ))}
     </ul>
   );
 }
 
-function appliesRows(form: ShareForm): Row[] {
-  return [
-    ...form.appliesTags.map((value): Row => ({ kind: "tag", value })),
-    ...form.appliesDependencies.map((value): Row => ({ kind: "dependency", value })),
-    ...form.appliesFiles.map((value): Row => ({ kind: "file", value })),
-  ];
-}
-
-function excludeRows(form: ShareForm): Row[] {
-  return [
-    ...form.excludeTags.map((value): Row => ({ kind: "tag", value })),
-    ...form.excludeDependencies.map((value): Row => ({ kind: "dependency", value })),
-  ];
+function Suggestions({
+  projectName,
+  suggestions,
+  pending,
+  failed,
+  onAdd,
+}: {
+  projectName: string;
+  suggestions: ConditionSuggestion[];
+  pending: boolean;
+  failed: boolean;
+  onAdd: (row: Row) => void;
+}) {
+  const [all, setAll] = useState(false);
+  if (pending) return <p className="rb-note">Reading {projectName}…</p>;
+  if (failed) return <p className="field-problem">Habi could not inspect {projectName}.</p>;
+  if (suggestions.length === 0) return null;
+  const tags = suggestions.filter((s) => s.kind === "tag");
+  const deps = suggestions.filter((s) => s.kind === "dependency");
+  const shown = [...tags, ...(all ? deps : deps.slice(0, 6))];
+  return (
+    <div className="rb-suggest">
+      <p className="rb-note">
+        Seen in {projectName} — observed facts, not requirements. Add only what the skill depends on.
+      </p>
+      <div className="suggestions">
+        {shown.map((s) => (
+          <button
+            key={`${s.kind}:${s.value}`}
+            type="button"
+            className="chip"
+            aria-label={`Add ${s.label}${s.evidence ? `, seen in ${s.evidence}` : ""}`}
+            onClick={() => onAdd({ kind: s.kind, value: s.value })}
+          >
+            <Icon name="plus" size={12} />
+            <span className={s.kind === "dependency" ? "mono" : undefined}>{s.label}</span>
+          </button>
+        ))}
+        {deps.length > 6 && !all ? (
+          <button type="button" className="link-btn" onClick={() => setAll(true)}>
+            {deps.length - 6} more dependencies
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 const without = (list: string[], value: string) => list.filter((v) => v !== value);
@@ -177,27 +233,32 @@ const without = (list: string[], value: string) => list.filter((v) => v !== valu
 export function ConditionBuilder({
   form,
   onChange,
-  projects,
-  defaultProjectId,
+  suggestFrom,
 }: {
   form: ShareForm;
   onChange: (form: ShareForm) => void;
-  projects: ProjectRecord[];
-  defaultProjectId?: string;
+  /** A project whose observed facts can be offered as conditions. */
+  suggestFrom?: { id: string; name: string } | null;
 }) {
-  const [suggestFrom, setSuggestFrom] = useState(defaultProjectId ?? "");
-  const [showAllDeps, setShowAllDeps] = useState(false);
+  const [adding, setAdding] = useState<"applies" | "excludes" | "tool" | null>(null);
   const [toolName, setToolName] = useState("");
   const [toolCommands, setToolCommands] = useState("");
   const suggestions = useQuery({
-    queryKey: ["suggestions", suggestFrom],
-    queryFn: () => api.suggestConditions(suggestFrom),
-    enabled: Boolean(suggestFrom),
+    queryKey: ["suggestions", suggestFrom?.id],
+    queryFn: () => api.suggestConditions(suggestFrom?.id ?? ""),
+    enabled: Boolean(suggestFrom) && adding === "applies",
     staleTime: 60_000,
   });
 
-  const applies = appliesRows(form);
-  const excludes = excludeRows(form);
+  const applies: Row[] = [
+    ...form.appliesTags.map((value): Row => ({ kind: "tag", value })),
+    ...form.appliesDependencies.map((value): Row => ({ kind: "dependency", value })),
+    ...form.appliesFiles.map((value): Row => ({ kind: "file", value })),
+  ];
+  const excludes: Row[] = [
+    ...form.excludeTags.map((value): Row => ({ kind: "tag", value })),
+    ...form.excludeDependencies.map((value): Row => ({ kind: "dependency", value })),
+  ];
 
   const addApplies = (row: Row): string | null => {
     if (applies.some((r) => r.kind === row.kind && r.value === row.value))
@@ -217,7 +278,7 @@ export function ConditionBuilder({
   };
   const addExclude = (row: Row): string | null => {
     if (excludes.some((r) => r.kind === row.kind && r.value === row.value))
-      return "That exclusion is already listed.";
+      return "That exception is already listed.";
     if (row.kind === "tag") onChange({ ...form, excludeTags: [...form.excludeTags, row.value] });
     else onChange({ ...form, excludeDependencies: [...form.excludeDependencies, row.value] });
     return null;
@@ -226,14 +287,6 @@ export function ConditionBuilder({
     if (row.kind === "tag") onChange({ ...form, excludeTags: without(form.excludeTags, row.value) });
     else onChange({ ...form, excludeDependencies: without(form.excludeDependencies, row.value) });
   };
-
-  const used = (s: ConditionSuggestion) =>
-    s.kind === "tag" ? form.appliesTags.includes(s.value) : form.appliesDependencies.includes(s.value);
-  const offered = (suggestions.data ?? []).filter((s) => !used(s));
-  const offeredTags = offered.filter((s) => s.kind === "tag");
-  const offeredDeps = offered.filter((s) => s.kind === "dependency");
-  const shownDeps = showAllDeps ? offeredDeps : offeredDeps.slice(0, 8);
-
   const addTool = () => {
     const commands = toolCommands
       .split(/[,\s]+/)
@@ -248,185 +301,195 @@ export function ConditionBuilder({
     setToolCommands("");
   };
 
+  const used = (s: ConditionSuggestion) =>
+    s.kind === "tag" ? form.appliesTags.includes(s.value) : form.appliesDependencies.includes(s.value);
+
+  const toggle = (which: "applies" | "excludes" | "tool") => setAdding((a) => (a === which ? null : which));
+
   return (
-    <div className="builder">
-      <section className="builder-block" aria-labelledby="applies-title">
-        <div className="builder-head">
-          <h3 id="applies-title" className="builder-title">
-            Applies to a project when
-          </h3>
+    <div className="rulebook">
+      <section className="rb-section" aria-labelledby="rb-when">
+        <h3 id="rb-when" className="rb-lead">
+          Suggest this skill when
           {applies.length > 1 ? (
-            <div className="segmented-control" role="radiogroup" aria-label="How conditions combine">
-              {(["all", "any"] as const).map((mode) => (
-                <label key={mode} className={form.matchMode === mode ? "is-on" : undefined}>
-                  <input
-                    type="radio"
-                    name="match-mode"
-                    checked={form.matchMode === mode}
-                    onChange={() => onChange({ ...form, matchMode: mode })}
-                  />
-                  {mode === "all" ? "all of these hold" : "any one holds"}
-                </label>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <Rows
-          rows={applies}
-          onRemove={removeApplies}
-          empty="No conditions yet. Without any, Habi lists this skill for manual use and never recommends it."
-        />
-        <Adder kinds={["tag", "dependency", "file"]} label="Add a condition" onAdd={addApplies} />
-
-        {projects.length > 0 ? (
-          <div className="suggest">
-            <label className="suggest-from">
-              <span>Suggest from what Habi observed in</span>
-              <select
-                className="input"
-                value={suggestFrom}
-                onChange={(e) => {
-                  setSuggestFrom(e.target.value);
-                  setShowAllDeps(false);
-                }}
-              >
-                <option value="">— choose a project —</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
+            <>
+              {" "}
+              <span className="rb-choice">
+                {(["all", "any"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={form.matchMode === mode}
+                    className={form.matchMode === mode ? "is-on" : undefined}
+                    onClick={() => onChange({ ...form, matchMode: mode })}
+                  >
+                    {mode}
+                  </button>
                 ))}
-              </select>
-            </label>
-            {suggestFrom && suggestions.isPending ? <p className="muted">Reading the project…</p> : null}
-            {suggestFrom && suggestions.isError ? (
-              <p className="field-problem">Habi could not inspect that project.</p>
-            ) : null}
-            {suggestFrom && suggestions.data ? (
-              offered.length === 0 ? (
-                <p className="muted">Nothing more to suggest from this project.</p>
-              ) : (
-                <>
-                  <p className="field-hint">
-                    Observed facts, not requirements. Add only what the skill really depends on.
-                  </p>
-                  <div className="suggestions">
-                    {[...offeredTags, ...shownDeps].map((s) => (
-                      <button
-                        key={`${s.kind}:${s.value}`}
-                        type="button"
-                        className="chip"
-                        aria-label={`Add ${s.label}${s.evidence ? `, seen in ${s.evidence}` : ""}`}
-                        onClick={() => addApplies({ kind: s.kind, value: s.value })}
-                      >
-                        <Icon name="plus" size={12} />
-                        <span className={s.kind === "dependency" ? "mono" : undefined}>{s.label}</span>
-                        {s.evidence ? <span className="chip-evidence mono">{s.evidence}</span> : null}
-                      </button>
-                    ))}
-                    {offeredDeps.length > shownDeps.length ? (
-                      <button type="button" className="link-btn" onClick={() => setShowAllDeps(true)}>
-                        {offeredDeps.length - shownDeps.length} more dependencies
-                      </button>
-                    ) : null}
-                  </div>
-                </>
-              )
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="builder-block" aria-labelledby="excludes-title">
-        <h3 id="excludes-title" className="builder-title">
-          Never applies when
+              </span>{" "}
+              of these hold
+            </>
+          ) : null}
         </h3>
-        <Rows rows={excludes} onRemove={removeExclude} empty="No exclusions." />
-        <Adder kinds={["tag", "dependency"]} label="Add an exclusion" onAdd={addExclude} />
-      </section>
-
-      <section className="builder-block" aria-labelledby="tools-title">
-        <h3 id="tools-title" className="builder-title">
-          Needs these tools
-        </h3>
-        {form.tools.length === 0 ? (
-          <p className="rule-empty">None. Add a command the agent must be able to run, if there is one.</p>
+        {applies.length === 0 ? (
+          <p className="rb-empty">
+            Nothing yet — Habi won't suggest it on its own. It's always available to use by hand.
+          </p>
         ) : (
-          <ul className="rules">
-            {form.tools.map((tool, index) => (
-              <li key={`${tool.name}-${tool.commands.join(",")}`} className="rule">
-                <span className="rule-knot" aria-hidden="true" />
-                <span className="rule-text">
-                  <span className="rule-value">{tool.name}</span>
-                  <span className="rule-lead"> — any of </span>
-                  <span className="mono">{tool.commands.join(", ")}</span>
-                </span>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label={`Remove tool ${tool.name}`}
-                  onClick={() => onChange({ ...form, tools: form.tools.filter((_, i) => i !== index) })}
-                >
-                  <Icon name="close" size={13} />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <Statements
+            rows={applies.map((r) => ({
+              key: `${r.kind}:${r.value}`,
+              phrase: conditionPhrase(r.kind, r.value),
+              remove: () => removeApplies(r),
+            }))}
+          />
         )}
-        <div className="rule-adder-row">
-          <input
-            className="input"
-            aria-label="Tool name"
-            placeholder="Name, e.g. Maven"
-            value={toolName}
-            onChange={(e) => setToolName(e.target.value)}
-          />
-          <input
-            className="input mono"
-            aria-label="Commands, any one of which satisfies the requirement"
-            placeholder="./mvnw, mvn"
-            value={toolCommands}
-            spellCheck={false}
-            onChange={(e) => setToolCommands(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addTool();
-              }
-            }}
-          />
-          <Button size="sm" icon="plus" onClick={addTool} disabled={!toolCommands.trim()}>
-            Add
-          </Button>
-        </div>
-        <p className="field-hint">Looked up on PATH or in the project. Never run while matching.</p>
+        {adding === "applies" ? (
+          <>
+            <Adder
+              kinds={["tag", "dependency", "file"]}
+              label="Add a condition"
+              onAdd={addApplies}
+              onClose={() => setAdding(null)}
+            />
+            {suggestFrom ? (
+              <Suggestions
+                projectName={suggestFrom.name}
+                suggestions={(suggestions.data ?? []).filter((s) => !used(s))}
+                pending={suggestions.isPending}
+                failed={suggestions.isError}
+                onAdd={(row) => void addApplies(row)}
+              />
+            ) : null}
+          </>
+        ) : (
+          <button type="button" className="rb-add" onClick={() => toggle("applies")}>
+            <Icon name="plus" size={13} /> Add a condition
+          </button>
+        )}
       </section>
 
-      <section className="builder-block" aria-labelledby="scope-title">
-        <h3 id="scope-title" className="builder-title">
-          Check the conditions against
+      <section className="rb-section" aria-labelledby="rb-unless">
+        <h3 id="rb-unless" className="rb-lead">
+          Unless
         </h3>
-        <div className="segmented-control" role="radiogroup" aria-labelledby="scope-title">
-          <label className={!form.repositoryScope ? "is-on" : undefined}>
-            <input
-              type="radio"
-              name="scope"
-              checked={!form.repositoryScope}
-              onChange={() => onChange({ ...form, repositoryScope: false })}
-            />
-            each module on its own
-          </label>
-          <label className={form.repositoryScope ? "is-on" : undefined}>
-            <input
-              type="radio"
-              name="scope"
-              checked={form.repositoryScope}
-              onChange={() => onChange({ ...form, repositoryScope: true })}
-            />
-            the repository as a whole
-          </label>
-        </div>
+        {excludes.length > 0 ? (
+          <Statements
+            rows={excludes.map((r) => ({
+              key: `${r.kind}:${r.value}`,
+              phrase: conditionPhrase(r.kind, r.value),
+              remove: () => removeExclude(r),
+            }))}
+          />
+        ) : adding !== "excludes" ? (
+          <p className="rb-empty">No exceptions.</p>
+        ) : null}
+        {adding === "excludes" ? (
+          <Adder
+            kinds={["tag", "dependency"]}
+            label="Add an exception"
+            onAdd={addExclude}
+            onClose={() => setAdding(null)}
+          />
+        ) : (
+          <button type="button" className="rb-add" onClick={() => toggle("excludes")}>
+            <Icon name="plus" size={13} /> Add an exception
+          </button>
+        )}
       </section>
+
+      <section className="rb-section" aria-labelledby="rb-needs">
+        <h3 id="rb-needs" className="rb-lead">
+          It needs
+        </h3>
+        {form.tools.length > 0 ? (
+          <Statements
+            rows={form.tools.map((tool, index) => ({
+              key: `${tool.name}-${tool.commands.join(",")}`,
+              phrase: toolPhrase(tool),
+              remove: () => onChange({ ...form, tools: form.tools.filter((_, i) => i !== index) }),
+            }))}
+          />
+        ) : adding !== "tool" ? (
+          <p className="rb-empty">No tools.</p>
+        ) : null}
+        {adding === "tool" ? (
+          <div className="rb-adder">
+            <div className="rb-adder-row">
+              <input
+                className="input"
+                aria-label="Tool name"
+                placeholder="Name, e.g. Maven"
+                value={toolName}
+                onChange={(e) => setToolName(e.target.value)}
+              />
+              <input
+                className="input mono"
+                aria-label="Commands, any one of which satisfies the requirement"
+                placeholder="./mvnw, mvn"
+                value={toolCommands}
+                spellCheck={false}
+                onChange={(e) => setToolCommands(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTool();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setAdding(null);
+                  }
+                }}
+              />
+              <Button size="sm" onClick={addTool} disabled={!toolCommands.trim()}>
+                Add
+              </Button>
+              <Button size="sm" variant="quiet" onClick={() => setAdding(null)}>
+                Done
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="rb-add" onClick={() => toggle("tool")}>
+            <Icon name="plus" size={13} /> Add a required tool
+          </button>
+        )}
+        <p className="rb-note">
+          Required tools never change whether Habi suggests it; they are looked up on PATH or in the project,
+          never run.
+        </p>
+      </section>
+
+      {applies.length > 0 ? (
+        <section className="rb-section" aria-labelledby="rb-scope">
+          <h3 id="rb-scope" className="rb-lead">
+            Checked across{" "}
+            <span className="rb-choice">
+              <button
+                type="button"
+                aria-pressed={!form.repositoryScope}
+                className={!form.repositoryScope ? "is-on" : undefined}
+                onClick={() => onChange({ ...form, repositoryScope: false })}
+              >
+                each module
+              </button>
+              <button
+                type="button"
+                aria-pressed={form.repositoryScope}
+                className={form.repositoryScope ? "is-on" : undefined}
+                onClick={() => onChange({ ...form, repositoryScope: true })}
+              >
+                the whole repository
+              </button>
+            </span>
+          </h3>
+          <p className="rb-note">
+            {form.repositoryScope
+              ? "The conditions are checked once, against everything in the repository."
+              : "Each module is checked on its own; a monorepo gets the skill where it fits."}
+          </p>
+        </section>
+      ) : null}
     </div>
   );
 }

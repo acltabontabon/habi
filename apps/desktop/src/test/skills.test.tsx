@@ -154,7 +154,6 @@ describe("condition builder", () => {
     return (
       <ConditionBuilder
         form={form}
-        projects={[]}
         onChange={(f) => {
           setForm(f);
           onForm(f);
@@ -163,38 +162,62 @@ describe("condition builder", () => {
     );
   }
 
-  it("turns plain names into conditions without asking for YAML", async () => {
+  it("turns plain names into readable conditions without asking for YAML", async () => {
     const user = userEvent.setup();
     const onForm = vi.fn();
     wrap(<Harness onForm={onForm} />);
-    const applies = screen.getByRole("region", { name: "Applies to a project when" });
-    await user.type(within(applies).getByLabelText("Add a condition"), "Spring Boot{Enter}");
+    const when = screen.getByRole("region", { name: "Suggest this skill when" });
+    expect(within(when).getByText(/Habi won't suggest it on its own/)).toBeInTheDocument();
+    await user.click(within(when).getByRole("button", { name: "Add a condition" }));
+    await user.type(within(when).getByLabelText("Add a condition"), "Spring Boot{Enter}");
     expect(onForm).toHaveBeenLastCalledWith(
       expect.objectContaining({ appliesTags: ["framework:spring-boot"] }),
     );
-    expect(within(applies).getByText("uses Spring Boot")).toBeInTheDocument();
+    expect(within(when).getByText("it uses Spring Boot")).toBeInTheDocument();
 
-    await user.selectOptions(within(applies).getByLabelText("Add a condition: kind"), "dependency");
-    await user.type(within(applies).getByLabelText("Add a condition"), "org.liquibase:liquibase-core{Enter}");
+    await user.selectOptions(within(when).getByLabelText("Add a condition: kind"), "dependency");
+    await user.type(within(when).getByLabelText("Add a condition"), "org.liquibase:liquibase-core{Enter}");
     expect(onForm).toHaveBeenLastCalledWith(
       expect.objectContaining({ appliesDependencies: ["org.liquibase:liquibase-core"] }),
     );
-    // With two conditions, how they combine becomes a choice.
-    await user.click(within(applies).getByRole("radio", { name: "any one holds" }));
+    // With two conditions, how they combine becomes a word in the sentence.
+    const sentence = screen.getByRole("region", { name: /Suggest this skill when/ });
+    await user.click(within(sentence).getByRole("button", { name: "any" }));
     expect(onForm).toHaveBeenLastCalledWith(expect.objectContaining({ matchMode: "any" }));
 
-    await user.click(within(applies).getByRole("button", { name: "Remove: uses Spring Boot" }));
+    await user.click(within(sentence).getByRole("button", { name: "Remove: it uses Spring Boot" }));
     expect(onForm).toHaveBeenLastCalledWith(expect.objectContaining({ appliesTags: [] }));
+  });
+
+  it("says tools apart from conditions, and exceptions only when wanted", async () => {
+    const user = userEvent.setup();
+    const onForm = vi.fn();
+    wrap(<Harness onForm={onForm} />);
+    const needs = screen.getByRole("region", { name: "It needs" });
+    expect(within(needs).getByText(/never change whether Habi suggests it/)).toBeInTheDocument();
+    await user.click(within(needs).getByRole("button", { name: "Add a required tool" }));
+    await user.type(within(needs).getByLabelText("Tool name"), "Maven");
+    await user.type(
+      within(needs).getByLabelText("Commands, any one of which satisfies the requirement"),
+      "./mvnw, mvn{Enter}",
+    );
+    expect(onForm).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tools: [{ name: "Maven", commands: ["./mvnw", "mvn"] }] }),
+    );
+    expect(within(needs).getByText("./mvnw or mvn")).toBeInTheDocument();
+    const unless = screen.getByRole("region", { name: "Unless" });
+    expect(within(unless).queryByLabelText("Add an exception")).not.toBeInTheDocument();
   });
 
   it("explains an unknown technology instead of inventing a rule", async () => {
     const user = userEvent.setup();
     const onForm = vi.fn();
     wrap(<Harness onForm={onForm} />);
-    const applies = screen.getByRole("region", { name: "Applies to a project when" });
-    await user.type(within(applies).getByLabelText("Add a condition"), "something vague{Enter}");
+    const when = screen.getByRole("region", { name: "Suggest this skill when" });
+    await user.click(within(when).getByRole("button", { name: "Add a condition" }));
+    await user.type(within(when).getByLabelText("Add a condition"), "something vague{Enter}");
     expect(onForm).not.toHaveBeenCalled();
-    expect(within(applies).getByRole("alert")).toHaveTextContent(/Choose a technology/);
+    expect(within(when).getByRole("alert")).toHaveTextContent(/Choose a technology/);
   });
 
   it("has no detectable accessibility violations", async () => {

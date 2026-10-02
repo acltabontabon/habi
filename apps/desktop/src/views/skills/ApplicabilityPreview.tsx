@@ -6,19 +6,18 @@
  * debounced; a newer request cancels the older job and stale results are
  * discarded.
  */
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { EvalNode } from "../../bindings/EvalNode";
 import type { ModuleMatch } from "../../bindings/ModuleMatch";
 import type { PreviewRequest } from "../../bindings/PreviewRequest";
 import type { ProjectPreview } from "../../bindings/ProjectPreview";
-import type { SkillPreview } from "../../bindings/SkillPreview";
 import { Icon } from "../../components/Icon";
 import { Button, Status } from "../../components/ui";
-import { api, HabiError, newJobId } from "../../lib/api";
 import { applicabilityTone, NO_RULES_PHRASE, relativeTime } from "../../lib/format";
+import { useRulesPreview } from "../../lib/useRulesPreview";
 import { EvidenceExcerpt } from "../project/Explain";
 
-const verdict = {
+export const verdict = {
   applies: "Applies",
   doesNotApply: "Does not apply",
   needsInformation: "Needs information",
@@ -30,7 +29,7 @@ const triWord = { true: "holds", false: "does not hold", unknown: "not establish
 
 const ORDER = ["applies", "needsInformation", "undeclared", "doesNotApply"];
 /** Matches first, then open questions, then the rest. */
-function rank(p: ProjectPreview): number {
+export function rank(p: ProjectPreview): number {
   return p.result ? ORDER.indexOf(p.result.applicability) : 1;
 }
 
@@ -39,7 +38,7 @@ function parseLocation(location: string): { file: string; line: number | null } 
   return match?.[1] ? { file: match[1], line: Number(match[2]) } : { file: location, line: null };
 }
 
-function Node({ node, projectId }: { node: EvalNode; projectId: string }) {
+export function Node({ node, projectId }: { node: EvalNode; projectId: string }) {
   const [open, setOpen] = useState<string | null>(null);
   const group = node.condition.op === "all" || node.condition.op === "any" || node.condition.op === "not";
   const label =
@@ -96,7 +95,7 @@ function Node({ node, projectId }: { node: EvalNode; projectId: string }) {
   );
 }
 
-function ModuleDetail({
+export function ModuleDetail({
   match,
   projectId,
   named,
@@ -133,7 +132,7 @@ function ModuleDetail({
   );
 }
 
-function ProjectRow({ preview }: { preview: ProjectPreview }) {
+export function ProjectRow({ preview }: { preview: ProjectPreview }) {
   const [open, setOpen] = useState(false);
   const { project, result } = preview;
   if (!result) {
@@ -200,53 +199,7 @@ export function ApplicabilityPreview({
   hasProjects: boolean;
   onOpenProject: () => void;
 }) {
-  const [preview, setPreview] = useState<SkillPreview | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const sequence = useRef(0);
-  const job = useRef<string | null>(null);
-  const requestRef = useRef(request);
-  requestRef.current = request;
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: requestKey stands for the request's content.
-  useEffect(() => {
-    if (!requestRef.current || !hasProjects) return;
-    const mine = ++sequence.current;
-    const timer = window.setTimeout(() => {
-      const current = requestRef.current;
-      if (!current) return;
-      // A newer request makes the running one obsolete.
-      if (job.current) void api.cancelJob(job.current);
-      const id = newJobId();
-      job.current = id;
-      setBusy(true);
-      api
-        .previewSkill(current, id)
-        .then((result) => {
-          if (mine !== sequence.current) return;
-          setPreview(result);
-          setError(null);
-        })
-        .catch((e) => {
-          if (mine !== sequence.current) return;
-          if (e instanceof HabiError && e.code === "cancelled") return;
-          setError(e);
-        })
-        .finally(() => {
-          if (job.current === id) job.current = null;
-          if (mine === sequence.current) setBusy(false);
-        });
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [requestKey, hasProjects]);
-
-  useEffect(
-    () => () => {
-      sequence.current += 1;
-      if (job.current) void api.cancelJob(job.current);
-    },
-    [],
-  );
+  const { preview, busy, error } = useRulesPreview(request, requestKey, hasProjects);
 
   const noRules = preview !== null && !preview.problem && !preview.appliesWhen && !preview.excludes;
   const counts = preview
