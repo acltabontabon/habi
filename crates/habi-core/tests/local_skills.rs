@@ -1319,16 +1319,17 @@ fn package_files_can_be_renamed_moved_replaced_and_previewed() {
     let package = home.path().join(format!("skills/{id}/package"));
     assert!(!package.join("references").exists());
 
-    // Executable bit on and off.
+    // Executable bit on and off. Windows has no such bit: there it stays off.
     let s = skills
         .set_executable(&id, "scripts/verify.sh", true)
         .unwrap();
-    assert!(
+    assert_eq!(
         s.files
             .iter()
             .find(|f| f.path == "scripts/verify.sh")
             .unwrap()
-            .executable
+            .executable,
+        cfg!(unix)
     );
     let s = skills
         .set_executable(&id, "scripts/verify.sh", false)
