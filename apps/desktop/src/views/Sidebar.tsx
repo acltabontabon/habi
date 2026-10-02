@@ -12,6 +12,7 @@ import { freshnessText } from "../lib/format";
 import { useNav } from "../lib/nav";
 import { keys, useContributions, useRecentProjects, useSources } from "../lib/queries";
 import { type ThemeChoice, useTheme } from "../lib/theme";
+import { repositoryLabel } from "./sources/SourceSheet";
 
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const { route, navigate } = useNav();
@@ -164,8 +165,11 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
             Libraries
           </button>
         </div>
-        <ul className="sidebar-list">
-          {team.map((s) => (
+        {/* One family of sources on one warp; the collection continues into
+            "Explore libraries". Provenance is in each thread (stitched for
+            community) and in the tooltip, not in headings. */}
+        <ul className="sidebar-list sidebar-spine">
+          {[...team, ...community].map((s) => (
             <LibraryItem
               key={s.id}
               source={s}
@@ -174,36 +178,23 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               onOpen={openLibrary}
             />
           ))}
+          <li>
+            <button
+              type="button"
+              className={`sidebar-explore${connecting ? " is-here" : ""}`}
+              aria-current={connecting ? "page" : undefined}
+              onClick={() => navigate({ name: "sources" })}
+            >
+              <span className="sidebar-knot" aria-hidden="true" />
+              <span className="sidebar-item-text">
+                {libraries.length === 0 ? "Connect a library" : "Explore libraries"}
+              </span>
+              <span className="sidebar-explore-arrow" aria-hidden="true">
+                →
+              </span>
+            </button>
+          </li>
         </ul>
-        {community.length > 0 ? (
-          <>
-            <p className="sidebar-subheading" title="Published by others — not reviewed by your team">
-              community
-            </p>
-            <ul className="sidebar-list">
-              {community.map((s) => (
-                <LibraryItem
-                  key={s.id}
-                  source={s}
-                  dye={dyes(s.id)}
-                  active={activeLibrary === s.id}
-                  onOpen={openLibrary}
-                />
-              ))}
-            </ul>
-          </>
-        ) : null}
-        <button
-          type="button"
-          className={`sidebar-item sidebar-item-quiet${connecting ? " is-active" : ""}`}
-          aria-current={connecting ? "page" : undefined}
-          onClick={() => navigate({ name: "sources" })}
-        >
-          <Icon name={libraries.length === 0 ? "library" : "search"} />
-          <span className="sidebar-item-text">
-            {libraries.length === 0 ? "Connect a library…" : "Browse & connect…"}
-          </span>
-        </button>
       </div>
 
       {hasSharing ? (
@@ -268,7 +259,7 @@ function LibraryItem({
         type="button"
         className={`sidebar-item${active ? " is-active" : ""}`}
         aria-current={active ? "page" : undefined}
-        title={fresh.tone !== "muted" ? `${source.name} — ${fresh.text}` : source.name}
+        title={`${source.name} · ${source.role === "community" ? "community" : source.location.startsWith("/") || source.location.startsWith("~") ? "local" : "team"} · ${repositoryLabel(source.location)}${fresh.tone !== "muted" ? ` — ${fresh.text}` : ""}`}
         onClick={() => onOpen(source.id)}
       >
         <Strand dye={dye} />
