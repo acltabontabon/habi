@@ -252,6 +252,10 @@ impl Habi {
         paths.ensure()?;
         let store = Store::open(&paths.db())?;
         let sources = Sources::new(&paths, &store);
+        // Sample libraries created before libraries carried a sample flag.
+        if let Err(e) = sources.mark_samples_under(&crate::sample::root(&paths)) {
+            tracing::warn!(error = %e, "could not mark the sample libraries");
+        }
         // `gh`/`glab` run in an empty folder of Habi's own, never in whatever
         // repository Habi was started from.
         let review_tools = ReviewTools {
@@ -317,8 +321,7 @@ impl Habi {
 
     pub fn project(&self, id: &str) -> Result<ProjectRecord> {
         let conn = self.store.conn()?;
-        let sample_root = crate::paths::canonical(self.paths.root.join("sample"))
-            .unwrap_or_else(|_| self.paths.root.join("sample"));
+        let sample_root = crate::sample::root(&self.paths);
         conn.query_row(
             "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
             [id],
@@ -635,6 +638,7 @@ impl Habi {
             last_error: None,
             warning: None,
             freshness: Freshness::Current,
+            sample: false,
         }
     }
 
@@ -812,7 +816,10 @@ impl Habi {
         let inspection = self.inspect(id, rescan, cancel)?;
         let declarations = self.declarations(id)?;
         let lock = read_lock(&project.root)?;
-        let libraries = self.libraries()?;
+        let mut libraries = self.libraries()?;
+        // The sample workspace's libraries are for its sample projects only;
+        // they never show up in the user's own projects.
+        libraries.retain(|(source, _)| project.sample || !source.sample);
         let installations = self.installations(&project.root, &lock, &libraries);
         let mut candidates = Vec::new();
         let identities: Vec<String> = libraries

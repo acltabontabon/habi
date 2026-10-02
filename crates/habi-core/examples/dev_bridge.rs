@@ -320,6 +320,7 @@ impl Bridge {
             "diagnostics_preview" => out(habi_core::diagnostics::bundle(h, version)?),
             "diagnostics_save" => Ok(Value::Null),
             "create_sample_workspace" => out(habi_core::sample::create(h, &self.samples)?),
+            "remove_sample_workspace" => out(habi_core::sample::remove(h)?),
             other => Err(HabiError::Unsupported(format!(
                 "“{other}” is not available through the development bridge"
             ))),
