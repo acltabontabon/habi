@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import type { LocalSkill } from "../bindings/LocalSkill";
+import type { ProjectOverview } from "../bindings/ProjectOverview";
 import type { ProjectRecord } from "../bindings/ProjectRecord";
 import type { Source } from "../bindings/Source";
 import { Dialog } from "../components/Dialog";
@@ -17,6 +18,7 @@ import { NavProvider, type Route, useNav } from "../lib/nav";
 import { initTheme, useTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
 import { CommandPalette } from "../views/CommandPalette";
+import { InstalledView } from "../views/project/InstalledView";
 import { ProjectView } from "../views/project/ProjectView";
 import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
@@ -530,6 +532,34 @@ describe("the sample workspace", () => {
     handlers.list_sources = () => [library({ sample: true })];
     wrap(<CommandPalette open onOpenChange={() => {}} />);
     expect(await screen.findByRole("option", { name: "Remove sample workspace…" })).toBeInTheDocument();
+  });
+});
+
+describe("project history", () => {
+  it("shows an unreadable operation record as needing attention, without made-up details", async () => {
+    handlers.history = () => [
+      {
+        id: "op-1",
+        title: "Unreadable operation record",
+        action: "unreadable",
+        state: "needsAttention",
+        createdAt: "",
+        finishedAt: null,
+        files: [],
+        problems: ["Habi could not read the record of this operation (EOF while parsing)."],
+      },
+    ];
+    wrap(<InstalledView overview={billing as unknown as ProjectOverview} />, {
+      name: "project",
+      projectId: billing.project.id,
+      tab: "installed",
+    });
+    expect(await screen.findByText("Unreadable operation record")).toBeInTheDocument();
+    expect(screen.getByText("needs attention")).toBeInTheDocument();
+    expect(screen.getByText(/could not read the record of this operation/)).toBeInTheDocument();
+    expect(screen.getByText("files not known")).toBeInTheDocument();
+    expect(screen.queryByText(/never/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Restore…" })).toBeNull();
   });
 });
 
