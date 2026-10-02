@@ -5,8 +5,8 @@ minutes, and explains the few rules that keep Habi trustworthy.
 
 ## Ground rules
 
-Habi's promise is *honest, local, previewed*. Changes are reviewed against
-[docs/project/product.md](docs/project/product.md). In short:
+Habi's promise is *honest, local, previewed*. Changes are reviewed against the
+[product contract](docs/project/product.md). In short:
 
 - **Unknown is a valid answer.** Never turn missing evidence into "applies" or "does not
   apply". No confidence percentages.
@@ -19,60 +19,30 @@ Habi's promise is *honest, local, previewed*. Changes are reviewed against
 
 ## Set up
 
-Prerequisites:
-
-- [Rust](https://rustup.rs) — the exact toolchain is pinned in `rust-toolchain.toml` and
-  installed automatically by `rustup`.
-- [Node.js](https://nodejs.org) 24 or newer, with `corepack enable` (provides pnpm 12).
-- Git.
-- For the desktop app: the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
-  for your platform (Xcode Command Line Tools on macOS; Microsoft C++ Build Tools and
-  WebView2 on Windows). Linux is not supported.
+Install the prerequisites listed in the README under
+[Build from source](README.md#build-from-source) (Rust, Node.js 24+, Git and the Tauri
+prerequisites; Linux is not supported for the desktop app). Then:
 
 ```sh
 git clone https://github.com/acltabontabon/habi.git
 cd habi
-corepack enable
-scripts/check.sh        # everything CI runs: format, lint, tests, bindings, build
+corepack enable                                   # provides the pinned pnpm
+scripts/check.sh                                  # the checks CI runs (see below)
+
+cd apps/desktop && pnpm install && pnpm tauri dev # the desktop app
+cargo run -p habi-cli -- --help                   # the command line
 ```
 
 The first build takes a few minutes.
 
-## Run it
+`scripts/check.sh` runs, on your machine, what CI checks: Rust format, lint and tests, the
+TypeScript bindings, `cargo deny` (skipped with a note if
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) is not installed), frontend lint,
+type check, tests and build, third-party notices, documentation links and the website build.
+CI also runs these on macOS, Windows and Linux, and builds the desktop installers.
 
-```sh
-# Desktop app (native window)
-cd apps/desktop && pnpm install && pnpm tauri dev
-
-# Command line
-cargo run -p habi-cli -- --help
-```
-
-### Working on the UI in a browser
-
-The development bridge serves the real core over loopback HTTP, so you can use browser
-dev tools against real inspection, Git and plans:
-
-```sh
-HABI_HOME=/tmp/habi-dev cargo run -p habi-core --example dev_bridge
-cd apps/desktop && VITE_HABI_BRIDGE=1 pnpm dev      # http://127.0.0.1:1420
-```
-
-Use `HABI_BRIDGE_PORT` and `HABI_UI_PORT` to run a second pair side by side.
-`HABI_HOME` keeps your experiments away from your real Habi data.
-
-## Repository layout
-
-| Path | What lives there |
-|---|---|
-| `crates/habi-core` | Everything that matters: inspection, matching, libraries, installs, contributions. Pure Rust, no UI. |
-| `crates/habi-cli` | The `habi` command. |
-| `apps/desktop` | React UI (`src/`) and the thin Tauri shell (`src-tauri/`). |
-| `schema/` | JSON Schemas for `habi.yaml` and `habi-library.yaml`. |
-| `fixtures/` | Example libraries and repositories used by tests and the sample workspace. |
-| `docs/` | Product contract, architecture, security, formats. |
-
-See [docs/dev/architecture.md](docs/dev/architecture.md) for the module map.
+[Architecture](docs/dev/architecture.md) explains the repository layout and modules, and how
+to work on the UI in a browser against the real core or against fixture data.
 
 ## Making a change
 
@@ -94,7 +64,9 @@ See [docs/dev/architecture.md](docs/dev/architecture.md) for the module map.
 
 - Small, focused pull requests with a clear description of *why*.
 - UI changes: include a before/after screenshot.
-- A maintainer reviews every change; expect questions about edge cases and wording.
+- The maintainer reviews every change; expect questions about edge cases and wording. Habi
+  has one maintainer working in their own time, so reviews are best effort (see
+  [SUPPORT.md](SUPPORT.md)).
 
 ## License
 

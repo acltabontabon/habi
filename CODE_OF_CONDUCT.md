@@ -9,6 +9,11 @@ space — issues, pull requests, discussions, or anywhere you represent the proj
 ## Reporting
 
 Report unacceptable behavior to **me@acltabontabon.com**. Reports are handled
-confidentially. The maintainer will review every report and respond with the corrective
-action described in the Covenant's enforcement guidelines (correction, warning, temporary
-ban or permanent ban), depending on severity.
+confidentially. Habi has one maintainer, Alvin Cris Tabontabon, who reviews every report and
+responds with the corrective action described in the Covenant's enforcement guidelines
+(correction, warning, temporary ban or permanent ban), depending on severity.
+
+If your report is about the maintainer, or you are not comfortable sending it to them, use
+GitHub's own channels instead: **Report content** on the comment, issue or pull request (in
+its **…** menu), **Report abuse** on the user's profile, or
+[GitHub Support](https://support.github.com/contact). GitHub reviews these reports itself.
