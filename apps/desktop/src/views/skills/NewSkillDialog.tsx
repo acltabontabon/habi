@@ -18,17 +18,21 @@ const templates: { id: SkillTemplate; label: string; detail: string }[] = [
 export function NewSkillDialog({
   projectId,
   projectName,
+  initialTitle = "",
+  initialTemplate = "blank",
   onClose,
 }: {
   projectId?: string;
   projectName?: string;
+  initialTitle?: string;
+  initialTemplate?: SkillTemplate;
   onClose: () => void;
 }) {
   const { navigate } = useNav();
   const client = useQueryClient();
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
-  const [template, setTemplate] = useState<SkillTemplate>("blank");
+  const [template, setTemplate] = useState<SkillTemplate>(initialTemplate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
