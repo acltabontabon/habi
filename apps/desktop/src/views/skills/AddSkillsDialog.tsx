@@ -96,7 +96,7 @@ function CandidateRow({
           {plural(c.files.length, "file")}
         </button>
         {c.license ? ` · ${c.license}` : ""}
-        {c.hasMetadata ? " · has applicability rules" : ` · ${NO_RULES_PHRASE.toLowerCase()}`}
+        {c.hasMetadata ? " · has rules for when it applies" : ` · ${NO_RULES_PHRASE.toLowerCase()}`}
       </p>
       {showFiles ? (
         <ul className="candidate-files mono">

@@ -21,14 +21,14 @@ export function plainProblem(d: Diagnostic): { text: string; fix: FixTarget | nu
     };
   }
   if (d.path && /(^|\/)habi\.ya?ml$/.test(d.path)) {
-    return { text: `The applicability rules need attention: ${m}`, fix: "applicability" };
+    return { text: `The rules for when it applies need attention: ${m}`, fix: "applicability" };
   }
   return { text: d.path ? `${d.path}: ${m}` : m, fix: d.path ? "files" : null };
 }
 
 const fixLabel: Record<FixTarget, string> = {
   purpose: "Open Purpose",
-  applicability: "Open Applicability",
+  applicability: "Open When it applies",
   files: "Open Files",
 };
 

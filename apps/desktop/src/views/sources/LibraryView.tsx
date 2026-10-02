@@ -458,7 +458,7 @@ function SkillHead({
           <dd className={item.licenseRestricted ? "tone-warn" : undefined}>
             {licenseText(item.license, item.licenseFile)}
           </dd>
-          <dt>Source</dt>
+          <dt>Location</dt>
           <dd>
             <span className="mono">
               {shortRepo(source)} › {item.path}

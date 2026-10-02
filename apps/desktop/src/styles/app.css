@@ -918,12 +918,6 @@
   font-size: var(--text-xs);
 }
 
-.composition-legend .composition-cli {
-  margin-left: auto;
-  font-size: var(--text-xs);
-  color: var(--ink-faint);
-}
-
 .project > .notice,
 .source > .notice {
   margin: 0 var(--s6) var(--s2);
@@ -2852,9 +2846,6 @@ details > summary.change-head::-webkit-details-marker {
   }
   .composition {
     margin-bottom: var(--s3);
-  }
-  .composition-legend .composition-cli {
-    display: none;
   }
   /* The list, or one item: never both squeezed side by side. */
   .workbench.is-narrow {

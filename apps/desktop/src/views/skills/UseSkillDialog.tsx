@@ -134,7 +134,7 @@ export function UseSkillDialog({
           <span className="field-hint">
             {skill.summary.hasApplicability
               ? "The skill's own rules, evaluated for each project. You can install it anywhere deliberately."
-              : "This skill has no applicability rules, so installing it is your call."}{" "}
+              : "This skill has no rules for when it applies, so installing it is your call."}{" "}
             Next you choose Claude Code, Cursor or Codex and see every file that would be written.
           </span>
           <Button size="sm" variant="quiet" icon="folder" onClick={() => void openProject({ stay: true })}>

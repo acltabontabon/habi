@@ -117,7 +117,7 @@ export function SettingsView() {
 
       <Section title="Diagnostics" id="diagnostics">
         <p className="muted">
-          A redacted report for troubleshooting: versions, source health and recent log lines. It never
+          A redacted report for troubleshooting: versions, library health and recent log lines. It never
           includes library content, project files, environment values or credentials. Review it before saving.
         </p>
         {error ? <ErrorNotice error={error} /> : null}

@@ -23,13 +23,13 @@ scanned; bring skills in from them with **Add skills → From a folder**.
 *Create a skill* (welcome screen, sidebar, ⌘N, or *Create a skill for this project*) needs
 only a title. It works offline and without a project, library, account or model.
 
-The editor has three connected parts, with the applicability preview beside them:
+The editor has three connected parts, with a preview of where the skill applies beside them:
 
 - **Purpose** — the description agents read to decide when to load the skill, and the
   identifier (the Agent Skills `name`: lowercase letters, digits, hyphens).
 - **Instructions** — Markdown with a preview. ⌘B/⌘I/⌘E format; Tab moves focus. Two optional
   starting structures (review procedure, implementation guide) are offered while it is empty.
-- **Applicability** — a condition builder: *applies when* (technology, dependency, file
+- **When it applies** — a condition builder: *applies when* (technology, dependency, file
   pattern; all or any), *never applies when*, required tools, and module or repository scope.
   It writes the same `habi.yaml` conditions the matcher evaluates. A YAML view edits the file
   directly and saves it exactly as typed, including keys Habi does not know; rules the builder
@@ -41,7 +41,7 @@ When a skill is written for a project, or you choose a project under *Suggest fr
 builder offers facts observed there (with the file and line they came from). Each is added
 only when you click it.
 
-A skill without rules has **applicability not specified**: it stays available for deliberate
+A skill without rules has **no rules for when it applies**: it stays available for deliberate
 use everywhere and is never recommended. Habi does not infer rules from a title.
 
 ### Saving
@@ -134,7 +134,7 @@ do with it; "Applies" does not mean tried or verified.
    refresh). To edit one of its skills, copy it to My skills.
 
 The inspection lists each package with its origin, files, license, whether it has
-applicability rules, and any problems. Importing copies packages byte for byte — references,
+rules for when it applies, and any problems. Importing copies packages byte for byte — references,
 scripts (with their executable bit), assets and unknown frontmatter included — and records
 where each came from. Originals are never changed.
 

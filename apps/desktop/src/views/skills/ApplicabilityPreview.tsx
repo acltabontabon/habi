@@ -22,7 +22,7 @@ const verdict = {
   applies: "Applies",
   doesNotApply: "Does not apply",
   needsInformation: "Needs information",
-  undeclared: "No applicability rules",
+  undeclared: "No rules for when it applies",
 } as const;
 
 const triIcon = { true: "check", false: "cross", unknown: "question" } as const;

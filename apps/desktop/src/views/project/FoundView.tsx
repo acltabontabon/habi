@@ -47,7 +47,7 @@ function SkillRow({ skill, project }: { skill: DiscoveredSkill; project: Project
             {" · "}
             {plural(skill.fileCount, "file")}
             {" · "}
-            {skill.hasMetadata ? "has applicability rules" : NO_RULES_PHRASE.toLowerCase()}
+            {skill.hasMetadata ? "has rules for when it applies" : NO_RULES_PHRASE.toLowerCase()}
           </span>
         </p>
         {errors.length > 0 ? (
@@ -338,8 +338,8 @@ export function FoundView({ project, lead }: { project: ProjectRecord; lead?: bo
             {nothing
               ? "Start with something you know about working in this codebase, or bring in what you already have."
               : "Habi only looked. Everything below stays where it is unless you copy it."}{" "}
-            Recommendations appear when a team library is connected or one of your skills has applicability
-            rules.
+            Recommendations appear when a team library is connected or one of your skills has rules for when
+            it applies.
           </p>
           <div className="found-lead-actions">
             <Button variant="primary" icon="pencil" onClick={create}>

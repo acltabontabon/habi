@@ -17,7 +17,7 @@ const SkillEditor = lazy(() => import("./SkillEditor").then((m) => ({ default: m
 function state(s: LocalSkillSummary) {
   if (s.errors > 0) return <Status tone="muted">Draft · {plural(s.errors, "thing")} to finish</Status>;
   if (!s.hasApplicability) return <Status tone="muted">{NO_RULES_PHRASE}</Status>;
-  return <Status tone="ok">Has applicability rules</Status>;
+  return <Status tone="ok">Has rules for when it applies</Status>;
 }
 
 export function SkillsView({ skillId }: { skillId?: string }) {
