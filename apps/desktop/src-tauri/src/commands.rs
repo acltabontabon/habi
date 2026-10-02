@@ -1164,6 +1164,44 @@ pub async fn import_skills(
     blocking(habi, move |h| h.import_skills(&from, &selections, &cancel)).await
 }
 
+// ----- updates for library copies --------------------------------------------------------
+
+#[tauri::command]
+pub async fn skill_upstream(
+    state: State<'_, AppState>,
+    id: String,
+) -> CmdResult<Option<habi_core::skills::upstream::UpstreamStatus>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.skill_upstream(&id)).await
+}
+
+#[tauri::command]
+pub async fn plan_upstream_sync(
+    state: State<'_, AppState>,
+    id: String,
+) -> CmdResult<habi_core::skills::upstream::UpstreamPlan> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.plan_upstream_sync(&id)).await
+}
+
+#[tauri::command]
+pub async fn apply_upstream_sync(
+    state: State<'_, AppState>,
+    id: String,
+    token: String,
+    decisions: std::collections::BTreeMap<String, habi_core::skills::upstream::UpstreamChoice>,
+) -> CmdResult<LocalSkill> {
+    // A skill holds at most 200 files, so there are never more decisions.
+    if decisions.len() > 200 || decisions.keys().any(|k| k.len() > 1024) {
+        return Err(HabiError::invalid("too many decisions").to_info());
+    }
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.apply_upstream_sync(&id, &token, &decisions)
+    })
+    .await
+}
+
 // ----- diagnostics and sample ------------------------------------------------------------
 
 #[tauri::command]

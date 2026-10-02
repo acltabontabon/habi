@@ -317,3 +317,239 @@ fn licence_file_names() {
         assert!(!is_license_file(no), "{no}");
     }
 }
+
+// ----- package checks ----------------------------------------------------------
+
+fn skill_with(body: &str, extra: &[(&str, &str)]) -> LibraryItem {
+    let skill =
+        format!("---\nname: migration-review\ndescription: Review changelogs.\n---\n{body}");
+    let mut files: Vec<(String, String)> =
+        vec![("skills/migration-review/SKILL.md".to_string(), skill)];
+    for (p, t) in extra {
+        files.push((format!("skills/migration-review/{p}"), t.to_string()));
+    }
+    let borrowed: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(p, t)| (p.as_str(), t.as_str()))
+        .collect();
+    let idx = index(&borrowed);
+    assert!(idx.diagnostics.is_empty(), "{:?}", idx.diagnostics);
+    idx.items.into_iter().next().unwrap()
+}
+
+fn messages(item: &LibraryItem) -> String {
+    item.diagnostics
+        .iter()
+        .map(|d| d.message.clone())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+#[test]
+fn missing_local_file_references_are_warnings_naming_both_files() {
+    let item = skill_with(
+        "See [the checklist](references/checklist.md) and ![diagram](assets/flow.png).\n\
+         Run `scripts/check.py` before merging, then `scripts/report.sh`.\n\
+         \n[notes]: references/notes.md\n",
+        &[
+            ("references/checklist.md", "# Checklist\n"),
+            ("scripts/check.py", "print(1)\n"),
+        ],
+    );
+    let all = messages(&item);
+    assert_eq!(item.diagnostics.len(), 3, "{all}");
+    for d in &item.diagnostics {
+        assert_eq!(d.level, DiagnosticLevel::Warning);
+        assert_eq!(d.path.as_deref(), Some("skills/migration-review/SKILL.md"));
+    }
+    assert!(
+        all.contains("SKILL.md links to `assets/flow.png`, which is not in the skill"),
+        "{all}"
+    );
+    assert!(
+        all.contains("SKILL.md mentions `scripts/report.sh`, which is not in the skill"),
+        "{all}"
+    );
+    assert!(all.contains("links to `references/notes.md`"), "{all}");
+    assert!(!all.contains("checklist.md`"), "{all}");
+    assert!(!all.contains("check.py"), "{all}");
+}
+
+#[test]
+fn urls_anchors_code_and_comments_are_not_mistaken_for_missing_files() {
+    let body = r#"# Review
+
+[Spec](https://agentskills.io/specification), [mail](mailto:team@example.com),
+[top](#review), [protocol-relative](//example.com/x), [absolute](/etc/hosts),
+[home](~/notes.md), [template]({{ base }}/x.md), [glob](scripts/*.sh),
+[part](references/guide.md#step-2), [query](references/guide.md?plain=1),
+[folder](references/), [spaced](references/my%20notes.md), [same](./SKILL.md),
+<https://example.com/autolink> and an empty link [nothing]().
+- [ ] a task list item, not a link
+- [x] another one
+
+Inline code with link syntax: `[x](missing.md)` and a command
+`scripts/check.py --strict`, a glob `scripts/*.py`, a placeholder `references/<topic>.md`,
+a location `scripts/check.py:12`.
+
+```markdown
+[inside a fence](missing.md) and `scripts/missing.sh`
+```
+
+~~~
+![also fenced](assets/missing.png)
+~~~
+
+<!-- [commented out](missing.md)
+[still a comment](missing-too.md) -->
+
+[^1]: A footnote, not a link definition.
+"#;
+    let item = skill_with(
+        body,
+        &[
+            (
+                "references/guide.md",
+                "# Guide\n\nBack to [the skill](../SKILL.md) and [run](../scripts/check.py); see [notes](my%20notes.md).\n",
+            ),
+            ("references/my notes.md", "notes\n"),
+            ("scripts/check.py", "print(1)\n"),
+        ],
+    );
+    assert!(item.diagnostics.is_empty(), "{:?}", item.diagnostics);
+}
+
+#[test]
+fn links_that_climb_out_of_the_skill_are_reported_separately() {
+    let item = skill_with("Shared rules: [conventions](../../CONVENTIONS.md).\n", &[]);
+    let all = messages(&item);
+    assert_eq!(item.diagnostics.len(), 1, "{all}");
+    assert_eq!(item.diagnostics[0].level, DiagnosticLevel::Warning);
+    assert!(all.contains("points outside the skill"), "{all}");
+    assert!(!all.contains("which is not in the skill"), "{all}");
+}
+
+#[test]
+fn links_in_reference_files_resolve_from_their_folder() {
+    let item = skill_with(
+        "Read [the guide](references/guide.md).\n",
+        &[(
+            "references/guide.md",
+            "Next: [details](details.md) and [script](../scripts/missing.sh).\n",
+        )],
+    );
+    let all = messages(&item);
+    assert_eq!(item.diagnostics.len(), 2, "{all}");
+    assert!(
+        all.contains("references/guide.md links to `references/details.md`"),
+        "{all}"
+    );
+    assert!(
+        all.contains("references/guide.md links to `scripts/missing.sh`"),
+        "{all}"
+    );
+    assert!(
+        item.diagnostics
+            .iter()
+            .all(|d| d.path.as_deref() == Some("skills/migration-review/references/guide.md"))
+    );
+}
+
+#[test]
+fn asset_templates_are_not_scanned_for_links() {
+    let item = skill_with(
+        "Use [the template](assets/report.md).\n",
+        &[(
+            "assets/report.md",
+            "# Report\n\n[link to your ticket](TICKET-URL)\n",
+        )],
+    );
+    assert!(item.diagnostics.is_empty(), "{:?}", item.diagnostics);
+}
+
+#[test]
+fn json_and_yaml_files_must_parse() {
+    let item = skill_with(
+        "Body.\n",
+        &[
+            ("assets/ok.json", "{\"a\": [1, 2]}"),
+            ("assets/broken.json", "{\"a\": [1, 2}"),
+            // JSON with comments and trailing commas, as many tools accept it.
+            (
+                "assets/tsconfig.json",
+                "{\n  // compiler options\n  \"compilerOptions\": { \"strict\": true, },\n  /* paths */\n  \"include\": [\"src\",],\n}\n",
+            ),
+            (
+                "assets/url.json",
+                "{\"u\": \"https://example.com/a//b\", \"c\": \"/* not a comment */\"}",
+            ),
+            ("assets/ok.yaml", "a: 1\nb: [x, y]\n"),
+            ("assets/multi.yml", "kind: A\n---\nkind: B\n"),
+            ("assets/broken.yaml", "a: [1, 2\nb: 3\n"),
+            ("assets/empty.yaml", ""),
+        ],
+    );
+    let all = messages(&item);
+    assert_eq!(item.diagnostics.len(), 2, "{all}");
+    assert!(
+        item.diagnostics
+            .iter()
+            .all(|d| d.level == DiagnosticLevel::Warning)
+    );
+    assert!(
+        all.contains("assets/broken.json is not valid JSON"),
+        "{all}"
+    );
+    assert!(
+        all.contains("assets/broken.yaml is not valid YAML"),
+        "{all}"
+    );
+    let broken_json = item
+        .diagnostics
+        .iter()
+        .find(|d| d.message.contains("broken.json"))
+        .unwrap();
+    assert_eq!(
+        broken_json.path.as_deref(),
+        Some("skills/migration-review/assets/broken.json")
+    );
+}
+
+#[test]
+fn the_sidecar_is_validated_once_not_as_plain_yaml() {
+    let item = skill_with("Body.\n", &[("habi.yaml", "habi: 1\nkind: [unclosed\n")]);
+    let all = messages(&item);
+    assert_eq!(item.diagnostics.len(), 1, "{all}");
+    assert!(all.contains("habi.yaml could not be read"), "{all}");
+}
+
+#[test]
+fn yaml_with_custom_tags_is_not_reported() {
+    let item = skill_with(
+        "Body.\n",
+        &[(
+            "assets/template.yaml",
+            "Resources:\n  Bucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: !Sub '${AWS::StackName}-data'\n      Tags: !Ref Tags\n",
+        )],
+    );
+    assert!(item.diagnostics.is_empty(), "{:?}", item.diagnostics);
+}
+
+#[test]
+fn markdown_reference_scanner_handles_nesting_and_titles() {
+    let refs = markdown_references(
+        "[![badge](assets/b.svg)](references/a.md \"Title\") [p](<references/with space.md>) [x](a_(b).md)\n",
+    );
+    assert_eq!(
+        refs,
+        vec![
+            MarkdownRef::Link("assets/b.svg".into()),
+            MarkdownRef::Link("references/a.md".into()),
+            MarkdownRef::Link("references/with space.md".into()),
+            MarkdownRef::Link("a_(b).md".into()),
+        ]
+    );
+    assert_eq!(resolve_link("references", "../../x.md"), Some(Err(())));
+    assert_eq!(resolve_link("", "x/../y.md"), Some(Ok("y.md".into())));
+    assert_eq!(resolve_link("", "HTTP://EXAMPLE.COM"), None);
+}
