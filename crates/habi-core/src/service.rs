@@ -40,7 +40,7 @@ use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -252,6 +252,14 @@ impl Habi {
         paths.ensure()?;
         let store = Store::open(&paths.db())?;
         let sources = Sources::new(&paths, &store);
+        // Sample libraries created before libraries carried a sample flag.
+        if let Err(e) = sources.mark_samples_under(&crate::sample::root(&paths)) {
+            tracing::warn!(error = %e, "could not mark the sample libraries");
+        }
+        // Snapshots fetched before item counts were recorded.
+        if let Err(e) = sources.count_uncounted() {
+            tracing::warn!(error = %e, "could not count library items");
+        }
         // `gh`/`glab` run in an empty folder of Habi's own, never in whatever
         // repository Habi was started from.
         let review_tools = ReviewTools {
@@ -317,38 +325,47 @@ impl Habi {
 
     pub fn project(&self, id: &str) -> Result<ProjectRecord> {
         let conn = self.store.conn()?;
-        let sample_root = crate::paths::canonical(self.paths.root.join("sample"))
-            .unwrap_or_else(|_| self.paths.root.join("sample"));
-        conn.query_row(
-            "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
-            [id],
-            |r| {
-                let path: String = r.get(1)?;
-                let root = PathBuf::from(&path);
-                Ok(ProjectRecord {
-                    summary: None,
-                    sample: root.starts_with(&sample_root),
-                    id: r.get(0)?,
-                    name: r.get(2)?,
-                    path: crate::paths::display_path(&root),
-                    exists: root.is_dir(),
-                    last_opened_at: r.get(3)?,
-                    exclusions: serde_json::from_str(&r.get::<_, String>(4)?).unwrap_or_default(),
-                    root,
-                })
-            },
-        )
-        .optional()?
-        .ok_or_else(|| HabiError::NotFound(format!("project {id}")))
-        .map(|mut p| {
-            p.summary = self
-                .store
-                .setting(&summary_key(id))
-                .ok()
-                .flatten()
-                .and_then(|json| serde_json::from_str(&json).ok());
-            p
-        })
+        let sample_root = crate::sample::root(&self.paths);
+        let (mut record, exclusions) = conn
+            .query_row(
+                "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
+                [id],
+                |r| {
+                    let path: String = r.get(1)?;
+                    let root = PathBuf::from(&path);
+                    Ok((
+                        ProjectRecord {
+                            summary: None,
+                            sample: root.starts_with(&sample_root),
+                            id: r.get(0)?,
+                            name: r.get(2)?,
+                            path: crate::paths::display_path(&root),
+                            exists: root.is_dir(),
+                            last_opened_at: r.get(3)?,
+                            exclusions: Vec::new(),
+                            root,
+                        },
+                        r.get::<_, String>(4)?,
+                    ))
+                },
+            )
+            .optional()?
+            .ok_or_else(|| HabiError::NotFound(format!("project {id}")))?;
+        // Read as "no exclusions", a damaged list would let the next scan
+        // into folders the user excluded.
+        record.exclusions = serde_json::from_str(&exclusions).map_err(|e| {
+            HabiError::Conflict(format!(
+                "the folders excluded from scanning in {} could not be read ({e}); set them again",
+                record.name
+            ))
+        })?;
+        record.summary = self
+            .store
+            .setting(&summary_key(id))
+            .ok()
+            .flatten()
+            .and_then(|json| serde_json::from_str(&json).ok());
+        Ok(record)
     }
 
     fn existing_project(&self, id: &str) -> Result<ProjectRecord> {
@@ -382,7 +399,7 @@ impl Habi {
             .execute("DELETE FROM settings WHERE key = ?1", [summary_key(id)])?;
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(id);
         Ok(())
     }
@@ -401,7 +418,7 @@ impl Habi {
         )?;
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(id);
         self.project(id)
     }
@@ -454,14 +471,24 @@ impl Habi {
         rescan: bool,
         cancel: &CancelToken,
     ) -> Result<ProjectInspection> {
-        if !rescan
-            && let Some(cached) = self.inspections.lock().expect("inspection cache").get(id)
-            // A cheap re-check (sizes and modification times of manifests,
-            // lockfiles and listed directories) catches edits, added or
-            // removed files and branch switches since the last scan.
+        // Cloned out first: the staleness check reads the file system, and
+        // the cache stays available to other threads meanwhile.
+        let cached = (!rescan)
+            .then(|| {
+                self.inspections
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .get(id)
+                    .cloned()
+            })
+            .flatten();
+        // A cheap re-check (sizes and modification times of manifests,
+        // lockfiles and listed directories) catches edits, added or removed
+        // files and branch switches since the last scan.
+        if let Some(cached) = cached
             && !cached.is_stale()
         {
-            return Ok(cached.clone());
+            return Ok(cached);
         }
         let project = self.existing_project(id)?;
         let options = WalkOptions {
@@ -471,7 +498,7 @@ impl Habi {
         let inspection = inspect(&project.root, &options, cancel)?;
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .insert(id.to_string(), inspection.clone());
         Ok(inspection)
     }
@@ -480,7 +507,7 @@ impl Habi {
     pub fn invalidate_inspection(&self, project: &str) {
         self.inspections
             .lock()
-            .expect("inspection cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(project);
     }
 
@@ -593,7 +620,7 @@ impl Habi {
         // installed and updated through the same code as team items.
         match self.skills().library() {
             Ok((index, _)) if !index.items.is_empty() => {
-                out.push((self.local_source(&index.snapshot), index))
+                out.push((self.local_source(&index.snapshot, index.items.len()), index))
             }
             Ok(_) => {}
             Err(e) => tracing::warn!(error = %e, "could not read local skills"),
@@ -608,7 +635,7 @@ impl Habi {
         }
     }
 
-    fn local_source(&self, snapshot: &str) -> Source {
+    fn local_source(&self, snapshot: &str, items: usize) -> Source {
         Source {
             id: LOCAL_SOURCE_ID.into(),
             name: LOCAL_SOURCE_NAME.into(),
@@ -625,13 +652,15 @@ impl Habi {
             last_error: None,
             warning: None,
             freshness: Freshness::Current,
+            sample: false,
+            skill_count: u32::try_from(items).unwrap_or(u32::MAX),
         }
     }
 
     fn source_of(&self, source_id: &str) -> Result<Source> {
         if source_id == LOCAL_SOURCE_ID {
             let (index, _) = self.skills().library()?;
-            return Ok(self.local_source(&index.snapshot));
+            return Ok(self.local_source(&index.snapshot, index.items.len()));
         }
         self.sources.get(source_id)
     }
@@ -700,7 +729,7 @@ impl Habi {
             path: rel,
             size: bytes.len() as u32,
             text: (!binary).then(|| {
-                String::from_utf8_lossy(&bytes[..bytes.len().min(512 * 1024)]).into_owned()
+                String::from_utf8_lossy(bytes.get(..512 * 1024).unwrap_or(&bytes)).into_owned()
             }),
             binary,
         })
@@ -802,7 +831,10 @@ impl Habi {
         let inspection = self.inspect(id, rescan, cancel)?;
         let declarations = self.declarations(id)?;
         let lock = read_lock(&project.root)?;
-        let libraries = self.libraries()?;
+        let mut libraries = self.libraries()?;
+        // The sample workspace's libraries are for its sample projects only;
+        // they never show up in the user's own projects.
+        libraries.retain(|(source, _)| project.sample || !source.sample);
         let installations = self.installations(&project.root, &lock, &libraries);
         let mut candidates = Vec::new();
         let identities: Vec<String> = libraries
@@ -887,7 +919,7 @@ impl Habi {
     // ----- plans ---------------------------------------------------------------
 
     fn keep(&self, plan: Plan) -> Plan {
-        let mut plans = self.plans.lock().expect("plan cache");
+        let mut plans = self.plans.lock().unwrap_or_else(PoisonError::into_inner);
         if plans.len() > 32 {
             let oldest = plans
                 .values()
@@ -962,7 +994,7 @@ impl Habi {
     pub fn plan(&self, plan_id: &str) -> Result<Plan> {
         self.plans
             .lock()
-            .expect("plan cache")
+            .unwrap_or_else(PoisonError::into_inner)
             .get(plan_id)
             .cloned()
             .ok_or_else(|| {
@@ -975,17 +1007,39 @@ impl Habi {
         let plan = self.plan(plan_id)?;
         let result = self.applier().apply(&plan);
         // A plan is single-use whatever the outcome.
-        self.plans.lock().expect("plan cache").remove(plan_id);
+        self.plans
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(plan_id);
         // Installs, updates, removals and restores change the project (skills,
         // AGENTS.md, MCP config), even when they fail part-way and roll back.
         self.invalidate_for_root(&plan.root);
+        self.tidy_after(&plan.root, &result);
         result
     }
 
     pub fn apply_plan(&self, plan: &Plan) -> Result<OperationSummary> {
         let result = self.applier().apply(plan);
         self.invalidate_for_root(&plan.root);
+        self.tidy_after(&plan.root, &result);
         result
+    }
+
+    /// Prunes old records after a successful apply. Best effort: the
+    /// operation itself already succeeded.
+    fn tidy_after(&self, root: &Path, result: &Result<OperationSummary>) {
+        if result.is_ok()
+            && let Err(e) =
+                crate::maintenance::after_apply(&self.paths, &self.store, &project_id(root))
+        {
+            tracing::warn!(error = %e, "could not prune old records");
+        }
+    }
+
+    /// Frees disk space: old operation records and library snapshots beyond
+    /// the newest of each, and stored content nothing kept refers to.
+    pub fn prune(&self) -> Result<crate::maintenance::PruneReport> {
+        crate::maintenance::prune(&self.paths, &self.store)
     }
 
     pub fn history(&self, project: &str) -> Result<Vec<OperationSummary>> {
@@ -1026,7 +1080,10 @@ impl Habi {
         let item = self.find_item(item_key)?;
         let mut preview = checks::prepare(&p.root, &inspection, &item, check_id, module, bindings)?;
         preview.preview_id = uuid::Uuid::new_v4().to_string();
-        let mut stored = self.check_previews.lock().expect("check previews");
+        let mut stored = self
+            .check_previews
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         if stored.len() > 32 {
             stored.clear();
         }
@@ -1054,7 +1111,7 @@ impl Habi {
         let stored = self
             .check_previews
             .lock()
-            .expect("check previews")
+            .unwrap_or_else(PoisonError::into_inner)
             .remove(preview_id)
             .ok_or_else(|| {
                 HabiError::NotFound(
@@ -1183,7 +1240,7 @@ impl Habi {
                 // the installed version as its origin, so edits can go back
                 // to it (and later library changes can be compared).
                 let lock = crate::install::plan::read_lock(&p.root).unwrap_or_default();
-                let mine = portable_identity(&self.local_source(""));
+                let mine = portable_identity(&self.local_source("", 0));
                 let mut packages = Vec::new();
                 for found in knowledge.skills {
                     cancel.check()?;

@@ -17,4 +17,14 @@ snapshot: string | null, snapshotAt: string | null, commitSummary: string | null
 /**
  * Integrity warnings such as a moved tag or rewritten history.
  */
-warning: string | null, freshness: Freshness, };
+warning: string | null, freshness: Freshness, 
+/**
+ * Part of the explicitly labeled sample workspace. Sample libraries are
+ * matched only against sample projects.
+ */
+sample: boolean, 
+/**
+ * Items (skills, workflows, instructions) in the cached snapshot; 0
+ * before the first fetch.
+ */
+skillCount: number, };

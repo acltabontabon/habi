@@ -351,6 +351,10 @@ pub fn evaluate(condition: &Condition, view: &View) -> EvalNode {
     }
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "lists are indexed only when they are known to be non-empty"
+)]
 fn eval_dependency(
     condition: &Condition,
     pattern: &str,
@@ -571,6 +575,10 @@ fn compiled_glob(glob: &str) -> Result<globset::GlobMatcher, String> {
     Ok(matcher)
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "lists are indexed only when they are known to be non-empty"
+)]
 fn eval_file(condition: &Condition, glob: &str, view: &View) -> EvalNode {
     let matcher = match compiled_glob(glob) {
         Ok(m) => m,
@@ -617,6 +625,10 @@ fn eval_file(condition: &Condition, glob: &str, view: &View) -> EvalNode {
     }
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "lists are indexed only when they are known to be non-empty"
+)]
 fn eval_tag(condition: &Condition, tag: &str, view: &View) -> EvalNode {
     let mut found: Vec<&Fact> = view
         .facts

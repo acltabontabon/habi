@@ -595,6 +595,59 @@ fn failures_and_crashes_roll_back() {
 }
 
 #[test]
+fn recovery_reads_unfinished_operations_and_reports_unreadable_ones() {
+    let env = setup("repos/storefront-web");
+    let before = tree(&env.project);
+    let plan = env
+        .habi
+        .plan_install(
+            &env.project_id,
+            &[item(&env, "react-component-review")],
+            &[ClientId::Cursor],
+            false,
+            &Decisions::new(),
+        )
+        .unwrap();
+    let applier = Applier {
+        paths: &env.habi.paths,
+        store: &env.habi.store,
+    };
+    let dir = env.habi.paths.journal().join(&env.project_id);
+    let markers = || {
+        std::fs::read_dir(dir.join("unfinished"))
+            .map(|d| d.count())
+            .unwrap_or(0)
+    };
+    assert!(applier.apply_with(&plan, Fault::CrashBefore(1)).is_err());
+    assert_eq!(markers(), 1, "the interrupted operation is indexed");
+
+    // Journals written before the index existed (no index folder) are all
+    // read once; an unreadable one is listed as needing attention.
+    std::fs::remove_dir_all(dir.join("unfinished")).unwrap();
+    std::fs::write(dir.join("broken.json"), b"{ not json").unwrap();
+    let recovered = env.habi.recover(&env.project_id).unwrap();
+    assert_eq!(recovered.len(), 1);
+    assert_eq!(recovered[0].state, JournalState::RolledBack);
+    assert_eq!(tree(&env.project), before);
+    assert_eq!(markers(), 0);
+    let history = env.habi.history(&env.project_id).unwrap();
+    let broken = history.iter().find(|o| o.id == "broken").unwrap();
+    assert_eq!(broken.state, JournalState::NeedsAttention);
+    assert!(!broken.problems.is_empty());
+
+    // An indexed journal that cannot be read is reported once.
+    std::fs::write(dir.join("unfinished").join("broken"), b"").unwrap();
+    let recovered = env.habi.recover(&env.project_id).unwrap();
+    assert_eq!(recovered.len(), 1);
+    assert_eq!(recovered[0].state, JournalState::NeedsAttention);
+    assert!(env.habi.recover(&env.project_id).unwrap().is_empty());
+
+    // A completed operation leaves nothing in the index.
+    applier.apply(&plan).unwrap();
+    assert_eq!(markers(), 0);
+}
+
+#[test]
 fn concurrent_operations_are_serialized() {
     let env = setup("repos/storefront-web");
     let plan = env

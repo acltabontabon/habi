@@ -1143,13 +1143,16 @@ fn upgrading_the_database_keeps_existing_state() {
         .unwrap();
     }
     let habi = open(home.path());
-    assert_eq!(habi.store.schema_version().unwrap(), 4);
+    assert_eq!(habi.store.schema_version().unwrap(), 6);
     assert_eq!(habi.project("p1").unwrap().name, "billing");
     // Libraries connected before roles existed are the team's own.
     assert_eq!(
         habi.sources().get("s1").unwrap().role,
         habi_core::source::SourceRole::Team
     );
+    // Nor is a library from then a sample one; never fetched, it has no items.
+    assert!(!habi.sources().get("s1").unwrap().sample);
+    assert_eq!(habi.sources().get("s1").unwrap().skill_count, 0);
     assert_eq!(
         habi.store.setting("desktop").unwrap().as_deref(),
         Some("{}")

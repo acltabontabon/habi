@@ -32,12 +32,13 @@ impl Tail {
 
     fn push(&mut self, chunk: &[u8]) {
         self.total += chunk.len() as u64;
-        for b in chunk {
-            if self.bytes.len() == self.capacity {
-                self.bytes.pop_front();
-            }
-            self.bytes.push_back(*b);
-        }
+        // Only the last `capacity` bytes of the chunk can survive; drop
+        // as many old bytes as needed in one go, then append in one go.
+        let keep = chunk.len().min(self.capacity);
+        let chunk = chunk.get(chunk.len() - keep..).unwrap_or_default();
+        let overflow = (self.bytes.len() + keep).saturating_sub(self.capacity);
+        self.bytes.drain(..overflow);
+        self.bytes.extend(chunk);
     }
 }
 
@@ -115,13 +116,18 @@ fn drain<R: Read + Send + 'static>(mut reader: R, limit: usize) -> mpsc::Receive
         loop {
             match reader.read(&mut buf) {
                 Ok(0) | Err(_) => break,
-                Ok(n) => tail.push(&buf[..n]),
+                Ok(n) => tail.push(buf.get(..n).unwrap_or_default()),
             }
         }
         let _ = tx.send(tail);
     });
     rx
 }
+
+/// `CREATE_NO_WINDOW`: console programs started from the desktop app (which
+/// has no console) would otherwise each flash a console window.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// Puts the child in a process group of its own so that stopping it also
 /// stops everything it started.
@@ -135,7 +141,7 @@ fn isolate(cmd: &mut Command) {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP);
+        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW);
     }
 }
 
@@ -148,6 +154,7 @@ fn kill_tree(child: &mut Child) {
             // the group `isolate` created for this child; it is called before
             // the child is reaped, or while a group member still holds its
             // pipes, so the id cannot have been reused.
+            #[allow(unsafe_code)] // The standard library cannot signal a process group.
             unsafe {
                 libc::killpg(pgid, libc::SIGKILL);
             }
@@ -155,12 +162,14 @@ fn kill_tree(child: &mut Child) {
     }
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
         let taskkill = std::env::var_os("SystemRoot")
             .map(|root| PathBuf::from(root).join("System32").join("taskkill.exe"))
             .filter(|p| p.is_file())
             .unwrap_or_else(|| PathBuf::from("taskkill.exe"));
         let _ = Command::new(taskkill)
             .args(["/T", "/F", "/PID", &child.id().to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -284,6 +293,31 @@ pub fn run(spec: Spec, cancel: &CancelToken) -> Result<Output> {
         timed_out,
         duration: started.elapsed(),
     })
+}
+
+#[cfg(test)]
+mod tail_tests {
+    use super::Tail;
+
+    #[test]
+    fn keeps_the_last_bytes_across_chunks() {
+        let mut tail = Tail::new(5);
+        tail.push(b"abc");
+        assert_eq!(tail.bytes, b"abc");
+        tail.push(b"de");
+        assert_eq!(tail.bytes, b"abcde");
+        tail.push(b"fg");
+        assert_eq!(tail.bytes, b"cdefg");
+        tail.push(b"0123456789");
+        assert_eq!(tail.bytes, b"56789");
+        tail.push(b"");
+        assert_eq!(tail.bytes, b"56789");
+        assert_eq!(tail.total, 17);
+        let mut none = Tail::new(0);
+        none.push(b"abc");
+        assert!(none.bytes.is_empty());
+        assert_eq!(none.total, 3);
+    }
 }
 
 #[cfg(all(test, unix))]

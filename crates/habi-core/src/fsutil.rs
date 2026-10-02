@@ -19,14 +19,12 @@ pub fn lf_text(bytes: &[u8]) -> std::borrow::Cow<'_, [u8]> {
         return std::borrow::Cow::Borrowed(bytes);
     }
     let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'\r' && bytes.get(i + 1) == Some(&b'\n') {
-            i += 1;
+    let mut iter = bytes.iter().peekable();
+    while let Some(&b) = iter.next() {
+        if b == b'\r' && iter.peek() == Some(&&b'\n') {
             continue;
         }
-        out.push(bytes[i]);
-        i += 1;
+        out.push(b);
     }
     std::borrow::Cow::Owned(out)
 }
@@ -64,10 +62,15 @@ pub fn tree_digest<'a>(entries: impl IntoIterator<Item = (&'a str, &'a str)>) ->
     format!("sha256:{}", hex::encode(h.finalize()))
 }
 
-/// Short form of a digest or commit for display.
+/// Short form of a digest or commit for display: its first ten characters.
+/// Ids may come from hand-edited files, so the cut is on a character
+/// boundary, never in the middle of one.
 pub fn short(id: &str) -> &str {
     let id = id.strip_prefix("sha256:").unwrap_or(id);
-    &id[..id.len().min(10)]
+    match id.char_indices().nth(10) {
+        Some((end, _)) => id.get(..end).unwrap_or(id),
+        None => id,
+    }
 }
 
 pub enum Bounded {
@@ -216,6 +219,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn short_ids_cut_on_character_boundaries() {
+        assert_eq!(short("sha256:0123456789abcdef"), "0123456789");
+        assert_eq!(short("abc"), "abc");
+        assert_eq!(short("ééééééééééééé"), "éééééééééé");
+        assert_eq!(short("a€€€€€€€€€€€"), "a€€€€€€€€€");
+    }
+
+    #[test]
     fn tree_digest_is_order_independent() {
         let a = tree_digest([("a", "1"), ("b", "2")]);
         let b = tree_digest([("b", "2"), ("a", "1")]);
@@ -294,6 +305,10 @@ mod tests {
 }
 
 /// Standard base64 (RFC 4648, with padding), for data URLs of image previews.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "chunks(3) is never empty, and the alphabet index is masked to 0..64"
+)]
 pub fn base64(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);

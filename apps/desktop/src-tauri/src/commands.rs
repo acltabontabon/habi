@@ -1288,3 +1288,22 @@ pub async fn create_sample_workspace(
         .join("samples");
     blocking(habi, move |h| habi_core::sample::create(h, &bundled)).await
 }
+
+/// Removes the sample libraries and projects and `<data>/sample`.
+#[tauri::command]
+pub async fn remove_sample_workspace(state: State<'_, AppState>) -> CmdResult<()> {
+    let habi = state.habi()?;
+    blocking(habi, habi_core::sample::remove).await
+}
+
+// ----- maintenance -------------------------------------------------------------------
+
+/// Removes old operation records and library snapshots, and stored content
+/// nothing kept refers to.
+#[tauri::command]
+pub async fn free_up_space(
+    state: State<'_, AppState>,
+) -> CmdResult<habi_core::maintenance::PruneReport> {
+    let habi = state.habi()?;
+    blocking(habi, |h| h.prune()).await
+}

@@ -23,19 +23,19 @@ pub fn lenient(text: &str) -> Option<Version> {
             break;
         }
         numbers.push(digits.parse::<u64>().ok()?);
-        rest = &rest[digits.len()..];
+        rest = rest.trim_start_matches(|c: char| c.is_ascii_digit());
         match rest.strip_prefix('.') {
             Some(r) if r.starts_with(|c: char| c.is_ascii_digit()) && numbers.len() < 3 => rest = r,
             _ => break,
         }
     }
-    if numbers.is_empty() {
-        return None;
-    }
-    while numbers.len() < 3 {
-        numbers.push(0);
-    }
-    let mut version = Version::new(numbers[0], numbers[1], numbers[2]);
+    let (major, minor, patch) = match numbers.as_slice() {
+        [major] => (*major, 0, 0),
+        [major, minor] => (*major, *minor, 0),
+        [major, minor, patch] => (*major, *minor, *patch),
+        _ => return None,
+    };
+    let mut version = Version::new(major, minor, patch);
     let qualifier = rest.trim_start_matches(['.', '-', '+']);
     let tokens: Vec<&str> = qualifier
         .split(|c: char| !c.is_ascii_alphanumeric())

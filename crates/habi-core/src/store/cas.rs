@@ -21,18 +21,26 @@ impl Blobs {
     }
 
     fn path_for(&self, digest: &str) -> Result<PathBuf> {
-        let hex = digest
+        let (head, tail) = digest
             .strip_prefix("sha256:")
             .filter(|h| h.len() == 64 && h.chars().all(|c| c.is_ascii_hexdigit()))
+            .and_then(|h| h.split_at_checked(2))
             .ok_or_else(|| HabiError::invalid(format!("not a content digest: {digest}")))?;
-        Ok(self.root.join("sha256").join(&hex[..2]).join(&hex[2..]))
+        Ok(self.root.join("sha256").join(head).join(tail))
     }
 
     /// Stores `bytes` and returns their digest. Idempotent.
     pub fn put(&self, bytes: &[u8]) -> Result<String> {
         let digest = sha256(bytes);
         let path = self.path_for(&digest)?;
-        if !path.exists() {
+        // Content stored before is marked as just used: maintenance spares
+        // recent objects, and the caller is about to refer to this one.
+        let reused = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .and_then(|f| f.set_modified(std::time::SystemTime::now()))
+            .is_ok();
+        if !reused {
             atomic_write(&path, bytes)?;
         }
         Ok(digest)

@@ -10,8 +10,13 @@
 //! - `contribute`: isolated contribution drafts, commits, patches, publishing.
 //! - `checks`: explicit, previewed verification commands.
 //! - `skills`: local skills (drafts, imported copies), discovery and import.
+//! - `maintenance`: pruning old operation records, snapshots and stored content.
 //! - `service`: the facade both front ends call.
 //! - `paths`, `fsutil`, `process`, `redact`: safety primitives.
+
+// Slicing and indexing panic on a bad boundary or index; production code
+// uses checked access (`get`), or explains why the bound holds.
+#![cfg_attr(not(test), warn(clippy::string_slice, clippy::indexing_slicing))]
 
 pub mod brand;
 pub mod cancel;
@@ -24,6 +29,7 @@ pub mod fsutil;
 pub mod inspect;
 pub mod install;
 pub mod library;
+pub mod maintenance;
 pub mod matching;
 pub mod paths;
 pub mod process;

@@ -212,6 +212,8 @@ describe("share dialog", () => {
     lastError: null,
     warning: null,
     freshness: "current",
+    sample: false,
+    skillCount: 1,
   };
   const skill = {
     summary: {

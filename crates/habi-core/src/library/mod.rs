@@ -18,8 +18,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 pub const SKILL_FILE: &str = "SKILL.md";
-pub const SIDECAR_FILES: &[&str] = &["habi.yaml", "habi.yml"];
-pub const MANIFEST_FILES: &[&str] = &["habi-library.yaml", "habi-library.yml"];
+pub const SIDECAR_FILES: &[&str; 2] = &["habi.yaml", "habi.yml"];
+pub const MANIFEST_FILES: &[&str; 2] = &["habi-library.yaml", "habi-library.yml"];
 const METADATA_LIMIT: usize = 256 * 1024;
 
 /// YAML frontmatter fields defined by the Agent Skills specification.
@@ -61,6 +61,10 @@ pub fn parse_yaml(text: &str) -> Result<Value, String> {
 
 /// Splits `---\n<yaml>\n---\n<body>` into the YAML text and the body,
 /// without parsing the YAML.
+#[allow(
+    clippy::string_slice,
+    reason = "bounds come from find() of ASCII `---` delimiters in the same string"
+)]
 pub fn split_frontmatter(text: &str) -> Result<(&str, &str), String> {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let Some(rest) = text
@@ -620,7 +624,9 @@ pub fn build_index(
                     Ok(()) => {
                         let before = diags.len();
                         let md = read_metadata(&value, path, &mut diags);
-                        let has_errors = diags[before..]
+                        let has_errors = diags
+                            .get(before..)
+                            .unwrap_or_default()
                             .iter()
                             .any(|d| d.level == DiagnosticLevel::Error);
                         if has_errors {
@@ -665,7 +671,7 @@ pub fn build_index(
                             .any(|d| !d.is_empty() && f.path.starts_with(&format!("{d}/"))))
             })
             .map(|f| ItemFile {
-                path: f.path[prefix.len()..].to_string(),
+                path: f.path.strip_prefix(&prefix).unwrap_or(&f.path).to_string(),
                 digest: f.digest.clone(),
                 size: f.size,
                 executable: f.executable,
@@ -1083,7 +1089,8 @@ fn package_has(paths: &HashSet<&str>, target: &str) -> bool {
     target.is_empty()
         || paths.contains(target)
         || paths.iter().any(|p| {
-            p.len() > target.len() && p.starts_with(target) && p[target.len()..].starts_with('/')
+            p.strip_prefix(target)
+                .is_some_and(|rest| rest.starts_with('/'))
         })
 }
 
@@ -1100,6 +1107,10 @@ fn check_json(text: &str) -> Result<(), String> {
 }
 
 /// Removes `//` and `/* */` comments and trailing commas outside strings.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "a scanner: every index is checked against the length first"
+)]
 fn strip_jsonc(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::with_capacity(text.len());
@@ -1167,6 +1178,10 @@ enum MarkdownRef {
 /// Link destinations and inline code spans in Markdown, outside fenced code
 /// blocks and HTML comments. Deliberately simple: anything it is unsure
 /// about is left out rather than reported.
+#[allow(
+    clippy::string_slice,
+    reason = "bounds come from find() of ASCII delimiters in the same string"
+)]
 fn markdown_references(text: &str) -> Vec<MarkdownRef> {
     let mut out = Vec::new();
     let mut fence: Option<(char, usize)> = None;
@@ -1245,6 +1260,10 @@ fn markdown_references(text: &str) -> Vec<MarkdownRef> {
     out
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "a scanner: every index is checked against the length first"
+)]
 fn inline_references(line: &str, out: &mut Vec<MarkdownRef>) {
     let chars: Vec<char> = line.chars().collect();
     let mut i = 0;
@@ -1363,6 +1382,10 @@ fn resolve_link(from_dir: &str, raw: &str) -> Option<Result<String, ()>> {
     Some(Ok(parts.join("/")))
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "a scanner: every index is checked against the length first"
+)]
 fn percent_decode(s: &str) -> Option<String> {
     if !s.contains('%') {
         return Some(s.to_string());

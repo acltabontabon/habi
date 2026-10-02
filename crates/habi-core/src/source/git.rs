@@ -6,7 +6,8 @@
 //! - points `core.hooksPath` at an empty directory so no hook can run;
 //! - disables submodule recursion and the `ext::` transport, and restricts
 //!   transports to file, git, http(s) and ssh;
-//! - disables interactive prompts (terminal and SSH askpass);
+//! - disables interactive prompts (terminal and SSH askpass), and runs SSH
+//!   in batch mode unless the user configured an SSH command of their own;
 //! - removes environment variables that could redirect Git to another
 //!   repository or index.
 //!
@@ -42,6 +43,51 @@ const CLEARED_ENV: &[&str] = &[
 pub struct Git {
     program: PathBuf,
     hooks_dir: PathBuf,
+    /// Run SSH in batch mode (see `ssh_command_is_set`).
+    batch_ssh: bool,
+}
+
+/// What Habi runs SSH as when the user has not chosen a command: batch mode
+/// never prompts. Without it, SSH asks for a passphrase or a new host key on
+/// the terminal (the CLI's, or none at all in the desktop app) and the
+/// operation hangs until its timeout.
+const BATCH_SSH: &str = "ssh -o BatchMode=yes";
+
+/// Whether the user chose how Git runs SSH (`GIT_SSH_COMMAND`, `GIT_SSH` or
+/// `core.sshCommand`). Habi then leaves SSH as it is: setting
+/// `GIT_SSH_COMMAND` would override their choice.
+fn ssh_command_is_set(program: &Path, cwd: &Path) -> bool {
+    if ["GIT_SSH_COMMAND", "GIT_SSH"]
+        .iter()
+        .any(|k| std::env::var_os(k).is_some_and(|v| !v.is_empty()))
+    {
+        return true;
+    }
+    let mut spec = Spec::new(
+        program,
+        vec!["config".into(), "--get".into(), "core.sshCommand".into()],
+    );
+    spec.cwd = Some(cwd.to_path_buf());
+    spec.env_remove = CLEARED_ENV.iter().map(|s| s.to_string()).collect();
+    spec.timeout = Duration::from_secs(10);
+    process::run(spec, &CancelToken::new())
+        .is_ok_and(|out| out.success() && !out.stdout_text().trim().is_empty())
+}
+
+/// A sentence on how to fix an SSH failure Habi cannot prompt through.
+fn ssh_hint(stderr: &str) -> Option<&'static str> {
+    let s = stderr.to_ascii_lowercase();
+    if s.contains("host key verification failed") {
+        Some(
+            "SSH does not know this server's host key yet. Connect once from a terminal (for example `ssh -T git@<host>`) and accept the key, then try again.",
+        )
+    } else if s.contains("permission denied (publickey") || s.contains("passphrase") {
+        Some(
+            "Habi cannot answer SSH prompts, so a key protected by a passphrase must be in your SSH agent: run `ssh-add`, then try again.",
+        )
+    } else {
+        None
+    }
 }
 
 /// One entry of `git ls-tree -r -l`.
@@ -65,6 +111,7 @@ impl Git {
         std::fs::create_dir_all(hooks_dir)
             .map_err(|e| HabiError::io("creating the empty hooks directory", e))?;
         Ok(Git {
+            batch_ssh: !ssh_command_is_set(&program, hooks_dir),
             program,
             hooks_dir: hooks_dir.to_path_buf(),
         })
@@ -106,6 +153,9 @@ impl Git {
             ("LC_ALL".into(), "C".into()),
             ("LANG".into(), "C".into()),
         ];
+        if self.batch_ssh {
+            spec.env.push(("GIT_SSH_COMMAND".into(), BATCH_SSH.into()));
+        }
         spec.timeout = Duration::from_secs(60);
         spec
     }
@@ -206,29 +256,9 @@ impl Git {
 
     /// `finish` for callers that report truncated output themselves.
     fn finish_partial(&self, spec: Spec, args: &[&str], cancel: &CancelToken) -> Result<Output> {
-        let out = process::run(spec, cancel).map_err(|e| match e {
-            HabiError::NotFound(_) => HabiError::Git {
-                failure: GitFailure::GitMissing,
-                message: "Git could not be started.".into(),
-            },
-            other => other,
-        })?;
-        if out.timed_out {
-            return Err(HabiError::Git {
-                failure: GitFailure::Network,
-                message: format!(
-                    "git {} timed out after {}s",
-                    args.first().unwrap_or(&""),
-                    out.duration.as_secs()
-                ),
-            });
-        }
+        let out = start(spec, cancel)?;
         if !out.success() {
-            let stderr = out.stderr_text();
-            return Err(HabiError::Git {
-                failure: classify(&stderr),
-                message: crate::redact::redact(&summarize(args, &stderr)),
-            });
+            return Err(failure(args, &out));
         }
         Ok(out)
     }
@@ -297,7 +327,9 @@ impl Git {
         Ok(commit)
     }
 
-    /// True if `ancestor` is reachable from `descendant`.
+    /// True if `ancestor` is reachable from `descendant`. Git answers "no"
+    /// with exit status 1; any other failure (an unknown commit, a damaged
+    /// repository, a timeout) is an error, not a "no".
     pub fn is_ancestor(
         &self,
         git_dir: &Path,
@@ -305,15 +337,12 @@ impl Git {
         descendant: &str,
         cancel: &CancelToken,
     ) -> Result<bool> {
-        let spec = self.spec(
-            Some(git_dir),
-            &["merge-base", "--is-ancestor", ancestor, descendant],
-        );
-        let out = process::run(spec, cancel)?;
+        let args = ["merge-base", "--is-ancestor", ancestor, descendant];
+        let out = start(self.spec(Some(git_dir), &args), cancel)?;
         match out.status {
-            Some(0) => Ok(true),
-            Some(1) => Ok(false),
-            _ => Ok(false),
+            Some(0) if !out.timed_out => Ok(true),
+            Some(1) if !out.timed_out => Ok(false),
+            _ => Err(failure(&args, &out)),
         }
     }
 
@@ -389,14 +418,14 @@ impl Git {
                 continue;
             };
             let fields: Vec<&str> = meta.split_whitespace().collect();
-            if fields.len() < 4 {
+            let [mode, kind, oid, size, ..] = fields.as_slice() else {
                 continue;
-            }
+            };
             entries.push(TreeEntry {
-                mode: fields[0].to_string(),
-                kind: fields[1].to_string(),
-                oid: fields[2].to_string(),
-                size: fields[3].parse().ok(),
+                mode: mode.to_string(),
+                kind: kind.to_string(),
+                oid: oid.to_string(),
+                size: size.parse().ok(),
                 path: path.to_string(),
             });
         }
@@ -429,33 +458,72 @@ impl Git {
             ));
         }
         let mut blobs = Vec::with_capacity(oids.len());
-        let data = &out.stdout;
-        let mut pos = 0;
+        // Each blob: `<oid> blob <size>\n<content>\n`.
+        let mut rest: &[u8] = &out.stdout;
         for oid in oids {
-            let header_end = data[pos..]
+            let header_end = rest
                 .iter()
                 .position(|b| *b == b'\n')
-                .ok_or_else(|| HabiError::Internal("truncated git cat-file output".into()))?
-                + pos;
-            let header = String::from_utf8_lossy(&data[pos..header_end]).to_string();
+                .ok_or_else(|| HabiError::Internal("truncated git cat-file output".into()))?;
+            let (header, after) = rest.split_at(header_end);
+            let header = String::from_utf8_lossy(header).to_string();
             let fields: Vec<&str> = header.split(' ').collect();
-            if fields.len() != 3 || fields[0] != oid || fields[1] != "blob" {
+            let [name, "blob", size] = fields.as_slice() else {
+                return Err(HabiError::Internal(format!(
+                    "unexpected git cat-file header: {header}"
+                )));
+            };
+            if name != oid {
                 return Err(HabiError::Internal(format!(
                     "unexpected git cat-file header: {header}"
                 )));
             }
-            let size: usize = fields[2]
+            let size: usize = size
                 .parse()
                 .map_err(|_| HabiError::Internal("bad blob size from git".into()))?;
-            let start = header_end + 1;
-            let end = start + size;
-            if end > data.len() {
-                return Err(HabiError::Internal("truncated blob from git".into()));
-            }
-            blobs.push(data[start..end].to_vec());
-            pos = end + 1;
+            // Skip the header's newline; the content is followed by one too.
+            let (content, tail) = after
+                .get(1..)
+                .unwrap_or_default()
+                .split_at_checked(size)
+                .ok_or_else(|| HabiError::Internal("truncated blob from git".into()))?;
+            blobs.push(content.to_vec());
+            rest = tail.get(1..).unwrap_or_default();
         }
         Ok(blobs)
+    }
+}
+
+fn start(spec: Spec, cancel: &CancelToken) -> Result<Output> {
+    process::run(spec, cancel).map_err(|e| match e {
+        HabiError::NotFound(_) => HabiError::Git {
+            failure: GitFailure::GitMissing,
+            message: "Git could not be started.".into(),
+        },
+        other => other,
+    })
+}
+
+/// The error for a git command that timed out or exited unsuccessfully.
+fn failure(args: &[&str], out: &Output) -> HabiError {
+    if out.timed_out {
+        return HabiError::Git {
+            failure: GitFailure::Network,
+            message: format!(
+                "git {} timed out after {}s",
+                args.first().unwrap_or(&""),
+                out.duration.as_secs()
+            ),
+        };
+    }
+    let stderr = out.stderr_text();
+    let mut message = summarize(args, &stderr);
+    if let Some(hint) = ssh_hint(&stderr) {
+        message = format!("{message}. {hint}");
+    }
+    HabiError::Git {
+        failure: classify(&stderr),
+        message: crate::redact::redact(&message),
     }
 }
 
@@ -566,6 +634,69 @@ mod tests {
             )
             .unwrap();
         assert_eq!(out.stdout, big);
+    }
+
+    #[test]
+    fn is_ancestor_reports_failures_instead_of_no() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::locate(&tmp.path().join("hooks")).unwrap();
+        let repo = tmp.path().join("repo.git");
+        let cancel = CancelToken::new();
+        git.init_bare(&repo, &cancel).unwrap();
+        let missing = "0123456789abcdef0123456789abcdef01234567";
+        assert!(git.is_ancestor(&repo, missing, missing, &cancel).is_err());
+    }
+
+    #[test]
+    fn ssh_runs_in_batch_mode_unless_the_user_chose_a_command() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::locate(&tmp.path().join("hooks")).unwrap();
+        let ssh = |g: &Git| {
+            g.spec(None, &["fetch"])
+                .env
+                .into_iter()
+                .find(|(k, _)| k == "GIT_SSH_COMMAND")
+                .map(|(_, v)| v)
+        };
+        let batch = Git {
+            batch_ssh: true,
+            ..git.clone()
+        };
+        assert_eq!(ssh(&batch).as_deref(), Some(BATCH_SSH));
+        let theirs = Git {
+            batch_ssh: false,
+            ..git
+        };
+        assert_eq!(ssh(&theirs), None);
+    }
+
+    #[test]
+    fn ssh_prompts_get_a_way_out() {
+        let out = |stderr: &str| Output {
+            status: Some(128),
+            stdout: Vec::new(),
+            stderr: stderr.as_bytes().to_vec(),
+            stdout_truncated: false,
+            stderr_truncated: false,
+            timed_out: false,
+            duration: Duration::ZERO,
+        };
+        let host_key = failure(
+            &["fetch"],
+            &out("Host key verification failed.\nfatal: Could not read from remote repository."),
+        );
+        assert_eq!(host_key.code(), "gitAuthentication");
+        assert!(
+            host_key.to_string().contains("accept the key"),
+            "{host_key}"
+        );
+        let passphrase = failure(
+            &["fetch"],
+            &out("git@example.com: Permission denied (publickey)."),
+        );
+        assert!(passphrase.to_string().contains("ssh-add"), "{passphrase}");
+        let other = failure(&["fetch"], &out("fatal: couldn't find remote ref x"));
+        assert!(!other.to_string().contains("ssh"), "{other}");
     }
 
     #[test]
