@@ -934,21 +934,6 @@
 
 /* ---------- Skill editor ---------- */
 
-.editor {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.editor-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px var(--s4);
-  padding: var(--s4) var(--s6) var(--s3);
-  align-items: end;
-}
-
 .editor-back {
   grid-column: 1 / -1;
   display: inline-flex;
@@ -964,56 +949,6 @@
 
 .editor-back:hover {
   color: var(--ink);
-}
-
-.editor-title-row {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: baseline;
-  gap: var(--s4);
-}
-
-.editor-title {
-  flex: 1;
-  min-width: 0;
-  padding: 2px 0;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  background: transparent;
-  font-size: 30px;
-  font-weight: 620;
-  letter-spacing: -0.022em;
-  line-height: 1.2;
-}
-
-.editor-title:hover:not(:disabled),
-.editor-title:focus-visible {
-  border-bottom-color: var(--hairline-strong);
-  outline: none;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.editor-title:focus-visible {
-  border-bottom-color: var(--ink);
-}
-
-.editor-title::placeholder {
-  color: var(--ink-faint);
-}
-
-.editor-meta {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.editor-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--s2);
 }
 
 .save-state {
@@ -1054,116 +989,6 @@
   background: var(--danger-ink);
 }
 
-.editor-problems {
-  list-style: none;
-  margin: 0 var(--s6) var(--s2);
-  padding: var(--s2) 0;
-  display: grid;
-  gap: 4px;
-  border-top: 1px solid var(--hairline);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
-.editor-problems li {
-  display: flex;
-  gap: var(--s2);
-}
-
-.editor-problems svg {
-  flex: none;
-  margin-top: 3px;
-  color: var(--ink-muted);
-}
-
-.editor-problems .is-error svg {
-  color: var(--warn-ink);
-}
-
-.editor > .notice {
-  margin: 0 var(--s6) var(--s2);
-}
-
-.editor-body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  border-top: 1px solid var(--hairline);
-}
-
-.editor-body.is-full {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.editor-main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-
-.editor-tabs {
-  flex: none;
-}
-
-.editor-panel {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-.editor-form {
-  max-width: 720px;
-  padding: var(--s5) var(--s6) var(--s7);
-  gap: var(--s5);
-}
-
-.editor-facts {
-  padding-top: var(--s4);
-  border-top: 1px solid var(--hairline);
-  font-size: var(--text-sm);
-}
-
-.editor-pad {
-  padding: var(--s4) var(--s6);
-}
-
-.instructions,
-.applicability {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-
-.instructions-bar,
-.applicability-bar {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s4);
-  padding: var(--s2) var(--s6);
-  border-bottom: 1px solid var(--hairline);
-  font-size: var(--text-sm);
-}
-
-.applicability-bar p {
-  min-width: 0;
-}
-
-.starters {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s3);
-  color: var(--ink-muted);
-}
-
-.instructions-hint {
-  font-size: var(--text-xs);
-}
-
 .source-editor {
   flex: 1;
   min-height: 260px;
@@ -1182,10 +1007,6 @@
 
 .source-editor:focus-within {
   box-shadow: inset 2px 0 0 var(--thread);
-}
-
-.instructions-preview {
-  padding: var(--s5) var(--s6) var(--s7);
 }
 
 .builder-fieldset {
@@ -1809,93 +1630,6 @@
 
 /* ---------- Package files beside the instructions ---------- */
 
-.instructions-body {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  min-height: 0;
-}
-
-.instructions-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.package-refs {
-  width: 240px;
-  border-left: 1px solid var(--hairline);
-  padding: var(--s2) var(--s3) var(--s5);
-  display: grid;
-  gap: var(--s2);
-  align-content: start;
-  font-size: var(--text-sm);
-}
-
-.package-refs.is-collapsed {
-  width: auto;
-}
-
-.package-refs-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  background: none;
-  padding: 4px 0;
-  color: var(--ink-muted);
-  text-align: left;
-}
-
-.package-refs-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.package-refs-list li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 0;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.package-refs-path {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--text-xs);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.package-refs-state {
-  flex: none;
-  color: var(--ok-ink);
-  display: inline-flex;
-}
-
-.package-refs-actions {
-  flex: none;
-  display: inline-flex;
-  gap: 8px;
-  font-size: var(--text-xs);
-}
-
-.package-refs-empty {
-  color: var(--ink-muted);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-}
-
-.package-refs-manage {
-  justify-self: start;
-  font-size: var(--text-xs);
-}
-
 /* ---------- Found in a project ---------- */
 
 .found {
@@ -2184,33 +1918,19 @@
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1180px) {
-  .editor-body:not(.is-full) {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-  }
   .files-pane {
     grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
   }
 }
 
 @media (max-width: 1020px) {
-  .editor-head,
-  .editor-pad,
-  .instructions-bar,
-  .applicability-bar,
   .file-editor-status {
     padding-left: var(--s5);
     padding-right: var(--s5);
   }
-  .editor-form,
-  .builder,
-  .instructions-preview {
+  .builder {
     padding-left: var(--s5);
     padding-right: var(--s5);
-  }
-  .editor-problems,
-  .editor > .notice {
-    margin-left: var(--s5);
-    margin-right: var(--s5);
   }
   .source-editor .cm-line {
     padding: 0 var(--s5) !important;
@@ -2218,26 +1938,10 @@
   .files-list {
     padding-left: var(--s5);
   }
-  .editor-head {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .editor-actions {
-    justify-content: flex-start;
-  }
 }
 
 /* Narrow windows: the preview moves under the editor instead of beside it. */
 @media (max-width: 900px) {
-  .editor {
-    height: auto;
-    min-height: 100%;
-  }
-  .editor-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .editor-panel {
-    overflow: visible;
-  }
   .preview {
     border-left: 0;
     border-top: 1px solid var(--hairline-strong);
@@ -2248,14 +1952,8 @@
   }
   .files-pane,
   .files-pane.is-list-collapsed,
-  .picker,
-  .instructions-body {
+  .picker {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .package-refs {
-    width: auto;
-    border-left: 0;
-    border-top: 1px solid var(--hairline);
   }
   .files-list {
     border-right: 0;
@@ -2324,17 +2022,6 @@
   font-size: var(--text-sm);
   color: var(--ink-muted);
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 900px) {
-  .editor-title-row {
-    flex-wrap: wrap;
-    row-gap: 2px;
-  }
-  .editor-title {
-    flex-basis: 100%;
-    font-size: 24px;
-  }
 }
 
 .field > .btn {

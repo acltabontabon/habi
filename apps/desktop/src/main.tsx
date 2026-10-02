@@ -5,6 +5,7 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
 import "./styles/authoring.css";
+import "./styles/studio.css";
 import "./styles/weave.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

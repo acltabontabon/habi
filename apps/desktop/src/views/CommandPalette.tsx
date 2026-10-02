@@ -13,6 +13,7 @@ import { applicabilityLabel } from "../lib/format";
 import { setInspectorOpen } from "../lib/inspector";
 import { useNav } from "../lib/nav";
 import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
+import { useScreenCommands } from "../lib/screenCommands";
 import { summarize } from "../lib/skillFacts";
 import { useTheme } from "../lib/theme";
 import { RemoveSampleDialog, useCreateSample, useHasSample } from "./SampleWorkspace";
@@ -35,6 +36,7 @@ export function CommandPalette({
   const sample = useCreateSample();
   const hasSample = useHasSample();
   const [removingSample, setRemovingSample] = useState(false);
+  const screen = useScreenCommands();
   const projectId = route.name === "project" ? route.projectId : undefined;
   const overview = projectId ? client.getQueryData<ProjectOverview>(keys.overview(projectId)) : undefined;
   // In a library, its skills come first: the palette follows what you are looking at.
@@ -85,6 +87,21 @@ export function CommandPalette({
               </div>
               <Command.List className="palette-list">
                 <Command.Empty className="palette-empty">No matches.</Command.Empty>
+                {screen && screen.commands.length > 0 ? (
+                  <Command.Group heading={screen.heading}>
+                    {screen.commands.map((c) => (
+                      <Command.Item
+                        key={c.id}
+                        value={`${c.label} ${c.keywords ?? ""}`}
+                        onSelect={() => run(c.run)}
+                      >
+                        <Icon name={c.icon ?? "pencil"} />
+                        <span>{c.label}</span>
+                        {c.keys ? <span className="palette-meta mono">{c.keys}</span> : null}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ) : null}
                 {librarySourceId && library ? (
                   <Command.Group heading={`In ${library.name ?? libraryName ?? "this library"}`}>
                     {library.items.map((i) => (

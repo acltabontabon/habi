@@ -22,7 +22,7 @@ import { InstalledView } from "../views/project/InstalledView";
 import { ProjectView } from "../views/project/ProjectView";
 import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
-import { SkillEditor } from "../views/skills/SkillEditor";
+import { SkillStudio } from "../views/skills/studio/SkillStudio";
 import { ConnectLibrary, locationParts, treeOf } from "../views/sources/ConnectLibrary";
 import { Welcome } from "../views/Welcome";
 import billing from "./fixtures/overview-billing-service.json";
@@ -54,7 +54,17 @@ beforeEach(() => {
   invoke.mockImplementation(async (cmd: string, args: Record<string, unknown> = {}) => {
     const handler = handlers[cmd];
     if (handler) return handler(args);
-    if (["recent_projects", "list_skills", "list_sources", "list_contributions"].includes(cmd)) return [];
+    if (
+      [
+        "recent_projects",
+        "list_skills",
+        "list_sources",
+        "list_contributions",
+        "skills_overview",
+        "skill_templates",
+      ].includes(cmd)
+    )
+      return [];
     if (cmd === "log_ui_error" || cmd === "cancel_job") return null;
     throw { code: "notFound", message: `no mock for ${cmd}` };
   });
@@ -238,11 +248,12 @@ describe("the skill editor", () => {
       throw { code: "conflict", message: "SKILL.md changed outside Habi" };
     };
     handlers.export_skill = vi.fn(() => "~/Desktop/review");
-    wrap(<SkillEditor id="k" />, { name: "skills", skillId: "k" });
+    wrap(<SkillStudio id="k" />, { name: "skills", skillId: "k" });
 
     const title = await screen.findByLabelText("Skill title");
     await userEvent.type(title, " checklist");
-    await userEvent.click(screen.getByRole("button", { name: "Export…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Use & share" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Export a folder…" }));
 
     expect(await screen.findByText(/Nothing was done: your latest edits are not saved/)).toBeInTheDocument();
     expect(handlers.export_skill).not.toHaveBeenCalled();
@@ -269,7 +280,7 @@ describe("the skill editor", () => {
     wrap(
       <>
         <Leave />
-        <SkillEditor id="k" />
+        <SkillStudio id="k" />
       </>,
       { name: "skills", skillId: "k" },
     );
