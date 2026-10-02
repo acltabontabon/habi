@@ -25,17 +25,30 @@ Three different actions, never mixed:
    (`all`/`any`) and fields the form does not show (a tool's `purpose` and `install_hint`, an
    example's `path`). Comments other than the file's leading ones are lost when it is
    rewritten. Conditions richer than the form can express are kept unchanged.
-3. **Preview.** Exactly the files that would leave the machine, each with its diff against
-   the library, plus validation: SKILL.md rules, schema, references, and a secret scan
-   (errors block committing).
-4. **Commit for review.** Habi commits on `habi/contrib/<name>-<id>` inside its own bare
-   cache of the library, based on the snapshot you have. Your checkouts and branches are not
-   touched; no hooks or filters run.
+3. **Review.** The whole package against the library: each file is *added*, *modified*,
+   *renamed* (a removed and an added path with identical content), *removed* or *unchanged*.
+   Changed files come first, beside the selected file's diff; unchanged files are one
+   collapsed group. Any changed file can be **left out** (kept per contribution): it keeps
+   the library's version, so a left-out addition is not added and a left-out removal stays.
+   A new skill cannot leave out its SKILL.md. Validation covers exactly what would be sent:
+   package format, Habi metadata, file references and a secret scan. A Markdown file that
+   links to or names (in inline code, like `scripts/check.sh`) a package file the
+   contribution leaves out, deletes or renames is an error naming both files. Errors block
+   preparing a branch; warnings do not. Passing validation does not test what the skill
+   does.
+4. **Commit for review.** Habi commits only the included files on
+   `habi/contrib/<name>-<id>` inside its own bare cache of the library, based on the snapshot
+   you have. Your checkouts and branches are not touched; no hooks or filters run. Preparing
+   again returns the same commit on the same branch.
 5. **Share it:**
    - **Export patch** — a `git format-patch` file with every commit of the contribution since
      the library snapshot it started from (all revisions), so it applies to the tracked
      branch with `git am`. Large patches are written whole, never cut.
-   - **Publish for review** — after an explicit confirmation naming the remote and branch,
+   - **Send** — the button names what happens: *Create pull request* (GitHub, `gh`
+     installed), *Create merge request* (GitLab, `glab` installed), otherwise *Push branch*
+     (and *Export patch…*). The confirmation shows the library, repository, host, target
+     branch, contribution branch and visibility — "unknown" until the host reported it (Habi
+     does not ask the network just to show the page). After an explicit confirmation
      Habi pushes the branch with your Git credentials. (For a library repository on this
      machine, Habi creates the branch there with a hook-free `git fetch` instead of a push.) If `gh` (GitHub) or `glab` (GitLab)
      is installed and authenticated, it can also open a pull/merge request against the
@@ -105,6 +118,19 @@ by whichever tool is signed in to them. The GitHub path is exercised end to end 
 `tests/review_flow.rs` (real Git, stand-in `gh`); GitLab through stand-in `glab` in
 `tests/review_requests.rs`. Neither has been run against a live host in this release.
 
+A failed prepare or send is remembered ("Needs attention", with the message) until the
+next attempt succeeds. Retrying is safe: the branch name is fixed per contribution, a push
+never overwrites commits, and a request is opened only when the host does not already show
+one for the branch.
+
+## Sharing activity
+
+One row per contribution with one state — *Draft*, *Ready to submit* (branch prepared, not
+pushed), *Branch pushed* (no request), *Open PR/MR*, *Changes requested*, *Merged*, *Closed*,
+*In the library* or *Needs attention* — "checked … ago" for states the host reported, the
+destination (library and branch), the last update, and one next action: *Continue editing*,
+*Review changes*, *Retry* or *Open PR/MR*.
+
 ## What the status means
 
 | Status | What happened |
@@ -137,6 +163,7 @@ every commit "approved". An `owner` field is attribution only.
 habi contribute start "Team" .claude/skills/my-skill -C path/to/project
 habi contribute describe <id> --title "Liquibase review: concurrent indexes" --message "…"
 habi contribute show <id>
+habi contribute exclude <id> notes.md       # leave a changed file out (include puts it back)
 habi contribute commit <id>
 habi contribute export <id> ~/Desktop
 habi contribute publish <id> --open-request

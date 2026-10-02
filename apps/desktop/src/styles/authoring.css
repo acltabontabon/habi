@@ -1263,18 +1263,6 @@
   font-size: var(--text-sm);
 }
 
-.contribution {
-  max-width: 900px;
-}
-
-.contribution-status {
-  font-size: var(--text-md);
-}
-
-.contribution-form {
-  max-width: 680px;
-}
-
 .steps {
   list-style: none;
   margin: var(--s2) 0;

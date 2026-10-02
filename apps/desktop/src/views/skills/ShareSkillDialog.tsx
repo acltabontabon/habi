@@ -15,7 +15,8 @@ import { api } from "../../lib/api";
 import { relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { keys, useContributions, useSources } from "../../lib/queries";
-import { requestWord, sharingStatus } from "../../lib/skills";
+import { requestWord } from "../../lib/sharing";
+import { StateChip } from "../contributions/StateChip";
 import { ConnectLibrary } from "../sources/ConnectLibrary";
 import { type FixTarget, Unfinished } from "./Unfinished";
 
@@ -196,7 +197,7 @@ export function ShareSkillDialog({
           {ongoing ? (
             <Notice tone="unknown" title={`Already being shared with ${ongoing.sourceName}`}>
               <p>
-                <Status tone={sharingStatus(ongoing).tone}>{sharingStatus(ongoing).text}</Status>{" "}
+                <StateChip contribution={ongoing} />{" "}
                 <span className="muted">updated {relativeTime(ongoing.updatedAt)}.</span>
               </p>
               <p className="muted">
@@ -217,18 +218,14 @@ export function ShareSkillDialog({
             <div className="share-earlier">
               <p className="field-label">Shared before</p>
               <ul>
-                {earlier.map((c) => {
-                  const status = sharingStatus(c);
-                  return (
-                    <li key={c.id}>
-                      <button type="button" className="link-btn" onClick={() => openContribution(c.id)}>
-                        {c.sourceName}
-                      </button>{" "}
-                      <Status tone={status.tone}>{status.text}</Status>{" "}
-                      <span className="muted">{relativeTime(c.updatedAt)}</span>
-                    </li>
-                  );
-                })}
+                {earlier.map((c) => (
+                  <li key={c.id}>
+                    <button type="button" className="link-btn" onClick={() => openContribution(c.id)}>
+                      {c.sourceName}
+                    </button>{" "}
+                    <StateChip contribution={c} /> <span className="muted">{relativeTime(c.updatedAt)}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           ) : null}
