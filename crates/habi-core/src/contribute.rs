@@ -27,7 +27,7 @@ pub use crate::review::{RemoteRepo, remote_repo};
 use crate::review::{ReviewHost, ReviewState, ReviewStatus, ReviewTools};
 use crate::source::git::Git;
 use crate::source::{SourceKind, Sources, TrackedRef};
-use crate::store::{AppPaths, Store};
+use crate::store::{AppPaths, ResourceLock, Store};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -707,7 +707,7 @@ fn apply_part(v: &mut Map<String, Value>, form: &ShareForm, part: FormPart) {
                 "applies_when",
                 match applies.len() {
                     0 => None,
-                    1 => Some(applies[0].clone()),
+                    1 => applies.first().cloned(),
                     _ => Some(json!({ mode: applies })),
                 },
             );
@@ -726,7 +726,7 @@ fn apply_part(v: &mut Map<String, Value>, form: &ShareForm, part: FormPart) {
                 "excludes",
                 match excludes.len() {
                     0 => None,
-                    1 => Some(excludes[0].clone()),
+                    1 => excludes.first().cloned(),
                     _ => Some(json!({ mode: excludes })),
                 },
             );
@@ -1166,15 +1166,14 @@ fn markdown_references(file: &str, text: &str) -> BTreeSet<String> {
         }
         // `[text](target "title")` links and images.
         let mut rest = line;
-        while let Some(at) = rest.find("](") {
-            let after = &rest[at + 2..];
-            let end = after.find(')').unwrap_or(after.len());
-            if let Some(target) = after[..end].split_whitespace().next()
+        while let Some((_, after)) = rest.split_once("](") {
+            let (link, tail) = after.split_once(')').unwrap_or((after, ""));
+            if let Some(target) = link.split_whitespace().next()
                 && let Some(p) = package_path(target, dir)
             {
                 out.insert(p);
             }
-            rest = &after[end..];
+            rest = tail;
         }
         // `inline code` between single backticks.
         for (i, code) in line.split('`').enumerate() {
@@ -1285,10 +1284,12 @@ impl<'a> Contributions<'a> {
         ) = row;
         let envelope: Value =
             serde_json::from_str(&origin_json).map_err(|e| HabiError::Internal(e.to_string()))?;
-        let origin: ContributionOrigin = serde_json::from_value(envelope["origin"].clone())
-            .map_err(|e| HabiError::Internal(e.to_string()))?;
-        let mut stored: Stored = serde_json::from_value(envelope["stored"].clone())
-            .map_err(|e| HabiError::Internal(e.to_string()))?;
+        let origin: ContributionOrigin =
+            serde_json::from_value(envelope.get("origin").cloned().unwrap_or_default())
+                .map_err(|e| HabiError::Internal(e.to_string()))?;
+        let mut stored: Stored =
+            serde_json::from_value(envelope.get("stored").cloned().unwrap_or_default())
+                .map_err(|e| HabiError::Internal(e.to_string()))?;
         stored.excluded =
             serde_json::from_str(&excluded).map_err(|e| HabiError::Internal(e.to_string()))?;
         let state: ContributionState =
@@ -1342,6 +1343,27 @@ impl<'a> Contributions<'a> {
         Ok((c, stored))
     }
 
+    /// Takes the lock of the contribution's library, the one refreshing and
+    /// removing it take: committing and sending use its Git cache, which
+    /// must not be fetched into or deleted meanwhile.
+    fn lock_source(&self, id: &str) -> Result<ResourceLock> {
+        let source_id: String = self
+            .store
+            .conn()?
+            .query_row(
+                "SELECT source_id FROM contributions WHERE id = ?1",
+                [id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| HabiError::NotFound(format!("contribution {id}")))?;
+        ResourceLock::acquire(
+            self.paths,
+            &format!("source-{source_id}"),
+            Duration::from_secs(5),
+        )
+    }
+
     fn save_row(&self, c: &Contribution, stored: &Stored) -> Result<()> {
         let envelope = json!({ "origin": c.origin, "stored": stored });
         self.store.conn()?.execute(
@@ -1378,7 +1400,7 @@ impl<'a> Contributions<'a> {
         let mut out = BTreeMap::new();
         let mut executables = BTreeSet::new();
         for f in files.into_iter().filter(|f| f.path.starts_with(&prefix)) {
-            let name = f.path[prefix.len()..].to_string();
+            let name = f.path.strip_prefix(&prefix).unwrap_or(&f.path).to_string();
             if f.executable {
                 executables.insert(name.clone());
             }
@@ -1646,7 +1668,12 @@ impl<'a> Contributions<'a> {
                 .then(|| item.path.clone())
         });
 
-        let id = uuid::Uuid::new_v4().simple().to_string()[..12].to_string();
+        let id: String = uuid::Uuid::new_v4()
+            .simple()
+            .to_string()
+            .chars()
+            .take(12)
+            .collect();
         let dir = staging(self.paths, &id);
         write_staging(&dir, &files, &executables)?;
         let form = form_from(sidecar_value(&files).as_ref(), &default_title);
@@ -1661,7 +1688,7 @@ impl<'a> Contributions<'a> {
                 "{}/{}-{}",
                 crate::brand::CONTRIBUTION_BRANCH_PREFIX,
                 slug(&name),
-                &id[..6]
+                id.get(..6).unwrap_or(&id)
             ),
             staging_path: display_path(&dir),
             revising: false,
@@ -1886,7 +1913,7 @@ impl<'a> Contributions<'a> {
         };
         if identity == crate::source::portable_identity(destination)
             || identity.starts_with("local:")
-            || identity.starts_with('/')
+            || crate::source::is_local_location(&identity)
         {
             return None;
         }
@@ -1947,7 +1974,12 @@ impl<'a> Contributions<'a> {
             if let Some(reason) = &file.required {
                 return Err(HabiError::invalid(reason.clone()));
             }
-            chosen.insert(file.path[prefix.len()..].to_string());
+            chosen.insert(
+                file.path
+                    .strip_prefix(&prefix)
+                    .unwrap_or(&file.path)
+                    .to_string(),
+            );
         }
         c.updated_at = crate::time::now();
         self.store.conn()?.execute(
@@ -1987,8 +2019,10 @@ impl<'a> Contributions<'a> {
         let prefix = format!("{}/", c.item_path);
         let current: BTreeMap<&str, (&str, u64)> = files
             .iter()
-            .filter(|f| f.path.starts_with(&prefix))
-            .map(|f| (&f.path[prefix.len()..], (f.digest.as_str(), f.size)))
+            .filter_map(|f| {
+                let name = f.path.strip_prefix(&prefix)?;
+                Some((name, (f.digest.as_str(), f.size)))
+            })
             .collect();
         // Names and sizes first; content is hashed only when they all agree.
         current.len() == staged.len()
@@ -2054,7 +2088,16 @@ impl<'a> Contributions<'a> {
         }
         out.extend(index.diagnostics);
         for (path, bytes) in outgoing {
-            if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes)) {
+            let name = path.rsplit('/').next().unwrap_or(path);
+            if crate::inspect::walk::is_secret_name(name) {
+                out.push(Diagnostic::error(
+                    format!(
+                        "{path} has a name used for keys, credentials or environment secrets. Remove it before sharing, or rename it if it holds none."
+                    ),
+                    Some(path),
+                ));
+            } else if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes))
+            {
                 out.push(Diagnostic::error(
                     format!("{path} appears to contain {what}. Remove it before sharing."),
                     Some(path),
@@ -2141,6 +2184,7 @@ impl<'a> Contributions<'a> {
         build_on_remote: bool,
         cancel: &CancelToken,
     ) -> Result<Contribution> {
+        let _lock = self.lock_source(id)?;
         self.commit_inner(id, build_on_remote, cancel)
             .inspect_err(|e| self.record_attention(id, AttentionKind::Prepare, e))
     }
@@ -2243,7 +2287,10 @@ impl<'a> Contributions<'a> {
         let kept_dir = work.join("kept");
         let _ = std::fs::remove_dir_all(&kept_dir);
         for name in &cmp.kept {
-            atomic_write(&RelPath::new(name)?.to_path(&kept_dir), &base[name])?;
+            let bytes = base.get(name).ok_or_else(|| {
+                HabiError::Internal(format!("{name} is not in the library's version"))
+            })?;
+            atomic_write(&RelPath::new(name)?.to_path(&kept_dir), bytes)?;
         }
         let source_of = |name: &str| -> Result<PathBuf> {
             Ok(RelPath::new(name)?.to_path(if cmp.kept.contains(name) {
@@ -2442,7 +2489,7 @@ impl<'a> Contributions<'a> {
         Err(HabiError::Conflict(format!(
             "Someone else pushed to {} since you sent it (now at {}). Habi will not overwrite their commits. Choose to build on them, or start a new contribution.",
             c.branch,
-            &remote[..remote.len().min(10)]
+            crate::fsutil::short(&remote)
         )))
     }
 
@@ -2739,6 +2786,7 @@ impl<'a> Contributions<'a> {
         open_request: bool,
         cancel: &CancelToken,
     ) -> Result<PublishOutcome> {
+        let _lock = self.lock_source(id)?;
         self.publish_inner(id, open_request, cancel)
             .inspect_err(|e| self.record_attention(id, AttentionKind::Send, e))
     }
@@ -2829,7 +2877,7 @@ impl<'a> Contributions<'a> {
             )?;
         }
         let mut outcome = PublishOutcome {
-            remote: crate::redact::redact(&if url.starts_with('/') {
+            remote: crate::redact::redact(&if crate::source::is_local_location(&url) {
                 display_path(Path::new(&url))
             } else {
                 url.clone()

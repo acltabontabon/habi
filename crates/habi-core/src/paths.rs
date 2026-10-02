@@ -194,13 +194,13 @@ pub fn resolve_for_write(root: &Path, rel: &RelPath) -> Result<PathBuf> {
                 if !is_last && !meta.is_dir() {
                     return Err(HabiError::Conflict(format!(
                         "`{}` is a file, but Habi needs a directory there",
-                        parts[..=i].join("/")
+                        parts.get(..=i).unwrap_or_default().join("/")
                     )));
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 // Nothing below a missing component can be a link.
-                for rest in &parts[i + 1..] {
+                for rest in parts.get(i + 1..).unwrap_or_default() {
                     current.push(rest);
                 }
                 return Ok(current);
@@ -260,7 +260,13 @@ pub fn resolve_links(root: &Path, rel: &RelPath) -> Result<Option<RelPath>> {
             .components()
             .map(|c| c.as_os_str().to_string_lossy().into_owned())
             .collect();
-        resolved.extend(parts[i + 1..].iter().map(|s| s.to_string()));
+        resolved.extend(
+            parts
+                .get(i + 1..)
+                .unwrap_or_default()
+                .iter()
+                .map(|s| s.to_string()),
+        );
         if resolved.is_empty() {
             return Err(escape());
         }

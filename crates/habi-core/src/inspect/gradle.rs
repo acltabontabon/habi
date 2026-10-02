@@ -67,6 +67,10 @@ pub struct Settings {
 
 /// Removes `//` and `/* */` comments, leaving string literals intact and
 /// preserving line breaks so line numbers stay correct.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "a scanner: every index is checked against the length first"
+)]
 pub fn strip_comments(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let chars: Vec<char> = text.chars().collect();
@@ -186,6 +190,10 @@ enum Piece<'a> {
 /// Splits a line at `{` and `}` outside string literals, so declarations on
 /// the same line as a block's braces (`plugins { id("x") }`) are seen in the
 /// right block.
+#[allow(
+    clippy::string_slice,
+    reason = "piece bounds are char boundaries found while scanning the same line"
+)]
 fn pieces(line: &str) -> Vec<Piece<'_>> {
     let mut out = Vec::new();
     let mut start = 0;
@@ -234,6 +242,10 @@ fn pieces(line: &str) -> Vec<Piece<'_>> {
 static QUOTED: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"["']([^"']+)["']"#).unwrap());
 
 /// Parses a build.gradle / build.gradle.kts file.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "parts are indexed only after their count is checked"
+)]
 pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
     let clean = strip_comments(text);
     let mut build = GradleBuild {
@@ -449,6 +461,10 @@ pub fn parse_settings(path: &str, text: &str) -> Settings {
 }
 
 /// Parses gradle/libs.versions.toml.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "parts are indexed only after their count is checked"
+)]
 pub fn parse_catalog(path: &str, text: &str) -> Result<Catalog, String> {
     let doc: toml::Table = text
         .parse()

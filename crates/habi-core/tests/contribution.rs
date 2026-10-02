@@ -10,9 +10,10 @@ use habi_core::install::plan::Decisions;
 use habi_core::library::model::DiagnosticLevel;
 use habi_core::service::{Habi, ItemRef};
 use habi_core::source::{NewSource, TrackedRef};
-use habi_core::store::AppPaths;
+use habi_core::store::{AppPaths, ResourceLock};
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
 fn git(dir: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
@@ -235,6 +236,8 @@ fn secrets_block_a_contribution() {
     let skill = proj.path().join(".claude/skills/deploy-notes");
     std::fs::create_dir_all(&skill).unwrap();
     std::fs::write(skill.join("SKILL.md"), "---\nname: deploy-notes\ndescription: How we deploy.\n---\nUse key AKIAABCDEFGHIJKLMNOP for the bucket.\n").unwrap();
+    // A key file is refused by its name, whatever it contains.
+    std::fs::write(skill.join("deploy.pem"), "placeholder\n").unwrap();
     let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
     let source = habi
         .sources()
@@ -264,6 +267,15 @@ fn secrets_block_a_contribution() {
             .validation
             .iter()
             .any(|d| d.level == DiagnosticLevel::Error && d.message.contains("AWS"))
+    );
+    assert!(
+        draft
+            .validation
+            .iter()
+            .any(|d| d.level == DiagnosticLevel::Error
+                && d.message.contains("deploy.pem has a name used for keys")),
+        "{:?}",
+        draft.validation
     );
     assert!(
         habi.commit_contribution(&draft.id, &CancelToken::new())
@@ -568,6 +580,41 @@ fn a_revision_takes_the_skill_as_it_is_when_prepared() {
         ],
     );
     assert!(message.contains("Revision 1 after review."), "{message}");
+}
+
+#[test]
+fn preparing_and_sending_wait_for_the_library_lock() {
+    // Refreshing and removing a library hold this lock; a contribution uses
+    // the library's Git cache, so it must not run at the same time.
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item("jpa-entity-review");
+    append(&s.staging(&c.id).join("SKILL.md"), "\nMore.\n");
+    let hold = || {
+        ResourceLock::acquire(
+            &s.habi.paths,
+            &format!("source-{}", s.source),
+            Duration::from_secs(1),
+        )
+        .unwrap()
+    };
+    let held = hold();
+    let err = s.habi.commit_contribution(&c.id, &cancel).unwrap_err();
+    assert_eq!(err.code(), "busy", "{err}");
+    drop(held);
+    s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    let held = hold();
+    let err = s
+        .habi
+        .publish_contribution(&c.id, false, &cancel)
+        .map(|_| ())
+        .unwrap_err();
+    assert_eq!(err.code(), "busy", "{err}");
+    drop(held);
+    // And the other way round: a library cannot be removed mid-contribution.
+    let _contributing = hold();
+    let err = s.habi.sources().remove(&s.source).unwrap_err();
+    assert_eq!(err.code(), "busy", "{err}");
 }
 
 #[test]

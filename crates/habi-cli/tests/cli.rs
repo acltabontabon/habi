@@ -535,3 +535,51 @@ fn install_defaults_to_the_agent_tools_the_project_uses() {
         "{plan}"
     );
 }
+
+#[test]
+fn gc_frees_space_and_keeps_history_usable() {
+    let env = Env::new();
+    let project = env.project("billing-service");
+    let p = project.to_str().unwrap();
+    env.connect_library();
+    let out = env.ok(env.work.path(), &["gc"]);
+    assert!(
+        stdout(&out).contains("Nothing to remove"),
+        "{}",
+        stdout(&out)
+    );
+    env.ok(
+        env.work.path(),
+        &[
+            "install",
+            "jpa-entity-review",
+            "--client",
+            "codex",
+            "--yes",
+            "-C",
+            p,
+        ],
+    );
+    let (out, report) = env.json(env.work.path(), &["gc"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    for key in [
+        "operationsRemoved",
+        "snapshotsRemoved",
+        "objectsRemoved",
+        "bytesFreed",
+    ] {
+        assert!(report[key].is_u64(), "{key}: {report}");
+    }
+    // The operation just applied is kept and can still be undone.
+    let (_, history) = env.json(env.work.path(), &["history", "-C", p]);
+    let id = history[0]["id"].as_str().unwrap().to_string();
+    env.ok(env.work.path(), &["restore", &id, "--yes", "-C", p]);
+}
+
+#[test]
+fn recover_says_it_rolls_back() {
+    let env = Env::new();
+    let out = env.ok(env.work.path(), &["recover", "--help"]);
+    assert!(stdout(&out).contains("Roll back"), "{}", stdout(&out));
+    assert!(!stdout(&out).contains("Finish"), "{}", stdout(&out));
+}

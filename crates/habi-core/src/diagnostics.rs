@@ -20,7 +20,7 @@ pub struct DiagnosticBundle {
 }
 
 fn host_only(location: &str) -> String {
-    if location.starts_with('/') || location.starts_with('~') {
+    if crate::source::is_local_location(location) {
         return "local folder".into();
     }
     match crate::contribute::remote_repo(location) {
@@ -42,10 +42,31 @@ fn log_tail(habi: &Habi, lines: usize) -> String {
     let Some(latest) = files.last() else {
         return "(no log files)".into();
     };
-    let text = std::fs::read_to_string(latest).unwrap_or_default();
+    let text = read_end(latest, LOG_TAIL_BYTES).unwrap_or_default();
     let all: Vec<&str> = text.lines().collect();
     let start = all.len().saturating_sub(lines);
-    crate::redact::redact(&all[start..].join("\n"))
+    crate::redact::redact(&all.get(start..).unwrap_or_default().join("\n"))
+}
+
+/// How much of the end of a log file is read for its last lines.
+const LOG_TAIL_BYTES: u64 = 256 * 1024;
+
+/// The last `limit` bytes of a file as text, starting at a line boundary.
+/// A day's log can be large; only its end is needed.
+fn read_end(path: &std::path::Path, limit: u64) -> std::io::Result<String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = std::fs::File::open(path)?;
+    let len = file.metadata()?.len();
+    let start = len.saturating_sub(limit);
+    file.seek(SeekFrom::Start(start))?;
+    let mut bytes = Vec::new();
+    file.take(limit).read_to_end(&mut bytes)?;
+    let text = String::from_utf8_lossy(&bytes).into_owned();
+    Ok(match (start, text.split_once('\n')) {
+        // Started mid-line: drop the partial first line.
+        (1.., Some((_, rest))) => rest.to_string(),
+        _ => text,
+    })
 }
 
 pub fn bundle(habi: &Habi, app_version: &str) -> Result<DiagnosticBundle> {
@@ -119,7 +140,7 @@ pub fn bundle(habi: &Habi, app_version: &str) -> Result<DiagnosticBundle> {
         let _ = writeln!(
             t,
             "  - project {}: {} operations, {} not committed",
-            &p.id[..8.min(p.id.len())],
+            p.id.get(..8).unwrap_or(&p.id),
             history.len(),
             unfinished
         );
@@ -132,4 +153,30 @@ pub fn bundle(habi: &Habi, app_version: &str) -> Result<DiagnosticBundle> {
         ),
         text: crate::redact::redact(&t),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_only_the_end_of_a_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("habi.log");
+        let text: String = (0..1000).map(|i| format!("line {i}\n")).collect();
+        std::fs::write(&log, &text).unwrap();
+        assert_eq!(read_end(&log, 1 << 20).unwrap(), text);
+        let end = read_end(&log, 30).unwrap();
+        assert!(end.starts_with("line 99"), "{end:?}");
+        assert!(end.ends_with("line 999\n"));
+    }
+
+    #[test]
+    fn local_folders_are_not_named() {
+        assert_eq!(host_only("/Users/ana/skills"), "local folder");
+        assert_eq!(host_only("~/skills"), "local folder");
+        assert!(host_only("https://example.com/team/skills.git").starts_with("example.com"));
+        #[cfg(windows)]
+        assert_eq!(host_only(r"C:\Users\ana\skills"), "local folder");
+    }
 }

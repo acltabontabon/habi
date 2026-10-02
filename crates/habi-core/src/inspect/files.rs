@@ -184,7 +184,7 @@ pub fn collect(
     let mut matched = Vec::new();
     for (path, _) in files {
         for idx in set.matches(path) {
-            matched.push((path.clone(), roles[idx]));
+            matched.extend(roles.get(idx).map(|role| (path.clone(), *role)));
         }
     }
     matched.sort();

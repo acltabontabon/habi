@@ -250,6 +250,10 @@ impl<'a> Resolver<'a> {
         Resolver { poms, by_path }
     }
 
+    #[allow(
+        clippy::indexing_slicing,
+        reason = "POM indexes are positions in the same list, made when it was built"
+    )]
     fn parent_of(&self, index: usize) -> ParentLink {
         let pom = &self.poms[index];
         let Some(parent) = &pom.parent else {
@@ -309,6 +313,10 @@ impl<'a> Resolver<'a> {
         (chain, None)
     }
 
+    #[allow(
+        clippy::indexing_slicing,
+        reason = "POM indexes are positions in the same list, made when it was built"
+    )]
     fn properties(&self, chain: &[usize]) -> HashMap<String, String> {
         let mut props = HashMap::new();
         // Apply from the farthest ancestor so children override.
@@ -345,6 +353,10 @@ impl<'a> Resolver<'a> {
 }
 
 /// Expands `${name}` references. Returns the unresolved property name on failure.
+#[allow(
+    clippy::string_slice,
+    reason = "bounds come from find() of ASCII `${` and `}` in the same string"
+)]
 pub fn interpolate(value: &str, props: &HashMap<String, String>) -> Result<String, String> {
     let mut current = value.to_string();
     for _ in 0..8 {
@@ -451,6 +463,10 @@ fn scope_label(decl: &DepDecl, base: &str) -> Option<String> {
 }
 
 /// Turns parsed POMs into facts and coverage.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "POM indexes are positions in the same list, made when it was built"
+)]
 pub fn collect(poms: &[Pom], out: &mut Collector) {
     let resolver = Resolver::new(poms);
     for (index, pom) in poms.iter().enumerate() {

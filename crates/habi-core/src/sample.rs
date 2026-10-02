@@ -11,8 +11,9 @@ use crate::error::{HabiError, Result};
 use crate::process::{self, Spec};
 use crate::service::{Habi, ProjectRecord};
 use crate::source::{NewSource, Source, TrackedRef};
+use crate::store::AppPaths;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use ts_rs::TS;
 
@@ -93,8 +94,18 @@ fn sample_library(habi: &Habi, from: &Path, to: &Path, name: &str) -> Result<Sou
         git(to, &["add", "-A"])?;
         git(to, &["commit", "-q", "-m", "Sample library"])?;
     }
+    // A library of the user's may already carry the sample's name.
+    let taken = habi
+        .sources()
+        .list()?
+        .iter()
+        .any(|s| s.name.eq_ignore_ascii_case(name));
     let source = habi.sources().add(&NewSource {
-        name: name.into(),
+        name: if taken {
+            format!("{name} (sample)")
+        } else {
+            name.into()
+        },
         location: to.to_string_lossy().into_owned(),
         subdir: None,
         tracked: if git_available {
@@ -105,18 +116,57 @@ fn sample_library(habi: &Habi, from: &Path, to: &Path, name: &str) -> Result<Sou
             TrackedRef::Default
         },
     })?;
+    habi.sources().mark_sample(&source.id)?;
     habi.sources().refresh(&source.id, &CancelToken::new())?;
     habi.sources().get(&source.id)
+}
+
+/// Where the sample workspace lives: `<data>/sample` (canonical when it
+/// exists, so it compares equal to registered project paths).
+pub fn root(paths: &AppPaths) -> PathBuf {
+    let root = paths.root.join("sample");
+    crate::paths::canonical(&root).unwrap_or(root)
+}
+
+/// Removes the sample libraries, forgets the sample projects (with their
+/// operation history) and deletes `<data>/sample`. The user's own
+/// libraries, projects and skills are untouched.
+pub fn remove(habi: &Habi) -> Result<()> {
+    for source in habi.sources().list()?.into_iter().filter(|s| s.sample) {
+        habi.sources().remove(&source.id)?;
+    }
+    let ids: Vec<String> = {
+        let conn = habi.store.conn()?;
+        let mut stmt = conn.prepare("SELECT id FROM projects")?;
+        stmt.query_map([], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?
+    };
+    for id in ids {
+        if habi.project(&id).is_ok_and(|p| p.sample) {
+            habi.forget_project(&id)?;
+            let journal = crate::install::apply::journal_dir(&habi.paths, &id);
+            if journal.exists() {
+                std::fs::remove_dir_all(&journal)
+                    .map_err(|e| HabiError::io("removing the sample projects' history", e))?;
+            }
+        }
+    }
+    let dir = habi.paths.root.join("sample");
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir)
+            .map_err(|e| HabiError::io("removing the sample workspace", e))?;
+    }
+    Ok(())
 }
 
 /// Creates (or recreates) the sample workspace from `bundled` (a directory
 /// containing `libraries/*` and `repos/*`).
 pub fn create(habi: &Habi, bundled: &Path) -> Result<SampleWorkspace> {
     let root = habi.paths.root.join("sample");
-    for existing in habi.sources().list()? {
-        if existing.name == SAMPLE_SOURCE_NAME || existing.name == SAMPLE_SECURITY_SOURCE_NAME {
-            habi.sources().remove(&existing.id)?;
-        }
+    // Sample libraries are recognized by their flag, never by name: a
+    // library of the user's that happens to share the name is kept.
+    for existing in habi.sources().list()?.into_iter().filter(|s| s.sample) {
+        habi.sources().remove(&existing.id)?;
     }
     if root.exists() {
         std::fs::remove_dir_all(&root)

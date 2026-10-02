@@ -1783,6 +1783,7 @@ dependencies = [
  "directories",
  "dunce",
  "globset",
+ "habi-core",
  "hex",
  "ignore",
  "jsonschema",
