@@ -93,8 +93,8 @@ Credentials are never stored by Habi; Git authentication stays with Git.
 `crates/habi-core/examples/dev_bridge.rs` serves the service over loopback HTTP so the UI can
 be exercised in a plain browser against the real core (`VITE_HABI_BRIDGE=1 pnpm dev`). It is
 an example target — not part of the app or CLI — and replaces native dialogs with a path
-prompt. See `docs/test-data.md`.
+prompt. See `docs/dev/test-data.md`.
 
 ## Dependency choices
 
-See `docs/reuse-assessment.md` for what was adopted and why.
+See `docs/dev/reuse-assessment.md` for what was adopted and why.

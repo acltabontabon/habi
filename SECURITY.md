@@ -32,7 +32,7 @@ For example:
   links in the desktop app.
 - Bypassing the desktop app's content security policy or command allow-list.
 
-The intended boundaries are described in [docs/security.md](docs/security.md).
+The intended boundaries are described in [docs/project/security-model.md](docs/project/security-model.md).
 
 ## Out of scope
 

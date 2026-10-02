@@ -48,8 +48,8 @@ Principles:
 A repository and an idea are enough to start; libraries are optional.
 
 > **Status: pre-release (0.1.0).** There are no prebuilt downloads yet — build from source
-> (below). See [what is verified](docs/implementation-status.md) and the
-> [release blockers](docs/release.md#release-blockers-current).
+> (below). See [what is verified](docs/project/status.md) and the
+> [release blockers](docs/dev/release.md#release-blockers-current).
 
 ## Try it
 
@@ -136,26 +136,26 @@ requires:
       commands: [./mvnw, mvn]
 ```
 
-Validate with `habi validate path/to/library`. See [Habi metadata](docs/metadata-schema.md)
+Validate with `habi validate path/to/library`. See [Habi metadata](docs/library-authors/metadata-schema.md)
 and the [example library](fixtures/libraries/example-team-library).
 
 ## Documentation
 
 | | |
 |---|---|
-| [Product contract](docs/product.md) | Principles and what Habi is not |
-| [My skills](docs/local-skills.md) | Creating, importing, previewing, using and sharing skills |
-| [Architecture](docs/architecture.md) | Crates, modules, data locations |
-| [Metadata schema](docs/metadata-schema.md) | `habi.yaml`, `habi-library.yaml`, conditions, versioning |
-| [Detectors](docs/detectors.md) | What inspection recognizes and its limits |
-| [Client compatibility](docs/compatibility.md) | Claude Code, Cursor, Codex paths, and smoke tests |
-| [Contribution flow](docs/contribution-flow.md) | Sharing improvements for review |
-| [Security](docs/security.md) | Threat boundaries and residual trust |
-| [Recovery](docs/recovery.md) | Journals, rollback, stale caches |
-| [Design](docs/design.md) | Visual direction and accessibility |
-| [Release](docs/release.md) | Builds, signing, versioning, blockers |
-| [Reuse assessment](docs/reuse-assessment.md) | Dependencies and why custom logic exists |
-| [Test data](docs/test-data.md) | Fixtures, the sample workspace and the seed script |
+| [Product contract](docs/project/product.md) | Principles and what Habi is not |
+| [My skills](docs/guide/my-skills.md) | Creating, importing, previewing, using and sharing skills |
+| [Architecture](docs/dev/architecture.md) | Crates, modules, data locations |
+| [Metadata schema](docs/library-authors/metadata-schema.md) | `habi.yaml`, `habi-library.yaml`, conditions, versioning |
+| [Detectors](docs/library-authors/detectors.md) | What inspection recognizes and its limits |
+| [Client compatibility](docs/dev/compatibility-research.md) | Claude Code, Cursor, Codex paths, and smoke tests |
+| [Contribution flow](docs/guide/sharing.md) | Sharing improvements for review |
+| [Security](docs/project/security-model.md) | Threat boundaries and residual trust |
+| [Recovery](docs/guide/recovery.md) | Journals, rollback, stale caches |
+| [Design](docs/dev/design.md) | Visual direction and accessibility |
+| [Release](docs/dev/release.md) | Builds, signing, versioning, blockers |
+| [Reuse assessment](docs/dev/reuse-assessment.md) | Dependencies and why custom logic exists |
+| [Test data](docs/dev/test-data.md) | Fixtures, the sample workspace and the seed script |
 | [Website](website/) | The site at acltabontabon.com/habi: `pnpm dev` in `website/`; data from `pnpm snapshot` and `scripts/journey.sh` |
 
 ## Contributing

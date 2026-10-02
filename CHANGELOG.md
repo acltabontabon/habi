@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Habi. Versions follow [semantic versioning](docs/release.md#versioning).
+All notable changes to Habi. Versions follow [semantic versioning](docs/dev/release.md#versioning).
 
 ## 0.1.0 — unreleased
 

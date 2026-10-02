@@ -6,7 +6,7 @@ minutes, and explains the few rules that keep Habi trustworthy.
 ## Ground rules
 
 Habi's promise is *honest, local, previewed*. Changes are reviewed against
-[docs/product.md](docs/product.md). In short:
+[docs/project/product.md](docs/project/product.md). In short:
 
 - **Unknown is a valid answer.** Never turn missing evidence into "applies" or "does not
   apply". No confidence percentages.
@@ -72,7 +72,7 @@ Use `HABI_BRIDGE_PORT` and `HABI_UI_PORT` to run a second pair side by side.
 | `fixtures/` | Example libraries and repositories used by tests and the sample workspace. |
 | `docs/` | Product contract, architecture, security, formats. |
 
-See [docs/architecture.md](docs/architecture.md) for the module map.
+See [docs/dev/architecture.md](docs/dev/architecture.md) for the module map.
 
 ## Making a change
 

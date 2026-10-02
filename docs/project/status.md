@@ -2,7 +2,7 @@
 
 Habi is **pre-release (0.1.0)**. This page says what works today, how it is checked, and
 what is known not to be verified yet. Product principles live in
-[product.md](product.md); release requirements in [release.md](release.md).
+[product.md](product.md); release requirements in [release.md](../dev/release.md).
 
 ## What works
 
@@ -34,7 +34,7 @@ what is known not to be verified yet. Product principles live in
 
 - **Agent tools loading what Habi installs.** Habi writes skills and instructions to the
   documented locations for Claude Code, Cursor and Codex; whether a given client version
-  discovers them is checked with the smoke tests in [compatibility.md](compatibility.md) §6,
+  discovers them is checked with the smoke tests in [compatibility research](../dev/compatibility-research.md) §6,
   which have not yet been run for this release.
 - **Live Git hosts.** Opening pull/merge requests, reading status and comments, and updating
   a request with a revision are tested against programs that answer like the GitHub and GitLab
@@ -44,15 +44,15 @@ what is known not to be verified yet. Product principles live in
 - **Native window.** Most screens were exercised through the development bridge in a browser;
   native file dialogs and window behavior have had less use.
 - **Signing.** Release artifacts are unsigned until signing credentials exist (see
-  [release.md](release.md)).
+  [release.md](../dev/release.md)).
 - Smaller documented gaps: an update does not add an MCP server an item newly suggests
-  ([recovery.md](recovery.md)); turning an existing file into an OpenAPI specification is
-  noticed after a rescan ([detectors.md](detectors.md)); comments inside `habi.yaml` are not
-  kept when the share form rewrites it ([contribution-flow.md](contribution-flow.md)).
+  ([recovery](../guide/recovery.md)); turning an existing file into an OpenAPI specification is
+  noticed after a rescan ([detectors](../library-authors/detectors.md)); comments inside `habi.yaml` are not
+  kept when the share form rewrites it ([sharing](../guide/sharing.md)).
 
 ## Next
 
-1. Run the client smoke tests and record versions in [compatibility.md](compatibility.md).
+1. Run the client smoke tests and record versions in [compatibility research](../dev/compatibility-research.md).
 2. Exercise sharing against live GitHub and GitLab repositories.
-3. User-scope installation and Cursor `.mdc` rules (see [future.md](future.md)).
+3. User-scope installation and Cursor `.mdc` rules (see [future direction](../future.md)).
 4. `habi skill …` commands for local skills (list, export, import); the core supports them.

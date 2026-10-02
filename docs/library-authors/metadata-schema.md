@@ -5,8 +5,8 @@ does not express — where a skill applies, what it needs, how a workflow procee
 evidence exists — in **optional** files that are easy to author in Git. This is Habi
 metadata, not a new industry standard.
 
-- `habi.yaml` — sidecar next to a `SKILL.md`. Schema: [`schema/habi-skill.schema.json`](../schema/habi-skill.schema.json)
-- `habi-library.yaml` — at the library root (or configured subfolder). Schema: [`schema/habi-library.schema.json`](../schema/habi-library.schema.json)
+- `habi.yaml` — sidecar next to a `SKILL.md`. Schema: [`schema/habi-skill.schema.json`](../../schema/habi-skill.schema.json)
+- `habi-library.yaml` — at the library root (or configured subfolder). Schema: [`schema/habi-library.schema.json`](../../schema/habi-library.schema.json)
 
 Skills without `habi.yaml` remain listed, searchable and installable. Their applicability is
 shown as *not matched*: Habi never infers rules from a title or prose. Because they are not
@@ -20,8 +20,8 @@ nearest licence file in the skill's folder or one of its parents (`LICENSE`, `LI
 review and a warning before sharing. A library narrowed to a subfolder only sees licence files
 inside it.
 
-Examples that the test suite validates: [`schema/examples/valid`](../schema/examples/valid)
-and [`schema/examples/invalid`](../schema/examples/invalid).
+Examples that the test suite validates: [`schema/examples/valid`](../../schema/examples/valid)
+and [`schema/examples/invalid`](../../schema/examples/invalid).
 
 ## Skill sidecar fields
 
@@ -54,7 +54,7 @@ Each condition object has exactly one key:
 ```yaml
 applies_when:
   all:                                   # every item must hold
-    - tag: framework:spring-boot         # a derived characteristic (see docs/detectors.md)
+    - tag: framework:spring-boot         # a derived characteristic (see docs/library-authors/detectors.md)
     - any:                               # at least one item must hold
         - dependency: org.liquibase:liquibase-core
         - file: "**/db/changelog/**"     # glob relative to the module (or repository)
@@ -142,7 +142,7 @@ of the package's own files — relative links and images in Markdown (and inline
 and `.yaml` files must parse. **Errors** block installing and sharing from My skills and
 preparing a contribution; **warnings** should be fixed; **info** is a suggestion or says what
 was not checked. Scripts are never parsed or run. The full list, with levels, is in
-[My skills → Checks](local-skills.md#checks).
+[My skills → Checks](../guide/my-skills.md#checks).
 
 Validation proves neither security nor correctness: it finds structural mistakes, not
 whether the guidance is right or the scripts are safe.

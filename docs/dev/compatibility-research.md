@@ -213,7 +213,7 @@ Versions checked on 2026-10-02 via `npm view` and the crates.io API (stable tags
 
 - **Copies, not symlinks.** When both `.agents/skills` and `.claude/skills` are needed
   (Claude Code + Codex), Habi writes two ordinary copies. Habi refuses to write through or
-  create symbolic links (see `docs/security.md`), symlinks are unreliable on Windows, and a
+  create symbolic links (see `docs/project/security-model.md`), symlinks are unreliable on Windows, and a
   copy keeps each client's files independently editable. The lock file tracks both copies;
   drift in either is detected separately. If the project already links one skills folder
   to the other, Habi writes a single copy instead (see *Symbolic links in the project*).

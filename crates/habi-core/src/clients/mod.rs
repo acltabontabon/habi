@@ -1,7 +1,7 @@
 //! Supported agent clients and where they discover content.
 //!
 //! Discovery paths come from each client's documentation as recorded in
-//! `docs/compatibility.md` (researched 2026-10-02). Habi writes standard
+//! `docs/dev/compatibility-research.md` (researched 2026-10-02). Habi writes standard
 //! formats only; it does not claim a client loaded anything.
 
 use serde::{Deserialize, Serialize};
