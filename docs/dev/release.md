@@ -43,14 +43,14 @@ Semantic versioning, separately for:
   major for incompatible changes to the lock file, data directory or CLI; minor for features;
   patch for fixes.
 - **The metadata schema** (`habi: 1`) and **lock file** (`habi_lock: 1`): see the migration
-  policy in `docs/metadata-schema.md`. The application version does not change the schema
+  policy in `docs/library-authors/metadata-schema.md`. The application version does not change the schema
   version.
 
 ## Release checklist
 
 1. Update `CHANGELOG.md` (user-readable) and versions in the three manifests.
 2. Run `scripts/check.sh` on macOS, Windows and Linux (CI does this).
-3. Run the client smoke tests in `docs/compatibility.md` §6 with current Claude Code,
+3. Run the client smoke tests in `docs/dev/compatibility-research.md` §6 with current Claude Code,
    Cursor and Codex builds; record the client versions and date there.
 4. Tag `vX.Y.Z`; the release workflow builds installers.
 5. Sign and notarize (below). Publish checksums with the artifacts.

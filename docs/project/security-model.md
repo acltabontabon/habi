@@ -63,7 +63,7 @@ and it is what makes authentication work without Habi handling secrets.
   path (`resolve_for_write`); this is re-checked at apply time, not just at preview.
 - Reads are bounded; parsers have size/depth/node limits (YAML budgets, XML without DTDs,
   bounded globs and conditions).
-- Writes are atomic (temp file + fsync + rename) and journaled; see `docs/recovery.md`.
+- Writes are atomic (temp file + fsync + rename) and journaled; see `docs/guide/recovery.md`.
   Existing files keep their permissions; new files get 0644; skill scripts that are executable
   in the library (Git mode 100755) stay executable, and contributions preserve the bit.
 - Paths may not contain a `.git` component, so library content cannot plant a nested

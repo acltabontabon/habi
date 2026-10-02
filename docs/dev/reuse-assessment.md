@@ -26,7 +26,7 @@
 
 Transitive dependencies are mostly MIT/Apache-2.0; a few are MPL-2.0 (file-level copyleft,
 compatible with distribution; their sources are already public), BSD, ISC, Zlib and
-Unicode-3.0. A generated third-party notice file is a release blocker (`docs/release.md`).
+Unicode-3.0. A generated third-party notice file is a release blocker (`docs/dev/release.md`).
 
 ## Built here, and why
 

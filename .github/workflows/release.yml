@@ -60,7 +60,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
       # Signing and notarization are configured only when the secrets exist; otherwise the
-      # artifacts are unsigned and the draft release says so. See docs/release.md.
+      # artifacts are unsigned and the draft release says so. See docs/dev/release.md.
       - name: macOS signing credentials (only when configured)
         if: runner.os == 'macOS'
         shell: bash
@@ -128,6 +128,6 @@ jobs:
         with:
           draft: true
           body: |
-            Draft release. Check docs/release.md before publishing.
+            Draft release. Check docs/dev/release.md before publishing.
             Artifacts are UNSIGNED unless signing secrets were configured for this run.
           files: dist/*

@@ -185,7 +185,7 @@ Contributions reports what actually happened: *Prepared locally*, *Patch exporte
 pushed — no review request*, *Review requested*, and *In the library* once a refresh shows the
 library contains those files. Habi never merges and never reports a submission it did not make.
 
-See also [Contribution flow](contribution-flow.md).
+See also [Sharing](sharing.md).
 
 ## Not included
 
