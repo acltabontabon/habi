@@ -12,7 +12,7 @@ import { COMMUNITY_LIBRARIES, catalogEntryFor } from "../../lib/community";
 import { useDyes } from "../../lib/dye";
 import { freshnessText, plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
-import { useSources } from "../../lib/queries";
+import { useLibraries, useSources } from "../../lib/queries";
 import { CommunityPreview } from "./CommunityPreview";
 import { ConnectLibrary } from "./ConnectLibrary";
 import { LibraryView } from "./LibraryView";
@@ -48,20 +48,24 @@ function ConnectOwn({ mode }: { mode: "git" | "folder" }) {
 
 function LibrariesOverview() {
   const sources = useSources();
+  const indexes = useLibraries(sources.data ?? []);
   const dyes = useDyes();
   const { navigate } = useNav();
+  const skillCount = (id: string) => {
+    const items = indexes.find((q) => q.data?.sourceId === id)?.data?.items;
+    return items ? items.filter((i) => i.kind !== "instructions").length : null;
+  };
   if (sources.isPending) return <Working>Loading libraries…</Working>;
   if (sources.isError) return <ErrorNotice error={sources.error} />;
   const connected = sources.data;
   const discoverable = COMMUNITY_LIBRARIES.filter(
     (c) => !connected.some((s) => catalogEntryFor(s.location)?.id === c.id),
   );
+  const local = (s: (typeof connected)[number]) =>
+    s.kind === "directory" || s.location.startsWith("/") || s.location.startsWith("~");
   const kind = (s: (typeof connected)[number]) =>
-    s.role === "community"
-      ? "community"
-      : s.kind === "directory" || s.location.startsWith("/") || s.location.startsWith("~")
-        ? "local"
-        : "team";
+    s.role === "community" ? "community" : local(s) ? "local" : "team";
+  const backing = (s: (typeof connected)[number]) => (s.kind === "directory" ? "folder" : "git");
   const order = { team: 0, local: 1, community: 2 } as const;
 
   return (
@@ -78,7 +82,7 @@ function LibrariesOverview() {
       {connected.length > 0 ? (
         <section className="libraries-section" aria-labelledby="lib-connected">
           <h2 id="lib-connected" className="kicker">
-            Connected
+            Connected <span className="kicker-count">{connected.length}</span>
           </h2>
           <ul className="library-rows">
             {[...connected]
@@ -95,16 +99,16 @@ function LibrariesOverview() {
                       <Strand dye={dyes(s.id)} size={18} />
                       <span className="library-row-name">{s.name}</span>
                       <span className="library-row-repo">{repositoryLabel(s.location)}</span>
-                      <span className="library-row-state">
-                        {kind(s)}
-                        <span
-                          className={
-                            fresh.tone === "muted" || fresh.tone === "ok" ? undefined : `tone-${fresh.tone}`
-                          }
-                        >
-                          {" "}
-                          · {fresh.text}
-                        </span>
+                      <span className="library-row-kind">
+                        {kind(s)} · {backing(s)}
+                      </span>
+                      <span className="library-row-count">
+                        {skillCount(s.id) === null ? "—" : plural(skillCount(s.id) ?? 0, "skill")}
+                      </span>
+                      <span
+                        className={`library-row-state${fresh.tone === "muted" || fresh.tone === "ok" ? "" : ` tone-${fresh.tone}`}`}
+                      >
+                        {fresh.text}
                       </span>
                     </button>
                   </li>
@@ -118,7 +122,7 @@ function LibrariesOverview() {
         <section className="libraries-section" aria-labelledby="lib-discover">
           <div className="libraries-section-head">
             <h2 id="lib-discover" className="kicker">
-              Discover
+              Discover <span className="kicker-count">{discoverable.length}</span>
             </h2>
             <span className="libraries-note">curated · published by others · not reviewed by your team</span>
           </div>
@@ -133,7 +137,8 @@ function LibrariesOverview() {
                   <Strand dye={{ color: "var(--ink-faint)", community: true }} size={18} />
                   <span className="library-row-name">{c.name}</span>
                   <span className="library-row-summary">{c.summary}</span>
-                  <span className="library-row-state">about {c.skills} skills</span>
+                  <span className="library-row-count">about {c.skills}</span>
+                  <span className="library-row-state library-row-go">Preview →</span>
                 </button>
               </li>
             ))}

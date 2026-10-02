@@ -71,11 +71,13 @@ its one signature — used only where it carries meaning.
 - **Review** — clients and scope, every file with an expandable diff and plain explanation,
   conflicts with explicit choices, notes, the recovery promise, and a final button that names
   the action ("Install for Cursor in this project").
-- **Sidebar** — navigation first: projects, My skills, one *Libraries* section (team
-  libraries, then community ones under a faint label, then *Browse & connect…* in words) and
-  Contributions when there are any. Management actions are not permanent: opening a project
-  appears on hover or focus of its heading (and ⌘O), creating a skill is ⌘N and the My skills
-  page. Below 720 px the sidebar becomes a rail of icons and threads.
+- **Sidebar** — navigation first: projects, My skills, *Libraries*, Contributions when there
+  are any. Connected libraries are one family on one warp — a hairline spine through each
+  source's thread (stitched for community) — that continues into a small open knot, *Explore
+  libraries →*: the collection goes on. No headings for provenance (team, community, local,
+  Git or folder are in each tooltip, the Libraries page and the source sheet). Opening a
+  project appears on hover or focus of its heading (and ⌘O); creating a skill is ⌘N. Below
+  720 px the sidebar becomes a rail of icons and threads.
 - **Libraries** — a destination of its own: *Connected* (team · local · community, with
   freshness), *Discover* (a short curated list of community libraries not yet connected, each
   previewed — what it covers, about how many skills, licence, trust — before *Connect

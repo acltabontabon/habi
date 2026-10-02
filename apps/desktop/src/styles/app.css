@@ -3479,6 +3479,17 @@ dl.facets,
   .sidebar-foot {
     justify-items: center;
   }
+  .sidebar-spine::before {
+    left: 50%;
+  }
+  .sidebar-explore {
+    justify-content: center;
+    width: 44px;
+    padding: 6px 0;
+  }
+  .sidebar-explore-arrow {
+    display: none;
+  }
   .sidebar-count,
   .sidebar-dot {
     position: absolute;
@@ -3487,16 +3498,6 @@ dl.facets,
     min-width: 0;
     padding: 0 4px;
     font-size: 9px;
-  }
-  /* In the rail, the community label becomes a short divider. */
-  .sidebar-subheading {
-    width: 20px;
-    height: 1px;
-    margin: 6px auto;
-    padding: 0;
-    overflow: hidden;
-    color: transparent;
-    background: var(--hairline-strong);
   }
   .facets {
     grid-template-columns: minmax(0, 1fr);
@@ -3540,13 +3541,95 @@ dl.facets,
   color: var(--ink);
 }
 
-.sidebar-subheading {
-  margin: 6px 0 2px;
-  padding-left: calc(var(--s2) + 14px);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: 0.06em;
-  color: var(--ink-faint);
+/* The library collection: one warp through every source's thread,
+   continuing into "Explore libraries". */
+.sidebar-spine {
+  position: relative;
+}
+
+.sidebar-spine::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 15px;
+  bottom: 15px;
+  width: 1px;
+  background: var(--hairline-strong);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sidebar-spine .strand {
+  position: relative;
+  z-index: 2;
+}
+
+.sidebar-explore {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  min-height: 30px;
+  padding: 5px var(--s2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-align: left;
+  transition: color var(--duration) var(--ease);
+}
+
+.sidebar-knot {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  width: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.sidebar-knot::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1.5px solid var(--hairline-strong);
+  background: var(--paper-sunken);
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.sidebar-explore-arrow {
+  margin-left: auto;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.sidebar-explore:hover,
+.sidebar-explore:focus-visible,
+.sidebar-explore.is-here {
+  color: var(--thread-strong);
+}
+
+.sidebar-explore:hover .sidebar-knot::after,
+.sidebar-explore:focus-visible .sidebar-knot::after,
+.sidebar-explore.is-here .sidebar-knot::after {
+  border-color: var(--thread);
+}
+
+.sidebar-explore.is-here .sidebar-knot::after {
+  background: var(--thread);
+}
+
+.sidebar-explore:hover .sidebar-explore-arrow,
+.sidebar-explore:focus-visible .sidebar-explore-arrow {
+  opacity: 1;
+  transform: none;
 }
 
 /* ---------- Libraries overview ---------- */
@@ -3580,8 +3663,77 @@ dl.facets,
   color: var(--ink-faint);
 }
 
+.page.libraries {
+  max-width: 1040px;
+}
+
 .libraries .library-rows {
   margin: 0;
+}
+
+.kicker-count {
+  margin-left: 6px;
+  color: var(--ink-faint);
+}
+
+/* One column rhythm for every section: thread, name, what it is, then
+   quiet facts at the right edge. */
+.libraries .library-row {
+  grid-template-columns: 18px minmax(130px, 1fr) minmax(0, 1.5fr) 128px 80px minmax(110px, 0.8fr);
+  padding: 11px var(--s2);
+}
+
+.libraries .library-row.is-discover {
+  grid-template-columns: 18px minmax(130px, 1fr) minmax(0, 1.5fr) 128px 80px minmax(110px, 0.8fr);
+}
+
+.libraries .library-row.is-discover .library-row-summary {
+  grid-column: span 2;
+}
+
+.libraries .library-row.is-own {
+  grid-template-columns: 18px minmax(130px, 1fr) minmax(0, 1fr) auto;
+}
+
+.library-row-kind,
+.library-row-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.library-row-count {
+  text-align: right;
+}
+
+.libraries .library-row-state {
+  text-align: right;
+}
+
+.library-row-go {
+  color: var(--ink-faint);
+  transition: color var(--duration) var(--ease);
+}
+
+.library-row:hover .library-row-go,
+.library-row:focus-visible .library-row-go {
+  color: var(--thread-strong);
+}
+
+@media (max-width: 1020px) {
+  .libraries .library-row,
+  .libraries .library-row.is-discover {
+    grid-template-columns: 18px minmax(120px, 1fr) minmax(0, 1.4fr) 80px;
+  }
+  .libraries .library-row-repo,
+  .libraries .library-row-kind,
+  .libraries .library-row.is-discover .library-row-count {
+    display: none;
+  }
+  .libraries .library-row.is-discover .library-row-summary {
+    grid-column: span 1;
+  }
 }
 
 .library-row-summary {
