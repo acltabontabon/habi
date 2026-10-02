@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import pkg from "../../package.json";
 import type { ClientId } from "../bindings/ClientId";
 import type { DiagnosticBundle } from "../bindings/DiagnosticBundle";
 import type { Settings } from "../bindings/Settings";
@@ -9,6 +10,9 @@ import { api } from "../lib/api";
 import { ALL_CLIENTS, clientLabel } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { type ThemeChoice, useTheme } from "../lib/theme";
+
+/** The repository Habi is developed in (from package.json). */
+const REPOSITORY = pkg.repository.url.replace(/\.git$/, "");
 
 export function SettingsView() {
   const settings = useSettings();
@@ -140,6 +144,17 @@ export function SettingsView() {
         <dl className="meta-grid">
           <dt>Version</dt>
           <dd>{info.data?.version}</dd>
+          <dt>Source</dt>
+          <dd>
+            <button
+              type="button"
+              className="link-quiet"
+              onClick={() => void api.openExternal(REPOSITORY).catch(() => undefined)}
+            >
+              {REPOSITORY.replace("https://", "")}
+            </button>{" "}
+            <span className="muted">· open source, Apache-2.0</span>
+          </dd>
           <dt>Data folder</dt>
           <dd className="mono">{info.data?.dataDir}</dd>
           <dt>Git</dt>

@@ -1397,14 +1397,35 @@ fn code_path(code: &str) -> Option<String> {
     (matches!(folder, "scripts" | "references" | "assets") && plain).then(|| code.to_string())
 }
 
-/// `liquibase-migration-review` -> `Liquibase migration review`.
+/// Words that are read as letters, kept upper-case in a humanized title.
+const INITIALISMS: &[&str] = &[
+    "ai", "api", "apis", "aws", "ci", "cli", "css", "csv", "docx", "gcp", "gif", "html", "http",
+    "id", "jpa", "json", "jvm", "llm", "mcp", "orm", "pdf", "pptx", "pr", "sdk", "sql", "tdd",
+    "ui", "url", "ux", "xlsx", "xml", "yaml",
+];
+
+/// `liquibase-migration-review` -> `Liquibase migration review`;
+/// `claude-api` -> `Claude API`.
 pub fn humanize(name: &str) -> String {
-    let spaced = name.replace(['-', '_', '.'], " ");
-    let mut chars = spaced.chars();
-    match chars.next() {
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-        None => String::new(),
-    }
+    let words: Vec<String> = name
+        .split(['-', '_', '.', ' '])
+        .filter(|w| !w.is_empty())
+        .enumerate()
+        .map(|(i, w)| {
+            if INITIALISMS.contains(&w.to_ascii_lowercase().as_str()) {
+                w.to_ascii_uppercase()
+            } else if i == 0 {
+                let mut chars = w.chars();
+                chars
+                    .next()
+                    .map(|first| first.to_uppercase().collect::<String>() + chars.as_str())
+                    .unwrap_or_default()
+            } else {
+                w.to_string()
+            }
+        })
+        .collect();
+    words.join(" ")
 }
 
 #[cfg(test)]

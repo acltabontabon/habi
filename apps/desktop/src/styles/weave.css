@@ -1,5 +1,5 @@
 /*
- * The weave layer: threads, swatches and selvedges, and the surfaces that
+ * The weave layer: threads and swatches, and the surfaces that
  * carry them. Loaded after app.css and authoring.css, so it can refine them.
  */
 
@@ -39,20 +39,6 @@
 .swatch .swatch-weft {
   fill: var(--hairline-strong);
   opacity: 0.55;
-}
-
-/* ---------- Selvedge: the woven edge of a library ---------- */
-
-.selvedge {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--selvedge);
-  opacity: 0.9;
-}
-
-.selvedge.is-community {
-  background: repeating-linear-gradient(90deg, var(--selvedge) 0 10px, transparent 10px 16px);
-  opacity: 0.85;
 }
 
 /* ---------- Provenance chip: library name with its thread ---------- */

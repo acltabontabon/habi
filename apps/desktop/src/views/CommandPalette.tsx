@@ -2,14 +2,17 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
+import type { LibraryIndex } from "../bindings/LibraryIndex";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
 import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toasts";
 import { useActions } from "../lib/actions";
 import { api, newJobId } from "../lib/api";
 import { applicabilityLabel } from "../lib/format";
+import { setInspectorOpen } from "../lib/inspector";
 import { useNav } from "../lib/nav";
 import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
+import { summarize } from "../lib/skillFacts";
 import { useTheme } from "../lib/theme";
 
 export function CommandPalette({
@@ -29,6 +32,12 @@ export function CommandPalette({
   const [theme, setTheme] = useTheme();
   const projectId = route.name === "project" ? route.projectId : undefined;
   const overview = projectId ? client.getQueryData<ProjectOverview>(keys.overview(projectId)) : undefined;
+  // In a library, its skills come first: the palette follows what you are looking at.
+  const librarySourceId = route.name === "sources" ? route.sourceId : undefined;
+  const library = librarySourceId
+    ? client.getQueryData<LibraryIndex>(keys.library(librarySourceId))
+    : undefined;
+  const libraryName = (sources.data ?? []).find((s) => s.id === librarySourceId)?.name;
 
   const refreshAll = async () => {
     const list = sources.data ?? [];
@@ -70,6 +79,33 @@ export function CommandPalette({
             </div>
             <Command.List className="palette-list">
               <Command.Empty className="palette-empty">No matches.</Command.Empty>
+              {librarySourceId && library ? (
+                <Command.Group heading={`In ${library.name ?? libraryName ?? "this library"}`}>
+                  {library.items.map((i) => (
+                    <Command.Item
+                      key={i.key}
+                      value={`${i.title} ${i.id}`}
+                      onSelect={() =>
+                        run(() => navigate({ name: "sources", sourceId: librarySourceId, itemId: i.id }))
+                      }
+                    >
+                      <Icon name="thread" />
+                      <span>{i.title}</span>
+                      <span className="palette-meta">{summarize(i.description).text}</span>
+                    </Command.Item>
+                  ))}
+                  {route.name === "sources" && route.itemId ? (
+                    <Command.Item
+                      value="package contents files inspector"
+                      onSelect={() => run(() => setInspectorOpen(true))}
+                    >
+                      <Icon name="layers" />
+                      <span>Show the package contents</span>
+                      <span className="palette-meta mono">⌘I</span>
+                    </Command.Item>
+                  ) : null}
+                </Command.Group>
+              ) : null}
               {overview ? (
                 <Command.Group heading={`In ${overview.project.name}`}>
                   {overview.recommendations.map((r) => (

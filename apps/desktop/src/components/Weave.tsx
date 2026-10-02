@@ -6,7 +6,6 @@
  *
  * All of these are decorative: the library's name is always next to them.
  */
-import type { CSSProperties } from "react";
 import type { Dye } from "../lib/dye";
 
 /** A short length of one library's thread, crossing a weft. */
@@ -129,16 +128,5 @@ export function Swatch({
     >
       {cells}
     </svg>
-  );
-}
-
-/** The woven edge along the top of a library: its dye, solid or stitched. */
-export function Selvedge({ dye }: { dye: Dye }) {
-  return (
-    <div
-      className={`selvedge${dye.community ? " is-community" : ""}`}
-      style={{ "--selvedge": dye.color } as CSSProperties}
-      aria-hidden="true"
-    />
   );
 }

@@ -50,7 +50,6 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const connecting =
     route.name === "sources" && (!route.sourceId || ["git", "folder", "community"].includes(route.sourceId));
   const openLibrary = (id: string) => navigate({ name: "sources", sourceId: id });
-  const nextTheme: Record<ThemeChoice, ThemeChoice> = { system: "dark", dark: "light", light: "system" };
 
   return (
     <nav className="sidebar" aria-label="Habi">
@@ -223,23 +222,27 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           className={`sidebar-item${route.name === "settings" ? " is-active" : ""}`}
           aria-current={route.name === "settings" ? "page" : undefined}
           onClick={() => navigate({ name: "settings" })}
+          title="Settings (⌘,)"
         >
           <Icon name="settings" />
           <span className="sidebar-item-text">Settings</span>
         </button>
         <button
           type="button"
-          className="sidebar-item"
-          onClick={() => setTheme(nextTheme[theme])}
-          aria-label={`Theme: ${theme}. Switch to ${nextTheme[theme]}.`}
+          className="sidebar-theme"
+          onClick={() => setTheme(NEXT_THEME[theme])}
+          title={`Theme: ${THEME_LABEL[theme]} — switch to ${THEME_LABEL[NEXT_THEME[theme]].toLowerCase()}`}
+          aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[NEXT_THEME[theme]].toLowerCase()}.`}
         >
-          <Icon name={theme === "dark" ? "moon" : "sun"} />
-          <span className="sidebar-item-text">Theme: {theme}</span>
+          <Icon name={theme === "dark" ? "moon" : theme === "light" ? "sun" : "contrast"} />
         </button>
       </div>
     </nav>
   );
 }
+
+const NEXT_THEME: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
+const THEME_LABEL: Record<ThemeChoice, string> = { system: "Match the system", light: "Light", dark: "Dark" };
 
 function LibraryItem({
   source,
