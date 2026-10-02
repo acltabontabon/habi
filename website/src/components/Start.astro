@@ -11,15 +11,15 @@ const repo = "https://github.com/acltabontabon/habi";
     <em>Start weaving.</em>
   </h2>
   <div class="start-actions">
-    <span class="btn btn-primary btn-big is-soon">
-      <Icon name="download" size={16} />
-      Download the app
-      <span class="soon mono">coming soon</span>
-    </span>
+    <a class="btn btn-primary btn-big" href={`${repo}#build-from-source`}>
+      <Icon name="terminal" size={16} />
+      Build from source
+    </a>
     <a class="btn btn-quiet btn-big" href={repo}>View on GitHub <Icon name="external" size={13} /></a>
   </div>
   <p class="start-note">
-    For macOS and Windows. Pre-release — can't wait? <a href={`${repo}#try-it`}>Build it from source</a> in a few minutes.
+    For macOS and Windows. Pre-release: downloads come with the first release; until then it builds from source in a
+    few minutes.
   </p>
 </section>
 

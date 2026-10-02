@@ -10,6 +10,7 @@
  * threads hang straight behind the type; with them they can be plucked
  * (scripts/hero.ts).
  */
+const repo = "https://github.com/acltabontabon/habi";
 const lines = ["What one developer", "learns, |every project|", "keeps."];
 const warps = [
   { x: 5, dye: "var(--dye-0)" },
@@ -75,7 +76,7 @@ const warps = [
       <p class="hero-meta mono">For macOS and Windows · works with Claude Code, Cursor and Codex</p>
     </div>
     <div class="hero-actions">
-      <a class="btn btn-primary" href="#start">Download</a>
+      <a class="btn btn-primary" href={`${repo}#build-from-source`}>Build from source</a>
       <a class="btn btn-quiet" href="#problem">Why Habi exists <span aria-hidden="true">↓</span></a>
     </div>
   </div>

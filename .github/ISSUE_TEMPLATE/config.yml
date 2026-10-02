@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Ask in Discussions
+    url: https://github.com/acltabontabon/habi/discussions
+    about: Questions, ideas and show-and-tell. Answers are best effort; see SUPPORT.md.
   - name: Report a security problem
-    url: https://github.com/acltabontabon/habi/security/advisories/new
-    about: Please report vulnerabilities privately, not as public issues.
+    url: https://github.com/acltabontabon/habi/security/policy
+    about: Please report vulnerabilities privately, as described in the security policy, not as public issues.

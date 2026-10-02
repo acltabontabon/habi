@@ -1,0 +1,22 @@
+name: Question
+description: Ask how something works, or whether it is a bug.
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Habi is maintained by one developer in their own time; answers are best effort (see
+        SUPPORT.md). Open questions and ideas also fit in Discussions. Please do **not** ask
+        about security problems here — see SECURITY.md.
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like to know?
+      description: What you are trying to do, and what you have tried or read so far.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Habi version and operating system
+      placeholder: "0.1.0 on macOS 26 (arm64)"

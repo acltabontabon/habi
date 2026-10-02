@@ -1,7 +1,7 @@
 //! Where each client discovers project-level skills, and how Habi chooses the
 //! smallest set of directories that serves the selected clients.
 //!
-//! From `docs/compatibility.md` (2026-10-02):
+//! From `docs/dev/compatibility-research.md` (2026-10-02):
 //! - Codex reads `.agents/skills`.
 //! - Cursor reads `.agents/skills`, `.cursor/skills`, and also `.claude/skills`.
 //! - Claude Code reads `.claude/skills` (not `.agents/skills`).

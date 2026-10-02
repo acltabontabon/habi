@@ -17,5 +17,5 @@ body:
     attributes:
       value: |
         Habi deliberately avoids some things (marketplaces, telemetry, guessing applicability with
-        a model) — see docs/product.md. Ideas in those areas are welcome, but please say how they
+        a model) — see docs/project/product.md. Ideas in those areas are welcome, but please say how they
         would keep Habi local and honest about evidence.
