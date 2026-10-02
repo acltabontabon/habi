@@ -1143,7 +1143,7 @@ fn upgrading_the_database_keeps_existing_state() {
         .unwrap();
     }
     let habi = open(home.path());
-    assert_eq!(habi.store.schema_version().unwrap(), 3);
+    assert_eq!(habi.store.schema_version().unwrap(), 4);
     assert_eq!(habi.project("p1").unwrap().name, "billing");
     // Libraries connected before roles existed are the team's own.
     assert_eq!(
