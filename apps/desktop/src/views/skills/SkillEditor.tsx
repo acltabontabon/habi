@@ -53,6 +53,8 @@ const STARTERS: { label: string; body: string }[] = [
 
 type DocValue = { title: string; document: SkillDocument };
 
+const NOT_SAVED = "Nothing was done: your latest edits are not saved. Resolve that above, then try again.";
+
 const docKey = (v: DocValue) =>
   JSON.stringify([v.title, v.document.name, v.document.description, v.document.body]);
 const formKey = (f: ShareForm) => JSON.stringify(f);
@@ -185,8 +187,16 @@ function Loaded({ initial }: { initial: LocalSkill }) {
     [resetDoc, resetForm, resetYaml],
   );
 
+  /** Writes pending edits; true when everything on screen is saved. */
   const flushAll = async () => {
-    await Promise.all([docSave.flush(), formSave.flush(), yamlSave.flush()]);
+    const results = await Promise.all([docSave.flush(), formSave.flush(), yamlSave.flush()]);
+    return results.every(Boolean);
+  };
+  /** Before acting on what is on disk: stops (and says why) when edits are not saved. */
+  const saveFirst = async () => {
+    const saved = await flushAll();
+    if (!saved) setActionError(new Error(NOT_SAVED));
+    return saved;
   };
 
   const reloadFromDisk = async () => {
@@ -224,7 +234,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
 
   const open = async (which: "use" | "share") => {
     setActionError(null);
-    await flushAll();
+    if (!(await saveFirst())) return;
     try {
       // Dialogs act on what is saved, so they read it back first.
       setSkill(await api.getSkill(id));
@@ -236,7 +246,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
 
   const exportFolder = async () => {
     setActionError(null);
-    await flushAll();
+    if (!(await saveFirst())) return;
     try {
       const path = await api.exportSkill(id);
       if (path) toast.show(`Exported to ${path}. It works there without Habi.`);
@@ -246,7 +256,8 @@ function Loaded({ initial }: { initial: LocalSkill }) {
   };
 
   const trash = async () => {
-    await flushAll();
+    setActionError(null);
+    if (!(await saveFirst())) return;
     try {
       await api.trashSkill(id);
       invalidateSkills(client);
@@ -420,7 +431,7 @@ function Loaded({ initial }: { initial: LocalSkill }) {
           </div>
         )}
       </header>
-      <UpstreamPanel skill={skill} beforeReview={flushAll} onApplied={reloadFromDisk} />
+      <UpstreamPanel skill={skill} beforeReview={saveFirst} onApplied={reloadFromDisk} />
 
       {showProblems && errors.length + warnings.length > 0 ? (
         <ul className="editor-problems">
@@ -733,7 +744,9 @@ function Loaded({ initial }: { initial: LocalSkill }) {
               <FilesPane
                 skill={skill}
                 readOnly={trashed}
-                beforeChange={flushAll}
+                beforeChange={async () => {
+                  if (!(await flushAll())) throw new Error(NOT_SAVED);
+                }}
                 onSkill={(fresh, path) =>
                   adopt(fresh, {
                     document: path === "SKILL.md",

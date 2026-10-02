@@ -28,8 +28,8 @@ export function UpstreamPanel({
   onApplied,
 }: {
   skill: LocalSkill;
-  /** Saves pending edits, so the comparison sees what is on disk. */
-  beforeReview: () => Promise<void>;
+  /** Saves pending edits, so the comparison sees what is on disk. False when they could not be saved. */
+  beforeReview: () => Promise<boolean>;
   /** Reloads the editor from disk after files were replaced. */
   onApplied: () => Promise<void> | void;
 }) {
@@ -55,7 +55,7 @@ export function UpstreamPanel({
         tone="unknown"
         title={`Updated in ${s.sourceName} since you copied it`}
         action={
-          <Button size="sm" onClick={() => void beforeReview().finally(() => setReviewing(true))}>
+          <Button size="sm" onClick={() => void beforeReview().then((saved) => saved && setReviewing(true))}>
             Review update…
           </Button>
         }

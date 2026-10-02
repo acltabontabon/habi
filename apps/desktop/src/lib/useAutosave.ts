@@ -5,9 +5,27 @@
  * write is in flight are written next; a conflict (the file changed outside
  * Habi) stops saving until the author chooses a version; leaving the screen
  * flushes pending edits.
+ *
+ * Every mounted autosave is registered, so closing the window can write
+ * them all first and navigation can stop before edits that could not be
+ * saved are lost.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HabiError } from "./api";
+
+type Registered = { flush: () => Promise<boolean>; unsaved: () => boolean };
+const registered = new Set<Registered>();
+
+/** Writes every open editor's pending edits. Resolves true when all of them are saved. */
+export async function flushAutosaves(): Promise<boolean> {
+  const results = await Promise.all([...registered].map((r) => r.flush().catch(() => false)));
+  return results.every(Boolean);
+}
+
+/** Whether an open editor holds edits that could not be saved (a conflict or a failed write). */
+export function hasUnsavedEdits(): boolean {
+  return [...registered].some((r) => r.unsaved());
+}
 
 export type SaveState = "clean" | "pending" | "saving" | "saved" | "error" | "conflict";
 
@@ -41,6 +59,7 @@ export function useAutosave<T>(options: {
   const inFlight = useRef<Promise<void> | null>(null);
   const timer = useRef<number | null>(null);
   const blocked = useRef(false);
+  const failed = useRef(false);
   const alive = useRef(true);
   latest.current = value;
   saveRef.current = save;
@@ -57,18 +76,23 @@ export function useAutosave<T>(options: {
     if (blocked.current) return false;
     const snapshot = latest.current;
     const key = keyRef.current(snapshot);
-    if (key === savedKey.current) return true;
+    if (key === savedKey.current) {
+      failed.current = false;
+      return true;
+    }
     if (alive.current) setState("saving");
     const attempt = (async (): Promise<boolean> => {
       try {
         await saveRef.current(snapshot);
         savedKey.current = key;
+        failed.current = false;
         if (!alive.current) return true;
         setError(null);
         if (keyRef.current(latest.current) === key) setState("saved");
         else setState("pending");
         return true;
       } catch (e) {
+        failed.current = true;
         if (!alive.current) return false;
         setError(e);
         if (e instanceof HabiError && e.code === "conflict") {
@@ -102,12 +126,18 @@ export function useAutosave<T>(options: {
   // Leaving the screen or closing the window writes pending edits.
   useEffect(() => {
     alive.current = true;
+    const entry: Registered = {
+      flush: run,
+      unsaved: () => blocked.current || failed.current,
+    };
+    registered.add(entry);
     const onHide = () => void run();
     window.addEventListener("beforeunload", onHide);
     window.addEventListener("blur", onHide);
     return () => {
       window.removeEventListener("beforeunload", onHide);
       window.removeEventListener("blur", onHide);
+      registered.delete(entry);
       void run();
       alive.current = false;
     };
@@ -120,6 +150,7 @@ export function useAutosave<T>(options: {
 
   const reset = useCallback((saved: string) => {
     blocked.current = false;
+    failed.current = false;
     savedKey.current = saved;
     setError(null);
     setState("clean");

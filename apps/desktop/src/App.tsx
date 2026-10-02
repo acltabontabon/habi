@@ -6,6 +6,7 @@ import { ToastProvider, useToast } from "./components/Toasts";
 import { ErrorNotice, Working } from "./components/ui";
 import { type Actions, ActionsContext } from "./lib/actions";
 import { api } from "./lib/api";
+import { guardWindowClose } from "./lib/closing";
 import { lastProject, NavProvider, type Route, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
 import { keys, useAppInfo } from "./lib/queries";
@@ -158,6 +159,31 @@ function Shell() {
     });
     return () => stop?.();
   }, [client]);
+
+  // Closing the window waits for pending edits to be written.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let done = false;
+    try {
+      void guardWindowClose(() =>
+        toast.show(
+          "Some edits could not be saved, so Habi stayed open. Close again to quit without them.",
+          "danger",
+        ),
+      )
+        .then((unlisten) => {
+          if (done) unlisten();
+          else stop = unlisten;
+        })
+        .catch(() => undefined);
+    } catch {
+      // Not in a Tauri window (the design preview): nothing to guard.
+    }
+    return () => {
+      done = true;
+      stop?.();
+    };
+  }, [toast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
