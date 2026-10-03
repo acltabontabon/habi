@@ -176,7 +176,7 @@ fn a_fresh_catalog_lists_every_entry_without_inventing_anything() {
     let home = tempfile::tempdir().unwrap();
     let habi = habi_at(home.path());
     let entries = habi.catalog().entries().unwrap();
-    assert_eq!(entries.len(), 11);
+    assert_eq!(entries.len(), 12);
     for e in &entries {
         assert_eq!(e.availability, CatalogAvailability::NotFetched, "{}", e.id);
         assert!(e.source_id.is_none());
