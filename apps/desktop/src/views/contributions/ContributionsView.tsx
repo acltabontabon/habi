@@ -6,7 +6,7 @@
  * Nothing is merged by Habi.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 import type { Contribution } from "../../bindings/Contribution";
 import type { DraftFile } from "../../bindings/DraftFile";
 import type { DraftFileStatus } from "../../bindings/DraftFileStatus";
@@ -17,8 +17,10 @@ import { DiffStat, DiffView } from "../../components/DiffView";
 import { Icon } from "../../components/Icon";
 import { SaveIndicator } from "../../components/SaveIndicator";
 import { useToast } from "../../components/Toasts";
-import { Button, Empty, ErrorNotice, Notice, Section, Status, Working } from "../../components/ui";
+import { Button, ErrorNotice, Notice, Status, Working } from "../../components/ui";
+import { Strand } from "../../components/Weave";
 import { api, newJobId } from "../../lib/api";
+import { useDyes } from "../../lib/dye";
 import { levelLabel, plural, relativeTime, shortId } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import {
@@ -47,14 +49,38 @@ import { useAutosave } from "../../lib/useAutosave";
 import { FileComments, ReviewPanel } from "./ReviewPanel";
 import { StateChip } from "./StateChip";
 
+type StepState = "done" | "current" | "todo";
+
+const KNOT_NAMES = ["Review", "Branch", "Send"];
+
 /**
- * The three steps and how far this contribution really got. A branch that
- * was pushed without a review request is not shown as a finished review step.
+ * How far each of the three steps really got. A branch that was pushed
+ * without a review request is not shown as a finished review step.
  */
-function steps(c: Contribution, send: FinalAction): { label: string; state: "done" | "current" | "todo" }[] {
+function stepStates(c: Contribution): {
+  prepared: boolean;
+  pushed: boolean;
+  requested: boolean;
+  list: StepState[];
+} {
   const prepared = c.state !== "draft";
   const pushed = c.state === "published";
   const requested = pushed && (c.publishedUrl !== null || c.review !== null || c.inLibrary);
+  return {
+    prepared,
+    pushed,
+    requested,
+    list: [
+      prepared ? "done" : "current",
+      prepared ? "done" : "todo",
+      requested && c.review?.state !== "changesRequested" ? "done" : prepared ? "current" : "todo",
+    ],
+  };
+}
+
+/** The three steps, named for the progress bar on the contribution's page. */
+function steps(c: Contribution, send: FinalAction): { label: string; state: StepState }[] {
+  const { prepared, pushed, requested, list } = stepStates(c);
   const chip = sharingChip(c);
   const sendLabel = requested
     ? chip.state === "attention"
@@ -66,15 +92,9 @@ function steps(c: Contribution, send: FinalAction): { label: string; state: "don
         : "Branch pushed — no request"
       : send.label;
   return [
-    {
-      label: c.revising && !prepared ? "Review the revision" : "Review",
-      state: prepared ? "done" : "current",
-    },
-    { label: prepared ? "Branch prepared" : "Prepare branch", state: prepared ? "done" : "todo" },
-    {
-      label: sendLabel,
-      state: requested && c.review?.state !== "changesRequested" ? "done" : prepared ? "current" : "todo",
-    },
+    { label: c.revising && !prepared ? "Review the revision" : "Review", state: list[0] as StepState },
+    { label: prepared ? "Branch prepared" : "Prepare branch", state: list[1] as StepState },
+    { label: sendLabel, state: list[2] as StepState },
   ];
 }
 
@@ -123,6 +143,9 @@ function FilesReview({
 
   const row = (f: DraftFile) => {
     const name = inFolder(f.path);
+    const slash = name.lastIndexOf("/");
+    const dir = slash >= 0 ? name.slice(0, slash + 1) : "";
+    const base = slash >= 0 ? name.slice(slash + 1) : name;
     const comments = commentsFor(f.path).length;
     const isCurrent = current?.path === f.path;
     return (
@@ -152,17 +175,20 @@ function FilesReview({
           }`}
           onClick={() => setSelected(f.path)}
         >
-          <span className={`change-op op-${f.status}`}>{statusWord[f.status]}</span>
           <span className="rf-name mono" title={f.path}>
-            {name}
+            {dir ? <span className="rf-dir">{dir}</span> : null}
+            {base}
           </span>
-          {f.status !== "unchanged" && f.status !== "renamed" ? <DiffStat diff={f.diff} /> : null}
-          {comments > 0 ? (
-            <span className="rf-comments" title={plural(comments, "review comment")}>
-              <Icon name="info" size={12} />
-              {comments}
-            </span>
-          ) : null}
+          <span className="rf-facts">
+            <span className={`change-op op-${f.status}`}>{statusWord[f.status]}</span>
+            {f.status !== "unchanged" && f.status !== "renamed" ? <DiffStat diff={f.diff} /> : null}
+            {comments > 0 ? (
+              <span className="rf-comments" title={plural(comments, "review comment")}>
+                <Icon name="info" size={12} />
+                {comments}
+              </span>
+            ) : null}
+          </span>
         </button>
       </li>
     );
@@ -170,10 +196,10 @@ function FilesReview({
 
   return (
     <div className="files-review">
+      <p className="kicker rf-summary">
+        {plural(changed.length, "changed file")} · {included} included
+      </p>
       <div className="rf-list">
-        <p className="kicker">
-          {plural(changed.length, "changed file")} · {included} included
-        </p>
         {changed.length > 0 ? (
           <ul className="rf-rows" aria-label="Changed files">
             {changed.map(row)}
@@ -194,7 +220,11 @@ function FilesReview({
         {current ? (
           <>
             <div className="rf-diff-head">
-              <span className="mono">{inFolder(current.path)}</span>
+              <span className="mono rf-diff-name">{inFolder(current.path)}</span>
+              <span className={`change-op op-${current.status}`}>{statusWord[current.status]}</span>
+              {current.status !== "unchanged" && current.status !== "renamed" ? (
+                <DiffStat diff={current.diff} />
+              ) : null}
               {current.previousPath ? (
                 <span className="muted">
                   from <span className="mono">{inFolder(current.previousPath)}</span>
@@ -225,17 +255,20 @@ function Validation({ c }: { c: Contribution }) {
   const errors = c.validation.filter((d) => d.level === "error");
   const others = c.validation.filter((d) => d.level !== "error");
   const checked = "Checked: package format, Habi metadata, file references, secrets";
+  const clean = errors.length === 0 && others.length === 0;
   return (
-    <Section title="Validation" id="validation">
-      {errors.length === 0 && others.length === 0 ? (
-        <p>
-          <Status tone="ok">{checked} — nothing to fix.</Status>{" "}
-          <span className="muted">This does not test what the skill does.</span>
-        </p>
+    <section className="checks-block" id="validation" aria-label="Validation">
+      {clean ? (
+        <div className="checks-seal">
+          <p>
+            <Status tone="ok">{checked} — nothing to fix.</Status>
+          </p>
+          <p className="muted">This does not test what the skill does.</p>
+        </div>
       ) : (
         <>
           {errors.length > 0 ? (
-            <div className="validation-group">
+            <div className="validation-group is-blocking">
               <p className="kicker tone-danger">Blocking · {errors.length} — fix before preparing a branch</p>
               <ul className="validation">
                 {errors.map((d, i) => (
@@ -262,12 +295,32 @@ function Validation({ c }: { c: Contribution }) {
           <p className="muted">{checked}. This does not test what the skill does.</p>
         </>
       )}
-    </Section>
+    </section>
   );
 }
 
-/** Where the contribution goes, stated only as far as Habi knows it. */
-function Destination({ c, onLineage }: { c: Contribution; onLineage?: (record: boolean) => void }) {
+/** Where the host is, said only as far as Habi knows it. */
+function hostLine(c: Contribution): string {
+  return c.remote?.onThisMachine
+    ? "This machine (no Git host)"
+    : c.remote?.host
+      ? hostName(c)
+      : "Not recognized from the address";
+}
+
+/**
+ * Where the contribution goes, stated only as far as Habi knows it. The
+ * compact form leaves out what the route above it already shows.
+ */
+function Destination({
+  c,
+  compact,
+  onLineage,
+}: {
+  c: Contribution;
+  compact?: boolean;
+  onLineage?: (record: boolean) => void;
+}) {
   return (
     <dl className="meta-grid destination">
       <dt>Library</dt>
@@ -292,25 +345,58 @@ function Destination({ c, onLineage }: { c: Contribution; onLineage?: (record: b
           </dd>
         </>
       ) : null}
-      <dt>Repository</dt>
-      <dd className="mono">{c.remote?.display ?? "unknown"}</dd>
-      <dt>Host</dt>
-      <dd>
-        {c.remote?.onThisMachine
-          ? "This machine (no Git host)"
-          : c.remote?.host
-            ? hostName(c)
-            : "Not recognized from the address"}
-      </dd>
-      <dt>Target branch</dt>
-      <dd className={c.review?.targetBranch || c.remote?.tracked.kind === "branch" ? "mono" : undefined}>
-        {targetBranch(c)}
-      </dd>
-      <dt>Contribution branch</dt>
-      <dd className="mono">{c.branch}</dd>
+      {compact ? null : (
+        <>
+          <dt>Repository</dt>
+          <dd className="mono">{c.remote?.display ?? "unknown"}</dd>
+          <dt>Host</dt>
+          <dd>{hostLine(c)}</dd>
+          <dt>Target branch</dt>
+          <dd className={c.review?.targetBranch || c.remote?.tracked.kind === "branch" ? "mono" : undefined}>
+            {targetBranch(c)}
+          </dd>
+          <dt>Contribution branch</dt>
+          <dd className="mono">{c.branch}</dd>
+        </>
+      )}
       <dt>Visibility</dt>
       <dd>{visibilityText(c)}</dd>
     </dl>
+  );
+}
+
+/**
+ * The way the work travels: Habi pushes the contribution branch; a
+ * maintainer, never Habi, merges it into the target. Every name is the
+ * real one; nothing here is drawn from a guess.
+ */
+function Route({ c }: { c: Contribution }) {
+  const target = targetBranch(c);
+  const exact = Boolean(c.review?.targetBranch || c.remote?.tracked.kind === "branch");
+  return (
+    <ol className="route" aria-label="Where it goes">
+      <li className="route-stop">
+        <span className="route-kicker">Contribution branch</span>
+        <span className="route-name mono">{c.branch}</span>
+        <span className="route-sub">on this machine</span>
+      </li>
+      <li className="route-link is-push" aria-hidden="true">
+        <span>Habi pushes</span>
+      </li>
+      <li className="route-stop">
+        <span className="route-kicker">Repository</span>
+        <span className="route-name mono">{c.remote?.display ?? "unknown"}</span>
+        <span className="route-sub">{hostLine(c)}</span>
+      </li>
+      <li className="route-link is-merge" aria-hidden="true">
+        <span>a maintainer merges</span>
+      </li>
+      <li className="route-stop is-target">
+        <span className="route-kicker">Target branch</span>
+        <span className={`route-name${exact ? " mono" : ""}`}>{target}</span>
+        <span className="route-sub">Habi never pushes here</span>
+      </li>
+    </ol>
   );
 }
 
@@ -749,13 +835,18 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
 
   const set = (patch: Partial<ShareForm>) => setForm({ ...form, ...patch });
   const sent = c.pushedCommit !== null || c.state === "published" || c.revising;
+  const dye = useDyes()(c.sourceId);
+  const stations = steps(c, send);
+  const added = outgoing.reduce((n, f) => n + (f.diff.binary ? 0 : f.diff.added), 0);
+  const removed = outgoing.reduce((n, f) => n + (f.diff.binary ? 0 : f.diff.removed), 0);
 
   return (
     <div className="page contribution">
       <header className="contribution-head">
         <BackLink fallback={{ name: "contributions" }} fallbackLabel="Contributions" />
-        <p className="kicker">
-          Contribution · {c.sourceName} · <span className="mono">{c.itemPath}</span>
+        <p className="kicker contribution-kicker">
+          <Strand dye={dye} size={14} />
+          {c.sourceName} · <span className="mono">{c.itemPath}</span>
         </p>
         <h1 className="page-title">{c.title}</h1>
         <p className="contribution-status">
@@ -764,20 +855,6 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
             {c.revision > 0 ? `Revision ${c.revision} · ` : ""}updated {relativeTime(c.updatedAt)}
           </span>
         </p>
-        <ol className="steps" aria-label="Progress">
-          {steps(c, send).map((s, i) => (
-            <li
-              key={s.label}
-              className={s.state === "done" ? "is-done" : s.state === "current" ? "is-current" : undefined}
-              aria-current={s.state === "current" ? "step" : undefined}
-            >
-              <span className="step-knot" aria-hidden="true">
-                {s.state === "done" ? <Icon name="check" size={12} /> : i + 1}
-              </span>
-              {s.label}
-            </li>
-          ))}
-        </ol>
       </header>
 
       {error ? <ErrorNotice error={error} /> : null}
@@ -855,114 +932,124 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         />
       ) : null}
 
-      <Section
-        title={c.state === "published" ? "What was pushed" : "Files"}
-        id="files"
-        aside={
-          local ? (
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => navigate({ name: "skills", skillId: local })}
-            >
-              Open the skill
-            </button>
-          ) : null
-        }
-      >
-        <p className="muted">
-          {editable
-            ? "Only included files leave this machine, and only when you send or export. Compared with the library."
-            : "Compared with the library, as reviewers see them."}
-        </p>
-        <FilesReview
-          c={c}
-          editable={editable}
-          saving={busy === "select"}
-          onInclude={(p, v) => void include(p, v)}
-        />
-      </Section>
-
-      <Validation c={c} />
-
-      {editable ? (
-        local ? null : (
-          <details className="advanced contribution-metadata">
-            <summary>Where it applies, prerequisites and examples</summary>
-            <MetadataForm
-              form={form}
-              set={set}
-              suggestions={c.suggestedTags.filter((t) => !t.startsWith("agents:"))}
+      <div className="cthread">
+        <Station
+          n={1}
+          state={stations[0]?.state ?? "todo"}
+          title={stations[0]?.label ?? "Review"}
+          hint={
+            c.state === "published"
+              ? "What was pushed, compared with the library, as reviewers see it."
+              : editable
+                ? "Only included files leave this machine, and only when you send or export. Compared with the library."
+                : "Compared with the library, as reviewers see them."
+          }
+          aside={
+            local ? (
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => navigate({ name: "skills", skillId: local })}
+              >
+                Open the skill
+              </button>
+            ) : null
+          }
+        >
+          <section id="files" aria-label="Files" className="cthread-block">
+            <FilesReview
+              c={c}
+              editable={editable}
+              saving={busy === "select"}
+              onInclude={(p, v) => void include(p, v)}
             />
-          </details>
-        )
-      ) : null}
+          </section>
+          <Validation c={c} />
+          {editable && !local ? (
+            <details className="advanced contribution-metadata">
+              <summary>Where it applies, prerequisites and examples</summary>
+              <MetadataForm
+                form={form}
+                set={set}
+                suggestions={c.suggestedTags.filter((t) => !t.startsWith("agents:"))}
+              />
+            </details>
+          ) : null}
+        </Station>
 
-      <Section title="Send" id="send">
-        <div className="send-layout">
-          <Destination c={c} onLineage={editable ? (record) => lineage(record) : undefined} />
-          <div className="send-main">
-            {editable ? (
-              <fieldset className="form contribution-form">
-                <label className="field">
-                  <span className="field-label">Contribution title</span>
-                  <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
-                </label>
-                <label className="field">
-                  <span className="field-label">Why this change (for the reviewer)</span>
-                  <textarea
-                    className="input"
-                    rows={Math.min(8, Math.max(3, message.split("\n").length + 1))}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                  />
-                </label>
-                <div className="form-actions">
-                  <SaveIndicator state={autosave.state} />
-                  <Button
-                    size="sm"
-                    variant="quiet"
-                    icon="layers"
-                    busy={busy === "rehearse"}
-                    onClick={() => void rehearse()}
-                  >
-                    Add where it applies…
-                  </Button>
-                </div>
-                {rehearsalNote ? <p className="field-hint">{rehearsalNote}</p> : null}
-                {local ? (
-                  <p className="field-hint">
-                    The rules for when it applies come from the skill itself; change them in My skills.
-                  </p>
-                ) : null}
-                {autosave.state === "error" || autosave.state === "conflict" ? (
-                  <ErrorNotice
-                    error={autosave.error}
-                    title="Your latest edits are not saved"
-                    action={
-                      <Button size="sm" onClick={autosave.retry}>
-                        Try again
-                      </Button>
-                    }
-                  />
-                ) : null}
-              </fieldset>
-            ) : (
-              <div className="reviewer-summary">
-                <p>
-                  <strong>{c.title}</strong>
-                </p>
-                {c.message ? (
-                  <p className="review-comment-body">{c.message}</p>
-                ) : (
-                  <p className="muted">No message.</p>
-                )}
-              </div>
-            )}
-
-            <div className="send-actions">
+        <Station
+          n={2}
+          state={stations[1]?.state ?? "todo"}
+          title={stations[1]?.label ?? "Prepare branch"}
+          hint={
+            editable
+              ? "A title and a reason for the reviewer. Nothing leaves your machine yet."
+              : c.commitId
+                ? `Committed as ${shortId(c.commitId)} in Habi's copy of the library.`
+                : "Committed in Habi's copy of the library."
+          }
+        >
+          <div className="prepare-layout">
+            <div className="send-main">
               {editable ? (
-                <>
+                <fieldset className="form contribution-form">
+                  <label className="field">
+                    <span className="field-label">Contribution title</span>
+                    <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Why this change (for the reviewer)</span>
+                    <textarea
+                      className="input"
+                      rows={Math.min(8, Math.max(3, message.split("\n").length + 1))}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                    />
+                  </label>
+                  <div className="form-actions">
+                    <SaveIndicator state={autosave.state} />
+                    <Button
+                      size="sm"
+                      variant="quiet"
+                      icon="layers"
+                      busy={busy === "rehearse"}
+                      onClick={() => void rehearse()}
+                    >
+                      Add where it applies…
+                    </Button>
+                  </div>
+                  {rehearsalNote ? <p className="field-hint">{rehearsalNote}</p> : null}
+                  {local ? (
+                    <p className="field-hint">
+                      The rules for when it applies come from the skill itself; change them in My skills.
+                    </p>
+                  ) : null}
+                  {autosave.state === "error" || autosave.state === "conflict" ? (
+                    <ErrorNotice
+                      error={autosave.error}
+                      title="Your latest edits are not saved"
+                      action={
+                        <Button size="sm" onClick={autosave.retry}>
+                          Try again
+                        </Button>
+                      }
+                    />
+                  ) : null}
+                </fieldset>
+              ) : (
+                <div className="reviewer-summary">
+                  <p>
+                    <strong>{c.title}</strong>
+                  </p>
+                  {c.message ? (
+                    <p className="review-comment-body">{c.message}</p>
+                  ) : (
+                    <p className="muted">No message.</p>
+                  )}
+                </div>
+              )}
+              {editable ? (
+                <div className="send-actions">
                   <Button
                     variant="primary"
                     icon="branch"
@@ -977,65 +1064,98 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                       ? "Fix the blocking problems first."
                       : `Commits ${plural(outgoing.length, "file")} to ${c.branch} in Habi's copy of the library. Nothing is sent; next: ${send.label}.`}
                   </span>
-                </>
-              ) : c.state !== "published" ? (
-                <>
-                  <Button variant="primary" icon="share" onClick={() => setSendOpen(true)}>
-                    {`${send.label}…`}
-                  </Button>
-                  <Button icon="download" busy={busy === "export"} onClick={() => void exportPatch()}>
-                    Export patch…
-                  </Button>
-                  {send.note ? <span className="field-hint">{send.note}</span> : null}
-                </>
-              ) : (
-                <>
-                  <Button icon="download" busy={busy === "export"} onClick={() => void exportPatch()}>
-                    Export patch…
-                  </Button>
-                  {!c.publishedUrl && !c.review ? (
-                    <span className="field-hint">{c.publishedNote ?? `No ${word} was opened.`}</span>
-                  ) : null}
-                </>
-              )}
+                </div>
+              ) : null}
             </div>
-            <p className="muted send-base">
-              Based on <span className="mono">{shortId(c.baseCommit)}</span> of {c.sourceName}. Habi never
-              pushes to the target branch, never overwrites commits and never merges.
-            </p>
+            <aside className="commit-card" aria-label="What goes on the branch">
+              <p className="kicker">On the branch</p>
+              <p className="commit-card-files">{plural(outgoing.length, "file")}</p>
+              <p className="commit-card-lines mono">
+                <span className="diffstat-add">+{added}</span>{" "}
+                <span className="diffstat-del">−{removed}</span>
+              </p>
+              <p className="muted commit-card-note">
+                {outgoing.length === changed.length
+                  ? "Every changed file is included."
+                  : `${outgoing.length} of ${plural(changed.length, "changed file")} included.`}
+              </p>
+            </aside>
           </div>
-        </div>
-        <div className="discard">
-          {confirmDiscard ? (
-            <Notice
-              tone="warn"
-              title="Discard this contribution?"
-              action={
-                <>
-                  <Button variant="quiet" size="sm" onClick={() => setConfirmDiscard(false)}>
-                    Keep it
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    icon="trash"
-                    busy={busy === "discard"}
-                    onClick={() => void discard()}
-                  >
-                    Discard
-                  </Button>
-                </>
-              }
-            >
-              <p>{discardText}</p>
-            </Notice>
-          ) : (
-            <Button variant="quiet" size="sm" icon="trash" onClick={() => setConfirmDiscard(true)}>
-              {local ? "Discard this contribution (keeps the skill)…" : "Discard this contribution…"}
-            </Button>
-          )}
-        </div>
-      </Section>
+        </Station>
+
+        <Station n={3} state={stations[2]?.state ?? "todo"} title={stations[2]?.label ?? send.label}>
+          <Route c={c} />
+          <div className="send-layout">
+            <div className="send-main">
+              {editable ? (
+                <p className="muted">
+                  After the branch is prepared, the next step is <strong>{send.label}</strong>.
+                  {send.note ? ` ${send.note}` : ""}
+                </p>
+              ) : (
+                <div className="send-actions">
+                  {c.state !== "published" ? (
+                    <>
+                      <Button variant="primary" icon="share" onClick={() => setSendOpen(true)}>
+                        {`${send.label}…`}
+                      </Button>
+                      <Button icon="download" busy={busy === "export"} onClick={() => void exportPatch()}>
+                        Export patch…
+                      </Button>
+                      {send.note ? <span className="field-hint">{send.note}</span> : null}
+                    </>
+                  ) : (
+                    <>
+                      <Button icon="download" busy={busy === "export"} onClick={() => void exportPatch()}>
+                        Export patch…
+                      </Button>
+                      {!c.publishedUrl && !c.review ? (
+                        <span className="field-hint">{c.publishedNote ?? `No ${word} was opened.`}</span>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              )}
+              <p className="muted send-base">
+                Based on <span className="mono">{shortId(c.baseCommit)}</span> of {c.sourceName}. Habi never
+                pushes to the target branch, never overwrites commits and never merges.
+              </p>
+            </div>
+            <Destination c={c} compact onLineage={editable ? (record) => lineage(record) : undefined} />
+          </div>
+        </Station>
+      </div>
+
+      <div className="discard">
+        {confirmDiscard ? (
+          <Notice
+            tone="warn"
+            title="Discard this contribution?"
+            action={
+              <>
+                <Button variant="quiet" size="sm" onClick={() => setConfirmDiscard(false)}>
+                  Keep it
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon="trash"
+                  busy={busy === "discard"}
+                  onClick={() => void discard()}
+                >
+                  Discard
+                </Button>
+              </>
+            }
+          >
+            <p>{discardText}</p>
+          </Notice>
+        ) : (
+          <Button variant="quiet" size="sm" icon="trash" onClick={() => setConfirmDiscard(true)}>
+            {local ? "Discard this contribution (keeps the skill)…" : "Discard this contribution…"}
+          </Button>
+        )}
+      </div>
 
       <Dialog
         open={sendOpen}
@@ -1072,6 +1192,48 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         {send.note ? <p className="muted">{send.note}</p> : null}
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * One step of the way, hung on the thread that runs down the page. Its knot
+ * is filled as the step really happens; the thread below it takes color
+ * once it is done.
+ */
+function Station({
+  n,
+  state,
+  title,
+  hint,
+  aside,
+  children,
+}: {
+  n: number;
+  state: StepState;
+  title: string;
+  hint?: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      id={`cthread-${n}`}
+      className={`cthread-stop is-${state}`}
+      aria-labelledby={`cthread-${n}-title`}
+      aria-current={state === "current" ? "step" : undefined}
+    >
+      <span className="cthread-knot" aria-hidden="true">
+        {state === "done" ? <Icon name="check" size={13} /> : n}
+      </span>
+      <header className="cthread-head">
+        <h2 id={`cthread-${n}-title`} className="cthread-title">
+          {title}
+        </h2>
+        {aside}
+      </header>
+      {hint ? <p className="cthread-hint">{hint}</p> : null}
+      <div className="cthread-body">{children}</div>
+    </section>
   );
 }
 
@@ -1141,7 +1303,20 @@ function StartContribution() {
   return (
     <div className="start-contribution">
       {error ? <ErrorNotice error={error} /> : null}
-      <div className="field-row">
+      <fieldset className="field">
+        <legend className="field-label">Start from</legend>
+        <div className="start-from">
+          <label className="radio">
+            <input type="radio" checked={mode === "project"} onChange={() => setMode("project")} /> a skill in
+            one of my projects
+          </label>
+          <label className="radio">
+            <input type="radio" checked={mode === "library"} onChange={() => setMode("library")} /> an
+            existing library item (improve its metadata)
+          </label>
+        </div>
+      </fieldset>
+      <div className="start-grid">
         <label className="field">
           <span className="field-label">Library</span>
           <select
@@ -1159,68 +1334,57 @@ function StartContribution() {
             ))}
           </select>
         </label>
-        <fieldset className="field">
-          <legend className="field-label">Start from</legend>
-          <label className="radio">
-            <input type="radio" checked={mode === "project"} onChange={() => setMode("project")} /> a skill in
-            one of my projects
+        {mode === "project" ? (
+          <>
+            <label className="field">
+              <span className="field-label">Project</span>
+              <select
+                className="input"
+                value={effectiveProject}
+                onChange={(e) => {
+                  setProjectId(e.target.value);
+                  setFolder("");
+                }}
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field span-2">
+              <span className="field-label">Skill folder</span>
+              <select
+                className="input mono"
+                value={folder || folders.data?.[0] || ""}
+                onChange={(e) => setFolder(e.target.value)}
+              >
+                {(folders.data ?? []).length === 0 ? <option value="">No skill folders found</option> : null}
+                {(folders.data ?? []).map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : (
+          <label className="field">
+            <span className="field-label">Item</span>
+            <select className="input" value={itemId} onChange={(e) => setItemId(e.target.value)}>
+              <option value="">Choose…</option>
+              {(library.data?.items ?? [])
+                .filter((i) => i.kind !== "instructions")
+                .map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.title}
+                  </option>
+                ))}
+            </select>
           </label>
-          <label className="radio">
-            <input type="radio" checked={mode === "library"} onChange={() => setMode("library")} /> an
-            existing library item (improve its metadata)
-          </label>
-        </fieldset>
+        )}
       </div>
-      {mode === "project" ? (
-        <div className="field-row">
-          <label className="field">
-            <span className="field-label">Project</span>
-            <select
-              className="input"
-              value={effectiveProject}
-              onChange={(e) => {
-                setProjectId(e.target.value);
-                setFolder("");
-              }}
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span className="field-label">Skill folder</span>
-            <select
-              className="input mono"
-              value={folder || folders.data?.[0] || ""}
-              onChange={(e) => setFolder(e.target.value)}
-            >
-              {(folders.data ?? []).length === 0 ? <option value="">No skill folders found</option> : null}
-              {(folders.data ?? []).map((x) => (
-                <option key={x} value={x}>
-                  {x}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      ) : (
-        <label className="field">
-          <span className="field-label">Item</span>
-          <select className="input" value={itemId} onChange={(e) => setItemId(e.target.value)}>
-            <option value="">Choose…</option>
-            {(library.data?.items ?? [])
-              .filter((i) => i.kind !== "instructions")
-              .map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.title}
-                </option>
-              ))}
-          </select>
-        </label>
-      )}
       <Button
         variant="primary"
         icon="share"
@@ -1230,45 +1394,97 @@ function StartContribution() {
       >
         Prepare contribution
       </Button>
-      <p className="muted">
-        Habi copies only the chosen skill into a private staging area. Nothing is sent yet.
-      </p>
     </div>
   );
 }
 
-/** One contribution: its state, where it goes, and the one thing to do next. */
+const KNOT_WORDS: Record<StepState, string> = { done: "done", current: "next", todo: "to do" };
+
+/**
+ * The contribution's three steps as knots on a thread, filled as they
+ * really happen. The state word beside it says the same in text.
+ */
+function Knots({ c }: { c: Contribution }) {
+  const { list } = stepStates(c);
+  const trouble = c.attention !== null;
+  return (
+    <span
+      className="knots"
+      role="img"
+      aria-label={`Progress: ${list.map((s, i) => `${KNOT_NAMES[i]} ${KNOT_WORDS[s]}`).join(", ")}`}
+    >
+      {list.map((s, i) => (
+        <span
+          key={KNOT_NAMES[i]}
+          className={`knot is-${s}${trouble && s === "current" ? " is-trouble" : ""}`}
+          aria-hidden="true"
+        />
+      ))}
+    </span>
+  );
+}
+
+/** What needs you comes first, then what is out for review, then what is settled. */
+function rank(c: Contribution): number {
+  switch (sharingChip(c).state) {
+    case "open":
+      return 1;
+    case "merged":
+    case "closed":
+    case "inLibrary":
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * One contribution: a card hung on its library's warp thread (solid for the
+ * team, stitched for the community), with its progress as knots, its one
+ * state, and the one thing to do next.
+ */
 function ShareRow({ c }: { c: Contribution }) {
   const { navigate } = useNav();
   const openExternal = useOpenExternal();
+  const dyeOf = useDyes();
+  const dye = dyeOf(c.sourceId);
   const action = nextAction(c);
   const details = () => navigate({ name: "contributions", contributionId: c.id });
   const attention = sharingChip(c).state === "attention";
   return (
-    <li className="share-row">
-      <div className="share-row-main">
-        {action.kind === "open" ? (
-          <button type="button" className="link-btn share-row-title" onClick={details}>
-            {c.title}
-          </button>
-        ) : (
-          <span className="share-row-title">{c.title}</span>
-        )}
-        <span className="share-row-dest mono">
-          {c.sourceName} · {c.branch}
-        </span>
+    <li
+      className={`share-row${dye.community ? " is-stitched" : ""}`}
+      style={{ "--dye": dye.color } as CSSProperties}
+    >
+      <div className="share-row-head">
+        <span className="share-row-lib">{c.sourceName}</span>
+        <Knots c={c} />
       </div>
-      <StateChip contribution={c} />
-      <span className="share-row-when">{relativeTime(c.updatedAt)}</span>
-      <Button
-        size="sm"
-        variant={attention ? "primary" : "secondary"}
-        icon={action.kind === "open" ? "external" : undefined}
-        aria-label={`${action.label}: ${c.title}`}
-        onClick={() => (action.kind === "open" ? openExternal(action.url) : details())}
-      >
-        {action.label}
-      </Button>
+      {action.kind === "open" ? (
+        <button type="button" className="link-btn share-row-title" onClick={details}>
+          {c.title}
+        </button>
+      ) : (
+        <span className="share-row-title">{c.title}</span>
+      )}
+      <div className="share-row-meta">
+        <span className="share-row-dest mono" title={c.branch}>
+          {c.branch}
+        </span>
+        <span className="share-row-when">{relativeTime(c.updatedAt)}</span>
+      </div>
+      <div className="share-row-foot">
+        <StateChip contribution={c} />
+        <Button
+          size="sm"
+          variant={attention ? "primary" : "secondary"}
+          icon={action.kind === "open" ? "external" : undefined}
+          aria-label={`${action.label}: ${c.title}`}
+          onClick={() => (action.kind === "open" ? openExternal(action.url) : details())}
+        >
+          {action.label}
+        </Button>
+      </div>
     </li>
   );
 }
@@ -1276,42 +1492,64 @@ function ShareRow({ c }: { c: Contribution }) {
 export function ContributionsView({ contributionId }: { contributionId?: string }) {
   const list = useContributions();
   const { navigate } = useNav();
+  const [starting, setStarting] = useState(false);
   if (contributionId) return <Editor key={contributionId} id={contributionId} />;
   const items = list.data ?? [];
   return (
     <div className="page narrow sharing">
-      <h1 className="page-title">Contributions</h1>
-      <p className="lead-sm">
-        What you prepared for your team and what the Git host reported. Nothing joins a library until a
-        maintainer merges it.
-      </p>
+      <header className="sharing-head">
+        <p className="kicker">Contributions</p>
+        <h1 className="page-title">What you&rsquo;re sharing</h1>
+        <p className="lead-sm">
+          What you prepared for your team and what the Git host reported. Nothing joins a library until a
+          maintainer merges it.
+        </p>
+        <div className="sharing-new">
+          <Button icon="plus" onClick={() => setStarting(true)}>
+            New contribution
+          </Button>
+        </div>
+      </header>
       {list.isPending ? <Working>Loading…</Working> : null}
       {list.isError ? <ErrorNotice error={list.error} /> : null}
       {list.data && items.length === 0 ? (
-        <Empty
-          title="Nothing shared yet"
-          action={
-            <Button variant="primary" icon="pencil" onClick={() => navigate({ name: "skills" })}>
-              Go to My skills
-            </Button>
-          }
-        >
-          Improve a skill, then choose “Share” to send it to a library for review. Until then it stays on this
-          machine.
-        </Empty>
-      ) : (
-        <ul className="share-list" aria-label="Contributions">
-          {items.map((c) => (
-            <ShareRow key={c.id} c={c} />
-          ))}
-        </ul>
-      )}
-      <details className="advanced share-other">
-        <summary>Share an installed copy you edited, or improve a library item</summary>
-        <div className="advanced-body">
-          <StartContribution />
+        <div className="share-empty">
+          <p className="empty-title">Nothing shared yet</p>
+          <p className="empty-text">
+            Improve a skill, then choose &ldquo;Share&rdquo; to send it to a library for review. Until then it
+            stays on this machine.
+          </p>
+          <ol className="steps" aria-label="How sharing works">
+            {["Review", "Prepare branch", "Send"].map((label, i) => (
+              <li key={label}>
+                <span className="step-knot" aria-hidden="true">
+                  {i + 1}
+                </span>
+                {label}
+              </li>
+            ))}
+          </ol>
+          <Button variant="primary" icon="pencil" onClick={() => navigate({ name: "skills" })}>
+            Go to My skills
+          </Button>
         </div>
-      </details>
+      ) : list.data ? (
+        <ul className="share-list" aria-label="Contributions">
+          {[...items]
+            .sort((x, y) => rank(x) - rank(y))
+            .map((c) => (
+              <ShareRow key={c.id} c={c} />
+            ))}
+        </ul>
+      ) : null}
+      <Dialog
+        open={starting}
+        onOpenChange={setStarting}
+        title="New contribution"
+        description="Habi copies only the chosen skill into a private staging area. Nothing is sent yet."
+      >
+        <StartContribution />
+      </Dialog>
     </div>
   );
 }

@@ -24,7 +24,7 @@ Without the CLI tools, Habi still pushes the branch—you open the PR manually o
 **Once per library.** Go to Connect a library → Connect a Git repository and paste its address.
 Habi reads the host, repository, and default branch. It uses your existing Git credentials.
 
-![Connect a Git repository: an SSH address read as acltabontabon/team-skills on github.com, following the default branch, to be listed as a team library named team-skills.](../media/share-connect.jpg)
+![Connect a Git repository: an SSH address read as acme/team-skills on github.com, following the default branch, to be listed as a team library named team-skills.](../media/share-connect.jpg)
 
 You can also connect from the share dialog in Step 2.
 
@@ -39,10 +39,11 @@ sharing** to update it with your latest edits.
 
 ## Step 3: Review & validate
 
-The contribution page shows every file compared to the library: *added*, *modified*, *renamed*,
-*removed*, or *unchanged*. Changed files appear first with diffs.
+The contribution page follows these steps down one thread: **Review**, **Prepare branch**, then
+the send step. A knot fills as each step really happens. It shows every file compared to the library: *added*, *modified*,
+*renamed*, *removed*, or *unchanged*. Changed files appear first with diffs.
 
-![The contribution page for Share Review a pull request, a draft in three steps: Review, Prepare branch, Create pull request. SKILL.md is listed as added with 23 lines, its diff beside it, and validation reads nothing to fix.](../media/share-review.jpg)
+![The contribution page for Share Review a pull request, a draft. Step 1, Review, lists SKILL.md as added with 23 lines, its diff beside it, and a green line says the checks found nothing to fix. Steps 2 and 3 follow on the same thread.](../media/share-review.jpg)
 
 **Exclude a file?** Untick it to keep the library's version. (New skills can't omit `SKILL.md`.)
 
@@ -56,7 +57,7 @@ structure.
 
 **Add where it applies** (optional). Auto-adds which of your open projects this skill fits.
 
-![The Send section: library, repository, host, target branch, contribution branch and visibility on the left; a contribution title and a Why this change field filled in on the right, with a Prepare branch button.](../media/share-send.jpg)
+![Step 2, Prepare branch: a contribution title and a Why this change field filled in, with a Prepare branch button, beside a card saying one file, +23 −0, goes on the branch. Below, step 3 shows the route: the contribution branch, the repository on GitHub, then the target branch. Habi pushes; a maintainer merges.](../media/share-send.jpg)
 
 Habi commits to `habi/contrib/<name>-<id>` in its own copy of the library. Your branches stay
 untouched. Nothing is pushed yet.
@@ -83,11 +84,11 @@ Habi doesn't auto-poll. Click **Check status** anytime to see:
 - Comments with timestamps
 - Last checked time
 
-![The contribution after sending: an Open PR state, the message that the branch was pushed and GitHub opened the pull request with its link, and a Review section with Open on GitHub, Check status and Revise buttons.](../media/share-sent.jpg)
+![The contribution after sending: an Open PR state, the message that the branch was pushed and GitHub opened the pull request with its link, a Pull request on GitHub card with Open on GitHub, Check status and Revise buttons, and all three steps filled in on the thread below.](../media/share-sent.jpg)
 
 **Failed to send?** The contribution shows **Needs attention** with the error. Retrying is safe—branch names are fixed, pushes won't overwrite, and PRs open only when the host doesn't already show one.
 
-![The Review section after checking: GitHub pull request, checked just now, with a reviewer's general comment, and below the file's diff a comment on line 16 of SKILL.md.](../media/share-review-status.jpg)
+![The Pull request on GitHub card after checking: pull request #4, checked just now, with a reviewer's general comment, and below the file's diff a comment on line 16 of SKILL.md.](../media/share-review-status.jpg)
 
 - Comments on a line appear beside that file's diff; the rest are listed in **Review**. Replying,
   resolving and merging stay on the host.
@@ -103,7 +104,7 @@ Edit the skill in **My skills**, then return to the contribution and choose **Re
 copies the skill again, you **Prepare the revision**, and **Push revision…** adds a new commit
 to the same branch.
 
-![A revision ready to push: the file's diff with the reviewer's line comment, the validation result, and a Push revision button beside Export patch.](../media/share-revision.jpg)
+![A revision ready to push: the reviewer's line comment under the file's diff, the checks result, the prepared branch with its message and file count, and step 3, Push revision, with its route and a Push revision button beside Export patch.](../media/share-revision.jpg)
 
 Before pushing, Habi checks the request on the host. If it is still open, it shows the new
 commit and no second request is opened.
@@ -127,10 +128,13 @@ configured source and ref are the team's chosen baseline; Habi does not label ev
 
 ## Contribution states
 
-The **Contributions** page lists one row per contribution, with one state, "checked … ago" for
-states the host reported, the destination (library and branch), the last update and one next
-action: *Continue editing*, *Review changes*, *Retry* or *Open PR/MR*. Pending contributions are
-listed apart from approved library content.
+The **Contributions** page shows one card per contribution, hung on its library's thread: solid
+for a team library, stitched for a community one. A card shows the library and branch, the last
+update, one state ("checked … ago" for states the host reported), three knots for Review,
+Branch and Send that fill as each step really happens, and one next action: *Continue editing*,
+*Review changes*, *Retry* or *Open PR/MR*. What needs you comes first, then requests out for
+review, then what is settled. Pending contributions are listed apart from approved library
+content.
 
 | State | What happened |
 |---|---|
@@ -161,8 +165,8 @@ the contribution replaces that skill's files.
 
 ### Other things you can share
 
-Besides a skill from My skills, the **Contributions** page (*Share an installed copy you
-edited, or improve a library item*) starts a contribution from:
+Besides a skill from My skills, the **Contributions** page (*New contribution*) starts a
+contribution from:
 
 - a skill folder in one of your projects, such as the installed copy you improved;
 - an existing library item whose metadata you want to improve.

@@ -230,17 +230,26 @@ describe("sharing activity list", () => {
       list_contributions: () => [{ ...sent, review }, failed, { ...base, id: "c3", title: "Share draft" }],
     };
     wrap(<ContributionsView />);
-    const rows = await screen.findAllByRole("listitem");
-    const [open, attention, draft] = rows.filter((r) => r.classList.contains("share-row")) as [
-      HTMLElement,
-      HTMLElement,
-      HTMLElement,
-    ];
+    const rows = (await screen.findAllByRole("listitem")).filter((r) => r.classList.contains("share-row"));
+    // What needs you comes first; a request already out for review follows.
+    expect(rows.map((r) => r.querySelector(".share-row-title")?.textContent)).toEqual([
+      "Share failing",
+      "Share draft",
+      "Share JPA review",
+    ]);
+    const [attention, draft, open] = rows as [HTMLElement, HTMLElement, HTMLElement];
     // The state chip, and the action that opens the request on the host.
     expect(open.querySelector(".state-chip")?.textContent).toBe("Open PR");
     expect(within(open).getByRole("button", { name: "Open PR: Share JPA review" })).toBeInTheDocument();
     expect(within(open).getByText(/^checked 5 min ago$/)).toBeInTheDocument();
-    expect(within(open).getByText("Team · habi/contrib/jpa-1a2b3c")).toBeInTheDocument();
+    expect(within(open).getByText("Team")).toBeInTheDocument();
+    expect(within(open).getByText("habi/contrib/jpa-1a2b3c")).toBeInTheDocument();
+    expect(
+      within(open).getByRole("img", { name: /^Progress: Review done, Branch done, Send done$/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(draft).getByRole("img", { name: /^Progress: Review next, Branch to do, Send to do$/ }),
+    ).toBeInTheDocument();
     expect(within(open).getAllByRole("button")).toHaveLength(2); // title link to details + "Open PR"
     expect(within(attention).getByText("Needs attention")).toBeInTheDocument();
     expect(

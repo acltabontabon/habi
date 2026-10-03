@@ -15,7 +15,10 @@
 //   cd apps/desktop && VITE_HABI_BRIDGE=1 pnpm dev
 //   HABI_SHARE_LIBRARY=git@github.com:you/team-skills.git node scripts/docs-screenshots-sharing.mjs [http://127.0.0.1:1420]
 //
-// The pull request is closed, and its branch deleted, when the run ends. Captured like the other
+// The pull request is closed, and its branch deleted, when the run ends. To retake only the
+// draft-state pictures (share-dialog, share-review, share-send) without pushing anything or opening
+// a pull request, set HABI_SHARE_STOP=draft; the library is then only read, never written to.
+// Captured like the other
 // screenshots: 1440×900 at twice the resolution, light theme, motion reduced, the development
 // setup tidied away.
 
@@ -122,18 +125,19 @@ async function run() {
   await scrollTo(".contribution-head");
   await shot("share-review.jpg");
 
-  // The send section: what is validated, where it goes, and the reviewer's message.
+  // The prepare step: the reviewer's message beside what goes on the branch, and the route it takes.
   await page(`document.querySelector(".contribution textarea").focus()`);
   await type(REASON);
   await until(`document.body.textContent.includes("Saved")`, "the message to be saved");
   await page(`document.activeElement.blur()`);
-  await scrollTo(".contribution h2, .contribution h3, .section-title", "Send");
+  await scrollTo(".cthread-title", "Prepare branch");
   await shot("share-send.jpg");
+  if (process.env.HABI_SHARE_STOP === "draft") return;
 
   // Prepare the branch, then confirm sending it.
   await click("Prepare branch");
   await until(`[...document.querySelectorAll("button")].some((b) => b.textContent.trim().startsWith("Create pull request"))`, "the branch to be prepared", 60000);
-  await scrollTo(".contribution h2, .contribution h3, .section-title", "Send");
+  await scrollTo(".cthread-title", "Branch prepared");
   await shot("share-prepared.jpg");
   await click("Create pull request");
   await until(`document.querySelector("[role=dialog]")`, "the confirmation");
@@ -161,7 +165,7 @@ async function run() {
   // Habi reads the request only when asked.
   await click("Check status");
   await until(`document.querySelector(".review-comments")`, "the review comments", 60000);
-  await scrollTo("section", "Review");
+  await scrollTo(".review-card");
   await shot("share-review-status.jpg");
 
   // Revising: edit the skill where it lives, then revise, prepare and push the new version.
@@ -181,7 +185,7 @@ async function run() {
   await until(`[...document.querySelectorAll("button")].some((b) => b.textContent.trim().startsWith("Prepare the revision"))`, "the revision", 60000);
   await click("Prepare the revision");
   await until(`[...document.querySelectorAll("button")].some((b) => b.textContent.trim().startsWith("Push revision"))`, "the revision to be prepared", 60000);
-  await scrollTo(".contribution h2, .contribution h3, .section-title", "Send");
+  await scrollTo(".cthread-title", "Branch prepared");
   await shot("share-revision.jpg");
   await click("Push revision");
   await until(`document.querySelector("[role=dialog]")`, "the confirmation");
