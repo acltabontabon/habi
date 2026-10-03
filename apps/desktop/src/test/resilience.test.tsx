@@ -16,7 +16,7 @@ import { HabiError } from "../lib/api";
 import { guardWindowClose } from "../lib/closing";
 import { NavProvider, type Route, useNav } from "../lib/nav";
 import { useOverview } from "../lib/queries";
-import { initTheme, useTheme } from "../lib/theme";
+import { initTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
 import { CommandPalette } from "../views/CommandPalette";
 import { History } from "../views/project/History";
@@ -340,7 +340,7 @@ describe("global shortcuts", () => {
 });
 
 describe("theme", () => {
-  it("keeps every control in step, and follows the system only while asked to", async () => {
+  it("always follows the system, as it changes", () => {
     let systemChanged: () => void = () => {};
     const media = {
       matches: false,
@@ -351,36 +351,15 @@ describe("theme", () => {
     };
     window.matchMedia = vi.fn(() => media) as unknown as typeof window.matchMedia;
     initTheme();
-    function Picker({ where }: { where: string }) {
-      const [theme, setTheme] = useTheme();
-      return (
-        <button type="button" onClick={() => setTheme(theme === "dark" ? "system" : "dark")}>
-          {where}: {theme}
-        </button>
-      );
-    }
-    render(
-      <>
-        <Picker where="sidebar" />
-        <Picker where="settings" />
-      </>,
-    );
     expect(document.documentElement.dataset.theme).toBe("light");
 
-    await userEvent.click(screen.getByRole("button", { name: "settings: system" }));
-    expect(screen.getByRole("button", { name: "sidebar: dark" })).toBeInTheDocument();
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    // A chosen theme ignores the system.
-    media.matches = false;
-    act(() => systemChanged());
-    expect(document.documentElement.dataset.theme).toBe("dark");
-
-    await userEvent.click(screen.getByRole("button", { name: "sidebar: dark" }));
-    expect(screen.getByRole("button", { name: "settings: system" })).toBeInTheDocument();
-    expect(document.documentElement.dataset.theme).toBe("light");
     media.matches = true;
     act(() => systemChanged());
     expect(document.documentElement.dataset.theme).toBe("dark");
+
+    media.matches = false;
+    act(() => systemChanged());
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 });
 

@@ -10,7 +10,6 @@ import { api } from "../lib/api";
 import { ALL_CLIENTS, clientLabel, pruneSummary } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { useOpenExternal } from "../lib/safeInvoke";
-import { type ThemeChoice, useTheme } from "../lib/theme";
 import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
 
 /** The repository Habi is developed in (from package.json). */
@@ -21,7 +20,6 @@ export function SettingsView() {
   const info = useAppInfo();
   const client = useQueryClient();
   const toast = useToast();
-  const [theme, setTheme] = useTheme();
   const openExternal = useOpenExternal();
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -115,20 +113,6 @@ export function SettingsView() {
           library changes until you press Update, and an update never changes a project: adopting a skill
           always goes through a preview. Checks pause while the window is hidden or the network is offline.
         </p>
-      </Section>
-
-      <Section title="Appearance" id="appearance">
-        <fieldset className="field">
-          <legend className="field-label">Theme</legend>
-          <div className="segmented">
-            {(["system", "light", "dark"] as ThemeChoice[]).map((t) => (
-              <label key={t} className="radio">
-                <input type="radio" name="theme" checked={theme === t} onChange={() => setTheme(t)} />
-                {t === "system" ? "Match system" : t === "light" ? "Light" : "Dark"}
-              </label>
-            ))}
-          </div>
-        </fieldset>
       </Section>
 
       <Section title="Data and space" id="data">
