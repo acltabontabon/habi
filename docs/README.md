@@ -4,6 +4,8 @@
 
 Habi finds skills that fit your repo, installs them for your agent tools, and carries improvements back to your library. Local, no account or telemetry.
 
+![The welcome: a headline beside the three threads, find, improve and share, and a card of what Habi works with: Git found, the project stacks it reads, and the seven agent tools.](media/welcome.jpg)
+
 ## Using Habi
 
 | Guide | Read it to |
