@@ -115,6 +115,9 @@ pub struct Settings {
     /// Whether Habi asks GitHub for a newer release while it is open. Installing
     /// one always waits for the person.
     pub check_for_updates: bool,
+    /// Whether the welcome overlay opens when Habi starts. The person turns it
+    /// off from the overlay itself; Settings turns it back on.
+    pub show_welcome: bool,
 }
 
 impl Default for Settings {
@@ -122,6 +125,7 @@ impl Default for Settings {
         Settings {
             auto_refresh_hours: 12,
             check_for_updates: true,
+            show_welcome: true,
         }
     }
 }

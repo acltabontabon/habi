@@ -7,6 +7,7 @@ import "./styles/app.css";
 import "./styles/authoring.css";
 import "./styles/studio.css";
 import "./styles/weave.css";
+import "./styles/welcome.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";

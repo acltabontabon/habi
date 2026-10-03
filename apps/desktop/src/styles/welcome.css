@@ -1,0 +1,509 @@
+/*
+ * The welcome overlay: the purpose in three threads, and the setup drawn as
+ * needles and thread. The only art is the setup itself, so it always says
+ * what is really on this machine.
+ */
+
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  background: var(--paper);
+  /* A cloth's warp, barely there: vertical threads that fade out toward the edges. */
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 23px,
+    color-mix(in srgb, var(--hairline) 70%, transparent) 23px 24px
+  );
+  -webkit-mask-image: none;
+}
+
+.welcome::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 28%, var(--paper) 78%);
+}
+
+.welcome:focus {
+  outline: none;
+}
+
+.welcome-inner {
+  position: relative;
+  container-type: inline-size;
+  min-height: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: clamp(var(--s4), 3vh, var(--s6));
+  padding: clamp(var(--s5), 5vh, 56px) clamp(var(--s5), 5vw, 72px) 0;
+}
+
+.welcome-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(var(--s6), 6vw, 88px);
+  align-content: center;
+  align-items: center;
+}
+
+@container (max-width: 820px) {
+  .welcome-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- The story ---------- */
+
+.welcome-story {
+  display: grid;
+  justify-items: start;
+}
+
+.welcome-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s5);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.welcome-title {
+  font-size: clamp(30px, 3.8vw, 48px);
+  font-weight: 620;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  max-width: 20ch;
+  text-wrap: balance;
+}
+
+.welcome-title em {
+  font-style: normal;
+  color: var(--thread-strong);
+}
+
+.welcome-lead {
+  margin-top: var(--s4);
+  max-width: 48ch;
+  text-wrap: balance;
+  color: var(--ink-muted);
+  font-size: var(--text-lg);
+}
+
+/* Three verbs on one thread, each tied off with a knot. */
+.welcome-threads {
+  position: relative;
+  margin: var(--s6) 0 0;
+  padding: 0 0 0 var(--s6);
+  list-style: none;
+  display: grid;
+  gap: var(--s5);
+}
+
+.welcome-threads::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--thread);
+  transform-origin: top;
+}
+
+.welcome-threads li {
+  position: relative;
+}
+
+.wt-knot {
+  position: absolute;
+  left: calc(-1 * var(--s6));
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2.5px solid var(--thread);
+  background: var(--paper);
+}
+
+.wt-head {
+  font-size: var(--text-xl);
+  letter-spacing: -0.014em;
+  color: var(--ink-soft);
+}
+
+.wt-head strong {
+  font-weight: 620;
+  color: var(--ink);
+}
+
+.wt-gist {
+  margin-top: 2px;
+  max-width: 46ch;
+  color: var(--ink-muted);
+  font-size: var(--text-md);
+}
+
+/* ---------- Your setup ---------- */
+
+.welcome-setup {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s5);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
+}
+
+.ws-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s1) var(--s4);
+}
+
+.ws-title {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ws-state {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.ws-state.is-warn {
+  color: var(--warn-ink);
+}
+
+.ws-tools {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-tool {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s3) 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.ws-tool:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ws-tool:last-child {
+  padding-bottom: 0;
+}
+
+.ws-tool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.ws-tool-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ws-optional {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.ws-tool-purpose {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- The thread and the needle ---------- */
+
+.tool-thread {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  margin-top: var(--s1);
+  --run: var(--thread);
+}
+
+.tool-thread.is-missing {
+  --run: var(--ink-faint);
+}
+
+.tool-thread.is-required {
+  --run: var(--warn-ink);
+}
+
+.tt-run,
+.tt-guide {
+  display: block;
+  height: 0;
+}
+
+.tt-run {
+  border-top: 2.4px solid var(--run);
+  border-radius: 2px;
+  transform-origin: left;
+}
+
+.tt-guide {
+  border-top: 2px dashed var(--hairline-strong);
+}
+
+.tt-in {
+  flex: 1 1 0;
+}
+
+.tt-out {
+  flex: 1.5 1 0;
+}
+
+.tt-short {
+  flex: 0 0 22%;
+}
+
+.tt-guide.tt-in {
+  margin-left: var(--s2);
+}
+
+.tt-eye {
+  flex: none;
+  overflow: visible;
+}
+
+.tt-eye-ring {
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.5;
+}
+
+.tt-eye-thread {
+  stroke: var(--run);
+  stroke-width: 2.4;
+}
+
+.tt-eye-halo {
+  fill: none;
+  stroke: var(--paper-raised);
+  stroke-width: 5;
+}
+
+.tt-eye-front {
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.5;
+}
+
+.tt-fray {
+  flex: none;
+  fill: none;
+  stroke: var(--run);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.tt-knot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-left: -1px;
+  border-radius: 50%;
+  background: var(--run);
+}
+
+/* ---------- What to do about a missing one ---------- */
+
+.ws-fix {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  margin-top: var(--s1);
+}
+
+.ws-command {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  max-width: 100%;
+  padding: 2px 4px 2px var(--s3);
+  border-radius: var(--radius);
+  background: var(--paper-sunken);
+}
+
+.ws-command code {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.ws-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-sm);
+}
+
+.ws-after {
+  flex-basis: 100%;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.ws-after code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
+.ws-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+}
+
+.ws-foot-hint {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+/* ---------- Foot ---------- */
+
+/* The way out stays in reach however tall the story gets. */
+.welcome-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: var(--paper);
+  padding-bottom: clamp(var(--s3), 2.5vh, var(--s5));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+}
+
+.welcome-optout {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.welcome-optout input {
+  accent-color: var(--thread);
+  align-self: center;
+}
+
+.welcome-optout-hint {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+/* ---------- Motion: the threads are drawn in, once ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-inner {
+    animation: welcome-in 420ms var(--ease) both;
+  }
+
+  .welcome-threads::before {
+    animation: welcome-draw-y 900ms var(--ease) 200ms both;
+  }
+
+  .welcome-threads li {
+    animation: welcome-rise 480ms var(--ease) both;
+    animation-delay: calc(260ms + var(--i) * 150ms);
+  }
+
+  .tt-run {
+    animation: welcome-draw-x 640ms var(--ease) both;
+    animation-delay: calc(240ms + var(--i) * 160ms);
+  }
+
+  .tt-out {
+    animation-delay: calc(420ms + var(--i) * 160ms);
+  }
+
+  .tt-knot {
+    animation: welcome-pop 320ms var(--ease) both;
+    animation-delay: calc(900ms + var(--i) * 160ms);
+  }
+}
+
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes welcome-draw-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes welcome-draw-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes welcome-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+/* ---------- On the home page, when Git is missing ---------- */
+
+.home-setup {
+  max-width: 62ch;
+  margin-top: var(--s5);
+}

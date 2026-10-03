@@ -19,6 +19,8 @@ export type Actions = {
   openProject: (options?: { stay?: boolean }) => Promise<void>;
   newSkill: (context?: NewSkillContext) => void;
   addSkills: (start?: AddSkillsStart) => void;
+  /** Opens the welcome overlay: what Habi is for, and what this machine has for it. */
+  showWelcome: () => void;
 };
 
 export const ActionsContext = createContext<Actions | null>(null);

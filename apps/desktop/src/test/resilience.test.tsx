@@ -102,7 +102,7 @@ describe("ErrorBoundary", () => {
   });
 });
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn() };
+const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
 
 function wrap(ui: ReactNode, initial: Route = { name: "welcome" }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

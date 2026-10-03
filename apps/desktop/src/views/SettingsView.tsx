@@ -17,6 +17,11 @@ const UPDATE_CHOICES = [
   { value: "auto", label: "Automatic", description: "Look for updates while the app is open" },
 ];
 
+const WELCOME_CHOICES = [
+  { value: "show", label: "Show", description: "Open the welcome each time Habi starts" },
+  { value: "hide", label: "Hide", description: "Go straight to the home page" },
+];
+
 const REFRESH_CHOICES = [
   { value: 0, label: "Manual", description: "Only when I ask" },
   { value: 6, label: "6 h", description: "Every 6 hours" },
@@ -157,6 +162,14 @@ export function SettingsView() {
                 </li>
               ))}
             </ul>
+          </Setting>
+          <Setting label="Welcome" hint="What Habi is for, and whether this machine has what it needs.">
+            <ThreadChoice
+              label="Welcome when Habi starts"
+              value={s.showWelcome === false ? "hide" : "show"}
+              options={WELCOME_CHOICES}
+              onChange={(mode) => save((current) => ({ ...current, showWelcome: mode === "show" }))}
+            />
           </Setting>
           <Setting label="Data folder">
             <code className="data-path">{info.data?.dataDir}</code>

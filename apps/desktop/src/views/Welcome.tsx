@@ -6,12 +6,20 @@
  * in the sidebar, the palette and the project views.
  */
 import { useMemo } from "react";
-import { Button, ErrorNotice, Kbd, Working } from "../components/ui";
+import { Button, ErrorNotice, Kbd, Notice, Working } from "../components/ui";
 import { useActions } from "../lib/actions";
 import { useDyes } from "../lib/dye";
 import { plural, relativeTime } from "../lib/format";
+import { countUnshared, homeLead } from "../lib/homeLead";
 import { useNav } from "../lib/nav";
-import { useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
+import {
+  useAppInfo,
+  useContributions,
+  useRecentProjects,
+  useSkills,
+  useSources,
+  useSourceUpdates,
+} from "../lib/queries";
 import { Loom, type LoomProject, type LoomSource } from "./Loom";
 import { useCreateSample } from "./SampleWorkspace";
 
@@ -20,11 +28,13 @@ const SHOWN = 7;
 
 export function Welcome() {
   const { navigate } = useNav();
-  const { openProject } = useActions();
+  const { openProject, showWelcome } = useActions();
+  const info = useAppInfo();
   const recent = useRecentProjects();
   const skills = useSkills();
   const sources = useSources();
   const contributions = useContributions();
+  const updates = useSourceUpdates();
   const dyes = useDyes();
   const sample = useCreateSample();
 
@@ -56,6 +66,26 @@ export function Welcome() {
     when: relativeTime(p.lastOpenedAt),
   }));
 
+  // What most deserves saying under the headline, from what is really held. Anything
+  // not yet loaded is unknown, and unknown never produces a claim.
+  const lead = homeLead({
+    projects: projects.map((p) => ({ id: p.id, name: p.name, fits: p.summary ? p.summary.fits : null })),
+    libraries: sources.isSuccess ? sources.data.filter((s) => s.snapshot).length : null,
+    newer:
+      updates.isSuccess && sources.isSuccess
+        ? updates.data
+            .filter((u) => u.available)
+            .flatMap((u) => {
+              const source = sources.data.find((s) => s.id === u.sourceId);
+              return source ? [{ id: source.id, name: source.name }] : [];
+            })
+        : null,
+    unshared:
+      skills.isSuccess && contributions.isSuccess ? countUnshared(skills.data, contributions.data) : null,
+  });
+
+  const leadAction = lead.action;
+
   // Until the projects are known, a returning user must not see the first-run screen.
   if (recent.isPending) {
     return (
@@ -86,7 +116,32 @@ export function Welcome() {
         <h1 className="home-title">
           What one developer learns, <em>every project</em> keeps.
         </h1>
-        <p className="home-lead">Find what applies. Improve what works. Share what you learn.</p>
+        <p className="home-lead">
+          {lead.text}
+          {leadAction ? (
+            <>
+              {" "}
+              <button type="button" className="link-quiet" onClick={() => navigate(leadAction.to)}>
+                {leadAction.label}
+              </button>
+            </>
+          ) : null}
+        </p>
+        {info.data && !info.data.gitAvailable ? (
+          <div className="home-setup">
+            <Notice
+              tone="warn"
+              title="Git is not installed"
+              action={
+                <Button size="sm" onClick={showWelcome}>
+                  Set up
+                </Button>
+              }
+            >
+              Habi needs it to pull libraries from GitHub, GitLab or any Git host.
+            </Notice>
+          </div>
+        ) : null}
       </header>
 
       <Loom
