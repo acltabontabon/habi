@@ -11,8 +11,7 @@ import { api } from "../lib/api";
 import { type Dye, useDyes } from "../lib/dye";
 import { freshnessText } from "../lib/format";
 import { useNav } from "../lib/nav";
-import { keys, useContributions, useRecentProjects, useSources } from "../lib/queries";
-import { type ThemeChoice, useTheme } from "../lib/theme";
+import { keys, useAppInfo, useContributions, useRecentProjects, useSources } from "../lib/queries";
 import { repositoryLabel } from "./sources/SourceSheet";
 
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
@@ -21,7 +20,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const recent = useRecentProjects();
   const sources = useSources();
   const contributions = useContributions();
-  const [theme, setTheme] = useTheme();
+  const info = useAppInfo();
   const [allProjects, setAllProjects] = useState(false);
   const client = useQueryClient();
   const toast = useToast();
@@ -231,22 +230,11 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           <Icon name="settings" />
           <span className="sidebar-item-text">Settings</span>
         </button>
-        <button
-          type="button"
-          className="sidebar-theme"
-          onClick={() => setTheme(NEXT_THEME[theme])}
-          title={`Theme: ${THEME_LABEL[theme]} — switch to ${THEME_LABEL[NEXT_THEME[theme]].toLowerCase()}`}
-          aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[NEXT_THEME[theme]].toLowerCase()}.`}
-        >
-          <Icon name={theme === "dark" ? "moon" : theme === "light" ? "sun" : "contrast"} />
-        </button>
+        {info.data?.version ? <span className="sidebar-version">v{info.data.version}</span> : null}
       </div>
     </nav>
   );
 }
-
-const NEXT_THEME: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
-const THEME_LABEL: Record<ThemeChoice, string> = { system: "Match the system", light: "Light", dark: "Dark" };
 
 function LibraryItem({
   source,

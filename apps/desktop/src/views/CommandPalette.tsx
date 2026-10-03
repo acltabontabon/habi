@@ -15,7 +15,6 @@ import { useNav } from "../lib/nav";
 import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { useScreenCommands } from "../lib/screenCommands";
 import { summarize } from "../lib/skillFacts";
-import { useTheme } from "../lib/theme";
 import { RemoveSampleDialog, useCreateSample, useHasSample } from "./SampleWorkspace";
 
 export function CommandPalette({
@@ -32,7 +31,6 @@ export function CommandPalette({
   const { openProject, newSkill, addSkills } = useActions();
   const client = useQueryClient();
   const toast = useToast();
-  const [theme, setTheme] = useTheme();
   const sample = useCreateSample();
   const hasSample = useHasSample();
   const [removingSample, setRemovingSample] = useState(false);
@@ -255,13 +253,6 @@ export function CommandPalette({
                     onSelect={() => run(() => navigate({ name: "contributions" }))}
                   >
                     <Icon name="share" /> <span>Contributions</span>
-                  </Command.Item>
-                  <Command.Item
-                    value="theme dark light"
-                    onSelect={() => run(() => setTheme(theme === "dark" ? "light" : "dark"))}
-                  >
-                    <Icon name={theme === "dark" ? "sun" : "moon"} />{" "}
-                    <span>Switch to {theme === "dark" ? "light" : "dark"} theme</span>
                   </Command.Item>
                   <Command.Item
                     value="settings preferences diagnostics"
