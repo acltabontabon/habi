@@ -11,6 +11,11 @@ The first version, 0.1.0, is not released yet. It will contain the following.
   manifests and lockfiles, recognizes OpenAPI specs, Liquibase changelogs, CI and agent
   instruction files, and understands monorepos module by module. Repository-level facts (CI,
   agent files, Dockerfiles) count for every module, and results refresh when manifests change.
+- Open a project from Habi's own chooser: repositories in your code folders, latest work
+  first, each with its stack, branch, remote and twelve weeks of commits, and a mark where
+  agent instructions already exist. Type to narrow by name, stack, branch or remote. A folder
+  of skills is shown as a library and offered as one, also when chosen with the system picker;
+  macOS-guarded folders are only read once you open them.
 - Recommendations grouped as team requirements, fits this project, needs information,
   available, and does not apply — each with the reasons and the exact files behind them.
 - Skills without applicability rules are collapsed into a count per library, so connecting a

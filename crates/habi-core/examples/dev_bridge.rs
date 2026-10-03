@@ -114,9 +114,16 @@ impl Bridge {
             )),
 
             "pick_project" => match picked(a)? {
-                Some(path) => out(h.open_project(&path)?),
+                Some(path) => out(h.pick_project(&path)?),
                 None => Ok(Value::Null),
             },
+            "open_picked_project" => out(h.open_project(Path::new(&s("path")?))?),
+            "project_places" => out(habi_core::browse::places(&habi_core::browse::home()?)),
+            "browse_folder" => out(habi_core::browse::list(
+                &habi_core::browse::home()?,
+                Path::new(&s("path")?),
+            )?),
+            "open_browsed_project" => out(h.open_project(Path::new(&s("path")?))?),
             "open_recent_project" => {
                 let p = h.project(&s("projectId")?)?;
                 out(h.open_project(&p.root)?)

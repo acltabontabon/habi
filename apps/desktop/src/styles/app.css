@@ -7026,3 +7026,516 @@ ul.connect-confirm {
 .tip-note.tone-unknown .tip-note-dot {
   background: var(--unknown-ink);
 }
+
+/* ---------- Opening a project: Habi's own chooser ---------- */
+
+.chooser {
+  width: min(860px, 94vw);
+  height: min(580px, 86vh);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.chooser-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s4);
+  padding: var(--s5) var(--s5) var(--s4);
+}
+
+.chooser-title {
+  flex: none;
+  font-size: var(--text-xl);
+  font-weight: 580;
+  letter-spacing: -0.012em;
+}
+
+.chooser-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.chooser-crumb-wrap {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.chooser-crumb {
+  padding: 2px 3px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+button.chooser-crumb:hover,
+button.chooser-crumb:focus-visible {
+  color: var(--thread-strong);
+}
+
+.chooser-crumb.is-here {
+  color: var(--ink-soft);
+}
+
+.chooser-crumb-sep {
+  padding: 0 2px;
+  color: var(--hairline-strong);
+}
+
+.chooser-head .icon-btn {
+  margin-left: auto;
+  align-self: center;
+}
+
+.chooser-body {
+  display: grid;
+  grid-template-columns: 164px minmax(0, 1fr);
+  min-height: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+/* Places hang on one warp; where you are is the saffron knot. */
+.chooser-rail {
+  position: relative;
+  margin: 0;
+  padding: var(--s4) var(--s3) var(--s4) var(--s5);
+  list-style: none;
+  overflow-y: auto;
+  border-right: 1px solid var(--hairline);
+}
+
+.chooser-rail::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--s5) + 3.25px);
+  top: calc(var(--s4) + 14px);
+  bottom: var(--s4);
+  width: 1.5px;
+  background: linear-gradient(var(--hairline-strong) 70%, transparent);
+}
+
+.chooser-place {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  transition: color var(--duration) var(--ease);
+}
+
+.chooser-place-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chooser-place-knot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1.5px solid var(--hairline-strong);
+  background: var(--paper);
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.chooser-place:hover,
+.chooser-place:focus-visible {
+  color: var(--ink);
+}
+
+.chooser-place:hover .chooser-place-knot {
+  border-color: var(--thread);
+}
+
+.chooser-place.is-here {
+  color: var(--ink);
+  font-weight: 540;
+}
+
+.chooser-place.is-here .chooser-place-knot {
+  border-color: var(--thread);
+  background: var(--thread);
+  transform: scale(1.15);
+}
+
+.chooser-main {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* Typing narrows the list; the field is quiet until it is used. */
+.chooser-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: var(--s3) var(--s4) 0 var(--s3);
+  padding: 0 var(--s3);
+  height: 34px;
+  border-radius: var(--radius);
+  color: var(--ink-faint);
+  border: 1px solid transparent;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.chooser-filter:focus-within {
+  border-color: var(--hairline-strong);
+  background: var(--paper-raised);
+}
+
+.chooser-filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-md);
+}
+
+.chooser-filter input::placeholder {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.chooser-list {
+  overflow-y: auto;
+  padding: var(--s2) var(--s4) var(--s4) var(--s3);
+}
+
+.chooser-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto 76px 26px;
+  align-items: center;
+  column-gap: 14px;
+  min-height: 42px;
+  padding: 5px 4px 5px 10px;
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  font-size: var(--text-md);
+  cursor: default;
+  user-select: none;
+}
+
+.chooser-row:hover {
+  background: var(--paper-sunken);
+}
+
+/* The chosen row: its weft turns saffron and runs on under the whole row. */
+.chooser-row.is-selected {
+  background: var(--thread-wash);
+}
+
+.chooser-row.is-selected::after {
+  content: "";
+  position: absolute;
+  left: 34px;
+  right: 10px;
+  bottom: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--thread), transparent);
+}
+
+.chooser-thread {
+  overflow: visible;
+}
+
+.chooser-weft {
+  stroke: var(--hairline-strong);
+  stroke-width: 1.5;
+}
+
+.chooser-knot {
+  fill: var(--ink-soft);
+}
+
+.chooser-hollow {
+  fill: var(--paper);
+  stroke: var(--hairline-strong);
+  stroke-width: 1.5;
+}
+
+.chooser-stitch {
+  stroke: var(--dye-4);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 2.4 2.4;
+}
+
+.chooser-row.is-selected .chooser-weft {
+  stroke: var(--thread);
+}
+
+.chooser-row.is-selected .chooser-knot {
+  fill: var(--thread);
+}
+
+.chooser-row.is-selected .chooser-hollow {
+  stroke: var(--thread);
+}
+
+.chooser-what {
+  display: grid;
+  min-width: 0;
+}
+
+.chooser-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.chooser-name {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chooser-row.is-project .chooser-name {
+  color: var(--ink);
+  font-weight: 540;
+}
+
+.chooser-stacks,
+.chooser-inside {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chooser-inside {
+  color: var(--ink-faint);
+}
+
+.chooser-library {
+  flex: none;
+  padding: 0 7px;
+  border: 1px dashed color-mix(in srgb, var(--dye-4) 60%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 18px;
+  color: var(--ink-muted);
+}
+
+/* Agents already read this repository: a small saffron diamond. */
+.chooser-agents,
+.chooser-opened {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.chooser-agents::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid var(--thread);
+  transform: rotate(45deg);
+}
+
+.chooser-opened::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ok-ink);
+}
+
+/* Branch and remote surface under the chosen row only. */
+.chooser-detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  transition:
+    max-height var(--duration) var(--ease),
+    opacity var(--duration) var(--ease),
+    margin var(--duration) var(--ease);
+}
+
+.chooser-detail svg {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+
+.chooser-row.is-selected .chooser-detail {
+  max-height: 18px;
+  margin-top: 3px;
+  opacity: 1;
+}
+
+/* Twelve weeks of commits, stitched through a thread. */
+.chooser-stitches {
+  display: block;
+}
+
+.chooser-stitches-weft {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.chooser-stitches-week {
+  stroke: var(--ink-faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.chooser-row.is-selected .chooser-stitches-week,
+.chooser-row:hover .chooser-stitches-week {
+  stroke: var(--thread);
+}
+
+.chooser-when {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chooser-into {
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.chooser-row:hover .chooser-into,
+.chooser-row.is-selected .chooser-into {
+  opacity: 1;
+}
+
+.chooser-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: var(--s3);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.chooser-keys kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  padding: 1px 5px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+}
+
+.chooser-keys kbd:not(:first-child) {
+  margin-left: 8px;
+}
+
+.chooser-state {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 240px;
+}
+
+.chooser-empty {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.chooser-more {
+  margin: var(--s3) 0 0 46px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.chooser-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5);
+  border-top: 1px solid var(--hairline);
+}
+
+.chooser-anyway {
+  margin-right: auto;
+}
+
+.chooser-path {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Rows are drawn in, one weft after another. */
+@media (prefers-reduced-motion: no-preference) {
+  .chooser-row {
+    animation: chooser-in 320ms var(--ease) both;
+    animation-delay: calc(var(--i) * 16ms);
+  }
+}
+
+@keyframes chooser-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+
+@media (max-width: 640px) {
+  .chooser-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chooser-rail {
+    display: none;
+  }
+
+  .chooser-stitches,
+  .chooser-keys {
+    display: none;
+  }
+}

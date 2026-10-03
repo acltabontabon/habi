@@ -97,6 +97,24 @@ pub struct ProjectRecord {
     pub root: PathBuf,
 }
 
+/// What came of choosing a folder to open as a project.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export)]
+pub enum ProjectPick {
+    Opened {
+        project: ProjectRecord,
+    },
+    /// Skills and no build files: likely a library chosen by mistake.
+    /// Nothing was registered.
+    Skills {
+        /// Full path, as chosen.
+        path: String,
+        name: String,
+        skills: u32,
+    },
+}
+
 /// A small record of a project's last overview, so lists can say what fits
 /// without inspecting every project again.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -438,6 +456,26 @@ impl Habi {
     }
 
     // ----- projects ---------------------------------------------------------
+
+    /// A folder the user just chose: opened as a project, unless it holds
+    /// skills and no build files — then nothing is registered, so the UI can
+    /// offer to connect it as a library instead.
+    pub fn pick_project(&self, path: &Path) -> Result<ProjectPick> {
+        let root = crate::paths::canonical_dir(path)?;
+        let shape = crate::inspect::walk::folder_shape(&root);
+        if shape.is_skills() {
+            return Ok(ProjectPick::Skills {
+                path: root.to_string_lossy().into_owned(),
+                name: root
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "folder".into()),
+                skills: shape.skills,
+            });
+        }
+        self.open_project(&root)
+            .map(|project| ProjectPick::Opened { project })
+    }
 
     /// Registers (or re-opens) a project directory and returns its record.
     pub fn open_project(&self, path: &Path) -> Result<ProjectRecord> {

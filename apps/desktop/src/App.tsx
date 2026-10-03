@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ProjectPick } from "./bindings/ProjectPick";
+import type { ProjectRecord } from "./bindings/ProjectRecord";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { Tooltips } from "./components/Tooltips";
@@ -14,6 +16,7 @@ import { invalidateSkills, keys, useAppInfo } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
 import { CommandPalette } from "./views/CommandPalette";
 import { ContributionsView } from "./views/contributions/ContributionsView";
+import { ProjectChooser, SkillsFolderCaught } from "./views/OpenProject";
 import { ProjectView } from "./views/project/ProjectView";
 import { SettingsView } from "./views/SettingsView";
 import { Sidebar } from "./views/Sidebar";
@@ -109,6 +112,11 @@ function isTextEntry(target: EventTarget | null): boolean {
   );
 }
 
+/** Where opening a project is: Habi's chooser, or a skills folder caught from the native picker. */
+type Opening =
+  | { step: "chooser"; stay: boolean }
+  | { step: "skills"; pick: Extract<ProjectPick, { kind: "skills" }>; stay: boolean };
+
 function Shell() {
   const { route, navigate, back } = useNav();
   const client = useQueryClient();
@@ -117,20 +125,45 @@ function Shell() {
   const [adding, setAdding] = useState<AddSkillsStart | null>(null);
   useScheduledRefresh();
 
-  const openProject = useCallback(
-    async (options?: { stay?: boolean }) => {
+  const [opening, setOpening] = useState<Opening | null>(null);
+
+  const opened = useCallback(
+    (p: ProjectRecord, stay: boolean) => {
+      void client.invalidateQueries({ queryKey: keys.recent });
+      if (stay) toast.show(`${p.name} opened. Habi only reads it.`);
+      else navigate({ name: "project", projectId: p.id, tab: "recommendations" });
+    },
+    [client, navigate, toast],
+  );
+  const pick = useCallback(
+    async (stay: boolean) => {
+      setOpening(null);
       try {
-        const p = await api.pickProject();
-        if (!p) return;
-        void client.invalidateQueries({ queryKey: keys.recent });
-        if (options?.stay) toast.show(`${p.name} opened. Habi only reads it.`);
-        else navigate({ name: "project", projectId: p.id, tab: "recommendations" });
+        const picked = await api.pickProject();
+        if (!picked) return;
+        if (picked.kind === "skills") setOpening({ step: "skills", pick: picked, stay });
+        else opened(picked.project, stay);
       } catch (e) {
         toast.show(e instanceof Error ? e.message : String(e), "danger");
       }
     },
-    [client, navigate, toast],
+    [opened, toast],
   );
+  const openProject = useCallback(async (options?: { stay?: boolean }) => {
+    setOpening({ step: "chooser", stay: Boolean(options?.stay) });
+  }, []);
+  const openFolder = async (open: Promise<ProjectRecord>, stay: boolean) => {
+    setOpening(null);
+    try {
+      opened(await open, stay);
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : String(e), "danger");
+    }
+  };
+  const connectAsLibrary = (location: string) => {
+    setOpening(null);
+    navigate({ name: "sources", view: "folder", location });
+  };
   // A new skill is a page to write on, at once: no form, nothing to decide first.
   const newSkill = useCallback(
     async (context?: NewSkillContext) => {
@@ -271,6 +304,7 @@ function Shell() {
                 sourceId={route.sourceId}
                 entry={route.entry}
                 view={route.view}
+                location={route.location}
                 itemId={route.itemId}
                 file={route.file}
               />
@@ -281,6 +315,23 @@ function Shell() {
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         {adding ? <AddSkillsDialog start={adding} onClose={() => setAdding(null)} /> : null}
+        {opening?.step === "chooser" ? (
+          <ProjectChooser
+            onOpen={(path) => void openFolder(api.openBrowsedProject(path), opening.stay)}
+            onLibrary={(path) => connectAsLibrary(path)}
+            onElsewhere={() => void pick(opening.stay)}
+            onClose={() => setOpening(null)}
+          />
+        ) : null}
+        {opening?.step === "skills" ? (
+          <SkillsFolderCaught
+            pick={opening.pick}
+            onLibrary={() => connectAsLibrary(opening.pick.path)}
+            onOpenAnyway={() => void openFolder(api.openPickedProject(opening.pick.path), opening.stay)}
+            onChooseAgain={() => void pick(opening.stay)}
+            onClose={() => setOpening(null)}
+          />
+        ) : null}
       </div>
     </ActionsContext.Provider>
   );

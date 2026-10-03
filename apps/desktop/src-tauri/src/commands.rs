@@ -4,6 +4,7 @@
 //! Habi's own UI.
 
 use crate::state::AppState;
+use habi_core::browse::{self, Crumb, FolderEntry, FolderKind, FolderListing, ProjectPlaces};
 use habi_core::cancel::CancelToken;
 use habi_core::catalog::github::RepoFacts;
 use habi_core::catalog::{CatalogEntry, CatalogFit};
@@ -20,7 +21,7 @@ use habi_core::paths::RelPath;
 use habi_core::sample::SampleWorkspace;
 use habi_core::service::{
     ConditionSuggestion, Excerpt, FileContent, Habi, ImportFrom, ItemDetail, ItemRef,
-    PreviewRequest, ProjectOverview, ProjectRecord, Rehearsal, SkillPreview,
+    PreviewRequest, ProjectOverview, ProjectPick, ProjectRecord, Rehearsal, SkillPreview,
 };
 use habi_core::skills::intake::{
     ImportInspection, ImportOutcome, ImportSelection, InstructionDocument, ProjectKnowledge,
@@ -172,12 +173,14 @@ pub async fn log_ui_error(message: String, detail: Option<String>) -> CmdResult<
 pub async fn pick_project(
     app: AppHandle,
     state: State<'_, AppState>,
-) -> CmdResult<Option<ProjectRecord>> {
+) -> CmdResult<Option<ProjectPick>> {
     let habi = state.habi()?;
     let picked = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
-            .set_title("Open a project folder")
+            .set_title(
+                "Choose a code project: the folder with its package.json, pom.xml or Cargo.toml",
+            )
             .blocking_pick_folder()
     })
     .await
@@ -186,9 +189,112 @@ pub async fn pick_project(
         return Ok(None);
     };
     let path = folder.into_path().map_err(|e| internal(e.to_string()))?;
-    blocking(habi, move |h| h.open_project(&path))
-        .await
-        .map(Some)
+    let pick = blocking(habi, move |h| h.pick_project(&path)).await?;
+    // A skills folder can be connected as a library, or opened anyway, from here.
+    if let ProjectPick::Skills { path, .. } = &pick {
+        state
+            .picked_folders
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(PathBuf::from(path));
+    }
+    Ok(Some(pick))
+}
+
+// ----- the project chooser -------------------------------------------------------
+
+/// Remembers what the chooser showed, so only those folders can be browsed
+/// or opened next. A skills folder may also become a library from there.
+fn offer(state: &AppState, entries: &[&FolderEntry], crumbs: &[&Crumb]) {
+    let mut browsed = state
+        .browsed_folders
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    let mut picked = state
+        .picked_folders
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    for e in entries {
+        browsed.insert(PathBuf::from(&e.path));
+        if e.kind == FolderKind::Skills {
+            picked.insert(PathBuf::from(&e.path));
+        }
+    }
+    for c in crumbs {
+        browsed.insert(PathBuf::from(&c.path));
+    }
+}
+
+fn offered(state: &AppState, path: &str) -> CmdResult<PathBuf> {
+    let path = PathBuf::from(path);
+    if state
+        .browsed_folders
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .contains(&path)
+    {
+        Ok(path)
+    } else {
+        Err(HabiError::invalid("choose the folder in the project chooser").to_info())
+    }
+}
+
+#[tauri::command]
+pub async fn project_places(state: State<'_, AppState>) -> CmdResult<ProjectPlaces> {
+    let places =
+        tauri::async_runtime::spawn_blocking(|| browse::home().map(|home| browse::places(&home)))
+            .await
+            .map_err(|e| internal(e.to_string()))?
+            .map_err(|e| e.to_info())?;
+    let crumbs: Vec<&Crumb> = std::iter::once(&places.home).chain(&places.roots).collect();
+    offer(&state, &places.found.iter().collect::<Vec<_>>(), &crumbs);
+    Ok(places)
+}
+
+#[tauri::command]
+pub async fn browse_folder(state: State<'_, AppState>, path: String) -> CmdResult<FolderListing> {
+    let path = offered(&state, &path)?;
+    let listing = tauri::async_runtime::spawn_blocking(move || {
+        browse::home().and_then(|home| browse::list(&home, &path))
+    })
+    .await
+    .map_err(|e| internal(e.to_string()))?
+    .map_err(|e| e.to_info())?;
+    offer(
+        &state,
+        &listing.entries.iter().collect::<Vec<_>>(),
+        &listing.crumbs.iter().collect::<Vec<_>>(),
+    );
+    Ok(listing)
+}
+
+#[tauri::command]
+pub async fn open_browsed_project(
+    state: State<'_, AppState>,
+    path: String,
+) -> CmdResult<ProjectRecord> {
+    let path = offered(&state, &path)?;
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.open_project(&path)).await
+}
+
+/// Opens a folder `pick_project` held back as a skills folder.
+#[tauri::command]
+pub async fn open_picked_project(
+    state: State<'_, AppState>,
+    path: String,
+) -> CmdResult<ProjectRecord> {
+    let path = PathBuf::from(path);
+    if !state
+        .picked_folders
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .contains(&path)
+    {
+        return Err(HabiError::invalid("choose the folder with the folder picker").to_info());
+    }
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.open_project(&path)).await
 }
 
 #[tauri::command]

@@ -18,6 +18,8 @@ export type Route =
       entry?: string;
       /** A page for bringing in a library of your own. */
       view?: "git" | "folder";
+      /** A folder already chosen, for the folder page. */
+      location?: string;
       itemId?: string;
       file?: string;
     }

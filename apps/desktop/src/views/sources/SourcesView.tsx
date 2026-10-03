@@ -43,7 +43,7 @@ import { LibraryView } from "./LibraryView";
 import { repositoryLabel } from "./SourceSheet";
 
 /** Connect your own library: one intent per page. */
-function ConnectOwn({ mode }: { mode: "git" | "folder" }) {
+function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: string }) {
   const { navigate } = useNav();
   const toast = useToast();
   return (
@@ -62,6 +62,7 @@ function ConnectOwn({ mode }: { mode: "git" | "folder" }) {
       </header>
       <ConnectLibrary
         mode={mode}
+        initialLocation={location}
         onCancel={() => navigate({ name: "sources" })}
         onConnected={(source, count) => {
           toast.show(`${source.name} connected: ${plural(count, "item")}.`);
@@ -745,17 +746,19 @@ export function SourcesView({
   sourceId,
   entry,
   view,
+  location,
   itemId,
   file,
 }: {
   sourceId?: string;
   entry?: string;
   view?: "git" | "folder";
+  location?: string;
   itemId?: string;
   file?: string;
 }) {
   const sources = useSources();
-  if (view) return <ConnectOwn mode={view} />;
+  if (view) return <ConnectOwn key={location} mode={view} location={location} />;
   if (entry) return <LibraryPage key={entry} entryId={entry} />;
   const source = sources.data?.find((s) => s.id === sourceId);
   if (source) return <LibraryView key={source.id} source={source} itemId={itemId} file={file} />;
