@@ -16,5 +16,5 @@ no support agreement and no guaranteed response time.
   [product contract](docs/project/product.md) first; some things Habi avoids on purpose.
 - **A security problem:** do not open an issue. Follow [SECURITY.md](SECURITY.md).
 
-Before asking, [Project status](docs/project/status.md) lists known limitations, and the
+Before asking, see the [known limitations](docs/project/security-model.md#known-limitations); the
 [documentation](docs/README.md) covers everyday use.

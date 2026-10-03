@@ -227,6 +227,27 @@ re-creation of deleted files. All were fixed, with regression tests.
 
 ## Known limitations
 
-Residual risks (no sandbox for checks, a pattern-based secret scan, a same-user race during
-apply) are listed with the other limitations in
-[Project status](status.md#known-limitations).
+By design, or not solved yet:
+
+- **What an agent does** with installed content is invisible to Habi, and Habi does not claim
+  to know.
+- **Running a check** executes code with your privileges. There is no sandbox. The preview
+  lists what a pattern reading of the command and its script finds (credential files,
+  download-and-run, broad deletes); that is a warning, and it misses anything obfuscated.
+- **The secret scan** before sharing is pattern-based. It reduces the risk of sharing a
+  secret; it does not remove it.
+- **Another process running as you** could race between path validation and directory
+  creation while a plan is applied.
+- **Community libraries** usually need push access (or a fork) that you do not have. Habi
+  prepares the branch and offers *Export patch*; it does not create forks.
+- **Unsigned installers, by choice.** Habi ships on GitHub Releases only, without Apple or
+  Microsoft code signing, so the first launch needs one confirmation
+  ([how](../guide/getting-started.md#installing)). Updates are signed with Habi's own updater key
+  and verified before they install.
+- Smaller gaps: an update does not add an MCP server an item newly suggests, and restoring a
+  case-only rename keeps the new letter case
+  ([recovery](../guide/recovery.md#known-limitations)); an install on this machine is journaled
+  but no screen offers to restore it; turning an existing file into an
+  OpenAPI specification is noticed after a rescan ([detectors](../library-authors/detectors.md));
+  comments inside `habi.yaml` are not kept when the share form rewrites it
+  ([sharing](../guide/sharing.md)).

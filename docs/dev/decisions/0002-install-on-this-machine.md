@@ -39,6 +39,6 @@ those folders (*On this machine* in My skills) but never wrote to them.
   as ordinary personal skills.
 - Machine operations are journaled, but restoring one is available only in the core: no
   screen offers it yet, and the command line has no machine commands. Both are listed in
-  [Project status](../../project/status.md#next).
+  [known limitations](../../project/security-model.md#known-limitations).
 - Tests inject a fake home folder (`tests/machine_install.rs`, `tests/machine_skills.rs`) and
   never touch the real one.

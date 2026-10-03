@@ -35,8 +35,8 @@ cloud service or model call; Git uses your existing credentials.
 [Releases page](https://github.com/acltabontabon/habi/releases). They are not signed by Apple or
 Microsoft, so the first launch asks you to confirm once
 ([how](docs/guide/getting-started.md#installing)); updates are signed with Habi's own key. You
-can also build from source. What is verified, the known limitations and what is left before the
-release are in [Project status](docs/project/status.md).
+can also build from source. The known limitations are in the
+[security model](docs/project/security-model.md#known-limitations).
 
 | Platform | |
 |---|---|
@@ -72,7 +72,7 @@ here in [`docs/`](docs/README.md); both are the same pages.
   [agent tools](docs/guide/agent-tools.md), [recovery](docs/guide/recovery.md)
 - **Writing libraries:** [Habi metadata](docs/library-authors/metadata-schema.md),
   [detectors](docs/library-authors/detectors.md), [library catalog](docs/library-authors/catalog.md)
-- **The project:** [status](docs/project/status.md), [product contract](docs/project/product.md),
+- **The project:** [product contract](docs/project/product.md),
   [security model](docs/project/security-model.md)
 
 The [documentation index](docs/README.md) lists every page, including those for working on

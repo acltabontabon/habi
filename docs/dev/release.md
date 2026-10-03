@@ -1,7 +1,7 @@
 # Building and releasing
 
 Habi ships for **macOS and Windows**. Linux is not a release target. This page is the
-procedure; see [Project status](../project/status.md) for where the project stands.
+procedure.
 
 ## Toolchain (pinned)
 

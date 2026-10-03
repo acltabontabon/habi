@@ -75,8 +75,8 @@ folder. The defining demonstration — one library, three structurally different
 meaningfully different and explainable recommendations — is automated in
 `crates/habi-core/tests/matching_fixtures.rs` and `acceptance.rs`.
 
-Known gaps and what is not verified yet are listed in one place:
-[Project status](status.md#known-limitations).
+Known gaps are listed in one place:
+[security model](security-model.md#known-limitations).
 
 ## Out of scope by design
 
