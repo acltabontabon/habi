@@ -201,7 +201,7 @@ export function Working({
 }) {
   return (
     <div className={`working${stage ? " is-stage" : ""}`} role="status" aria-live="polite">
-      <Loom size={stage ? 2 : 1} />
+      <Loom size={stage ? 3 : 1} />
       <span>{children}</span>
       {onCancel ? (
         <Button variant="quiet" size="sm" onClick={onCancel}>
