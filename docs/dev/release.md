@@ -42,8 +42,8 @@ Semantic versioning, separately for:
    Deprecated, Removed, Fixed, Security.
 2. Make sure CI is green on `main` (macOS and Windows).
 3. Run the client [smoke tests](compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it)
-   with current Claude Code, Cursor and Codex builds; record the client versions and date
-   there.
+   with current builds of all seven agent tools, and record the versions and date in
+   [the results](compatibility-research.md#smoke-test-results).
 4. Tag `vX.Y.Z` and push the tag. The release workflow:
    - runs the same checks as CI, including `cargo deny`;
    - checks that the tag matches the four manifests and that `CHANGELOG.md` has its entry;
@@ -63,8 +63,14 @@ Anyone can check an artifact's provenance with
 
 ## Signing and notarization
 
-The release workflow passes these secrets to `tauri build` only when they exist. **None are
-configured in this repository.**
+Habi's installers are **not code-signed, by choice**: there is no Apple Developer ID and no
+Windows Authenticode certificate, and the binaries are published on GitHub Releases only. The
+first launch therefore meets Gatekeeper or SmartScreen once, and
+[Getting started](../guide/getting-started.md#installing) says how to get past it. What protects
+users after that is the updater's own signature (below), not the operating system's.
+
+The release workflow would still pass these secrets to `tauri build` if they were ever added.
+**None are configured in this repository.**
 
 | What | Secrets / settings | State |
 |---|---|---|
@@ -73,18 +79,18 @@ configured in this repository.**
 | Windows signing | Authenticode certificate (`bundle.windows.certificateThumbprint` or a `signCommand`) | Not implemented |
 | `habi` command-line binary | — | Not signed or notarized on either platform |
 
-Without these, the workflow produces **unsigned** artifacts and the draft release says so.
-Never commit certificates or passwords.
+Without them the workflow produces **unsigned** artifacts, as it does today, and the draft
+release says so. Never commit certificates or passwords.
 
 ## Updates
 
 Habi updates itself with Tauri's updater, run from Rust (`apps/desktop/src-tauri/src/updates.rs`);
 the webview has no updater permission. While open, Habi asks for `latest.json` on the latest
-GitHub release, at launch and every few hours (Settings → Habi updates turns that off). When a
-newer version exists, *About* and the sidebar's version mark say so, and it installs when the
+GitHub release, at launch and every few hours (Settings → Updates → Check for new releases
+turns that off). When a newer version exists, *About* and the sidebar's version mark say so, and it installs when the
 person presses **Update and restart**, after pending edits are written. How a check, a
 download and the signature fit together, and what leaves the machine, is in the
-[security model](../project/security-model.md#secrets-and-privacy).
+[security model](../project/security-model.md#network-requests-habi-makes-on-its-own).
 
 **The updater key** is separate from the Apple and Windows code-signing credentials above, and
 needed for every release:

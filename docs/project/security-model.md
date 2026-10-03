@@ -1,4 +1,4 @@
-# Security and privacy boundaries
+# Security model
 
 Library content and repositories are **untrusted input**. The webview is treated as
 untrusted too, even though it renders Habi's own UI.
@@ -71,8 +71,8 @@ and it is what makes authentication work without Habi handling secrets.
 - Apply verifies each file's digest before backing it up, and again immediately before
   writing it; a journal that cannot be saved rolls the operation back.
 - `.habi/lock.json` is untrusted too: entries may only name files under `.agents/skills/` or
-  `.claude/skills/`, sections in `AGENTS.md`/`CLAUDE.md`, and MCP entries in each client's own
-  configuration file. Anything else makes Habi refuse the lock file instead of deleting files.
+  `.claude/skills/`, sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
+  and MCP entries in each client's own configuration file. Anything else makes Habi refuse the lock file instead of deleting files.
 - Managed-section bodies may not contain Habi markers, and every write is re-parsed to confirm
   exactly one well-formed section results.
 - MCP JSON files are only rewritten if the rewrite cannot change them in meaning (no
@@ -101,7 +101,7 @@ and it is what makes authentication work without Habi handling secrets.
 - Draft Markdown is previewed through the same sanitizing renderer as library content.
 - Images in a package (PNG, JPEG, GIF, WebP, SVG up to 2 MB) are previewed as `data:` URLs
   inside an `<img>`, where SVG scripts and external references never load.
-- *Open in text editor* opens a package file explicitly in a text editor (`open -t` on macOS,
+- *Open in your text editor* opens a package file explicitly in a text editor (`open -t` on macOS,
   Notepad on Windows) — never with the file's default application, which for a script could
   be a terminal that runs it. Where no text editor can be named (Linux), the file is revealed
   in the file manager instead.
@@ -112,11 +112,18 @@ and it is what makes authentication work without Habi handling secrets.
   separate "Delete permanently".
 - Sharing a local skill goes through the contribution pipeline unchanged: explicit file list,
   secret scan, isolated branch, explicit push.
+- Installing on this machine uses the same planner with the home folder as its root: it writes
+  only skill folders under `~/.claude/skills` and `~/.agents/skills` and its record,
+  `~/.habi/lock.json`; it never writes instructions or MCP configuration there, never through
+  a symbolic link, and never over a folder it did not install.
 
 ## Desktop shell
 
-- Tauri capability: `core:default` only. No filesystem, shell, dialog or opener permission
-  is granted to the webview; folder pickers, saving and link opening run in Rust.
+- Tauri capability: only what the window uses — listening for the events Habi sends it
+  (`core:event:allow-listen`, `allow-unlisten`) and closing itself once pending edits are
+  saved (`core:window:allow-destroy`). The devtools toggle exists only in development builds.
+  No window, menu, tray, image, path, filesystem, shell, dialog, opener or updater permission
+  is granted to the webview; folder pickers, saving, link opening and updates run in Rust.
 - Content Security Policy: `default-src 'self'`; no remote scripts, frames or form actions;
   `connect-src` limited to Tauri IPC. Fonts are bundled.
 - Plans are applied **by id**; the webview never supplies file contents or target paths.
@@ -143,22 +150,6 @@ and it is what makes authentication work without Habi handling secrets.
   blocked if any are found. Only the files shown in the preview leave the machine, and only
   on explicit export or publish.
 
-## Internal review
-
-Habi has not had an independent security audit. An internal review by the project itself
-(recorded here since the initial commit, 2026-10-02) covered the install pipeline, Git
-handling, contributions, client configuration and IPC, and found thirteen issues: credential-bearing URLs, case-only renames on
-case-insensitive file systems, a `FILE://` picker bypass, lost executable bits, hooks on local
-publish, checks runnable without a preview, apply-time races, marker injection, partial
-snapshots, lock-file path confinement, per-section decisions, lossy JSON rewrites, and silent
-re-creation of deleted files. All were fixed, with regression tests.
-
-## Known limitations
-
-Residual risks (no sandbox for checks, a pattern-based secret scan, a same-user race during
-apply) are listed with the other limitations in
-[Project status](status.md#known-limitations).
-
 ## Library catalog and previews
 
 - A catalog entry is a *suggestion of a repository*, not an endorsement. **Official** means the
@@ -167,9 +158,9 @@ apply) are listed with the other limitations in
   and shown. It says nothing about the content. **Reviewed** is a separate fact that is only
   shown when the catalog records an inspection (revision, date, who, what it covered); no
   entry has one. Habi never shows a "safe" or "trusted" badge.
-- Pressing Connect on a catalog library's page connects it: the repository is read into the cache, and nothing
-  is installed, copied to My skills or run. A connection that is cancelled or fails leaves no
-  source behind. Adopting a skill is a separate, explicit step per project. The core can also
+- Pressing Connect on a catalog library's page connects it: the repository is read into the
+  cache, and nothing is installed, copied to My skills or run. A connection that is cancelled
+  or fails leaves no source behind. Adopting a skill is a separate, explicit step per project. The core can also
   read a library as a hidden preview (`habi catalog preview`): previews stay out of every
   list, recommendation and installation, cannot be installed from, copied from or contributed
   to, and are discarded after 60 days.
@@ -185,9 +176,16 @@ apply) are listed with the other limitations in
 - A rule suggested by the catalog for a skill whose author declared none is labelled as Habi's
   judgement wherever it is shown, never overrides the author's own rules, and uses only
   specific, checkable project features (a file, a dependency, a detected tag).
-- **Checking for updates.** Asking whether a library has something newer is one `git
-  ls-remote` against the library's own repository (the same access its fetch uses), downloads
-  no objects and changes nothing. A library moves only when the user presses Update, which
+
+## Network requests Habi makes on its own
+
+Everything else that reaches the network (connecting, refreshing or updating a library,
+pushing a contribution, reading a review) happens only when you ask.
+
+- **Checking a library for updates.** When you open a Git library, and on the schedule set in
+  Settings → Updates → Check libraries (every 12 hours by default), Habi asks whether the
+  library has something newer. That is one `git ls-remote` against the library's own repository (the
+  same access its fetch uses); it downloads no objects and changes nothing. A library moves only when the user presses Update, which
   fetches and records a new snapshot exactly as before; installed skills and adopted copies
   never change because a library did.
 - **Catalog facts.** Opening the page of a catalog library you have not connected asks
@@ -199,7 +197,8 @@ apply) are listed with the other limitations in
   button: they never rank, filter or recommend anything, and the page says that how many
   people use a library is not evidence that it is safe. GitHub sees the request's IP address
   and Habi's name; no account, token or project data is sent.
-- **Checking for a newer Habi.** While Habi is open (unless turned off in Settings) it asks
+- **Checking for a newer Habi.** While Habi is open, at launch and every few hours (unless
+  Settings → Updates → Check for new releases is set to Manual), it asks
   `https://github.com/acltabontabon/habi/releases/latest/download/latest.json` for the newest
   version, from Rust, through the updater plugin. The request carries no identifier and nothing
   about the machine or its projects; GitHub sees an IP address, as with any download. Finding
@@ -210,3 +209,19 @@ apply) are listed with the other limitations in
   held by the maintainer and a CI secret (`TAURI_SIGNING_PRIVATE_KEY`); losing it means
   installed copies can only be replaced by hand. The webview has no updater permission: it can
   only ask Rust to install the update Rust itself found, after pending edits are written.
+
+## Internal review
+
+Habi has not had an independent security audit. An internal review by the project itself
+(recorded here since the initial commit, 2026-10-02) covered the install pipeline, Git
+handling, contributions, client configuration and IPC, and found thirteen issues:
+credential-bearing URLs, case-only renames on case-insensitive file systems, a `FILE://`
+picker bypass, lost executable bits, hooks on local publish, checks runnable without a preview, apply-time races, marker injection, partial
+snapshots, lock-file path confinement, per-section decisions, lossy JSON rewrites, and silent
+re-creation of deleted files. All were fixed, with regression tests.
+
+## Known limitations
+
+Residual risks (no sandbox for checks, a pattern-based secret scan, a same-user race during
+apply) are listed with the other limitations in
+[Project status](status.md#known-limitations).

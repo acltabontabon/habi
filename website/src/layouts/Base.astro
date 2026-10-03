@@ -13,11 +13,15 @@ import { version } from "../../package.json";
 interface Props {
   title: string;
   description: string;
+  /** The page's own path under the site's base ("docs/getting-started/"); the home page when absent. */
+  path?: string;
+  /** "article" for a page of the docs. */
+  type?: "website" | "article";
 }
 
-const { title, description } = Astro.props;
+const { title, description, path = "", type = "website" } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
-const canonical = new URL(base, Astro.site);
+const canonical = new URL(`${base}${path}`, Astro.site);
 const og = new URL(`${base}og.png`, Astro.site);
 const repository = "https://github.com/acltabontabon/habi";
 const jsonLd = {
@@ -49,7 +53,7 @@ const jsonLd = {
     <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
     <link rel="preload" href={plexLatin} as="font" type="font/woff2" crossorigin />
 
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={type} />
     <meta property="og:site_name" content="Habi" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -62,7 +66,7 @@ const jsonLd = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={og} />
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {type === "website" ? <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} /> : null}
 
     <!-- The theme follows the system. -->
     <script is:inline>

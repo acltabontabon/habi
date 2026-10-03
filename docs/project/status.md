@@ -12,11 +12,14 @@ supported, and CI does not test it.
 
 | Area | State | Verified by |
 |---|---|---|
-| Inspection (Maven, Gradle + catalogs, npm + lockfiles, recognized files, tags, monorepos, Git metadata) | Done | Unit tests per detector; `tests/matching_fixtures.rs` |
+| Inspection (Maven, Gradle + catalogs, npm + lockfiles, Go, Cargo, Python, Composer, recognized files, tags, monorepos, Git metadata) | Done | Unit tests per detector; `tests/matching_fixtures.rs` |
 | Matching (three-valued, explanations, declarations, module scope, exclusions) | Done | Unit tests; fixture tests incl. misleading README, unresolved parents |
 | Library index (SKILL.md, `habi.yaml`, manifest instructions, diagnostics, schema) | Done | `library/tests.rs`, schema example validation |
 | Sources (Git remote/local, folder, subdir, branch/tag, moved tags, stale cache) | Done | `tests/sources.rs` with temporary local repositories |
-| Install / update / remove / restore (journal, locks, preconditions, recovery, sections, MCP) | Done | `tests/install_lifecycle.rs` (incl. simulated crash and failure) |
+| Install / update / remove / restore (journal, locks, preconditions, recovery, sections, MCP) | Done | `tests/install_lifecycle.rs` (incl. simulated crash and failure), `tests/install_edge_cases.rs` |
+| Agent tools (Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode, Junie: skill folders, instruction imports, MCP files, preselection) | Done; loading not verified (see below) | `clients` unit tests, `tests/install_lifecycle.rs` |
+| Install on this machine (plan, record in `~/.habi/lock.json`, update, remove, conflicts, shadowing note) | Done; restore not offered in the app | `tests/machine_install.rs`, `tests/machine_skills.rs`, `src/test/machineInstall.test.tsx` |
+| Library catalog (previews, connect, update checks you act on, catalog facts) | Done | `tests/catalog.rs`, `src/test/libraries.test.tsx` |
 | Recommendations (four dimensions, grouping, ordering, next action) | Done | Fixture and acceptance tests |
 | Verification checks (preview, bindings, run, record, staleness) | Done | `tests/checks.rs` (runs a harmless `git hash-object`) |
 | Contributions (staging, form, preview, secret scan, plumbing commit, patch, push, `gh`/`glab`) | Done; not run against a live host | `tests/contribution.rs` (push to local remote); `tests/review_flow.rs` (GitHub-shaped remote via `insteadOf`, stand-in `gh`); `tests/review_requests.rs` (stand-in `glab`, host detection) |
@@ -28,9 +31,10 @@ supported, and CI does not test it.
 | Local skills in recommendations and install/update plans | Done | `tests/local_skills.rs` (install, update available, conflict) |
 | Sharing a local skill; honest status (`in_library`, publish note) | Done; PR creation not exercised | `tests/local_skills.rs` (push and merge on a temporary Git remote) |
 | Diagnostics bundle | Done | CLI smoke run |
+| App updates (signed updater, What's new from the changelog) | Done; not exercised end to end, since no release is published | `src/test/updates.test.tsx`, `scripts/changelog.test.mjs` |
 | CLI | Done | `crates/habi-cli/tests/cli.rs` (JSON output, exit codes, project detection, next-step messages, install defaults) plus manual runs |
 | Desktop adapter (commands, jobs/cancel, watcher, dialogs in Rust, logging) | Done | `src-tauri/src/ipc_tests.rs` (mock runtime, real JSON arguments) |
-| Desktop UI (welcome, project discovery, workbench, My skills, skill editor with autosave and preview, add skills, use/share dialogs, library connection, sharing activity, review, evidence, installed/history, settings, palette, themes) | Done | Vitest + Testing Library + axe (`src/test`), and manual runs against the real core through the development bridge |
+| Desktop UI (welcome and setup check, home, project page, My skills, Skill Studio with autosave and testing, add skills, use and share dialogs, libraries, contributions, review, evidence, history, settings, privacy page, palette, themes) | Done | Vitest + Testing Library + axe (`src/test`), and manual runs against the real core through the development bridge |
 | Acceptance scenario (10 steps) | Passes | `tests/acceptance.rs` |
 | Docs, CI, release scaffolding | Done | — |
 
@@ -39,8 +43,8 @@ supported, and CI does not test it.
 Not verified yet:
 
 - **Agent tools loading what Habi installs.** Habi writes skills and instructions to the
-  documented locations for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie
-  ([agent tools](../guide/agent-tools.md)). Whether a given client version discovers and
+  documented locations for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode
+  and Junie ([agent tools](../guide/agent-tools.md)). Whether a given client version discovers and
   loads them is checked by hand with the
   [smoke tests](../dev/compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it),
   which have not been run for this release. Habi does not claim that an agent follows the
@@ -51,6 +55,8 @@ Not verified yet:
 - **Windows.** CI builds and tests on Windows, but Habi has mainly been used on macOS.
 - **Native window.** Most screens were exercised through the development bridge in a browser;
   native file dialogs and window behavior have had less use.
+- **Updating Habi.** The update flow is tested in the UI against a stand-in updater; no release
+  has been published, so no copy of Habi has updated itself yet.
 
 By design, or not solved yet:
 
@@ -63,10 +69,14 @@ By design, or not solved yet:
   creation while a plan is applied.
 - **Community libraries** usually need push access (or a fork) that you do not have. Habi
   prepares the branch and offers *Export patch*; it does not create forks.
-- **Unsigned releases.** See [release blockers](#release-blockers).
+- **Unsigned installers, by choice.** Habi ships on GitHub Releases only, without Apple or
+  Microsoft code signing, so the first launch needs one confirmation
+  ([how](../guide/getting-started.md#installing)). Updates are signed with Habi's own updater key
+  and verified before they install. The `habi` command-line binary is unsigned too.
 - Smaller gaps: an update does not add an MCP server an item newly suggests, and restoring a
   case-only rename keeps the new letter case
-  ([recovery](../guide/recovery.md#known-limitations)); turning an existing file into an
+  ([recovery](../guide/recovery.md#known-limitations)); an install on this machine is journaled
+  but no screen offers to restore it; turning an existing file into an
   OpenAPI specification is noticed after a rescan ([detectors](../library-authors/detectors.md));
   comments inside `habi.yaml` are not kept when the share form rewrites it
   ([sharing](../guide/sharing.md)).
@@ -80,16 +90,13 @@ Open:
   (required checks `core`, `frontend` and `licenses`; no force-push), HTTPS on the Pages
   site, and Discussions.
 - **Name availability.** Trademark and domain availability for "Habi" has not been checked.
-- **Signing.** There are no macOS signing or notarization credentials, and Windows signing is
-  not implemented. Until both exist, installers are unsigned and users see Gatekeeper or
-  SmartScreen warnings. The `habi` command-line binary is not signed or notarized on either
-  platform.
 - **Updater key.** The key pair exists (the public key is in `tauri.conf.json`), but the
   private key is not yet a GitHub secret (`TAURI_SIGNING_PRIVATE_KEY`), and the release
   workflow stops without it. Updating also needs the repository public, since `latest.json`
   is fetched from its releases anonymously. No release has been published yet, so an update
   check currently finds nothing.
-- **Client smoke tests** have not been run against installed Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie.
+- **Client smoke tests** have not been run against installed Claude Code, Cursor, Codex,
+  Gemini CLI, GitHub Copilot, OpenCode and Junie.
 - **Manual Windows smoke test.** The Windows installers are built in CI but have not been
   installed and used by hand.
 - **Live Git hosts.** Pull/merge request creation, status and revisions are tested against
@@ -109,6 +116,6 @@ Resolved:
 1. Run the client smoke tests and record versions in
    [compatibility research](../dev/compatibility-research.md).
 2. Exercise sharing against live GitHub and GitLab repositories.
-3. User-scope installation and Cursor `.mdc` rules (see
-   [future direction](product.md#future-direction)).
-4. `habi skill …` commands for local skills (list, export, import); the core supports them.
+3. Restore for installs on this machine, and installing on this machine from the command line.
+4. Cursor `.mdc` rules (see [future direction](product.md#future-direction)).
+5. `habi skill …` commands for My skills (list, export, import); the core supports them.

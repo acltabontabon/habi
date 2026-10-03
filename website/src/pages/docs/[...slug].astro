@@ -1,0 +1,18 @@
+---
+/** Every published page of docs/ (see src/lib/docs.ts). */
+import Docs from "../../layouts/Docs.astro";
+import { docs } from "../../lib/docs";
+
+export function getStaticPaths() {
+  return docs().pages.map((page) => ({ params: { slug: page.slug || undefined } }));
+}
+
+// Looked up on render rather than passed as props, so the dev server shows an edited page.
+const { pages, groups } = docs();
+const page = pages.find((p) => p.slug === (Astro.params.slug ?? ""));
+if (!page) throw new Error(`docs: no page for ${Astro.url.pathname}`);
+---
+
+<Docs page={page} groups={groups}>
+  <Fragment set:html={page.html} />
+</Docs>

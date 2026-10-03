@@ -2,6 +2,7 @@
 import Icon from "./Icon.astro";
 
 const repo = "https://github.com/acltabontabon/habi";
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 ---
 
 <div class="screen finale">
@@ -11,15 +12,18 @@ const repo = "https://github.com/acltabontabon/habi";
     <em>Start weaving.</em>
   </h2>
   <div class="start-actions">
-    <a class="btn btn-primary btn-big" href={`${repo}#build-from-source`}>
-      <Icon name="terminal" size={16} />
+    <a class="btn btn-primary btn-big" href={`${repo}/releases`}>
+      <Icon name="download" size={16} />
+      Download
+    </a>
+    <a class="btn btn-quiet btn-big" href={`${repo}#build-from-source`}>
+      <Icon name="terminal" size={14} />
       Build from source
     </a>
-    <a class="btn btn-quiet btn-big" href={repo}>View on GitHub <Icon name="external" size={13} /></a>
   </div>
   <p class="start-note">
-    For macOS and Windows. Pre-release: downloads come with the first release; until then it builds from source in a
-    few minutes.
+    For macOS and Windows, from GitHub Releases. Not signed by Apple or Microsoft, so the first launch asks once;
+    <a href={`${base}docs/getting-started/#installing`}>here is how</a>.
   </p>
 </section>
 

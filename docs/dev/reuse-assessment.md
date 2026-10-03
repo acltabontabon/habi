@@ -4,9 +4,10 @@
 
 | Need | Choice | License | Why |
 |---|---|---|---|
-| Desktop shell | Tauri 2.12 (+ dialog, opener plugins) | Apache-2.0 OR MIT | Small, native webview, capability-based permissions, Rust backend. |
-| UI | React 19, Vite 8, TypeScript 7 (strict) | MIT / Apache-2.0 | Requested stack; mature tooling. |
-| Accessible primitives | Radix Dialog, cmdk | MIT | Focus management and keyboard behavior done right; visually unstyled, so Habi's design is its own. |
+| Desktop shell | Tauri 2.12 (+ dialog, opener and updater plugins) | Apache-2.0 OR MIT | Small, native webview, capability-based permissions, Rust backend. |
+| UI | React 19, Vite 8, TypeScript 7 (strict) | MIT / Apache-2.0 | Mature tooling and typed UI code. |
+| Accessible primitives | Radix Dialog and Tooltip, cmdk | MIT | Focus management and keyboard behavior done right; visually unstyled, so Habi's design is its own. |
+| Text editing | CodeMirror 6 | MIT | Editing and highlighting for Markdown, YAML, JSON and scripts in the Skill Studio, with accessible keyboard handling. |
 | Data fetching | TanStack Query | MIT | Loading/error/caching states without hand-rolled stores. |
 | Markdown | react-markdown, remark-gfm, rehype-sanitize | MIT | Renders skills without raw HTML; sanitization on top. |
 | Fonts | IBM Plex Sans, IBM Plex Mono via Fontsource | OFL-1.1 | Bundled, no runtime CDN. |
@@ -39,8 +40,8 @@ and checked in CI.
 - **Plan/apply with journal.** Installing into someone's repository needs previews,
   precondition digests, three-way updates, managed sections and crash recovery. Generic
   package managers overwrite or refuse; none track Markdown sections or MCP entries.
-- **Client layouts.** Small, documented mapping tables; no library covers Claude Code,
-  Cursor and Codex discovery rules.
+- **Client layouts.** Small, documented mapping tables; no library covers the discovery rules
+  and MCP formats of the seven agent tools Habi supports.
 
 ## Existing skill managers
 

@@ -1,16 +1,18 @@
-# Contributing back to a team library
+# Sharing
 
-Three different actions, never mixed:
+Sharing sends a skill you improved to a library's maintainers as a reviewed change. It is one
+of three separate actions, never mixed:
 
-1. **Refresh source** — discover new approved content (fetch only).
-2. **Adopt update** — apply a reviewed change to a project, through a preview.
-3. **Contribute** — prepare a change for a maintainer's review.
+1. **Refresh a library**: fetch what the library holds now. Nothing in a project changes.
+2. **Update an installed item**: apply a library change to a project, through a preview.
+3. **Contribute**: prepare a change for the library maintainers' review.
 
 ## Steps
 
-1. **Choose explicitly.** A skill from My skills (*Share with team…* in the editor), a skill
-   folder in one of your projects (for example the installed copy you improved), or an
-   existing library item whose metadata you want to improve. Habi copies only that folder into a private staging area in its data directory.
+1. **Choose explicitly.** A skill from My skills (its share action, see
+   [My skills](my-skills.md#sharing)), a skill folder in one of your projects (for example the
+   installed copy you improved), or an existing library item whose metadata you want to
+   improve. Habi copies only that folder into a private staging area in its data folder.
    Nothing else is collected — no conversations, no other files; files the operating system
    leaves in folders (`.DS_Store`, `Thumbs.db`, `desktop.ini`) are skipped. The contribution
    names its staging folder (`stagingPath`): a library-item contribution's files are edited
@@ -50,8 +52,8 @@ Three different actions, never mixed:
      branch, contribution branch and visibility — "unknown" until the host reported it (Habi
      does not ask the network just to show the page). After an explicit confirmation
      Habi pushes the branch with your Git credentials. (For a library repository on this
-     machine, Habi creates the branch there with a hook-free `git fetch` instead of a push.) If `gh` (GitHub) or `glab` (GitLab)
-     is installed and authenticated, it can also open a pull/merge request against the
+     machine, Habi creates the branch there with a hook-free `git fetch` instead of a push.)
+     If `gh` (GitHub) or `glab` (GitLab) is installed and authenticated, it can also open a pull/merge request against the
      tracked branch. Otherwise Habi says so and leaves the request to you.
 
 Habi never merges, never pushes to the tracked branch, never overwrites commits on the
@@ -104,7 +106,7 @@ contributions are listed separately from approved library content.
    how many it does not apply to. It is ordinary message text — edit or remove it before
    saving — and it leaves the machine only with the branch, like the rest of the message.
 
-### Hosts
+### Git hosts
 
 | | GitHub | GitLab |
 |---|---|---|
@@ -123,29 +125,28 @@ next attempt succeeds. Retrying is safe: the branch name is fixed per contributi
 never overwrites commits, and a request is opened only when the host does not already show
 one for the branch.
 
-## Contributions
+## Contribution states
 
-One row per contribution with one state — *Draft*, *Ready to submit* (branch prepared, not
-pushed), *Branch pushed* (no request), *Open PR/MR*, *Changes requested*, *Merged*, *Closed*,
-*In the library* or *Needs attention* — "checked … ago" for states the host reported, the
-destination (library and branch), the last update, and one next action: *Continue editing*,
-*Review changes*, *Retry* or *Open PR/MR*.
+The Contributions page shows one row per contribution, with one state, "checked … ago" for
+states the host reported, the destination (library and branch), the last update and one next
+action: *Continue editing*, *Review changes*, *Retry* or *Open PR/MR*.
 
-## What the status means
-
-| Status | What happened |
+| State | What happened |
 |---|---|
-| Not prepared yet | A staged copy exists on this machine. Nothing else. |
-| Prepared locally | A commit exists on a contribution branch in Habi's own cache. Nothing was sent. |
-| Patch exported | A patch file was written where you chose. Sending it is up to you. |
-| Discarded | The staged files and the local branch are removed. It can no longer be prepared, exported, sent or checked. |
-| Branch pushed — no review request | The branch is on the remote; no pull/merge request was opened (the reason is shown). |
-| Review requested | `gh`/`glab` opened a request and returned its URL. |
-| In the library | After a refresh, the library's tracked ref contains exactly the contributed files. |
+| Draft | A staged copy exists on this machine. Nothing else. |
+| Ready to submit | A commit exists on the contribution branch in Habi's own copy of the library. Nothing was sent. A patch may have been exported; sending it is up to you. |
+| Branch pushed | The branch is on the remote, and no pull or merge request was opened (the reason is shown). |
+| Open PR / Open MR | `gh` or `glab` opened a request, or the host shows one for the branch. |
+| Changes requested, Merged, Closed | What the host reported when Habi last checked. |
+| In the library | After a refresh, the library's tracked branch contains exactly the contributed files. |
+| Needs attention | The last prepare or send failed; the message says why. |
+
+Discarding a contribution removes its staged files and local branch; it can no longer be
+prepared, exported, sent or checked. On the command line, `habi contribute list` shows the
+underlying states: draft, committed, exported, sent for review and discarded.
 
 A contribution from My skills is a snapshot of the skill when sharing started. With no Git
-library connected, the skill can be exported as a zip instead; the draft is kept
-either way.
+library connected, you can export the skill as a zip instead; the draft is kept either way.
 
 Git hosts — not Habi — decide who may push, whether branches are protected and who must
 review. The configured source and ref are the team's chosen baseline; Habi does not label
@@ -157,18 +158,7 @@ every commit "approved". An `owner` field is attribution only.
   contributions (export the skill as a zip instead).
 - Git must know your name and email (`git config --global user.name/user.email`).
 
-## CLI
+## Command line
 
-```sh
-habi contribute start "Team" .claude/skills/my-skill -C path/to/project
-habi contribute describe <id> --title "Liquibase review: concurrent indexes" --message "…"
-habi contribute show <id>
-habi contribute exclude <id> notes.md       # leave a changed file out (include puts it back)
-habi contribute commit <id>
-habi contribute export <id> ~/Desktop
-habi contribute publish <id> --open-request
-habi contribute status <id>                 # state and comments from the host
-habi contribute revise <id>                 # then commit + publish again
-habi contribute commit <id> --build-on-remote   # only if someone else pushed to the branch
-habi contribute rehearse <id>               # where its rules apply, as text for reviewers
-```
+Every step is also a `habi contribute` command; see the
+[command-line guide](cli.md#contributing).
