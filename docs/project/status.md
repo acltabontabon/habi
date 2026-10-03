@@ -30,9 +30,9 @@ supported, and CI does not test it.
 | Applicability preview across projects, condition suggestions | Done | `tests/local_skills.rs` (applies / does not apply / needs information) |
 | Local skills in recommendations and install/update plans | Done | `tests/local_skills.rs` (install, update available, conflict) |
 | Sharing a local skill; honest status (`in_library`, publish note) | Done; PR creation not exercised | `tests/local_skills.rs` (push and merge on a temporary Git remote) |
-| Diagnostics bundle | Done | CLI smoke run |
+| Diagnostics bundle | Done | Smoke run with the internal CLI |
 | App updates (signed updater, What's new from the changelog) | Done; not exercised end to end, since no release is published | `src/test/updates.test.tsx`, `scripts/changelog.test.mjs` |
-| CLI | Done | `crates/habi-cli/tests/cli.rs` (JSON output, exit codes, project detection, next-step messages, install defaults) plus manual runs |
+| Internal CLI (dev harness, not released) | Done | `crates/habi-cli/tests/cli.rs` (JSON output, exit codes, project detection, next-step messages, install defaults) plus manual runs |
 | Desktop adapter (commands, jobs/cancel, watcher, dialogs in Rust, logging) | Done | `src-tauri/src/ipc_tests.rs` (mock runtime, real JSON arguments) |
 | Desktop UI (welcome and setup check, home, project page, My skills, Skill Studio with autosave and testing, add skills, use and share dialogs, libraries, contributions, review, evidence, history, settings, privacy page, palette, themes) | Done | Vitest + Testing Library + axe (`src/test`), and manual runs against the real core through the development bridge |
 | Acceptance scenario (10 steps) | Passes | `tests/acceptance.rs` |
@@ -75,7 +75,7 @@ By design, or not solved yet:
 - **Unsigned installers, by choice.** Habi ships on GitHub Releases only, without Apple or
   Microsoft code signing, so the first launch needs one confirmation
   ([how](../guide/getting-started.md#installing)). Updates are signed with Habi's own updater key
-  and verified before they install. The `habi` command-line binary is unsigned too.
+  and verified before they install.
 - Smaller gaps: an update does not add an MCP server an item newly suggests, and restoring a
   case-only rename keeps the new letter case
   ([recovery](../guide/recovery.md#known-limitations)); an install on this machine is journaled
@@ -119,6 +119,6 @@ Resolved:
 1. Run the client smoke tests and record versions in
    [compatibility research](../dev/compatibility-research.md).
 2. Exercise sharing's remaining review states on GitHub, and all of it on GitLab, against live repositories.
-3. Restore for installs on this machine, and installing on this machine from the command line.
+3. Restore for installs on this machine.
 4. Cursor `.mdc` rules (see [future direction](product.md#future-direction)).
 5. `habi skill …` commands for My skills (list, export, import); the core supports them.

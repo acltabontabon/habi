@@ -23,12 +23,12 @@
 | Path | Role |
 |---|---|
 | `crates/habi-core` | Domain core. No UI dependency. Synchronous, blocking code with explicit cancellation tokens; front ends call it from worker threads. |
-| `crates/habi-cli` | The `habi` command line. Formats output; contains no rules. |
+| `crates/habi-cli` | The `habi` command line, an internal tool that is not released ([cli.md](cli.md)). Formats output; contains no rules. |
 | `apps/desktop/src-tauri` | Tauri 2 shell: commands, file watcher, native dialogs, updater, logging. |
 | `apps/desktop/src` | React 19 + TypeScript (strict). Types in `src/bindings` are generated from Rust by `ts-rs`. |
 | `schema/` | JSON Schemas for Habi metadata (compiled into the core). |
 | `fixtures/` | Example libraries and repositories for tests, the sample workspace and UI fixtures ([test data](test-data.md)). |
-| `website/` | The project site at acltabontabon.com/habi (Astro). `pnpm dev` in `website/`; its data comes from `pnpm snapshot` and `website/scripts/journey.sh`. |
+| `website/` | The project site at acltabontabon.com/habi (Astro). `pnpm dev` in `website/`; its data comes from `pnpm snapshot`. |
 
 ## Core modules
 

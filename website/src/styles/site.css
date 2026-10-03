@@ -1140,7 +1140,7 @@ em {
 
 .duo-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 14px 20px;
 }
@@ -1162,12 +1162,8 @@ em {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .js .duo-panel.is-active .app,
-  .js .duo-panel.is-active .term {
+  .js .duo-panel.is-active .app {
     animation: arrive 520ms var(--ease) both;
-  }
-  .js .duo-panel.is-active .term {
-    animation-delay: 120ms;
   }
 }
 
@@ -1178,10 +1174,12 @@ em {
   }
 }
 
-/* Two panes, one height: the app as you'd see it, the same step in a terminal. */
+/* The app as you'd see it at this step. */
 .pane {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 860px;
   min-width: 0;
 }
 
@@ -1531,47 +1529,6 @@ em {
   color: var(--ink);
 }
 
-/* The terminal: the same in both themes. */
-.term {
-  border: 1px solid #26262c;
-  border-radius: 14px;
-  background: #121214;
-  color: #d9d7cf;
-}
-
-.term {
-  flex: 1;
-  height: 400px;
-  min-height: 100%;
-  overflow: auto;
-  padding: 18px 20px 6px;
-}
-
-.term-cmd {
-  font-size: 12.5px;
-  color: #f6f5f1;
-  white-space: nowrap;
-}
-
-.term-cwd {
-  color: #7c7c86;
-}
-
-.term-prompt {
-  color: #f2a541;
-}
-
-/* Output keeps its shape: long lines scroll rather than wrap mid-word. */
-.term-out {
-  width: max-content;
-  min-width: 100%;
-  margin: 8px 0 18px;
-  font-size: 11.5px;
-  line-height: 1.6;
-  color: #b9b7af;
-  white-space: pre;
-}
-
 .duo-says {
   grid-column: 1 / -1;
   margin-bottom: 6px;
@@ -1812,15 +1769,8 @@ em {
     margin-top: 12px;
     font-size: 15px;
   }
-  .duo-panel {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .app {
     min-height: 0;
-  }
-  .term {
-    height: auto;
-    max-height: 340px;
   }
 }
 

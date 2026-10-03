@@ -5,7 +5,7 @@
 [![CI](https://github.com/acltabontabon/habi/actions/workflows/ci.yml/badge.svg)](https://github.com/acltabontabon/habi/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Habi is a local desktop app and command-line tool for the skills and instructions you give AI
+Habi is a local desktop app for the skills and instructions you give AI
 coding agents. Open a repository and Habi shows which skills fit it, and why, down to the file
 and line. Install them for the agent tools you already use, improve them as you work, and send
 the improvement back to your team's library as a pull request.
@@ -62,24 +62,6 @@ pnpm tauri dev           # the first build takes a few minutes
 [Getting started](docs/guide/getting-started.md) walks you through the sample workspace and
 your first project.
 
-## Command line
-
-```sh
-cargo install --path crates/habi-cli          # puts `habi` on your PATH
-
-habi source add Team git@github.com:your-team/skills.git
-habi source refresh
-
-cd path/to/project
-habi recommend                                # what fits, with a one-line reason
-habi explain liquibase-migration-review       # the full reasoning
-habi install liquibase-migration-review --client claude-code,cursor
-habi status                                   # local edits and available updates
-```
-
-Every change is previewed and asks first. The [command-line guide](docs/guide/cli.md) covers
-every command, including declarations, checks and contributions.
-
 ## Documentation
 
 Read it on the site at [acltabontabon.com/habi/docs](https://acltabontabon.com/habi/docs/), or
@@ -87,8 +69,7 @@ here in [`docs/`](docs/README.md); both are the same pages.
 
 - **Using Habi:** [getting started](docs/guide/getting-started.md),
   [My skills](docs/guide/my-skills.md), [sharing](docs/guide/sharing.md),
-  [agent tools](docs/guide/agent-tools.md), [command line](docs/guide/cli.md),
-  [recovery](docs/guide/recovery.md)
+  [agent tools](docs/guide/agent-tools.md), [recovery](docs/guide/recovery.md)
 - **Writing libraries:** [Habi metadata](docs/library-authors/metadata-schema.md),
   [detectors](docs/library-authors/detectors.md), [library catalog](docs/library-authors/catalog.md)
 - **The project:** [status](docs/project/status.md), [product contract](docs/project/product.md),

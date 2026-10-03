@@ -2,7 +2,7 @@
 
 Habi finds the skills and instructions that fit the repository you are working in, installs
 them for the agent tools you already use, and sends what you improve back to your team's
-library for review. It is a desktop app for macOS and Windows and a `habi` command, and it runs
+library for review. It is a desktop app for macOS and Windows, and it runs
 entirely on your machine: no account, no telemetry, no model calls.
 
 New here? Start with [Getting started](guide/getting-started.md). It takes a few minutes, and
@@ -16,7 +16,6 @@ the sample workspace means you need neither a library nor a project of your own.
 | [My skills](guide/my-skills.md) | Write a skill in the Skill Studio, bring in the ones you have, test where it applies, and use it |
 | [Sharing](guide/sharing.md) | Send an improved skill to a library as a pull or merge request, follow the review, and revise it |
 | [Agent tools](guide/agent-tools.md) | See what Habi writes for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie |
-| [Command line](guide/cli.md) | Do all of it from a terminal or a script with `habi` |
 | [Recovery](guide/recovery.md) | Restore a change, finish an interrupted one, and free up space |
 
 ## Writing libraries
@@ -51,7 +50,7 @@ the sample workspace means you need neither a library nor a project of your own.
 
 ## Where documentation lives
 
-- `README.md`: what Habi is, how to build it, and a short tour of the command line.
+- `README.md`: what Habi is and how to build it.
 - `docs/guide/`: task-oriented guides for people using Habi.
 - `docs/library-authors/`: for people who write and curate skill libraries.
 - `docs/project/`: what Habi promises, how far along it is, and what it trusts.

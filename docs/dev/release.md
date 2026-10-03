@@ -21,8 +21,8 @@ for the current platform: `pnpm tauri build` in `apps/desktop`.
 
 Semantic versioning, separately for:
 
-- **The application**: major for incompatible changes to the lock file, data directory or
-  CLI; minor for features; patch for fixes. The version appears in four manifests, which
+- **The application**: major for incompatible changes to the lock file or data directory;
+  minor for features; patch for fixes. The version appears in four manifests, which
   must agree: `Cargo.toml` (workspace), `apps/desktop/src-tauri/tauri.conf.json`,
   `apps/desktop/package.json` and `website/package.json`. The release workflow refuses a tag
   that does not match them.
@@ -48,7 +48,7 @@ Semantic versioning, separately for:
    - runs the same checks as CI, including `cargo deny`;
    - checks that the tag matches the four manifests and that `CHANGELOG.md` has its entry;
    - builds the macOS installer as one universal build (Apple Silicon and Intel), the
-     Windows installers, and the `habi` command-line tool for each;
+     Windows installers;
    - signs the update packages with the updater key (see [Updates](#updates));
    - writes `SHA256SUMS-macos.txt` and `SHA256SUMS-windows.txt` and a build provenance
      attestation for every artifact;
@@ -69,8 +69,8 @@ first launch therefore meets Gatekeeper or SmartScreen once, and
 [Getting started](../guide/getting-started.md#installing) says how to get past it. What protects
 users after that is the updater's own signature (below), not the operating system's.
 
-The release workflow signs nothing for Apple or Microsoft, and the draft release says so. The
-`habi` command-line binary is unsigned too. Should that change, Tauri reads the Apple
+The release workflow signs nothing for Apple or Microsoft, and the draft release says so.
+Should that change, Tauri reads the Apple
 certificate and notarization credentials from `APPLE_*` environment variables during
 `tauri build`, and a Windows Authenticode certificate from `bundle.windows`; see Tauri's
 distribution guides. Never commit certificates or passwords.

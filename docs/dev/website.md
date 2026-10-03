@@ -28,8 +28,8 @@ pnpm og           # public/og.png, from the /og/ page with headless Chrome (pnpm
 ```
 
 What the landing page shows of Habi's output is real: `pnpm snapshot` runs the `habi` command
-against the fixture repositories and libraries, and `website/scripts/journey.sh` prints the
-commands behind the "Receipts" section, to compare after Habi changes.
+against the fixture repositories and libraries. The "Receipts" section draws the app's own views
+from that snapshot.
 
 ## The documentation
 

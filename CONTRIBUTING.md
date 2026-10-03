@@ -14,7 +14,7 @@ Habi's promise is *honest, local, previewed*. Changes are reviewed against the
   overwrite a user's edit silently.
 - **Local first.** No telemetry, no accounts, no background network calls. Anything that
   leaves the machine is shown first and happens only when the user asks.
-- **Plain words** in the interface and CLI. If a newcomer would need to ask what it means,
+- **Plain words** in the interface. If a newcomer would need to ask what it means,
   rephrase it.
 
 ## Set up
@@ -30,7 +30,7 @@ corepack enable                                   # provides the pinned pnpm
 scripts/check.sh                                  # the checks CI runs (see below)
 
 cd apps/desktop && pnpm install && pnpm tauri dev # the desktop app
-cargo run -p habi-cli -- --help                   # the command line
+cargo run -p habi-cli -- --help                   # the internal command line (docs/dev/cli.md)
 ```
 
 The first build takes a few minutes.

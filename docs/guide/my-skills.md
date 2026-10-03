@@ -235,5 +235,3 @@ as zip…* writes the skill as a file you can send or commit anywhere.
 
 - Running a skill, or watching an agent use it.
 - AI-assisted drafting. Editing, matching and testing are deterministic and work offline.
-- Command-line commands for My skills. The command line covers libraries, recommendations,
-  installs and contributions.

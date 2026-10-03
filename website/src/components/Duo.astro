@@ -6,10 +6,9 @@ import Icon from "./Icon.astro";
 /*
  * Receipts for the three promises — explore, check, pay it forward — as one
  * skill's trip: from another team's library, into a repository, improved,
- * and back to everyone. The terminal shows real output
- * (src/data/journey.ts); the app views are drawn with the app's own styles,
- * words and the snapshot's data. Plays through once while on screen; any
- * interaction hands over control.
+ * and back to everyone. The app views are drawn with the app's own styles,
+ * words and the snapshot's data (src/data/journey.ts has the steps). Plays
+ * through once while on screen; any interaction hands over control.
  */
 const billing = data.repos.find((r) => r.name === "billing-service");
 const fits = (billing?.items ?? []).filter((i) => i.group === "relevant");
@@ -31,8 +30,7 @@ const library = [
     <p class="kicker">One skill's trip</p>
     <h2 id="duo-title" class="section-title">Receipts, <em>not promises.</em></h2>
     <p class="section-lead">
-      From another team's library, into your repository, improved — and back to everyone, all in the Habi app. The
-      same steps run from the command line too; every line shown there is real output from Habi 0.1.
+      From another team's library, into your repository, improved — and back to everyone, all in the Habi app.
     </p>
   </div>
 
@@ -184,21 +182,6 @@ const library = [
                 <span class="app-button">Adopt the reviewed update</span>
               </div>
             ) : null}
-          </div>
-        </div>
-
-        <div class="pane">
-          <p class="pane-label mono">Or from the CLI, if you live in a terminal</p>
-          <div class="term">
-            {s.terminal.map((t) => (
-              <div class="term-block">
-                <p class="term-cmd mono">
-                  <span class="term-cwd">~/work{s.cwd ? `/${s.cwd}` : ""}</span>{" "}
-                  <span class="term-prompt">$</span> {t.cmd}
-                </p>
-                <pre class="term-out mono">{t.out}</pre>
-              </div>
-            ))}
           </div>
         </div>
       </div>

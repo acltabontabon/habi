@@ -30,8 +30,7 @@ body:
       label: Where
       options:
         - Desktop app
-        - Command line (habi)
-        - Both
+        - Website or documentation
     validations:
       required: true
   - type: input
