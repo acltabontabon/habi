@@ -24,6 +24,38 @@ use ts_rs::TS;
 const MAX_PROJECT_FILE: u64 = 4 * 1024 * 1024;
 pub const BRIDGE_ID: &str = "claude-code-agents-import";
 const BRIDGE_IDENTITY: &str = "habi:internal";
+
+/// A file that makes a client read AGENTS.md by importing it, for the clients
+/// that read a file of their own rather than AGENTS.md.
+struct Bridge {
+    id: &'static str,
+    client: ClientId,
+    kind: ChangeKind,
+    /// The files that can hold the import, each with the line it takes. The
+    /// first is the default; an earlier one that exists is used first.
+    files: &'static [(&'static str, &'static str)],
+    why: &'static str,
+}
+
+const BRIDGES: [Bridge; 2] = [
+    Bridge {
+        id: BRIDGE_ID,
+        client: ClientId::ClaudeCode,
+        kind: ChangeKind::ClaudeBridge,
+        files: &[
+            ("CLAUDE.md", "@AGENTS.md"),
+            (".claude/CLAUDE.md", "@../AGENTS.md"),
+        ],
+        why: "Claude Code reads CLAUDE.md; this import makes it read AGENTS.md too (documented, loaded once).",
+    },
+    Bridge {
+        id: "gemini-cli-agents-import",
+        client: ClientId::GeminiCli,
+        kind: ChangeKind::GeminiBridge,
+        files: &[("GEMINI.md", "@./AGENTS.md")],
+        why: "Gemini CLI reads GEMINI.md; this import makes it read AGENTS.md too (documented).",
+    },
+];
 const INSTRUCTIONS_FILE: &str = "AGENTS.md";
 /// Codex's default `project_doc_max_bytes` (see `docs/dev/compatibility-research.md`).
 const CODEX_INSTRUCTIONS_LIMIT: usize = 32 * 1024;
@@ -44,6 +76,7 @@ pub enum ChangeKind {
     SkillFile,
     InstructionsSection,
     ClaudeBridge,
+    GeminiBridge,
     McpConfig,
     LockFile,
     Restore,
@@ -1520,13 +1553,19 @@ impl<'a> Planner<'a> {
         Ok(())
     }
 
-    /// Handles a CLAUDE.md that is a symbolic link inside the project. Returns
-    /// true if that settles the bridge: a link to AGENTS.md already makes
-    /// Claude Code read the instructions; a link elsewhere is a conflict
-    /// (Habi does not write through links) unless the user keeps it as is.
-    fn bridge_through_link(&mut self) -> Result<bool> {
-        for candidate in ["CLAUDE.md", ".claude/CLAUDE.md"] {
-            if candidate != "CLAUDE.md" && self.ws.read("CLAUDE.md")?.is_some() {
+    /// Handles an import file (CLAUDE.md for Claude Code) that is a symbolic
+    /// link inside the project. Returns true if that settles the bridge: a
+    /// link to AGENTS.md already makes the client read the instructions; a link
+    /// elsewhere is a conflict (Habi does not write through links) unless the
+    /// user keeps it as is.
+    fn bridge_through_link(&mut self, bridge: &Bridge) -> Result<bool> {
+        let label = bridge.client.label();
+        let Some(&(first, first_import)) = bridge.files.first() else {
+            return Ok(false);
+        };
+        let title = format!("{label} bridge");
+        for &(candidate, _) in bridge.files {
+            if candidate != first && self.ws.read(first)?.is_some() {
                 break;
             }
             let Some(target) = self.link_target(candidate)? else {
@@ -1534,7 +1573,7 @@ impl<'a> Planner<'a> {
             };
             if target == INSTRUCTIONS_FILE {
                 self.notes.push(format!(
-                    "{candidate} is a symbolic link to {INSTRUCTIONS_FILE}, so Claude Code reads the instructions directly; no import is needed."
+                    "{candidate} is a symbolic link to {INSTRUCTIONS_FILE}, so {label} reads the instructions directly; no import is needed."
                 ));
                 return Ok(true);
             }
@@ -1544,15 +1583,15 @@ impl<'a> Planner<'a> {
             }
             if self.decision(candidate) == Some(Resolution::Keep) {
                 self.notes.push(format!(
-                    "{candidate} was left as it is; until it imports {INSTRUCTIONS_FILE}, Claude Code does not read the instructions Habi installs there."
+                    "{candidate} was left as it is; until it imports {INSTRUCTIONS_FILE}, {label} does not read the instructions Habi installs there."
                 ));
             } else {
                 self.conflicts.push(conflict(
                     candidate,
                     ConflictKind::SymbolicLink,
-                    "Claude Code bridge",
+                    &title,
                     format!(
-                        "{candidate} is a symbolic link to {target}. Claude Code needs the line `@AGENTS.md` there to read the instructions, but Habi does not write through links. Add that line to {target} yourself, or replace the link with a regular file, then preview again; or leave it as it is."
+                        "{candidate} is a symbolic link to {target}. {label} needs the line `{first_import}` there to read the instructions, but Habi does not write through links. Add that line to {target} yourself, or replace the link with a regular file, then preview again; or leave it as it is."
                     ),
                     vec![Resolution::Keep],
                     None,
@@ -1563,47 +1602,62 @@ impl<'a> Planner<'a> {
         Ok(false)
     }
 
-    /// Ensures (or removes) the CLAUDE.md import of AGENTS.md depending on
-    /// whether any instructions are installed for Claude Code.
+    /// Ensures (or removes) each client's import of AGENTS.md depending on
+    /// whether any instructions are installed for that client.
     fn reconcile_bridge(&mut self) -> Result<()> {
+        for bridge in &BRIDGES {
+            self.reconcile_one_bridge(bridge)?;
+        }
+        Ok(())
+    }
+
+    fn reconcile_one_bridge(&mut self, bridge: &Bridge) -> Result<()> {
+        let label = bridge.client.label();
+        let title = format!("{label} bridge");
         let needed = self.lock.items.iter().any(|i| {
             i.kind == ItemKind::Instructions
                 && i.source.identity != BRIDGE_IDENTITY
-                && i.clients.contains(&ClientId::ClaudeCode)
+                && i.clients.contains(&bridge.client)
         });
-        let key = lock_key(BRIDGE_IDENTITY, BRIDGE_ID);
+        let key = lock_key(BRIDGE_IDENTITY, bridge.id);
         let present = self.lock.find(&key).cloned();
         match (needed, present) {
             (true, None) => {
-                if self.bridge_through_link()? {
+                if self.bridge_through_link(bridge)? {
                     return Ok(());
                 }
-                let (file, import) = if self.ws.read("CLAUDE.md")?.is_some() {
-                    ("CLAUDE.md", "@AGENTS.md")
-                } else if self.ws.read(".claude/CLAUDE.md")?.is_some() {
-                    (".claude/CLAUDE.md", "@../AGENTS.md")
-                } else {
-                    ("CLAUDE.md", "@AGENTS.md")
+                let Some(&(default_file, default_import)) = bridge.files.first() else {
+                    return Ok(());
                 };
+                let mut chosen = (default_file, default_import);
+                for &(file, import) in bridge.files {
+                    if self.ws.read(file)?.is_some() {
+                        chosen = (file, import);
+                        break;
+                    }
+                }
+                let (file, import) = chosen;
                 let text = self.ws.read_text(file)?.unwrap_or_default();
                 if text
                     .lines()
                     .any(|l| l.trim_start_matches('\u{feff}').trim() == import)
                 {
-                    self.notes.push(format!("{file} already imports AGENTS.md, so Claude Code will read the instructions."));
+                    self.notes.push(format!(
+                        "{file} already imports AGENTS.md, so {label} will read the instructions."
+                    ));
                     return Ok(());
                 }
                 let created = Some(self.created_by_habi(file)?);
                 let digest = self.put_section(
                     file,
-                    BRIDGE_ID,
+                    bridge.id,
                     import,
                     None,
-                    "Claude Code bridge",
-                    &[ClientId::ClaudeCode],
-                    ChangeKind::ClaudeBridge,
-                    "lets Claude Code read AGENTS.md",
-                    "Claude Code reads CLAUDE.md; this import makes it read AGENTS.md too (documented, loaded once).",
+                    &title,
+                    &[bridge.client],
+                    bridge.kind,
+                    &format!("lets {label} read AGENTS.md"),
+                    bridge.why,
                 )?;
                 if let Some(digest) = digest {
                     self.lock.items.push(LockedItem {
@@ -1612,17 +1666,17 @@ impl<'a> Planner<'a> {
                             name: brand::APP_NAME.into(),
                             subdir: None,
                         },
-                        id: BRIDGE_ID.into(),
+                        id: bridge.id.into(),
                         kind: ItemKind::Instructions,
-                        title: "Claude Code import of AGENTS.md".into(),
+                        title: format!("{label} import of AGENTS.md"),
                         snapshot: String::new(),
                         content_digest: String::new(),
                         installed_at: crate::time::now(),
-                        clients: vec![ClientId::ClaudeCode],
+                        clients: vec![bridge.client],
                         files: Vec::new(),
                         sections: vec![LockedSection {
                             file: file.into(),
-                            marker: BRIDGE_ID.into(),
+                            marker: bridge.id.into(),
                             digest,
                             created,
                         }],
@@ -1630,15 +1684,15 @@ impl<'a> Planner<'a> {
                     });
                 }
             }
-            (false, Some(bridge)) => {
-                for s in &bridge.sections {
+            (false, Some(installed)) => {
+                for s in &installed.sections {
                     self.remove_section(
                         &s.file,
                         &s.marker,
                         &s.digest,
                         s.created,
-                        &bridge.title,
-                        ChangeKind::ClaudeBridge,
+                        &installed.title,
+                        bridge.kind,
                     )?;
                 }
                 self.lock.items.retain(|i| i.key() != key);

@@ -28,7 +28,7 @@ const overviews: Record<string, unknown> = {
 
 const projects = [billing.project, monorepo.project];
 const source = billing.sources[0];
-let settings = { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+let settings = { autoRefreshHours: 12 };
 
 // A newer release waiting, then what updating to it changed: so the offer, the
 // report and the marks in the index can all be looked at.
@@ -170,6 +170,8 @@ function answer(cmd: string, args: Args): unknown {
           ...plan.changes.filter((c) => c.kind === "lockFile"),
         ],
       };
+    case "detected_clients":
+      return ["claude-code"];
     case "machine_install_preview":
       return [];
     case "read_project_excerpt":

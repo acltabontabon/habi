@@ -25,7 +25,8 @@ Knowledge lives in several places; Habi keeps them apart and presents them as on
 
 - **Find.** Open a repository; Habi shows which skills and instructions apply and *why*, down
   to the file and line. It reads build files and structure only — nothing is built or run.
-- **Apply.** Install for the agent tools you already use (Claude Code, Cursor, Codex) with a
+- **Apply.** Install for the agent tools you already use (Claude Code, Cursor, Codex, Gemini CLI, GitHub
+  Copilot, OpenCode, Junie) with a
   preview of every file. Every install, update or removal is a reviewed plan that can be
   restored.
 - **Refine.** Edit a copy as a complete package — instructions, scripts, references, assets.
@@ -152,7 +153,7 @@ and the [example library](fixtures/libraries/example-team-library).
 - [Getting started](docs/guide/getting-started.md): the sample workspace, your first project, what Habi changes
 - [My skills](docs/guide/my-skills.md): creating, importing, previewing and using your own skills
 - [Sharing](docs/guide/sharing.md): sending improvements to a library for review
-- [Agent tools](docs/guide/agent-tools.md): what Habi writes for Claude Code, Cursor and Codex
+- [Agent tools](docs/guide/agent-tools.md): what Habi writes for each supported agent tool
 - [Recovery](docs/guide/recovery.md): journals, rollback, restore, stale caches
 
 **Writing libraries** ([docs/library-authors](docs/library-authors))

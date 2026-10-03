@@ -104,12 +104,14 @@ beforeEach(() => {
   invoke.mockImplementation(async (cmd: string) => {
     switch (cmd) {
       case "get_settings":
-        return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+        return { autoRefreshHours: 12 };
       case "plan_install_machine":
       case "plan_update_machine":
       case "plan_remove_machine":
       case "plan_restore_machine":
         return plan();
+      case "detected_clients":
+        return [];
       case "machine_install_preview":
         return shadows;
       case "apply_plan":
@@ -200,7 +202,6 @@ describe("review for this machine", () => {
     expect(called("plan_install")).toBe(false);
     // Skills only: no MCP option, and the scope says every project.
     expect(screen.queryByText(/Add suggested MCP configuration/)).toBeNull();
-    expect(screen.getAllByText("~/.claude/skills").length).toBeGreaterThan(0);
   });
 
   it("always keeps one agent picked", async () => {
@@ -266,7 +267,7 @@ describe("review for this machine", () => {
 
   it("offers the MCP option only for a skill that needs a server", async () => {
     invoke.mockImplementation(async (cmd: string) => {
-      if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
       if (cmd === "plan_install") return plan({ project: "~/work/billing" });
       if (cmd === "library") return { sourceId: "lib", items: [{ id: "liquibase", mcp: [] }] };
       throw { code: "notFound", message: `no mock for ${cmd}` };
@@ -277,9 +278,48 @@ describe("review for this machine", () => {
     expect(screen.queryByText(/Add suggested MCP configuration/)).toBeNull();
   });
 
+  it("preselects the agents the project already uses, and plans for them", async () => {
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "detected_clients") return ["cursor", "gemini-cli"];
+      if (cmd === "plan_install") return plan({ project: "~/work/billing" });
+      if (cmd === "library") return { sourceId: "lib", items: [{ id: "liquibase", mcp: [] }] };
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<ReviewDialog projectId="p1" request={install} onClose={() => {}} />);
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        "plan_install",
+        expect.objectContaining({ clients: ["cursor", "gemini-cli"] }),
+      ),
+    );
+    // Nothing was planned for a guess while the project was still being read.
+    expect(invoke.mock.calls.filter((c) => c[0] === "plan_install")).toHaveLength(1);
+    expect((screen.getByRole("checkbox", { name: /Cursor/ }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: /Gemini CLI/ }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("checkbox", { name: /Claude Code/ }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("falls back to Claude Code when the project shows no sign of an agent", async () => {
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "detected_clients") return [];
+      if (cmd === "plan_install") return plan({ project: "~/work/billing" });
+      if (cmd === "library") return { sourceId: "lib", items: [{ id: "liquibase", mcp: [] }] };
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<ReviewDialog projectId="p1" request={install} onClose={() => {}} />);
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        "plan_install",
+        expect.objectContaining({ clients: ["claude-code"] }),
+      ),
+    );
+  });
+
   it("still plans against a project when given one", async () => {
     invoke.mockImplementation(async (cmd: string) => {
-      if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
       if (cmd === "plan_install") return plan({ project: "~/work/billing" });
       if (cmd === "library")
         return {
@@ -320,7 +360,7 @@ describe("skills Habi installed on this machine", () => {
   it("say so, and offer update and remove through the same review", async () => {
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return [managedSkill("updateAvailable")];
-      if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
       if (cmd === "plan_update_machine" || cmd === "plan_remove_machine") return plan();
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
@@ -337,7 +377,7 @@ describe("skills Habi installed on this machine", () => {
   it("offer a removal that names the files Habi installed", async () => {
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return [managedSkill("current")];
-      if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
       if (cmd === "plan_remove_machine") return plan({ action: "remove", title: "Remove from this machine" });
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });

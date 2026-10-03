@@ -107,10 +107,12 @@ The first version, 0.1.0, is not released yet. It will contain the following.
   schemas and templates under `scripts/` do not.
 
 ### Adopt
-- Install skills and workflows for Claude Code, Cursor and Codex into the current project,
-  with a preview of every file and a diff.
-- Team instructions go into a managed section of `AGENTS.md`; Claude Code is pointed at them
-  with an `@AGENTS.md` import.
+- Install skills and workflows for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot,
+  OpenCode and Junie into the current project, with a preview of every file and a diff. The
+  agents the project already uses are preselected; there is no setting for it.
+- Team instructions go into a managed section of `AGENTS.md`; Claude Code and Gemini CLI,
+  which read their own file, are pointed at them with a one-line import in `CLAUDE.md`
+  and `GEMINI.md`.
 - Optional MCP server configuration for each client, without secrets. A server several items
   need is added once.
 - Updates are compared three ways, so your local edits are kept and conflicts are explained.

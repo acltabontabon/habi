@@ -168,7 +168,9 @@ impl LockFile {
             }
             for sec in &item.sections {
                 crate::paths::RelPath::new(&sec.file)?;
-                if !["AGENTS.md", "CLAUDE.md", ".claude/CLAUDE.md"].contains(&sec.file.as_str()) {
+                if !["AGENTS.md", "CLAUDE.md", ".claude/CLAUDE.md", "GEMINI.md"]
+                    .contains(&sec.file.as_str())
+                {
                     return Err(invalid(&format!("a section in `{}`", sec.file)));
                 }
             }

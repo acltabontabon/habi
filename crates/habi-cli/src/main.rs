@@ -91,7 +91,7 @@ Examples:
         project: ProjectArg,
         /// Agent tools to install for (comma-separated): claude-code, cursor, codex, gemini-cli, copilot, opencode, junie.
         /// Default: the tools this project already uses (.claude/ or CLAUDE.md,
-        /// .cursor/, .codex/).
+        /// .cursor/, .codex/, .gemini/ or GEMINI.md, .opencode/ or opencode.json, .junie/).
         #[arg(long, value_delimiter = ',')]
         client: Vec<String>,
         /// Also add suggested MCP server configuration.
@@ -752,34 +752,6 @@ fn project<'a>(ctx: &'a Ctx, arg: &ProjectArg, register: bool) -> Result<Project
 
 // ----- lookups ------------------------------------------------------------------------
 
-/// Agent tools a project already uses, judged by their files at its root.
-fn clients_in_project(root: &Path) -> Vec<ClientId> {
-    let has = |p: &str| root.join(p).exists();
-    let mut out = Vec::new();
-    if has(".claude") || has("CLAUDE.md") {
-        out.push(ClientId::ClaudeCode);
-    }
-    if has(".cursor") {
-        out.push(ClientId::Cursor);
-    }
-    if has(".codex") {
-        out.push(ClientId::Codex);
-    }
-    if has(".gemini") || has("GEMINI.md") {
-        out.push(ClientId::GeminiCli);
-    }
-    if has(".github/copilot-instructions.md") || has(".github/skills") {
-        out.push(ClientId::Copilot);
-    }
-    if has(".opencode") || has("opencode.json") || has("opencode.jsonc") {
-        out.push(ClientId::OpenCode);
-    }
-    if has(".junie") {
-        out.push(ClientId::Junie);
-    }
-    out
-}
-
 fn parse_clients(values: &[String]) -> Result<Vec<ClientId>> {
     values
         .iter()
@@ -1053,7 +1025,7 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
                 .collect::<Result<Vec<_>>>()?;
             let project = project(ctx, &p, !apply.dry_run)?;
             let clients = if client.is_empty() {
-                let found = clients_in_project(&project.root);
+                let found = habi_core::clients::in_project(&project.root);
                 if found.is_empty() {
                     return Err(fail(
                         "invalidInput",

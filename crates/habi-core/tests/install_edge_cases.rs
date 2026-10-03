@@ -944,3 +944,85 @@ fn copilot_joins_a_server_claude_code_already_has_from_another_item() {
     w.apply(&plan::plan_remove(&w.root, &[b.key()], &none()).unwrap());
     assert!(!w.root.join(".mcp.json").exists());
 }
+
+#[test]
+fn gemini_cli_reads_agents_md_through_a_one_line_import_in_gemini_md() {
+    let w = world(None);
+    let a = instructions_lib(&w.tmp, "lib-a", "Library A", "Use tabs.\n");
+    let p = install(
+        &w,
+        &[payload(&a, "conventions")],
+        &[ClientId::GeminiCli, ClientId::Junie],
+        false,
+    );
+    w.apply(&p);
+    assert!(w.read("AGENTS.md").contains("Use tabs."));
+    let gemini = w.read("GEMINI.md");
+    assert!(gemini.contains("@./AGENTS.md"), "{gemini}");
+    // Junie reads AGENTS.md itself: Claude Code's file is not created for it.
+    assert!(!w.root.join("CLAUDE.md").exists());
+
+    // The import is recorded as Habi's, apart from the library's items.
+    let lock = w.lock();
+    assert!(
+        lock.items
+            .iter()
+            .any(|i| i.title == "Gemini CLI import of AGENTS.md")
+    );
+
+    // Installing again changes nothing, so there is no second line.
+    let again = install(
+        &w,
+        &[payload(&a, "conventions")],
+        &[ClientId::GeminiCli],
+        false,
+    );
+    assert!(again.changes.is_empty(), "{:?}", again.changes);
+
+    // Removing the instructions takes the import, and the file Habi created, with it.
+    let key = payload(&a, "conventions").key();
+    w.apply(&plan::plan_remove(&w.root, &[key], &none()).unwrap());
+    assert!(!w.root.join("GEMINI.md").exists());
+    assert!(!w.root.join("AGENTS.md").exists());
+}
+
+#[test]
+fn a_gemini_md_that_already_imports_agents_md_is_left_alone() {
+    let w = world(None);
+    let a = instructions_lib(&w.tmp, "lib-a", "Library A", "Use tabs.\n");
+    w.write("GEMINI.md", "# Mine\n@./AGENTS.md\n");
+    let p = install(
+        &w,
+        &[payload(&a, "conventions")],
+        &[ClientId::GeminiCli],
+        false,
+    );
+    assert!(
+        p.notes
+            .iter()
+            .any(|n| n.contains("GEMINI.md already imports AGENTS.md")),
+        "{:?}",
+        p.notes
+    );
+    assert!(p.changes.iter().all(|c| c.path != "GEMINI.md"));
+}
+
+#[test]
+fn claude_code_and_gemini_cli_each_get_their_own_import() {
+    let w = world(None);
+    let a = instructions_lib(&w.tmp, "lib-a", "Library A", "Use tabs.\n");
+    w.apply(&install(
+        &w,
+        &[payload(&a, "conventions")],
+        &[ClientId::ClaudeCode, ClientId::GeminiCli],
+        false,
+    ));
+    assert!(w.read("CLAUDE.md").contains("@AGENTS.md"));
+    assert!(w.read("GEMINI.md").contains("@./AGENTS.md"));
+    // Gemini CLI is no longer wanted: only its import goes.
+    let mut only_claude = payload(&a, "conventions");
+    only_claude.item.clients = None;
+    w.apply(&plan::plan_remove(&w.root, &[only_claude.key()], &none()).unwrap());
+    assert!(!w.root.join("CLAUDE.md").exists());
+    assert!(!w.root.join("GEMINI.md").exists());
+}

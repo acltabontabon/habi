@@ -39,7 +39,7 @@ supported, and CI does not test it.
 Not verified yet:
 
 - **Agent tools loading what Habi installs.** Habi writes skills and instructions to the
-  documented locations for Claude Code, Cursor and Codex
+  documented locations for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie
   ([agent tools](../guide/agent-tools.md)). Whether a given client version discovers and
   loads them is checked by hand with the
   [smoke tests](../dev/compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it),
@@ -84,7 +84,7 @@ Open:
   not implemented. Until both exist, installers are unsigned and users see Gatekeeper or
   SmartScreen warnings. The `habi` command-line binary is not signed or notarized on either
   platform.
-- **Client smoke tests** have not been run against installed Claude Code, Cursor and Codex.
+- **Client smoke tests** have not been run against installed Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie.
 - **Manual Windows smoke test.** The Windows installers are built in CI but have not been
   installed and used by hand.
 - **Live Git hosts.** Pull/merge request creation, status and revisions are tested against

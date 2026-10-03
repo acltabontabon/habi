@@ -1,13 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import pkg from "../../package.json";
-import type { ClientId } from "../bindings/ClientId";
 import type { DiagnosticBundle } from "../bindings/DiagnosticBundle";
 import type { Settings } from "../bindings/Settings";
 import { useToast } from "../components/Toasts";
 import { Button, ErrorNotice, Section, Status, Working } from "../components/ui";
 import { api } from "../lib/api";
-import { ALL_CLIENTS, clientLabel, pruneSummary } from "../lib/format";
+import { pruneSummary } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { useOpenExternal } from "../lib/safeInvoke";
 import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
@@ -60,36 +59,9 @@ export function SettingsView() {
     }
   };
 
-  const toggleClient = (c: ClientId) =>
-    save((current) => {
-      const next = current.defaultClients.includes(c)
-        ? current.defaultClients.filter((x) => x !== c)
-        : [...current.defaultClients, c];
-      return { ...current, defaultClients: ALL_CLIENTS.filter((x) => next.includes(x)) };
-    });
-
   return (
     <div className="page narrow">
       <h1 className="page-title">Settings</h1>
-
-      <Section title="Installing" id="install">
-        <fieldset className="field">
-          <legend className="field-label">Preselected clients in install previews</legend>
-          {ALL_CLIENTS.map((c) => (
-            <label key={c} className="check">
-              <input
-                type="checkbox"
-                checked={s.defaultClients.includes(c)}
-                onChange={() => toggleClient(c)}
-              />
-              <span>{clientLabel[c]}</span>
-            </label>
-          ))}
-        </fieldset>
-        <p className="muted">
-          Habi installs into the selected project only. It does not change global agent settings.
-        </p>
-      </Section>
 
       <Section title="Library updates" id="refresh">
         <label className="field">
