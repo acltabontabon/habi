@@ -201,7 +201,6 @@ describe("libraries, by who stands behind them", () => {
     const builders = screen.getByRole("region", { name: /From the builders/ });
     const community = screen.getByRole("region", { name: /From the community/ });
     const connectedGroup = screen.getByRole("region", { name: /Connected/ });
-    const bringYourOwn = screen.getByRole("region", { name: /Bring your own/ });
     for (const name of [
       "Anthropic",
       "OpenAI",
@@ -217,14 +216,14 @@ describe("libraries, by who stands behind them", () => {
     for (const name of ["Superpowers", "Addy Osmani", "wshobson"]) {
       expect(within(community).getByText(name)).toBeInTheDocument();
     }
-    // What is connected comes first, then the way to bring your own, then what others built.
-    expect(
-      connectedGroup.compareDocumentPosition(bringYourOwn) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(bringYourOwn.compareDocumentPosition(builders) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // What is connected comes first, then what others built.
+    expect(connectedGroup.compareDocumentPosition(builders) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(connectedGroup).getByText("Team skills")).toBeInTheDocument();
-    expect(within(bringYourOwn).getByText("Connect a Git repository")).toBeInTheDocument();
-    expect(within(bringYourOwn).getByText("Use a folder on this machine")).toBeInTheDocument();
+    // Bringing your own is in the header, on every visit.
+    expect(screen.getByRole("button", { name: "Connect a Git repository" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use a folder" })).toBeInTheDocument();
+    // How it works is shown only until something is connected.
+    expect(screen.queryByText("Put skills to work")).toBeNull();
     // Connecting is not owning: nothing is called "yours" until a skill is adopted.
     expect(screen.queryByRole("region", { name: /^Yours/ })).toBeNull();
   });

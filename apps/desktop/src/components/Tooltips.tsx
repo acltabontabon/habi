@@ -101,6 +101,8 @@ export function Tooltips() {
   const current = useRef<HTMLElement | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const lastHidden = useRef(0);
+  /** What the pointer is over, so a tip that arrives later (fetched on hover) still shows. */
+  const pointed = useRef<Element | null>(null);
 
   useEffect(() => {
     const hide = () => {
@@ -126,6 +128,7 @@ export function Tooltips() {
 
     const over = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
+      pointed.current = e.target instanceof Element ? e.target : null;
       const el = holder(e.target);
       if (!el) return;
       // Take the title at once, before the system shows its own.
@@ -145,6 +148,23 @@ export function Tooltips() {
       if (e.key === "Escape" && current.current) hide();
     };
 
+    // A tip given to the element under the pointer after it arrived.
+    const late = new MutationObserver((records) => {
+      const target = pointed.current;
+      if (!target?.isConnected) return;
+      for (const r of records) {
+        if (!(r.target instanceof HTMLElement) || !r.target.contains(target)) continue;
+        const el = holder(target);
+        if (el && el !== current.current) show(el, false);
+        return;
+      }
+    });
+    late.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-tip", "data-tip-rich", "title"],
+    });
+
     document.addEventListener("pointerover", over, true);
     document.addEventListener("pointerout", out, true);
     document.addEventListener("focusin", focus, true);
@@ -155,6 +175,7 @@ export function Tooltips() {
     window.addEventListener("resize", hide);
     return () => {
       window.clearTimeout(timer.current);
+      late.disconnect();
       document.removeEventListener("pointerover", over, true);
       document.removeEventListener("pointerout", out, true);
       document.removeEventListener("focusin", focus, true);

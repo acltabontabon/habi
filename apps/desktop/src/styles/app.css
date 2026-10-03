@@ -6285,10 +6285,20 @@ ul.connect-confirm {
 
 .libraries-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "kick" "title" "path" "filter";
-  column-gap: clamp(var(--s6), 6vw, 120px);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "kick bring" "title bring" "path path" "filter filter";
+  column-gap: var(--s6);
   align-items: start;
+}
+
+/* Bringing your own library: top right, where it is found on every visit. */
+.libraries-head > .libraries-bring {
+  grid-area: bring;
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s2);
 }
 
 .libraries-head > .kicker {
@@ -6312,23 +6322,12 @@ ul.connect-confirm {
   max-width: 420px;
 }
 
-@media (min-width: 1180px) {
-  .libraries-head {
-    grid-template-columns: minmax(300px, 1fr) minmax(440px, 600px);
-    grid-template-areas: "kick path" "title path" "filter path";
-    align-items: center;
-  }
-  .libraries-head > .path {
-    margin: 0;
-  }
-}
-
 /* Groups sit where they leave no holes: one column; then what is connected
-   and the way to bring your own beside the (taller) builders; then three across. */
+   and the community beside the (taller) builders; then three across. */
 .libraries-groups {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "connected" "own" "builders" "community";
+  grid-template-areas: "connected" "builders" "community";
   column-gap: clamp(var(--s6), 3vw, 64px);
   /* Spacing lives on the sections, so a group that is absent leaves no gap
      behind and the columns still start on one line. */
@@ -6344,10 +6343,6 @@ ul.connect-confirm {
   grid-area: connected;
 }
 
-.area-own {
-  grid-area: own;
-}
-
 .area-builders {
   grid-area: builders;
 }
@@ -6359,21 +6354,52 @@ ul.connect-confirm {
 @media (min-width: 1180px) {
   .libraries-groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "connected builders" "own builders" "community builders";
-    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "connected builders" "community builders";
+    grid-template-rows: auto 1fr;
   }
 }
 
 @media (min-width: 1760px) {
   .libraries-groups {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas: "connected builders community" "own builders community";
-    grid-template-rows: auto 1fr;
+    grid-template-areas: "connected builders community";
+    grid-template-rows: auto;
   }
 }
 
 .libraries-groups .libraries-section {
   min-width: 0;
+}
+
+/* Fewer groups (everything connected, or a filter): they share the width
+   evenly instead of leaving a column empty. */
+@media (min-width: 1180px) {
+  .libraries-groups.is-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: none;
+    grid-template-rows: auto;
+  }
+
+  .libraries-groups.is-2 > .libraries-section {
+    grid-area: auto;
+  }
+}
+
+/* One group: it takes the page, and its rows flow into columns. */
+.libraries-groups.is-1 {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: none;
+  grid-template-rows: auto;
+}
+
+.libraries-groups.is-1 > .libraries-section {
+  grid-area: auto;
+}
+
+.libraries-groups.is-1 .library-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  column-gap: clamp(var(--s6), 3vw, 64px);
 }
 
 .libraries .library-row.is-entry,
