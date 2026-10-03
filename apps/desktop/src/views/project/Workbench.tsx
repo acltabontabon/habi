@@ -233,7 +233,8 @@ export function Workbench({
                                 <Strand dye={dyes(r.item.sourceId)} size={13} />
                                 {r.item.sourceName}
                               </span>
-                              <span>{kindLabel[r.item.kind]}</span>
+                              {/* A plain skill is the default; only the other kinds are worth saying. */}
+                              {r.item.kind !== "skill" ? <span>{kindLabel[r.item.kind]}</span> : null}
                               {r.item.requirement === "required" ? <span>required</span> : null}
                             </span>
                           </button>
