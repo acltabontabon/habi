@@ -211,3 +211,47 @@ Versions checked on 2026-10-02 via `npm view` and the crates.io API (stable tags
   - Set in `tauri.conf.json` under `app.security.csp`, as a string or an object of directives. The default is `null`.
   - The docs say CSP protection "is only enabled if set on the Tauri configuration file".
   - Avoid remote/CDN scripts.
+
+## 8. Gemini CLI, Copilot, OpenCode and Junie
+
+**Research date:** 2026-10-03. Fetched from the official documentation on that date. Pages that failed
+to load are listed at the end. Windsurf (now Devin Desktop) was researched and left out: its skill
+folders are documented but no project-level MCP file could be confirmed.
+
+| | Gemini CLI | GitHub Copilot (VS Code, CLI) | OpenCode | Junie (CLI and IDE) |
+|---|---|---|---|---|
+| Project skills | `.agents/skills/`, `.gemini/skills/` | `.agents/skills/`, `.claude/skills/`, `.github/skills/` | `.agents/skills/`, `.claude/skills/`, `.opencode/skills/` | `.agents/skills/` (trusted projects), `.junie/skills/` |
+| User skills | `~/.agents/skills/`, `~/.gemini/skills/` | `~/.agents/skills/`, `~/.claude/skills/`, `~/.copilot/skills/` | `~/.agents/skills/`, `~/.claude/skills/`, `~/.config/opencode/skills/` | `~/.agents/skills/`, `~/.junie/skills/` |
+| Skill precedence | Workspace over user over extension over built-in. Within a tier `.agents/skills` over `.gemini/skills` | Primary workspace root wins for `.github/skills` duplicates | Not stated | Not confirmed (the page was cut off where it describes a project skill and a user skill of the same name) |
+| Frontmatter | Agent Skills standard | Spec fields plus `user-invocable`, `disable-model-invocation` | Only `name`, `description`, `license`, `compatibility`, `metadata`. Unknown fields ignored. `name` must match the folder | `name` required, `description` optional (first paragraph used if missing) |
+| Instructions | `GEMINI.md` (`~/.gemini/GEMINI.md`, workspace and parents, and just-in-time in subfolders). Name set by `context.fileName` | `AGENTS.md` and `.github/copilot-instructions.md` | `AGENTS.md`, falling back to `CLAUDE.md`. Global `~/.config/opencode/AGENTS.md` | `AGENTS.md` (from the plugin changelog) and guidelines |
+| Project MCP file | `.gemini/settings.json` | `.mcp.json` (portable, `mcpServers`). `.vscode/mcp.json` (`servers`) is deprecated | `opencode.json` / `opencode.jsonc`, under `mcp` | `.junie/mcp/mcp.json` |
+| User MCP file | `~/.gemini/settings.json` | `~/.copilot/mcp-config.json` (or `$COPILOT_HOME/mcp-config.json`) | Global opencode config | `~/.junie/mcp/mcp.json` |
+| stdio entry | `{command, args, env, cwd}` | `{command, args, env}` | `{"type": "local", "command": [..], "environment": {..}}` | `{command, args, env}` |
+| Remote entry | `{httpUrl, headers}`. The transport list is stdio, SSE and streamable HTTP; the key for SSE was not seen | `{"type": "http", url}` (VS Code format) | `{"type": "remote", url, headers, oauth}` | `{url, headers}` |
+| Env syntax | `$VAR`, `${VAR}`, `%VAR%` in the `env` block only. Unset becomes empty | `${input:...}` and env files | `{env:VAR}`, `{file:path}` | Not documented |
+
+Sources:
+- Gemini CLI: <https://geminicli.com/docs/cli/skills/>, <https://geminicli.com/docs/tools/mcp-server/>, <https://geminicli.com/docs/cli/gemini-md/>, <https://geminicli.com/docs/reference/configuration/>
+- Copilot: <https://code.visualstudio.com/docs/copilot/customization/agent-skills>, <https://code.visualstudio.com/docs/copilot/customization/mcp-servers>
+- OpenCode: <https://opencode.ai/docs/skills/>, <https://opencode.ai/docs/mcp-servers/>, <https://opencode.ai/docs/rules/>
+- Junie: <https://junie.jetbrains.com/docs/agent-skills.html>, <https://junie.jetbrains.com/docs/junie-cli-mcp-configuration.html>
+- Windsurf (not supported): <https://docs.windsurf.com/windsurf/cascade/skills>, <https://docs.windsurf.com/windsurf/cascade/mcp>
+
+Notes:
+- Every one of these reads `.agents/skills`, so for them it is the one project folder to write. Only Claude Code needs `.claude/skills`.
+- Gemini CLI is being replaced by Antigravity CLI for free-tier and Google One users (announced 2026-05-19; the Gemini docs say the switch happened on 2026-06-18). Antigravity paths seen only in third-party posts: skills in `.agents/skills`, MCP in `.agents/mcp_config.json` (workspace) and `~/.gemini/config/mcp_config.json` (global), rules in `GEMINI.md`, `AGENTS.md` and `.agents/rules/`. Not verified against Google's pages.
+
+### Unverified / could not fetch
+
+- Whether Gemini CLI reads project `mcpServers` in an untrusted folder.
+- Whether Gemini CLI's `GEMINI.md` accepts an `@AGENTS.md` import.
+- Junie: environment-variable syntax in `mcp.json`, and whether `AGENTS.md` is read in every surface. The `www.jetbrains.com/help/junie/` pages returned no content; the `junie.jetbrains.com/docs` pages were used instead.
+- How any of Gemini CLI, Copilot, OpenCode and Junie handles the same skill `name` found in two folders.
+- Windsurf: a project-level MCP file for the current Devin agent. The CLI configuration page returned 404, and the `mcp_config.json` on the Cascade page is global and applies to the legacy agent only.
+
+### Smoke tests to add
+
+For each of Gemini CLI, Copilot, OpenCode and Junie, repeat the §6 procedure with the `habi-smoke-test`
+fixture: list skills, say "habi ping" and expect HABI-PONG, check that the `AGENTS.md` marker (or
+`GEMINI.md` import) is in effect, and check that the no-op MCP server is listed.
