@@ -4,7 +4,7 @@
 //! Habi's own UI.
 
 use crate::state::AppState;
-use habi_core::browse::{self, Crumb, FolderEntry, FolderKind, FolderListing, ProjectPlaces};
+use habi_core::browse::{self, FolderEntry, FolderKind, FolderListing, ProjectPlaces};
 use habi_core::cancel::CancelToken;
 use habi_core::catalog::github::RepoFacts;
 use habi_core::catalog::{CatalogEntry, CatalogFit};
@@ -205,7 +205,11 @@ pub async fn pick_project(
 
 /// Remembers what the chooser showed, so only those folders can be browsed
 /// or opened next. A skills folder may also become a library from there.
-fn offer(state: &AppState, entries: &[&FolderEntry], crumbs: &[&Crumb]) {
+fn offer<'a>(
+    state: &AppState,
+    entries: &[&FolderEntry],
+    folders: impl IntoIterator<Item = &'a str>,
+) {
     let mut browsed = state
         .browsed_folders
         .lock()
@@ -220,8 +224,8 @@ fn offer(state: &AppState, entries: &[&FolderEntry], crumbs: &[&Crumb]) {
             picked.insert(PathBuf::from(&e.path));
         }
     }
-    for c in crumbs {
-        browsed.insert(PathBuf::from(&c.path));
+    for path in folders {
+        browsed.insert(PathBuf::from(path));
     }
 }
 
@@ -246,8 +250,12 @@ pub async fn project_places(state: State<'_, AppState>) -> CmdResult<ProjectPlac
             .await
             .map_err(|e| internal(e.to_string()))?
             .map_err(|e| e.to_info())?;
-    let crumbs: Vec<&Crumb> = std::iter::once(&places.home).chain(&places.roots).collect();
-    offer(&state, &places.found.iter().collect::<Vec<_>>(), &crumbs);
+    offer(
+        &state,
+        &places.found.iter().collect::<Vec<_>>(),
+        std::iter::once(places.home.path.as_str())
+            .chain(places.roots.iter().map(|r| r.path.as_str())),
+    );
     Ok(places)
 }
 
@@ -263,7 +271,7 @@ pub async fn browse_folder(state: State<'_, AppState>, path: String) -> CmdResul
     offer(
         &state,
         &listing.entries.iter().collect::<Vec<_>>(),
-        &listing.crumbs.iter().collect::<Vec<_>>(),
+        listing.crumbs.iter().map(|c| c.path.as_str()),
     );
     Ok(listing)
 }
