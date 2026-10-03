@@ -22,6 +22,7 @@ export const keys = {
   skills: ["skills"] as const,
   skill: (id: string) => ["skill", id] as const,
   skillsOverview: ["skillsOverview"] as const,
+  machineSkills: ["machineSkills"] as const,
   skillTemplates: ["skillTemplates"] as const,
   knowledge: (projectId: string) => ["knowledge", projectId] as const,
 };
@@ -205,6 +206,21 @@ export function useSkillsOverview(enabled = true) {
   });
 }
 
+/**
+ * Skills in the person's own folders. Looked at again whenever the page opens
+ * and whenever the window comes back to the front: those folders change
+ * outside Habi, and there is no file watcher on them.
+ */
+export function useMachineSkills() {
+  return useQuery({
+    queryKey: keys.machineSkills,
+    queryFn: api.machineSkills,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+  });
+}
+
 /** The starters the editor offers; they ship with Habi. */
 export function useSkillTemplates() {
   return useQuery({
@@ -228,6 +244,7 @@ export function useKnowledge(projectId: string | undefined, enabled = true) {
 export function invalidateSkills(client: QueryClient) {
   void client.invalidateQueries({ queryKey: keys.skills });
   void client.invalidateQueries({ queryKey: keys.skillsOverview });
+  void client.invalidateQueries({ queryKey: keys.machineSkills });
   void client.invalidateQueries({ queryKey: ["knowledge"] });
   void client.invalidateQueries({ queryKey: ["overview"] });
 }

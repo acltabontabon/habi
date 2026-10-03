@@ -35,6 +35,7 @@ import type { LibraryIndex } from "../bindings/LibraryIndex";
 import type { LocalChanges } from "../bindings/LocalChanges";
 import type { LocalSkill } from "../bindings/LocalSkill";
 import type { LocalSkillSummary } from "../bindings/LocalSkillSummary";
+import type { MachineSkill } from "../bindings/MachineSkill";
 import type { NewSkill } from "../bindings/NewSkill";
 import type { NewSource } from "../bindings/NewSource";
 import type { OperationSummary } from "../bindings/OperationSummary";
@@ -274,6 +275,8 @@ export const api = {
     call<ImportOutcome>("import_skills", { from, selections, jobId: jobId ?? null }),
   /** Where each skill is installed and whether its library has a newer version; reads lock files. */
   skillsOverview: () => call<SkillStanding[]>("skills_overview"),
+  /** Skills in the person's own folders (`~/.claude/skills` and the like); reads only. */
+  machineSkills: () => call<MachineSkill[]>("machine_skills"),
   /** What a copy changed since it was made or last updated; writes nothing. */
   skillLocalChanges: (id: string) => call<LocalChanges>("skill_local_changes", { id }),
   skillTemplates: () => call<TemplateInfo[]>("skill_templates"),

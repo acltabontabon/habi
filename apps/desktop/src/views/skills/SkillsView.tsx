@@ -23,6 +23,8 @@ import { type Dye, dyeMap } from "../../lib/dye";
 import { plural, relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useSkills, useSkillsOverview, useSources } from "../../lib/queries";
+import { purpose } from "../../lib/skills";
+import { OnThisMachine } from "./OnThisMachine";
 import { ShareSkillDialog } from "./ShareSkillDialog";
 import { SkillsEmpty } from "./SkillsEmpty";
 import { isCopy, onward, Provenance } from "./studio/Provenance";
@@ -63,13 +65,6 @@ function matches(facet: Facet, s: LocalSkillSummary, standing: SkillStanding | u
     case "unfinished":
       return s.errors > 0;
   }
-}
-
-/** The first sentence of a description: what it is for, without when to use it. */
-export function purpose(description: string): string {
-  const text = description.trim();
-  const end = text.search(/[.!?](\s|$)/);
-  return end > 0 ? text.slice(0, end + 1) : text;
 }
 
 function initial(title: string): string {
@@ -428,6 +423,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
         </header>
         {error ? <ErrorNotice error={error} /> : null}
         <SkillsEmpty />
+        <OnThisMachine />
         {trashSection}
       </div>
     );
@@ -559,6 +555,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
         })}
       </ol>
 
+      <OnThisMachine />
       {trashSection}
       {sharing ? (
         <ShareSkillDialog

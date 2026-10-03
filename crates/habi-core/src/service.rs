@@ -199,6 +199,11 @@ pub enum ImportFrom {
     /// not connected, and is forgotten afterwards.
     #[serde(rename_all = "camelCase")]
     GitCopy { source_id: String },
+    /// A skill in one of the person's own skill folders (`~/.claude/skills`
+    /// and the like), named by a `MachineSkill` id. Resolved here, so the
+    /// webview never supplies a path.
+    #[serde(rename_all = "camelCase")]
+    Machine { id: String },
 }
 
 /// A repository fetched to copy skills from, without connecting it.
@@ -403,6 +408,8 @@ pub struct Habi {
     check_previews: Mutex<HashMap<String, StoredCheck>>,
     /// `gh`/`glab` for review requests; tests point these at stand-ins.
     pub review_tools: ReviewTools,
+    /// The person's home folder, where their own skill folders are read.
+    user_home: PathBuf,
 }
 
 /// A check preview the user has seen; running requires its id.
@@ -440,7 +447,18 @@ impl Habi {
             inspections: Mutex::new(HashMap::new()),
             check_previews: Mutex::new(HashMap::new()),
             review_tools,
+            user_home: directories::BaseDirs::new()
+                .map(|b| b.home_dir().to_path_buf())
+                .unwrap_or_default(),
         })
+    }
+
+    /// Reads the person's own skill folders under `home` instead of the real
+    /// home folder (tests use this so they never look at the real one).
+    #[must_use]
+    pub fn with_user_home(mut self, home: PathBuf) -> Habi {
+        self.user_home = home;
+        self
     }
 
     pub fn from_env() -> Result<Habi> {
@@ -1628,6 +1646,15 @@ impl Habi {
                 });
                 Ok((shown.clone(), packages))
             }
+            ImportFrom::Machine { id } => {
+                let found = crate::skills::machine::locate(&self.user_home, id)?;
+                cancel.check()?;
+                let tree = crate::skills::read_tree(&found.path, &TreeLimits::PACKAGE)?;
+                let packages = intake::packages_in(&tree, |_| SkillOrigin::Folder {
+                    path: found.location.clone(),
+                });
+                Ok((found.location, packages))
+            }
             ImportFrom::GitCopy { source_id } => {
                 let source = self.sources.get(source_id)?;
                 if !is_copy_source(&source) {
@@ -1782,6 +1809,7 @@ impl Habi {
                 ImportFrom::GitCopy { .. } => {
                     "No SKILL.md was found in this repository.".to_string()
                 }
+                ImportFrom::Machine { .. } => "No SKILL.md was found in this skill folder.".into(),
             });
         }
         Ok(ImportInspection {
@@ -1809,6 +1837,44 @@ impl Habi {
         id: &str,
     ) -> Result<Option<crate::skills::upstream::UpstreamStatus>> {
         self.skills().upstream_status(id, &self.sources)
+    }
+
+    /// Skills in the person's own folders (`~/.claude/skills`, `~/.agents/skills`,
+    /// `~/.cursor/skills`), with what they share with My skills and with the
+    /// projects Habi knows. Reads only; links are followed to read.
+    pub fn machine_skills(&self) -> Result<Vec<crate::skills::machine::MachineSkill>> {
+        use crate::skills::machine::{self, ProjectRef};
+        let mut found = machine::scan(&self.user_home);
+        if found.is_empty() {
+            return Ok(found);
+        }
+        let skills = self.skills();
+        let local = skills.list()?;
+        let digests = skills.origin_digests()?;
+        let project_ids: Vec<String> = {
+            let conn = self.store.conn()?;
+            let mut stmt = conn.prepare("SELECT id FROM projects ORDER BY last_opened_at DESC")?;
+            stmt.query_map([], |r| r.get(0))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        let projects: Vec<ProjectRecord> = project_ids
+            .iter()
+            .filter_map(|id| self.project(id).ok())
+            .filter(|p| p.exists)
+            .collect();
+        let refs: Vec<ProjectRef> = projects
+            .iter()
+            .map(|p| ProjectRef {
+                id: &p.id,
+                name: &p.name,
+                root: &p.root,
+            })
+            .collect();
+        for skill in &mut found {
+            skill.imported_as = intake::already_imported(&skill.digest, &local, &digests);
+            skill.in_projects = machine::project_copies(skill, &refs);
+        }
+        Ok(found)
     }
 
     /// Where each of My skills stands beyond its own files: which projects

@@ -92,3 +92,10 @@ export function provenanceText(origin: SkillOrigin): string | null {
   ];
   return parts.filter(Boolean).join(" · ");
 }
+
+/** The first sentence of a description: what it is for, without when to use it. */
+export function purpose(description: string): string {
+  const text = description.trim();
+  const end = text.search(/[.!?](\s|$)/);
+  return end > 0 ? text.slice(0, end + 1) : text;
+}

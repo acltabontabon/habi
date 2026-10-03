@@ -8,6 +8,7 @@ import { type CSSProperties, type ReactNode, useState } from "react";
 import type { DiscoveredSkill } from "../../bindings/DiscoveredSkill";
 import type { InstructionFile } from "../../bindings/InstructionFile";
 import type { InstructionSection } from "../../bindings/InstructionSection";
+import type { MachineSkill } from "../../bindings/MachineSkill";
 import type { ProjectKnowledge } from "../../bindings/ProjectKnowledge";
 import type { ProjectRecord } from "../../bindings/ProjectRecord";
 import { Dialog } from "../../components/Dialog";
@@ -16,13 +17,32 @@ import { Button, ErrorNotice, Notice, Status, Working } from "../../components/u
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import { clientsPhrase, plural } from "../../lib/format";
+import { copyState, precedenceNote } from "../../lib/machine";
 import { useNav } from "../../lib/nav";
-import { invalidateSkills, useKnowledge, useSources } from "../../lib/queries";
+import { invalidateSkills, useKnowledge, useMachineSkills, useSources } from "../../lib/queries";
 import { lineRange } from "../../lib/skills";
 import { EvidenceExcerpt } from "./Explain";
 
-function SkillRow({ skill, project }: { skill: DiscoveredSkill; project: ProjectRecord }) {
+/** The copy of this skill among the person's own folders, if there is one: where it is and how it compares. */
+function ownCopy(machine: MachineSkill[], skill: DiscoveredSkill, project: ProjectRecord) {
+  for (const m of machine) {
+    const here = m.inProjects.find((c) => c.projectId === project.id && c.path === skill.path);
+    if (here) return { location: m.location, copy: here };
+  }
+  return null;
+}
+
+function SkillRow({
+  skill,
+  project,
+  machine,
+}: {
+  skill: DiscoveredSkill;
+  project: ProjectRecord;
+  machine: MachineSkill[];
+}) {
   const { navigate } = useNav();
+  const own = ownCopy(machine, skill, project);
   const { addSkills } = useActions();
   const [open, setOpen] = useState(false);
   const errors = skill.problems.filter((p) => p.level === "error");
@@ -42,6 +62,12 @@ function SkillRow({ skill, project }: { skill: DiscoveredSkill; project: Project
         {skill.description ? <p className="found-desc">{skill.description}</p> : null}
         {skill.readers.length === 0 ? (
           <p className="found-warn">Not in a folder an agent reads — agents will not find it.</p>
+        ) : null}
+        {own ? (
+          <p className="found-warn">
+            Also in your own skills ({own.location}): {copyState(own.copy)}.{" "}
+            {precedenceNote(own.copy) ?? "No agent reads both, so neither hides the other."}
+          </p>
         ) : null}
         {errors.length > 0 ? (
           <p className="field-problem">
@@ -472,6 +498,7 @@ export function NothingFits({
 /** Skills and agent instructions already in the repository, as a list. Nothing when there are none. */
 export function AlreadyHere({ project }: { project: ProjectRecord }) {
   const knowledge = useKnowledge(project.id);
+  const machine = useMachineSkills();
   const data = knowledge.data;
 
   if (knowledge.isPending) return <Working>Looking for skills and instructions already here…</Working>;
@@ -506,7 +533,7 @@ export function AlreadyHere({ project }: { project: ProjectRecord }) {
       </h3>
       <ul className="found-list">
         {data.skills.map((s) => (
-          <SkillRow key={s.path} skill={s} project={project} />
+          <SkillRow key={s.path} skill={s} project={project} machine={machine.data ?? []} />
         ))}
         {data.instructions.map((f) => (
           <InstructionRow key={f.path} file={f} project={project} />
@@ -517,7 +544,7 @@ export function AlreadyHere({ project }: { project: ProjectRecord }) {
 }
 
 const SCOPE_TIP =
-  "Only this repository — personal and global agent folders are not looked at; bring those in with Add existing skills";
+  "Only this repository. Skills in your own agent folders are listed in My skills under On this machine; a copy of one found here is noted on its row";
 
 /** Something already in the project, as the workbench lists it beside the recommendations. */
 export type HereItem =
