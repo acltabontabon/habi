@@ -438,7 +438,7 @@ describe("my skills, before the first skill", () => {
     await user.click(screen.getByRole("button", { name: /Ship a release/ }));
     expect(actions.newSkill).toHaveBeenLastCalledWith({
       title: "Ship a release",
-      template: "implementationGuide",
+      template: "workflow",
     });
     // Pointing at a note lights the lines of the specimen it explains.
     await user.hover(screen.getByRole("button", { name: /Steps/ }));

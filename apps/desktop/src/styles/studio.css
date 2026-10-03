@@ -2397,3 +2397,52 @@
   line-height: 1.45;
   color: var(--ink-muted);
 }
+
+/* ---------- Code in rendered Markdown, in the dyes ---------- */
+
+.prose pre code .tok-keyword,
+.prose pre code .tok-operator {
+  color: var(--dye-7);
+}
+
+.prose pre code .tok-string,
+.prose pre code .tok-string2 {
+  color: var(--dye-2);
+}
+
+.prose pre code .tok-number,
+.prose pre code .tok-bool,
+.prose pre code .tok-atom {
+  color: var(--dye-1);
+}
+
+.prose pre code .tok-comment,
+.prose pre code .tok-meta {
+  color: var(--ink-muted);
+}
+
+.prose pre code .tok-propertyName,
+.prose pre code .tok-attributeName {
+  color: var(--dye-4);
+}
+
+.prose pre code .tok-typeName,
+.prose pre code .tok-className {
+  color: var(--dye-5);
+}
+
+.prose pre code .tok-variableName.tok-definition {
+  color: var(--dye-0);
+}
+
+.prose pre code .tok-heading {
+  font-weight: 600;
+}
+
+/* Laptop widths: a slimmer rail leaves the document its measure. */
+@container studio (max-width: 1239px) {
+  .studio.is-docked .studio-panel,
+  .studio-panel {
+    width: 280px;
+  }
+}

@@ -23,23 +23,34 @@ scanned; bring skills in from them with **Add skills → From a folder**.
 *Create a skill* (welcome screen, sidebar, ⌘N, or *Create a skill for this project*) needs
 only a title. It works offline and without a project, library, account or model.
 
-The editor has three connected parts, with a preview of where the skill applies beside them:
+A skill opens in the **Skill Studio**, one document with three modes and a panel beside it:
 
-- **Purpose** — the description agents read to decide when to load the skill, and the
-  identifier (the Agent Skills `name`: lowercase letters, digits, hyphens).
-- **Instructions** — Markdown with a preview. ⌘B/⌘I/⌘E format; Tab moves focus. Two optional
-  starting structures (review procedure, implementation guide) are offered while it is empty.
-- **When it applies** — a condition builder: *applies when* (technology, dependency, file
-  pattern; all or any), *never applies when*, required tools, and module or repository scope.
-  It writes the same `habi.yaml` conditions the matcher evaluates. A YAML view edits the file
-  directly and saves it exactly as typed, including keys Habi does not know; rules the builder
-  cannot express are kept as written.
-- **Files** — the package as real files: `SKILL.md`, optional `habi.yaml`, `references/`,
-  `scripts/`, `assets/`. Text files can be edited; scripts are stored, never run.
+- **The head** — where it came from, the title, the **purpose** (the `description` agents read
+  to decide when to load the skill) as the lede, the identifier (the Agent Skills `name`:
+  lowercase letters, digits, hyphens; changed deliberately with *Change*), and whether it is
+  ready. *Package* shows the format and where the folder is stored.
+- **Instructions** (⌘1) — Markdown written as a document, with a preview (⌘⇧P). ⌘B/⌘I/⌘E
+  format, ⌘⇧8/⌘⇧7 make lists, ⌘⇧L a link; package paths complete after `](` or inside
+  backticks. While it is empty, optional starters are offered: Workflow, Troubleshooting,
+  Code review, Tool-assisted. The panel shows the outline, problems by line, and the
+  package's files to link.
+- **When it applies** (⌘2) — sentences: *Suggest this skill when* (technology, dependency,
+  file pattern; all or any), *Unless*, *It needs* (tools), *Checked across* (each module or
+  the whole repository). They write the same `habi.yaml` conditions the matcher evaluates. A
+  YAML view edits the file directly, saves it exactly as typed (including keys Habi does not
+  know) and shows what Habi reads from it; rules the sentences cannot express are read out and
+  kept as written.
+- **Files** (⌘3) — the package as real files: `SKILL.md`, optional `habi.yaml`,
+  `references/`, `scripts/`, `assets/`, with a file list, one *New* action (scripts with
+  useful headers, references, blank files, imports), search across names and text, and
+  dropping files onto the window. Scripts are stored and shown, never run.
 
-When a skill is written for a project, or you choose a project under *Suggest from*, the
-builder offers facts observed there (with the file and line they came from). Each is added
-only when you click it.
+The side panel docks beside the document when there is room and comes in as a sheet when
+there is not (⌘\\ shows or hides it). *Use & share* opens the checks, the projects the skill
+is installed in, and the ways to use, share or export it.
+
+While adding a condition, Habi offers facts observed in the project being checked (with the
+file they came from). Each is added only when you click it.
 
 A skill without rules has **no rules for when it applies**: it stays available for deliberate
 use everywhere and is never recommended. Habi does not infer rules from a title.
@@ -59,7 +70,8 @@ step.
 
 ## Checks
 
-The editor lists problems as you work ("Draft — 2 things to finish…", "3 notes"). They come
+The head says whether the skill is ready ("Ready to use", or "2 things to finish"); *Use &
+share* lists each problem with a link to the field, line or file that fixes it. They come
 from the same checks Habi runs on every package it reads — library items, My skills,
 contributions before a branch is prepared, and `habi validate`. Each problem has a level:
 
@@ -110,28 +122,40 @@ origin (file, lines, project) is recorded in the draft and in `metadata.derived-
 The instruction file stays exactly as it is. Rules every change must follow belong there,
 where agents always read them; a skill is loaded only when relevant.
 
-## Previewing where it applies
+## Would Habi suggest it?
 
-While you edit rules, **Where it applies** evaluates them against every project you have
-opened, with the same matcher recommendations use:
+While you edit rules, the panel evaluates them in one project at a time (the one the skill
+was written for or copied from, else your most recent), with the same matcher recommendations
+use:
 
-- *Applies* — with the facts and file locations behind each condition (click one to see the lines).
-- *Does not apply* — a condition does not hold in a complete inspection, or an exclusion does.
-- *Needs information* — something could not be established (for example, dependencies
+- *Habi would suggest it here* — with the facts and file locations behind each condition
+  (click one to see the lines).
+- *Habi would not suggest it here* — a condition does not hold in a complete inspection, or
+  an exception does.
+- *Habi can't tell yet* — something could not be established (for example, dependencies
   inherited from a parent build file outside the repository). Missing evidence in an
   incomplete inspection is never treated as absence.
 
+The tools the skill needs are looked up on PATH and in the project (nothing is run) and shown
+as available or missing; they never change the verdict. *Check all projects* evaluates the rest.
+
 This previews the **rules**. It says nothing about the skill's quality or what an agent will
-do with it; "Applies" does not mean tried or verified.
+do with it; "would suggest" does not mean tried or verified, and it is not whether an agent
+loads the skill.
 
 ## Adding existing skills
 
-**Add skills** has three sources. Habi inspects first and writes nothing until you choose.
+**Add skills** lists where skills can come from. Habi inspects first and writes nothing until
+you choose.
 
-1. **From a project** — the skill folders found there.
-2. **From a folder** — one skill, or a folder of skills.
-3. **From a Git repository** — connects it as a team library (it stays current when you
-   refresh). To edit one of its skills, copy it to My skills.
+1. **A project you opened** — the skill folders found there.
+2. **A folder on this machine** — one skill, or a folder of skills.
+3. **A Git repository** — two different things:
+   - *Make my own copy* reads the repository once, shows what it found, copies what you
+     choose, and connects nothing. Each copy remembers the repository and the version.
+   - *Connect as a library* keeps it to browse and update from (it stays current when you
+     refresh). Nothing is copied.
+4. **A library you connected** — copies stay linked to it, so you can review its updates.
 
 The inspection lists each package with its origin, files, license, whether it has
 rules for when it applies, and any problems. Importing copies packages byte for byte — references,
@@ -144,11 +168,19 @@ where each came from. Originals are never changed.
 - **Incomplete packages** (symbolic links, oversized files): shown, not importable — a partial
   copy would silently lose content.
 
+### Lineage: what a copy changed, and updates from its library
+
+An imported copy keeps its files as they were when it was copied (or last took an update).
+The head says *changed here* once it differs; the lineage panel (click the line above the
+title) shows the original, your copy, every file you changed with its diff, the library's
+state, and *Prepare a contribution…* to offer improvements back. This works whatever the copy
+came from, and keeps working after the repository or library is gone.
+
 ### Updates from the library a copy came from
 
 A skill copied from a team library remembers the library, the item and the snapshot it was
-copied at. When that item changes in the library, the editor says *Updated in <library> since
-you copied it*; **Review update…** compares three versions of every file — as copied, the
+copied at. When that item changes in the library, the lineage panel and My skills say so;
+**Review the update…** compares three versions of every file — as copied, the
 library's now, and yours. Files only the library changed are taken; files only you changed
 are kept; a file changed on both sides needs your choice (*Keep mine* or *Take the
 library's*) before anything is written. After the update, later comparisons start from the

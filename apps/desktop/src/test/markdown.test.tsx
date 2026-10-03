@@ -25,4 +25,27 @@ describe("skill Markdown rendering", () => {
     expect((window as unknown as { pwned?: boolean }).pwned).toBeUndefined();
     expect(container.textContent).toContain("[image: tracker]");
   });
+
+  it("highlights fenced code it knows, as text, and leaves the rest plain", () => {
+    const md = [
+      "```python",
+      "def check():",
+      '    return "ok"',
+      "```",
+      "",
+      "```brainfuck",
+      "+++",
+      "```",
+      "",
+      "Run `ls`.",
+    ].join("\n");
+    const { container } = render(<Markdown text={md} />);
+    const blocks = container.querySelectorAll("pre code");
+    expect(blocks[0]?.querySelector(".tok-keyword")?.textContent).toBe("def");
+    expect(blocks[0]?.querySelector(".tok-string")?.textContent).toBe('"ok"');
+    expect(blocks[0]?.textContent).toBe('def check():\n    return "ok"');
+    expect(blocks[1]?.querySelector("span")).toBeNull();
+    // Inline code stays as it was.
+    expect(container.querySelector("p code")?.textContent).toBe("ls");
+  });
 });

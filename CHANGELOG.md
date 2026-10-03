@@ -106,25 +106,49 @@ The first version, 0.1.0, is not released yet. It will contain the following.
 - Write a skill in Habi — purpose, Markdown instructions, supporting files — or bring in the
   ones you already have. No project, library, account or model is needed, and a draft is an
   ordinary Agent Skills folder.
-- **Applicability without YAML:** build "applies when / never applies when" conditions from
-  technologies, dependencies and file patterns, with suggestions taken one by one from facts
-  observed in a project. A YAML view keeps unknown keys and complex rules as written.
-- **Where it applies:** a live preview evaluates the rules against every opened project and
-  shows the evidence, keeping "does not apply" apart from "could not be established".
+- **The Skill Studio:** a skill is edited as one document. Its head is the frontmatter set as
+  a document head — where it came from, the title, the purpose as the lede, the identifier
+  agents see, and whether it is ready — with one action, *Use & share*. Below, the
+  instructions, when it applies and its files are three modes of one surface (⌘1–3); beside
+  them a panel follows what you are doing (outline and package while writing, an evaluation
+  while editing rules, file details among files, lineage, ways to use and share). It docks
+  when there is room and becomes a sheet when there is not (⌘\\).
+- **Writing:** instructions are set in the reading face with sized headings; package paths
+  complete after `](` and in backticks; problems are marked on their line; list and link
+  shortcuts; optional starters (Workflow, Troubleshooting, Code review, Tool-assisted) on an
+  empty page. Fenced code is highlighted in previews and in the library reader.
+- **When it applies, in sentences:** "Suggest this skill when … Unless … It needs … Checked
+  across …", built one statement at a time with suggestions from what Habi observed. The
+  YAML view edits the same file and shows what Habi reads from it; rules the sentences cannot
+  express are read out and kept as written.
+- **Would Habi suggest it?** Evaluate the rules in one project: a plain verdict, each
+  condition with its evidence, what could not be established, the scope, and whether the
+  tools it needs are on PATH or in the project (looked up, never run).
+- **The package as a workspace:** a compact explorer beside the open file; one *New* action
+  for scripts (Python, shell, JavaScript, with useful headers), references and blank files;
+  import with the picker or by dropping files on the window (only what was dropped is taken,
+  nothing is replaced); search names and text. Scripts are shown with the command to run them
+  yourself — Habi never runs them.
+- **An index of what you know:** My skills lists each skill's purpose, origin (with its
+  library's dye), and only what is true now — unfinished, changed here, update available, in
+  which projects. Facets, `/` to find, j/k to move.
+- **Lineage:** an imported copy keeps its original files, so what you changed is shown file by
+  file whatever it came from, even after the source is gone; library updates are reviewed
+  against it, and a contribution can be prepared from the same place.
+- **Add skills** from a project, a folder, a Git repository or a connected library,
+  inspected before anything is copied, with duplicates and identifier collisions resolved
+  without losing either version. From Git, *make my own copy* reads the repository once and
+  connects nothing; *connect as a library* keeps it to browse and update from.
 - **Already in this project:** opening a repository lists the skills and instruction files it
   already contains. Copy a skill to edit it, or turn a selected part of `AGENTS.md`/`CLAUDE.md`
   into a draft; the originals are never changed.
-- **Add skills** from a project, a folder or a Git repository, inspected before anything is
-  copied, with duplicates and identifier collisions resolved without losing either version.
 - **Use in a project:** pick the project and agents at the point of use; installation goes
   through the same reviewed plan as team items.
-- The editor treats a skill as a complete package: instructions first, files beside them,
-  scripts with templates, previews, and validation next to each file.
-- Drafts autosave with an honest save state, detect edits made outside Habi, and can be
-  restored from the trash.
-- Copies of library skills (including installed copies with local edits) keep their origin;
-  when the library changes, the copy shows the update and takes library-only changes while
-  keeping yours, asking about files both sides changed.
+- Drafts autosave with an honest save state (leaving a screen writes pending edits first),
+  detect edits made outside Habi, and can be restored from the trash. Changing the
+  identifier is deliberate and warns where the skill is installed under the old one.
+- Validation names the kind of each problem and leads to the field, line or file that fixes
+  it; errors that block installing are kept apart from notes.
 
 ### Share
 - *Share with team* from a skill, or turn an improved installed skill into a contribution.

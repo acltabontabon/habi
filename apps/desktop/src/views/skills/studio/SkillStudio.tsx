@@ -113,7 +113,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
   const root = useRef<HTMLDivElement>(null);
   const width = useWidth(root);
-  const docked = width >= 960;
+  const docked = width >= 900;
   const [mode, setMode] = useState<StudioMode>(broken ? "files" : "instructions");
   const [visited, setVisited] = useState<Set<StudioMode>>(() => new Set([broken ? "files" : "instructions"]));
   const [panelOpen, setPanelOpen] = useState(true);
@@ -171,7 +171,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
     });
   }, []);
 
-  // A sheet takes focus when it opens, and gives it back to the toggle when it closes.
+  // A sheet takes focus when it opens; closing it gives focus back to the toggle.
   const panelRef = useRef<HTMLElement>(null);
   const sheetWasOpen = useRef(false);
   useEffect(() => {
@@ -180,11 +180,14 @@ function Studio({ initial }: { initial: LocalSkill }) {
       requestAnimationFrame(() =>
         panelRef.current?.querySelector<HTMLElement>(".studio-panel-close")?.focus(),
       );
-    } else if (!sheet && sheetWasOpen.current && !docked) {
-      root.current?.querySelector<HTMLElement>(".studio-panel-toggle")?.focus();
     }
     sheetWasOpen.current = sheet;
   }, [docked, panelOpen]);
+  const closePanel = () => {
+    setPanelOpen(false);
+    if (!docked)
+      requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(".studio-panel-toggle")?.focus());
+  };
 
   const reveal = (line: number) => {
     go("instructions");
@@ -518,7 +521,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
           className="studio-scrim"
           aria-label="Close the side panel"
           tabIndex={-1}
-          onClick={() => setPanelOpen(false)}
+          onClick={closePanel}
         />
       ) : null}
       {panelOpen ? (
@@ -530,7 +533,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
           onKeyDown={(e) => {
             if (e.key === "Escape" && !docked) {
               e.stopPropagation();
-              setPanelOpen(false);
+              closePanel();
             }
           }}
         >
@@ -551,7 +554,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
               type="button"
               className="studio-panel-close"
               aria-label="Close the side panel"
-              onClick={() => setPanelOpen(false)}
+              onClick={closePanel}
             >
               <Icon name="close" size={14} />
             </button>

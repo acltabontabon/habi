@@ -11,8 +11,14 @@ import { slugify } from "../../lib/skills";
 
 const templates: { id: SkillTemplate; label: string; detail: string }[] = [
   { id: "blank", label: "Blank", detail: "Just the title and an empty page." },
-  { id: "reviewProcedure", label: "Review procedure", detail: "Before you start · Review steps · Report." },
-  { id: "implementationGuide", label: "Implementation guide", detail: "Context · Steps · Done when." },
+  { id: "workflow", label: "Workflow", detail: "When to use · Steps · Done when · Never." },
+  {
+    id: "troubleshooting",
+    label: "Troubleshooting",
+    detail: "Symptoms · Gather facts · Likely causes · Report.",
+  },
+  { id: "reviewProcedure", label: "Code review", detail: "Before you start · Check · Report." },
+  { id: "toolAssisted", label: "Tool-assisted", detail: "Tools this uses · Steps · Never without asking." },
 ];
 
 export function NewSkillDialog({
