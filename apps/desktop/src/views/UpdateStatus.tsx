@@ -5,10 +5,42 @@
 import { Button, Status } from "../components/ui";
 import { sizeLabel } from "../lib/format";
 import { releaseDate } from "../lib/release";
-import { useUpdates } from "../lib/updates";
+import { type UpdateState, useUpdates } from "../lib/updates";
+
+/** What a screen reader hears as the phase changes: once per step, never per downloaded chunk. */
+function announcement(state: UpdateState): string {
+  switch (state.phase) {
+    case "checking":
+      return "Checking for updates…";
+    case "current":
+      return "Habi is up to date.";
+    case "available":
+      return `${state.info.version} is available.`;
+    case "installing":
+      return `Downloading ${state.info.version}…`;
+    case "ready":
+      return `${state.info.version} is installed.`;
+    default:
+      // Errors speak for themselves (an alert).
+      return "";
+  }
+}
 
 export function UpdateStatus() {
-  const { state, check, install, restart } = useUpdates();
+  const { state } = useUpdates();
+  return (
+    <>
+      <UpdateLine state={state} />
+      {/* One live region that stays put while the line below it changes. */}
+      <span className="visually-hidden" role="status">
+        {announcement(state)}
+      </span>
+    </>
+  );
+}
+
+function UpdateLine({ state }: { state: UpdateState }) {
+  const { check, install, restart } = useUpdates();
 
   switch (state.phase) {
     case "idle":
@@ -21,7 +53,7 @@ export function UpdateStatus() {
       );
     case "checking":
       return (
-        <div className="update-line" role="status" aria-live="polite">
+        <div className="update-line">
           <span className="muted">Checking for updates…</span>
         </div>
       );
@@ -52,7 +84,7 @@ export function UpdateStatus() {
       const { downloaded, total } = state;
       const fraction = total ? Math.min(1, downloaded / total) : null;
       return (
-        <div className="update-line is-installing" role="status" aria-live="polite">
+        <div className="update-line is-installing">
           <span>
             Downloading {state.info.version}
             <span className="muted">
@@ -64,7 +96,11 @@ export function UpdateStatus() {
           <span
             className={`update-thread${fraction === null ? " is-unknown" : ""}`}
             style={fraction === null ? undefined : { ["--done" as string]: `${fraction * 100}%` }}
-            aria-hidden="true"
+            role="progressbar"
+            aria-label={`Downloading ${state.info.version}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={fraction === null ? undefined : Math.round(fraction * 100)}
           />
         </div>
       );
@@ -89,7 +125,10 @@ export function UpdateStatus() {
       return (
         <div className="update-line is-error" role="alert">
           <span>{state.message}</span>
-          <Button size="sm" onClick={() => void (state.info ? install() : check())}>
+          <Button
+            size="sm"
+            onClick={() => void (state.installed ? restart() : state.info ? install() : check())}
+          >
             Try again
           </Button>
         </div>

@@ -26,43 +26,6 @@ export function lineRange(start: number, end: number): string {
   return start === end ? `line ${start}` : `lines ${start}–${end}`;
 }
 
-export function originText(origin: SkillOrigin): string {
-  switch (origin.type) {
-    case "created":
-      return "Written here";
-    case "createdForProject":
-      return `Written here for ${origin.projectName}`;
-    case "folder":
-      return `Copied from ${origin.path}`;
-    case "project":
-      return `Copied from ${origin.projectName} · ${origin.path}`;
-    case "library": {
-      const from = origin.upstream
-        ? `${origin.sourceName} · ${origin.upstream.path}${origin.upstream.url ? ` in ${repoName(origin.upstream.url)}` : ""} @ ${origin.snapshot.slice(0, 7)}`
-        : origin.sourceName;
-      return `Copied from ${from} to edit`;
-    }
-    case "instructions":
-      return `From ${origin.path} (${lineRange(origin.startLine, origin.endLine)}) in ${origin.projectName}`;
-  }
-}
-
-export function originShort(origin: SkillOrigin): string {
-  switch (origin.type) {
-    case "created":
-    case "createdForProject":
-      return "Written here";
-    case "folder":
-      return "Copied from a folder";
-    case "project":
-      return `Copied from ${origin.projectName}`;
-    case "library":
-      return `From ${origin.sourceName}`;
-    case "instructions":
-      return `From ${origin.path}`;
-  }
-}
-
 /** "https://github.com/acme/skills" → "acme/skills". */
 export function repoName(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?(github\.com|gitlab\.com|codeberg\.org)\//, "").replace(/\/$/, "");

@@ -1,6 +1,7 @@
 /** Data fetching with TanStack Query: caching, loading and error states. */
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import type { CatalogFit } from "../bindings/CatalogFit";
 import { api, HabiError, newJobId } from "./api";
 
 export const keys = {
@@ -84,13 +85,21 @@ export function useRepoFacts(entryId: string | undefined) {
   });
 }
 
-/** Skills of fetched catalog libraries that fit a project (nothing is downloaded). */
-export function useCatalogFits(projectId: string | undefined) {
-  return useQuery({
-    queryKey: keys.catalogFits(projectId ?? ""),
-    queryFn: () => api.catalogFits(projectId ?? ""),
-    enabled: Boolean(projectId),
-    staleTime: 60_000,
+const fitsData = (results: { data?: CatalogFit[] }[]) => results.map((r) => r.data);
+
+/**
+ * Skills of fetched catalog libraries that fit each project, in the order given (nothing is
+ * downloaded). Each lookup inspects the project, so it is kept for a while rather than asked
+ * again on every visit.
+ */
+export function useCatalogFitsFor(projectIds: string[]): (CatalogFit[] | undefined)[] {
+  return useQueries({
+    queries: projectIds.map((id) => ({
+      queryKey: keys.catalogFits(id),
+      queryFn: () => api.catalogFits(id),
+      staleTime: 5 * 60_000,
+    })),
+    combine: fitsData,
   });
 }
 
@@ -215,9 +224,9 @@ export function useMachineSkills() {
   return useQuery({
     queryKey: keys.machineSkills,
     queryFn: api.machineSkills,
-    staleTime: 0,
+    staleTime: 5000,
     refetchOnMount: "always",
-    refetchOnWindowFocus: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -262,7 +271,8 @@ export function invalidateProjectData(client: QueryClient, projectId?: string) {
   void client.invalidateQueries({ queryKey: keys.catalog });
   void client.invalidateQueries({ queryKey: keys.sourceUpdates });
   void client.invalidateQueries({ queryKey: ["updateReport"] });
-  void client.invalidateQueries({ queryKey: ["catalogFits"] });
+  // What fits a project changes with that project, or with the libraries (no project given).
+  void client.invalidateQueries({ queryKey: projectId ? keys.catalogFits(projectId) : ["catalogFits"] });
   void client.invalidateQueries({ queryKey: ["library"] });
   void client.invalidateQueries({ queryKey: ["item"] });
   if (projectId) {

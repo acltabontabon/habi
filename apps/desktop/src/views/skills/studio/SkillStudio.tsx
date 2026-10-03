@@ -59,7 +59,7 @@ import { ProjectEvaluation } from "./ProjectEvaluation";
 import { isCopy, onward, Provenance, ProvenanceSheet } from "./Provenance";
 import { nextStep, Readiness } from "./Readiness";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
-import { addSignal, WhenToUse, whenLine } from "./WhenToUse";
+import { addSignal, removeSignal, WhenToUse, whenLine } from "./WhenToUse";
 
 const LAYER_NAME: Record<StudioLayer, string> = {
   skill: "Instructions",
@@ -391,16 +391,32 @@ function Studio({ initial }: { initial: LocalSkill }) {
     }
   };
 
-  const exportZip = async () => {
-    draft.setActionError(null);
-    if (!(await draft.saveFirst())) return;
+  // Export and restore run once at a time: a second click while one is under way does nothing.
+  const [busy, setBusy] = useState<"export" | "restore" | null>(null);
+  const working = useRef(false);
+  const once = async (which: "export" | "restore", work: () => Promise<void>) => {
+    if (working.current) return;
+    working.current = true;
+    setBusy(which);
     try {
-      const path = await api.exportSkill(id);
-      if (path) toast.show(`Saved ${path}.`);
-    } catch (e) {
-      draft.setActionError(e);
+      await work();
+    } finally {
+      working.current = false;
+      setBusy(null);
     }
   };
+
+  const exportZip = () =>
+    once("export", async () => {
+      draft.setActionError(null);
+      if (!(await draft.saveFirst())) return;
+      try {
+        const path = await api.exportSkill(id);
+        if (path) toast.show(`Saved ${path}.`);
+      } catch (e) {
+        draft.setActionError(e);
+      }
+    });
 
   const trash = async () => {
     draft.setActionError(null);
@@ -415,23 +431,24 @@ function Studio({ initial }: { initial: LocalSkill }) {
     }
   };
 
-  const restore = async () => {
-    try {
-      draft.adopt(await api.restoreSkill(id), { document: true, metadata: true });
-      invalidateSkills(client);
-    } catch (e) {
-      draft.setActionError(e);
-    }
-  };
+  const restore = () =>
+    once("restore", async () => {
+      try {
+        draft.adopt(await api.restoreSkill(id), { document: true, metadata: true });
+        invalidateSkills(client);
+      } catch (e) {
+        draft.setActionError(e);
+      }
+    });
 
   const showFolder = () => safely(() => api.revealSkill(id), "The folder was not shown");
 
   const suggestSignal = (signal: Signal) => {
-    const before = draft.form;
-    draft.setForm(addSignal(before, signal));
+    draft.setForm((f) => addSignal(f, signal));
+    // Undo takes back this signal only: edits made since stay.
     toast.show(`Now suggested when ${signalClause(signal)}.`, "ok", {
       label: "Undo",
-      run: () => draft.setForm(before),
+      run: () => draft.setForm((f) => removeSignal(f, signal)),
     });
   };
 
@@ -620,7 +637,12 @@ function Studio({ initial }: { initial: LocalSkill }) {
     [trashed, broken, title, document.description, document.body, signalCount],
   );
 
-  const next = ready ? null : nextStep(draft);
+  // The next step mixes what is typed with what the last save reported, so
+  // it is worked out only once both agree: while a save is on its way, the
+  // bar keeps the step it last showed rather than one from half the picture.
+  const shownNext = useRef<ReturnType<typeof nextStep>>(null);
+  if (draft.settled) shownNext.current = ready ? null : nextStep(draft);
+  const next = shownNext.current;
   const passOn = onward(skill.summary);
 
   const sheetTitle = sheet === "test" ? "Test against a project" : "Where it came from";
@@ -699,8 +721,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
             onRefine={refine}
           />
           {trashed ? (
-            <Button variant="primary" onClick={() => void restore()}>
-              Restore
+            <Button variant="primary" disabled={busy === "restore"} onClick={() => void restore()}>
+              {busy === "restore" ? "Restoring…" : "Restore"}
             </Button>
           ) : (
             <>
@@ -742,6 +764,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     {
                       label: "Export as zip…",
                       icon: "download",
+                      disabled: busy === "export",
                       onSelect: () => void exportZip(),
                     },
                   ],
@@ -825,9 +848,13 @@ function Studio({ initial }: { initial: LocalSkill }) {
                   placeholder="What it helps with, and when an agent should reach for it."
                   aria-describedby="studio-purpose-hint"
                   aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
-                  onChange={(description) => setDocument((d) => ({ ...d, description }))}
+                  // SKILL.md keeps its description on one line: Enter goes on to the
+                  // instructions, and line breaks pasted in become spaces.
+                  onChange={(text) =>
+                    setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
+                  }
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                       e.preventDefault();
                       editor.current?.focus();
                     }
@@ -935,10 +962,12 @@ function Studio({ initial }: { initial: LocalSkill }) {
             className={`sk-sheet is-${sheet}`}
             aria-label={sheetTitle}
             onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.stopPropagation();
-                closeSheet();
-              }
+              // Only Escape pressed in the sheet itself: a dialog opened from it
+              // (in a portal, but still a React child) closes on its own.
+              if (e.key !== "Escape" || e.defaultPrevented) return;
+              if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) return;
+              e.stopPropagation();
+              closeSheet();
             }}
           >
             <header className="sk-sheet-head">

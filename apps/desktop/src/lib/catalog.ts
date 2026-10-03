@@ -8,7 +8,6 @@ import type { LibraryItem } from "../bindings/LibraryItem";
 import type { LibraryLicense } from "../bindings/LibraryLicense";
 import type { Signal } from "../bindings/Signal";
 import type { SignalSeverity } from "../bindings/SignalSeverity";
-import { plural, relativeTime } from "./format";
 
 export type EntryGroup = "builders" | "community";
 
@@ -24,15 +23,6 @@ export function ownershipShort(e: CatalogEntry): string | null {
 export function licenseLabel(l: LibraryLicense | null | undefined): string | null {
   if (!l) return null;
   return l.spdx ?? `see ${l.file}`;
-}
-
-/** The one line a library gets in a list: facts once fetched, else what the catalog says. */
-export function entryLine(e: CatalogEntry): string {
-  const c = e.contents;
-  if (!c) return e.summary;
-  const parts = [plural(c.items, "skill"), licenseLabel(c.license)];
-  if (e.fetched?.updated) parts.push(`updated ${relativeTime(e.fetched.updated)}`);
-  return parts.filter(Boolean).join(" · ");
 }
 
 export function shortCommit(snapshot: string | null | undefined): string {

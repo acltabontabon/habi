@@ -71,15 +71,19 @@ export function useAutosave<T>(options: {
   const blocked = useRef(false);
   const failed = useRef(false);
   const alive = useRef(true);
+  const enabledRef = useRef(enabled);
   latest.current = value;
   saveRef.current = save;
   keyRef.current = keyOf;
+  enabledRef.current = enabled;
 
   const run = useCallback(async (): Promise<boolean> => {
     if (timer.current !== null) {
       window.clearTimeout(timer.current);
       timer.current = null;
     }
+    // Turned off, it writes nothing, whoever asks: a blur, leaving the screen, closing the window.
+    if (!enabledRef.current) return true;
     if (inFlight.current) {
       await inFlight.current;
     }

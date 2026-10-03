@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UpdateInfo } from "../bindings/UpdateInfo";
 import { ToastProvider } from "../components/Toasts";
 import { RELEASES } from "../lib/release";
@@ -74,6 +74,8 @@ describe("About", () => {
 });
 
 describe("updating", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("says when this is the newest version", async () => {
     handlers.check_for_update = () => null;
     const user = userEvent.setup();
@@ -118,16 +120,59 @@ describe("updating", () => {
     expect(attempts).toBe(2);
   });
 
-  it("does not restart over edits that could not be saved", async () => {
+  it("writes pending edits before installing, since on Windows installing ends Habi", async () => {
     handlers.check_for_update = () => offer;
     handlers.install_update = () => null;
+    handlers.restart_app = () => null;
     const autosave = await import("../lib/useAutosave");
-    vi.spyOn(autosave, "flushAutosaves").mockResolvedValue(false);
+    vi.spyOn(autosave, "flushAutosaves").mockImplementation(async () => {
+      calls.push("flush");
+      return true;
+    });
     const user = userEvent.setup();
     about();
     await user.click(await screen.findByRole("button", { name: "Check for updates" }));
     await user.click(await screen.findByRole("button", { name: "Update and restart" }));
-    expect(await screen.findByText(/Some edits are not saved yet/)).toBeInTheDocument();
+    await waitFor(() => expect(calls).toContain("restart_app"));
+    // Once before installing, and again before restarting, for edits made during the download.
+    expect(calls.filter((c) => c === "flush" || c === "install_update" || c === "restart_app")).toEqual([
+      "flush",
+      "install_update",
+      "flush",
+      "restart_app",
+    ]);
+  });
+
+  it("does not install over edits that could not be saved", async () => {
+    handlers.check_for_update = () => offer;
+    handlers.install_update = () => null;
+    handlers.restart_app = () => null;
+    const autosave = await import("../lib/useAutosave");
+    const flush = vi.spyOn(autosave, "flushAutosaves").mockResolvedValue(false);
+    const user = userEvent.setup();
+    about();
+    await user.click(await screen.findByRole("button", { name: "Check for updates" }));
+    await user.click(await screen.findByRole("button", { name: "Update and restart" }));
+    expect(await screen.findByText(/not saved yet, so the update did not start/)).toBeInTheDocument();
+    expect(calls).not.toContain("install_update");
+
+    // Once they are written, trying again installs.
+    flush.mockResolvedValue(true);
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(calls).toContain("restart_app"));
+  });
+
+  it("does not restart over edits made during the download that could not be saved", async () => {
+    handlers.check_for_update = () => offer;
+    handlers.install_update = () => null;
+    const autosave = await import("../lib/useAutosave");
+    vi.spyOn(autosave, "flushAutosaves").mockResolvedValueOnce(true).mockResolvedValue(false);
+    const user = userEvent.setup();
+    about();
+    await user.click(await screen.findByRole("button", { name: "Check for updates" }));
+    await user.click(await screen.findByRole("button", { name: "Update and restart" }));
+    expect(await screen.findByText(/Save or discard them, then restart/)).toBeInTheDocument();
+    expect(calls).toContain("install_update");
     expect(calls).not.toContain("restart_app");
   });
 });

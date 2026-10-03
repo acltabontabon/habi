@@ -2160,5 +2160,5 @@
   ],
   "conflicts": [],
   "notes": [],
-  "recovery": "Replaced or deleted files are kept. Restore them from the project's history (or `habi restore`)."
+  "recovery": "Replaced or deleted files are kept. Restore them from the project's history, or with habi restore."
 }

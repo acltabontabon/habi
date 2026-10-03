@@ -6,10 +6,12 @@ import { Dialog } from "../components/Dialog";
 import { Setting, SettingAction, SettingGroup } from "../components/SettingGroup";
 import { ThreadChoice } from "../components/ThreadChoice";
 import { useToast } from "../components/Toasts";
+import { ToolInstall } from "../components/ToolInstall";
 import { Button, ErrorNotice, Status, Working } from "../components/ui";
 import { api } from "../lib/api";
 import { pruneSummary } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
+import { isFound, TOOLS } from "../lib/tools";
 import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
 
 const UPDATE_CHOICES = [
@@ -103,12 +105,6 @@ export function SettingsView() {
     }
   };
 
-  const tools = [
-    { name: "Git", found: info.data?.gitAvailable, missing: "warn" as const },
-    { name: "GitHub CLI", found: info.data?.ghAvailable, missing: "muted" as const },
-    { name: "GitLab CLI", found: info.data?.glabAvailable, missing: "muted" as const },
-  ];
-
   return (
     <div className="page settings">
       <h1 className="page-title">Settings</h1>
@@ -153,17 +149,34 @@ export function SettingsView() {
         </SettingGroup>
 
         <SettingGroup title="This machine" id="machine">
-          <Setting label="Command-line tools">
+          <Setting
+            label="Command-line tools"
+            hint="Git pulls libraries. The GitHub and GitLab CLIs are optional, for pull and merge requests."
+          >
             <ul className="tool-list">
-              {tools.map((t) => (
-                <li key={t.name} className="tool">
-                  <span className="tool-name">{t.name}</span>
-                  <Status tone={t.found ? "ok" : t.missing}>{t.found ? "found" : "not found"}</Status>
-                </li>
-              ))}
+              {info.data
+                ? TOOLS.map((t) => {
+                    const found = isFound(info.data, t.key);
+                    return (
+                      <li key={t.key} className="tool">
+                        <span className="tool-name">{t.name}</span>
+                        <Status tone={found ? "ok" : t.required ? "warn" : "muted"}>
+                          {found ? "found" : "not found"}
+                        </Status>
+                        {found ? null : <ToolInstall tool={t} platform={info.data.platform} />}
+                      </li>
+                    );
+                  })
+                : null}
             </ul>
+            <SettingAction
+              busy={info.isFetching}
+              onClick={() => void client.invalidateQueries({ queryKey: keys.appInfo })}
+            >
+              Check again
+            </SettingAction>
           </Setting>
-          <Setting label="Welcome" hint="What Habi is for, and whether this machine has what it needs.">
+          <Setting label="Welcome" hint="What Habi is for, and whether Git is on this machine.">
             <ThreadChoice
               label="Welcome when Habi starts"
               value={s.showWelcome === false ? "hide" : "show"}

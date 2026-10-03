@@ -95,22 +95,26 @@ export function useDropToAdd({
     if (!enabled || !("__TAURI_INTERNALS__" in window)) return;
     let stop: (() => void) | undefined;
     let cancelled = false;
-    void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) =>
-      getCurrentWebview()
-        .onDragDropEvent((event) => {
-          const p = event.payload;
-          if (p.type === "enter" || p.type === "over") setHovering(true);
-          else if (p.type === "leave") setHovering(false);
-          else if (p.type === "drop") {
-            setHovering(false);
-            if (p.paths.length > 0) void add(p.paths);
-          }
-        })
-        .then((unlisten) => {
-          if (cancelled) unlisten();
-          else stop = unlisten;
-        }),
-    );
+    void import("@tauri-apps/api/webview")
+      .then(({ getCurrentWebview }) =>
+        getCurrentWebview()
+          .onDragDropEvent((event) => {
+            const p = event.payload;
+            if (p.type === "enter" || p.type === "over") setHovering(true);
+            else if (p.type === "leave") setHovering(false);
+            else if (p.type === "drop") {
+              setHovering(false);
+              if (p.paths.length > 0) void add(p.paths);
+            }
+          })
+          .then((unlisten) => {
+            if (cancelled) unlisten();
+            else stop = unlisten;
+          }),
+      )
+      .catch(() => {
+        // No webview to listen on (a plain browser, the dev bridge): dropping stays off.
+      });
     const add = async (paths: string[]) => {
       const { skill: before, beforeChange: flush, onSkill: adopt, onError: fail } = latest.current;
       try {
@@ -172,6 +176,7 @@ function Lede({ skillId, m }: { skillId: string; m: Material }) {
 }
 
 function MaterialsList({
+  ref,
   skill,
   materials,
   readOnly,
@@ -184,6 +189,7 @@ function MaterialsList({
   onStart,
   onImport,
 }: {
+  ref: React.Ref<HTMLDivElement>;
   skill: LocalSkill;
   materials: Material[];
   readOnly: boolean;
@@ -201,7 +207,7 @@ function MaterialsList({
     (g) => g.items.length > 0,
   );
   return (
-    <div className="mt">
+    <div className="mt" ref={ref}>
       <header className="layer-head">
         <h2 className="layer-title">Materials</h2>
         {readOnly || materials.length === 0 ? null : addMenu}
@@ -251,7 +257,13 @@ function MaterialsList({
             <ul className="mt-rows">
               {g.items.map((m) => (
                 <li key={m.path} className={`mt-row${m.referenced ? "" : " is-loose"}`}>
-                  <button type="button" className="mt-open" title={m.path} onClick={() => onOpen(m.path)}>
+                  <button
+                    type="button"
+                    className="mt-open"
+                    title={m.path}
+                    data-path={m.path}
+                    onClick={() => onOpen(m.path)}
+                  >
                     <span className={`mt-glyph is-${m.kind}`} aria-hidden="true">
                       {KIND_GLYPH[m.kind]}
                     </span>
@@ -610,6 +622,8 @@ export function Materials({
   const materials = useMemo(() => materialsOf(skill.files, instructions), [skill.files, instructions]);
 
   // The open file follows `path`; it is read after pending edits are written.
+  // Only the latest path asked for counts: a slower answer (or failure) for one
+  // passed over never shows, nor leaves another file under its name.
   const wanted = useRef<string | null>(null);
   const load = useCallback(
     async (p: string) => {
@@ -622,17 +636,18 @@ export function Materials({
         const content = await api.readSkillFile(id, p);
         if (wanted.current === p) setOpen(content);
       } catch (e) {
-        setError(e);
+        if (wanted.current === p) setError(e);
       }
     },
     [beforeChange, id],
   );
   // biome-ignore lint/correctness/useExhaustiveDependencies: reads when the path asked for changes.
   useEffect(() => {
-    if (path && path !== open?.path) void load(path);
-    if (!path) {
-      wanted.current = null;
+    wanted.current = path;
+    if (!path) setOpen(null);
+    else if (path !== open?.path) {
       setOpen(null);
+      void load(path);
     }
   }, [path]);
   // The package source always has a file open: the skill's own, to begin with.
@@ -705,9 +720,57 @@ export function Materials({
     );
   };
 
+  // Removing moves focus on to the row that took its place (or Add), never to the page.
+  const root = useRef<HTMLDivElement>(null);
+  const [refocus, setRefocus] = useState<{ path: string | null; failed?: boolean } | null>(null);
+  useEffect(() => {
+    const el = root.current;
+    if (!refocus || !el) return;
+    if (!refocus.failed && !source && path) return; // the removed file is still closing
+    setRefocus(null);
+    const row = refocus.path
+      ? el.querySelector<HTMLElement>(`[data-path="${CSS.escape(refocus.path)}"]`)
+      : null;
+    (
+      row ??
+      el.querySelector<HTMLElement>(
+        ".mt-add .menu-trigger, .src-head .menu-trigger, .mt-open, .mt-file-actions .menu-trigger",
+      )
+    )?.focus();
+  });
+  const neighbour = (p: string) => {
+    const order = source
+      ? [...(root.current?.querySelectorAll<HTMLElement>("[data-path]") ?? [])].map(
+          (e) => e.dataset.path ?? "",
+        )
+      : KIND_ORDER.flatMap((kind) => materials.filter((m) => m.kind === kind).map((m) => m.path));
+    const gone = (q: string) => q === p || q.startsWith(`${p}/`);
+    const at = order.findIndex(gone);
+    if (at < 0) return null;
+    return (
+      order.slice(at + 1).find((q) => !gone(q)) ??
+      order
+        .slice(0, at)
+        .reverse()
+        .find((q) => !gone(q)) ??
+      null
+    );
+  };
+
   const remove = (p: string) => {
     setRemoving(null);
-    void run(() => api.removeSkillPath(id, p));
+    const next = neighbour(p);
+    void run(
+      async () => {
+        try {
+          return await api.removeSkillPath(id, p);
+        } catch (e) {
+          setRefocus({ path: p, failed: true });
+          throw e;
+        }
+      },
+      () => setRefocus({ path: next }),
+    );
   };
 
   const importInto = (folder: string) => void run(() => api.addSkillFiles(id, folder));
@@ -1038,7 +1101,7 @@ export function Materials({
 
   if (source) {
     return (
-      <div className="src">
+      <div className="src" ref={root}>
         <SourceTree
           skill={skill}
           open={open?.path ?? null}
@@ -1068,7 +1131,7 @@ export function Materials({
 
   if (path) {
     return (
-      <div className={`mt-file${materials.length > 1 ? " has-nav" : ""}`}>
+      <div ref={root} className={`mt-file${materials.length > 1 ? " has-nav" : ""}`}>
         {materials.length > 1 ? (
           <nav className="mt-nav" aria-label="Materials">
             {KIND_ORDER.map((kind: MaterialKind) => {
@@ -1112,6 +1175,7 @@ export function Materials({
     <>
       {errorNotice}
       <MaterialsList
+        ref={root}
         skill={skill}
         materials={materials}
         readOnly={readOnly}

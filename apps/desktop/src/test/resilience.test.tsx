@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,11 +13,11 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import { ToastProvider, useToast } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { HabiError } from "../lib/api";
-import { guardWindowClose } from "../lib/closing";
+import { closeDecider, guardWindowClose, WARNED_FOR_MS } from "../lib/closing";
 import { NavProvider, type Route, useNav } from "../lib/nav";
 import { useOverview } from "../lib/queries";
 import { initTheme } from "../lib/theme";
-import { useAutosave } from "../lib/useAutosave";
+import { flushAutosaves, useAutosave } from "../lib/useAutosave";
 import { CommandPalette } from "../views/CommandPalette";
 import { History } from "../views/project/History";
 import { ProjectSettings } from "../views/project/ProjectSettings";
@@ -102,7 +102,12 @@ describe("ErrorBoundary", () => {
   });
 });
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
+const actions: Actions = {
+  openProject: vi.fn(async () => {}),
+  newSkill: vi.fn(),
+  addSkills: vi.fn(),
+  showWelcome: vi.fn(),
+};
 
 function wrap(ui: ReactNode, initial: Route = { name: "welcome" }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -191,6 +196,51 @@ describe("closing the window", () => {
     expect(second.preventDefault).not.toHaveBeenCalled();
     stop();
     hook.unmount();
+  });
+
+  it("warns again when a close long after the warning finds edits it cannot save", async () => {
+    let now = 0;
+    let saves = false;
+    const onUnsaved = vi.fn();
+    const decide = closeDecider(
+      async () => saves,
+      onUnsaved,
+      () => now,
+    );
+    expect(await decide()).toBe(false);
+    expect(onUnsaved).toHaveBeenCalledTimes(1);
+    // An hour later, other edits fail: that close is a new decision, not the answer to the old warning.
+    now += 60 * 60 * 1000;
+    expect(await decide()).toBe(false);
+    expect(onUnsaved).toHaveBeenCalledTimes(2);
+    // Closing again soon after the warning quits without them.
+    now += WARNED_FOR_MS / 2;
+    expect(await decide()).toBe(true);
+    // Saving clears the warning: the next failure warns once more.
+    saves = true;
+    expect(await decide()).toBe(true);
+    saves = false;
+    expect(await decide()).toBe(false);
+    expect(onUnsaved).toHaveBeenCalledTimes(3);
+  });
+
+  it("never writes an autosave that is turned off: not on blur, leaving, or closing", async () => {
+    const save = vi.fn(async () => {});
+    const hook = renderHook(
+      ({ value }) => useAutosave<string>({ value, keyOf: (v) => v, save, delay: 60_000, enabled: false }),
+      { initialProps: { value: "draft" } },
+    );
+    hook.rerender({ value: "draft, edited" });
+    expect(await flushAutosaves()).toBe(true);
+    await act(async () => {
+      window.dispatchEvent(new Event("blur"));
+      await Promise.resolve();
+    });
+    hook.unmount();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(save).not.toHaveBeenCalled();
   });
 });
 
@@ -308,6 +358,33 @@ describe("the skill editor", () => {
 });
 
 describe("global shortcuts", () => {
+  it("makes one new skill for a held ⌘N or a quick second press", async () => {
+    handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
+    handlers.get_settings = () => ({ autoRefreshHours: 12 });
+    Element.prototype.scrollTo = () => {};
+    let fail: () => void = () => {};
+    handlers.create_skill = vi.fn(
+      () =>
+        new Promise((_, reject) => {
+          fail = () => reject({ code: "io", message: "disk full" });
+        }),
+    );
+    render(<App />);
+    await screen.findByRole("button", { name: "Open a project…" });
+    fireEvent.keyDown(window, { key: "n", metaKey: true });
+    fireEvent.keyDown(window, { key: "n", metaKey: true, repeat: true });
+    fireEvent.keyDown(window, { key: "n", metaKey: true, repeat: true });
+    fireEvent.keyDown(window, { key: "n", metaKey: true });
+    expect(handlers.create_skill).toHaveBeenCalledTimes(1);
+    // Once that one is settled, the next press makes a skill again.
+    await act(async () => {
+      fail();
+    });
+    expect(await screen.findByText("disk full")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "n", metaKey: true });
+    expect(handlers.create_skill).toHaveBeenCalledTimes(2);
+  });
+
   it("leaves ⌘[ to text fields and the code editor, and goes back elsewhere", async () => {
     handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
     handlers.get_settings = () => ({ autoRefreshHours: 12 });

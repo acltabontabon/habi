@@ -57,10 +57,22 @@ describe("Welcome", () => {
       await screen.findByRole("heading", { name: (name) => HEADLINES.some((h) => h.text === name) }),
     ).toBeInTheDocument();
     expect(screen.getByText("Find")).toBeInTheDocument();
-    expect(await screen.findByText("Everything is threaded.")).toBeInTheDocument();
-    expect(screen.getAllByText("found")).toHaveLength(3);
+    expect(await screen.findByText("Ready to pull libraries.")).toBeInTheDocument();
+    // Only Git is checked; the rest is what Habi works with.
+    expect(screen.getAllByText("found")).toHaveLength(1);
+    expect(screen.getByRole("img", { name: /Installs for Claude Code, Cursor, Codex/ })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Projects Habi reads" })).toHaveTextContent(/Java.*Python/);
     // Nothing to fix, so nothing to check again.
     expect(screen.queryByRole("button", { name: "Check again" })).not.toBeInTheDocument();
+  });
+
+  it("answers its headline with what Habi does", async () => {
+    welcome();
+    const heading = await screen.findByRole("heading", {
+      name: (name) => HEADLINES.some((h) => h.text === name),
+    });
+    const shown = HEADLINES.find((h) => h.text === heading.textContent);
+    expect(screen.getByText(shown?.sub ?? "")).toBeInTheDocument();
   });
 
   it("tells the person Git is needed, and how to get it", async () => {
@@ -82,9 +94,9 @@ describe("Welcome", () => {
     machine = { gitAvailable: true, ghAvailable: false, glabAvailable: false };
     await user.click(screen.getByRole("button", { name: "Check again" }));
     expect(await screen.findByText("Ready to pull libraries.")).toBeInTheDocument();
-    // The optional ones are still offered, quietly.
-    expect(screen.getByText("brew install gh")).toBeInTheDocument();
-    expect(screen.getByText("gh auth login")).toBeInTheDocument();
+    // The optional CLIs are not asked for here; Settings offers them.
+    expect(screen.queryByText("brew install gh")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check again" })).not.toBeInTheDocument();
   });
 
   it("closes keeping the welcome on, unless the person opts out", async () => {
@@ -142,5 +154,12 @@ describe("setup help", () => {
 
   it("keeps the headlines free of numbers, which would need a source", () => {
     for (const h of HEADLINES) expect(h.text).not.toMatch(/\d/);
+  });
+
+  it("keeps the headlines short enough to set large, and never repeats one", () => {
+    for (const h of HEADLINES) expect(h.text.length).toBeLessThanOrEqual(64);
+    // The line under it fits on one line, even in the smallest window.
+    for (const h of HEADLINES) expect(h.sub.length, h.sub).toBeLessThanOrEqual(58);
+    expect(new Set(HEADLINES.map((h) => h.text)).size).toBe(HEADLINES.length);
   });
 });

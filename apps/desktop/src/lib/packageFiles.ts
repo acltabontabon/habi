@@ -16,15 +16,6 @@ export function kindOf(path: string, executable = false): FileKind {
   return "file";
 }
 
-export const KIND_WORD: Record<FileKind, string> = {
-  instructions: "instructions",
-  rules: "rules for Habi",
-  script: "script",
-  reference: "reference",
-  asset: "asset",
-  file: "file",
-};
-
 export type TreeFolder = { name: string; path: string; files: SkillFileEntry[] };
 
 export type PackageTree = {

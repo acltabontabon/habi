@@ -9,6 +9,7 @@ import type { SkillStanding } from "../bindings/SkillStanding";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider, type Route, useNav } from "../lib/nav";
+import { useSkills, useSkillsOverview } from "../lib/queries";
 import { AddSkillsDialog } from "../views/skills/AddSkillsDialog";
 import { SkillsView } from "../views/skills/SkillsView";
 import { SkillStudio } from "../views/skills/studio/SkillStudio";
@@ -44,7 +45,12 @@ const templates = [
   },
 ];
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
+const actions: Actions = {
+  openProject: vi.fn(async () => {}),
+  newSkill: vi.fn(),
+  addSkills: vi.fn(),
+  showWelcome: vi.fn(),
+};
 
 function wrap(ui: ReactNode, initial: Route = { name: "skills", skillId: "k" }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -643,6 +649,156 @@ describe("the Skill Studio", () => {
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "3", metaKey: true });
     expect(invoke.mock.calls.some((c) => c[0] === "add_dropped_skill_files")).toBe(false);
+  });
+});
+
+describe("the Skill Studio, saving", () => {
+  /** A skill whose rules are kept as written, so YAML is one click away. */
+  const asWritten = (): LocalSkill => ({
+    ...skill({ name: "code-review", body: "Steps." }),
+    summary: { ...skill({ name: "code-review" }).summary, hasApplicability: true },
+    form: { ...skill().form, conditionsEditable: false },
+    metadataText: "habi: 1\napplies_when:\n  not: {tag: build:gradle}\n",
+    metadataDigest: "m",
+    metadataStatus: "declared",
+    appliesWhen: { op: "not", item: { op: "tag", tag: "build:gradle" } },
+  });
+  const count = (cmd: string) => invoke.mock.calls.filter((c) => c[0] === cmd).length;
+
+  it("never writes the rules form over YAML being edited in its place", async () => {
+    handlers.get_skill = () => asWritten();
+    handlers.save_skill_document = () => ({ ...asWritten(), documentDigest: "doc2" });
+    const rules = vi.fn(() => ({ ...asWritten(), metadataDigest: "m2" }));
+    handlers.save_skill_applicability = rules;
+    handlers.save_skill_metadata = rules;
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    await userEvent.click(screen.getByRole("button", { name: "Edit as YAML" }));
+    expect(await screen.findByRole("button", { name: "← Back to sentences" })).toBeInTheDocument();
+    // The title is part of the form too; leaving the window and ⌘S write SKILL.md, not the form.
+    fireEvent.change(screen.getByLabelText("Skill title"), { target: { value: "Review, renamed" } });
+    fireEvent.blur(window);
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
+    await waitFor(() => expect(count("save_skill_document")).toBeGreaterThan(0));
+    await new Promise((r) => setTimeout(r, 900));
+    expect(count("save_skill_applicability")).toBe(0);
+    expect(count("save_skill_metadata")).toBe(0);
+  });
+
+  it("keeps the rules on screen when they could not be saved before switching to YAML", async () => {
+    handlers.get_skill = () => asWritten();
+    handlers.save_skill_document = () => ({ ...asWritten(), documentDigest: "doc2" });
+    handlers.save_skill_applicability = () => {
+      throw { code: "conflict", message: "habi.yaml changed" };
+    };
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.change(screen.getByLabelText("Skill title"), { target: { value: "Review, renamed" } });
+    expect(
+      await screen.findByText("This skill's files changed outside Habi", {}, { timeout: 2000 }),
+    ).toBeInTheDocument();
+    const reads = count("get_skill");
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    await userEvent.click(screen.getByRole("button", { name: "Edit as YAML" }));
+    expect(await screen.findByText(/Nothing was done: your latest edits are not saved/)).toBeInTheDocument();
+    expect(count("get_skill")).toBe(reads);
+    expect(screen.queryByRole("button", { name: "← Back to sentences" })).not.toBeInTheDocument();
+  });
+
+  it("shows the file last chosen, never a slower one or another under its name", async () => {
+    const two: LocalSkill = {
+      ...skill({ body: "Run `scripts/a.py`, then `scripts/b.py`." }),
+      files: [
+        { path: "SKILL.md", size: 10, digest: "d", executable: false, text: true },
+        { path: "scripts/a.py", size: 10, digest: "a", executable: true, text: true },
+        { path: "scripts/b.py", size: 10, digest: "b", executable: true, text: true },
+      ],
+    };
+    handlers.get_skill = () => two;
+    let hold: { resolve: (v: unknown) => void; reject: (e: unknown) => void } | null = null;
+    let gate = false;
+    const file = (path: unknown) => ({
+      path,
+      text: "#!/usr/bin/env python3\nprint('ok')\n",
+      binary: false,
+      size: 30,
+      digest: String(path),
+      preview: null,
+    });
+    handlers.read_skill_file = (args) =>
+      gate && args.path === "scripts/b.py"
+        ? new Promise((resolve, reject) => {
+            hold = { resolve, reject };
+          })
+        : file(args.path);
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "3", metaKey: true });
+    const layer = screen.getByRole("region", { name: "Materials" });
+    await userEvent.click(within(layer).getByRole("button", { name: /a\.py/ }));
+    expect(await within(layer).findByText("python3 scripts/a.py")).toBeInTheDocument();
+    const nav = within(layer).getByRole("navigation", { name: "Materials" });
+
+    // A → B → A, with B answering last: A stays.
+    gate = true;
+    await userEvent.click(within(nav).getByRole("button", { name: "b.py" }));
+    expect(within(layer).queryByText("python3 scripts/a.py")).not.toBeInTheDocument();
+    await userEvent.click(within(nav).getByRole("button", { name: "a.py" }));
+    expect(await within(layer).findByText("python3 scripts/a.py")).toBeInTheDocument();
+    (hold as { resolve: (v: unknown) => void } | null)?.resolve(file("scripts/b.py"));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(within(layer).getByText("python3 scripts/a.py")).toBeInTheDocument();
+    expect(within(layer).queryByText("python3 scripts/b.py")).not.toBeInTheDocument();
+
+    // B fails to open: its name is not put on A's editor.
+    await userEvent.click(within(nav).getByRole("button", { name: "b.py" }));
+    (hold as { reject: (e: unknown) => void } | null)?.reject({ code: "io", message: "unreadable" });
+    expect(await within(layer).findByText(/unreadable/)).toBeInTheDocument();
+    expect(within(layer).queryByText("python3 scripts/a.py")).not.toBeInTheDocument();
+  });
+
+  it("keeps saves cheap: the skill and its row are updated in place, the rest asked again on leaving", async () => {
+    const named = skill({ name: "code-review" });
+    handlers.get_skill = () => named;
+    handlers.list_skills = () => [named.summary];
+    handlers.save_skill_document = (args) => ({
+      ...named,
+      summary: { ...named.summary, title: String(args.title) },
+      documentDigest: "doc2",
+    });
+    handlers.save_skill_applicability = (args) => ({
+      ...named,
+      summary: { ...named.summary, title: String((args.form as { title: string }).title) },
+      metadataDigest: "m2",
+    });
+    function Around() {
+      const { navigate, route } = useNav();
+      const skills = useSkills();
+      useSkillsOverview();
+      return (
+        <>
+          <p>listed: {skills.data?.map((s) => s.title).join(", ")}</p>
+          {route.name === "skills" ? <SkillStudio id="k" /> : <p>on settings</p>}
+          <button type="button" onClick={() => navigate({ name: "settings" })}>
+            Go to settings
+          </button>
+        </>
+      );
+    }
+    wrap(<Around />);
+    await screen.findByLabelText("Skill title");
+    await waitFor(() => expect(count("skills_overview")).toBeGreaterThan(0));
+    const overviews = count("skills_overview");
+    const lists = count("list_skills");
+    await userEvent.type(screen.getByLabelText("Skill title"), " checklist");
+    await waitFor(() => expect(screen.getByText("listed: Review checklist")).toBeInTheDocument(), {
+      timeout: 2000,
+    });
+    expect(count("skills_overview")).toBe(overviews);
+    expect(count("list_skills")).toBe(lists);
+    await userEvent.click(screen.getByRole("button", { name: "Go to settings" }));
+    await waitFor(() => expect(count("skills_overview")).toBeGreaterThan(overviews));
   });
 });
 

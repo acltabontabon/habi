@@ -48,4 +48,35 @@ describe("skill Markdown rendering", () => {
     // Inline code stays as it was.
     expect(container.querySelector("p code")?.textContent).toBe("ls");
   });
+
+  it("highlights shell, TypeScript, YAML and JSON without the editor", () => {
+    const md = [
+      "```bash",
+      "# install it",
+      'if [ -f x ]; then echo "found $HOME"; fi',
+      "```",
+      "",
+      "```ts",
+      "const n: number = 1;",
+      "```",
+      "",
+      "```yaml",
+      "name: review",
+      "```",
+      "",
+      "```json",
+      '{"ok": true}',
+      "```",
+    ].join("\n");
+    const { container } = render(<Markdown text={md} />);
+    const [sh, ts, yaml, json] = [...container.querySelectorAll("pre code")];
+    expect(sh?.querySelector(".tok-comment")?.textContent).toBe("# install it");
+    expect([...(sh?.querySelectorAll(".tok-keyword") ?? [])].map((e) => e.textContent)).toContain("then");
+    expect(sh?.querySelector(".tok-string")).not.toBeNull();
+    expect(sh?.textContent).toBe('# install it\nif [ -f x ]; then echo "found $HOME"; fi');
+    expect(ts?.querySelector(".tok-keyword")?.textContent).toBe("const");
+    expect(ts?.querySelector(".tok-typeName")?.textContent).toBe("number");
+    expect(yaml?.querySelector(".tok-propertyName, .tok-definition")).not.toBeNull();
+    expect(json?.querySelector(".tok-bool")?.textContent).toBe("true");
+  });
 });

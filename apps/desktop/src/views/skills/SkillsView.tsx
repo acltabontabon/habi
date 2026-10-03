@@ -155,7 +155,7 @@ function Row({
   const thread = isCopy(s.origin) || s.origin.type === "instructions" || Boolean(standing?.upstream);
   return (
     <li className="mys-item">
-      <button type="button" className="mys-row" onClick={onOpen} onKeyDown={onKeyDown}>
+      <button type="button" className="mys-row" data-skill={s.id} onClick={onOpen} onKeyDown={onKeyDown}>
         <span className="mys-letter" aria-hidden="true">
           {letter}
         </span>
@@ -233,6 +233,9 @@ export function SkillsView({ skillId }: { skillId?: string }) {
   const [sharing, setSharing] = useState<LocalSkill | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLOListElement>(null);
+  const trashList = useRef<HTMLUListElement>(null);
+  /** A skill about to leave the list it was acted on in, and where it was: focus moves on, never to the page. */
+  const [refocus, setRefocus] = useState<{ id: string; from: "list" | "trash"; at: number } | null>(null);
 
   const all = skills.data ?? [];
   const live = useMemo(() => all.filter((s) => s.deletedAt === null), [all]);
@@ -266,6 +269,34 @@ export function SkillsView({ skillId }: { skillId?: string }) {
       : [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [live, facet, query, sort, standing]);
 
+  // Once the skill has gone, the next one in its list takes focus (the previous at the end);
+  // a restored skill is followed to its place among the others.
+  useEffect(() => {
+    if (!refocus) return;
+    const { id, from, at } = refocus;
+    const skill = all.find((s) => s.id === id);
+    const restored = from === "trash" && skill?.deletedAt === null;
+    if (from === "list" ? shown.some((s) => s.id === id) : skill?.deletedAt != null) return;
+    setRefocus(null);
+    const rows = [
+      ...((from === "list" ? list.current : trashList.current)?.querySelectorAll<HTMLElement>(
+        from === "list" ? ".mys-row" : ".trash-row",
+      ) ?? []),
+    ];
+    const row = rows[Math.min(at, rows.length - 1)];
+    const target =
+      (restored
+        ? [...(list.current?.querySelectorAll<HTMLElement>(".mys-row") ?? [])].find(
+            (r) => r.dataset.skill === id,
+          )
+        : undefined) ??
+      (row?.matches("button") ? row : row?.querySelector<HTMLElement>("button")) ??
+      document.getElementById("trash-title") ??
+      search.current ??
+      document.getElementById("main");
+    target?.focus();
+  }, [refocus, all, shown]);
+
   // "/" finds, from anywhere on the page that is not already a text field.
   useEffect(() => {
     if (skillId) return;
@@ -297,6 +328,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
       invalidateSkills(client);
       toast.show(done);
     } catch (e) {
+      setRefocus(null);
       setError(e);
     }
   };
@@ -331,6 +363,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
 
   const moveToTrash = async (s: LocalSkillSummary) => {
     setError(null);
+    setRefocus({ id: s.id, from: "list", at: shown.indexOf(s) });
     try {
       await api.trashSkill(s.id);
       invalidateSkills(client);
@@ -339,8 +372,15 @@ export function SkillsView({ skillId }: { skillId?: string }) {
         run: () => void act(() => api.restoreSkill(s.id), `“${s.title || "Untitled skill"}” restored.`),
       });
     } catch (e) {
+      setRefocus(null);
       setError(e);
     }
+  };
+
+  /** Restoring or deleting from the trash: focus moves on when the row goes. */
+  const fromTrash = (s: LocalSkillSummary, fn: () => Promise<unknown>, done: string) => {
+    setRefocus({ id: s.id, from: "trash", at: trash.indexOf(s) });
+    void act(fn, done);
   };
 
   const rows = () => [...(list.current?.querySelectorAll<HTMLButtonElement>(".mys-row") ?? [])];
@@ -372,7 +412,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
           Trash ({trash.length})
         </button>
         {showTrash ? (
-          <ul className="skill-list">
+          <ul className="skill-list" ref={trashList}>
             {trash.map((s) => (
               <li key={s.id} className="trash-row">
                 <span className="skill-row-main">
@@ -382,7 +422,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
                 <span className="trash-actions">
                   <Button
                     size="sm"
-                    onClick={() => void act(() => api.restoreSkill(s.id), `“${s.title}” restored.`)}
+                    onClick={() => fromTrash(s, () => api.restoreSkill(s.id), `“${s.title}” restored.`)}
                   >
                     Restore
                   </Button>
@@ -393,7 +433,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
                         variant="danger"
                         onClick={() => {
                           setPurging(null);
-                          void act(() => api.purgeSkill(s.id), `“${s.title}” deleted.`);
+                          fromTrash(s, () => api.purgeSkill(s.id), `“${s.title}” deleted.`);
                         }}
                       >
                         Delete for good

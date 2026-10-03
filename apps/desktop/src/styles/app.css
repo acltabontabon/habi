@@ -883,61 +883,6 @@
   gap: 6px;
 }
 
-.welcome-paths {
-  list-style: none;
-  margin: var(--s2) 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--hairline-strong);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.welcome-paths li + li {
-  border-left: 1px solid var(--hairline);
-}
-
-.welcome-path {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s3);
-  width: 100%;
-  height: 100%;
-  padding: var(--s4) var(--s4) var(--s4) var(--s2);
-  border: 0;
-  background: transparent;
-  text-align: left;
-  transition: background var(--duration) var(--ease);
-}
-
-.welcome-paths li + li .welcome-path {
-  padding-left: var(--s4);
-}
-
-.welcome-path:hover {
-  background: var(--paper-raised);
-}
-
-.welcome-path > svg {
-  flex: none;
-  margin-top: 3px;
-  color: var(--thread-strong);
-}
-
-.welcome-path > span {
-  display: grid;
-  gap: 2px;
-}
-
-.welcome-path-title {
-  font-weight: 600;
-}
-
-.welcome-path-detail {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
 /* ---------- Project ---------- */
 
 .project,
@@ -1021,11 +966,6 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: var(--s5);
-}
-
-.project-head-woven .skein {
-  margin-top: 2px;
-  box-shadow: 0 0 0 1px var(--hairline);
 }
 
 /* What Habi recognized, as words on a line: languages carry a knot in their dye. */
@@ -1164,17 +1104,6 @@
   background: var(--thread);
 }
 
-.tab-count {
-  margin-left: 6px;
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--muted-wash);
-}
-
 .project-body {
   flex: 1;
   min-height: 0;
@@ -1196,9 +1125,11 @@
   padding-bottom: var(--s6);
 }
 
+/* The detail is sized by the window minus the sidebar and the list; it lays itself out by its own width. */
 .workbench-detail {
   overflow-y: auto;
   min-width: 0;
+  container: detail / inline-size;
 }
 
 .list-filter {
@@ -1271,6 +1202,15 @@
   height: 10px;
   border-radius: 3px;
   background: var(--tone);
+}
+
+/* What is installed is settled: a solid knot in the ink, not a fit's colour. */
+.rec-group-head[data-group="installed"] {
+  --tone: var(--ink-soft);
+}
+
+.rec-group-head[data-group="installed"] .rec-group-mark {
+  border-radius: 999px;
 }
 
 .rec-group-head[data-group="needsInformation"] .rec-group-mark {
@@ -1419,8 +1359,9 @@ fieldset.role-switch {
 
 /* ---------- Detail ---------- */
 
+/* The header spans the pane so its action sits at the right edge; the body stays capped for reading. */
 .detail {
-  max-width: 900px;
+  max-width: none;
 }
 
 .detail-head {
@@ -1429,7 +1370,23 @@ fieldset.role-switch {
   padding: var(--s6) var(--s6) var(--s4);
 }
 
+/* The primary action is centered on the kicker and title, clear of the description beneath. */
+.detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.detail-identity {
+  min-width: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
 .detail-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 26px;
   font-weight: 620;
   letter-spacing: -0.022em;
@@ -1475,12 +1432,97 @@ fieldset.role-switch {
   overflow-wrap: anywhere;
 }
 
-.detail-actions {
+/* Every action sits at the top right, the primary one last, rarer ones behind "⋯". */
+.detail-top-actions {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--s2);
-  margin-top: var(--s2);
+  max-width: 60%;
+}
+
+.detail-top-actions:empty {
+  display: none;
+}
+
+/* Under the Installation facet: the agent tools it is installed for, as chips. */
+.facet-detail .reach {
+  margin: 4px 0 0;
+}
+
+/* A narrow detail pane (a small window): facets two by two, actions wrapping under the title. */
+@container detail (max-width: 640px) {
+  .facets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .facet:nth-child(3) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .facet:nth-child(n + 3) {
+    border-top: 1px solid var(--hairline);
+  }
+  /* The actions stay at the top right while they fit beside the title, and wrap under it when not. */
+  .detail-top {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .detail-identity {
+    flex: 1 1 240px;
+  }
+  .detail-top-actions {
+    max-width: none;
+  }
+}
+
+/* Which agent tools a skill reaches: every tool Habi knows, the ones it reaches lit.
+   One glance answers "did that reach Codex?" without reading folder names. */
+.reach {
+  display: flex;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 2px;
+}
+
+/* A tool it does not reach stays quiet: no pill, a hollow dot, the name barely there. */
+.reach-agent {
+  position: relative;
+  padding: 1px 8px 1px 17px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  line-height: 1.6;
+  color: var(--ink-faint);
+  opacity: 0.7;
+  cursor: default;
+}
+
+.reach-agent::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 7px;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--ink-faint);
+}
+
+.reach-agent.is-on {
+  border-color: color-mix(in srgb, var(--thread) 45%, transparent);
+  background: var(--thread-wash);
+  color: var(--ink);
+  opacity: 1;
+}
+
+.reach-agent.is-on::before {
+  background: var(--thread-strong);
+  box-shadow: none;
 }
 
 .action-note {
@@ -1499,6 +1541,7 @@ fieldset.role-switch {
 }
 
 .detail-body {
+  max-width: 900px;
   padding: 0 var(--s6) var(--s7);
 }
 
@@ -1757,7 +1800,6 @@ button.chip:hover {
 
 .prereqs,
 .declared-evidence,
-.installations,
 .history,
 .validation,
 .review-notes,
@@ -1909,38 +1951,6 @@ button.chip:hover {
 }
 
 /* ---------- Content ---------- */
-
-.file-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.file-row {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  width: 100%;
-  padding: 4px 6px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  text-align: left;
-  font-size: var(--text-sm);
-}
-
-.file-row .mono {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-row:hover,
-.file-row.is-active {
-  background: var(--paper-raised);
-}
 
 .code {
   margin: 0;
@@ -2113,11 +2123,6 @@ textarea.input {
 
 select.input {
   appearance: auto;
-}
-
-.input-row {
-  display: flex;
-  gap: var(--s2);
 }
 
 .check,
@@ -2784,32 +2789,6 @@ details > summary.change-head::-webkit-details-marker {
 
 /* ---------- Installed ---------- */
 
-.installation {
-  display: grid;
-  gap: 4px;
-  padding: var(--s3) 0;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.installation-head {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--s3);
-}
-
-.installation-files {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: var(--text-sm);
-}
-
-.installation-actions {
-  display: flex;
-  gap: var(--s2);
-  padding-top: 4px;
-}
-
 .history-row {
   display: flex;
   justify-content: space-between;
@@ -3145,11 +3124,14 @@ details > summary.change-head::-webkit-details-marker {
 
 /* ---------- Toasts ---------- */
 
+/* Above every overlay (dialogs, sheets, the welcome) and still clickable while a modal
+   makes the page behind it inert. Only the tooltip layer sits higher. */
 .toasts {
   position: fixed;
   right: var(--s4);
   bottom: var(--s4);
-  z-index: 60;
+  z-index: 90;
+  pointer-events: auto;
   display: grid;
   gap: var(--s2);
   width: min(420px, 90vw);
@@ -3300,10 +3282,6 @@ details > summary.change-head::-webkit-details-marker {
     gap: var(--s4);
     padding-top: var(--s5);
     padding-bottom: var(--s3);
-  }
-  .project-head-woven .skein {
-    width: 48px;
-    height: 48px;
   }
   .project-title {
     font-size: 24px;
@@ -3790,13 +3768,18 @@ dl.facets,
   white-space: nowrap;
 }
 
+/* One line of marks. Those that do not fit wrap onto a second line, out of sight, so a mark is
+   shown whole or not at all, never cut mid-word; the most telling come first. */
 .index-marks {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   min-width: 0;
+  height: 1.5em;
   overflow: hidden;
-  gap: 6px;
+  gap: 0 6px;
   font-size: var(--text-2xs);
+  line-height: 1.5em;
   color: var(--ink-faint);
   white-space: nowrap;
 }
@@ -4040,6 +4023,41 @@ dl.facets,
   margin-right: var(--s2);
 }
 
+/* Quiet: a tinted pill, no louder than the trust note beside it. The reason is its tooltip. */
+.skill-rec {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  background: var(--ok-wash);
+  color: var(--ok-ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: default;
+}
+
+.skill-rec svg {
+  flex: none;
+}
+
+.skill-rec-more {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.skill-rec-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .skill-coord-pos {
   margin-left: auto;
   font-size: var(--text-2xs);
@@ -4268,10 +4286,6 @@ dl.facets,
   font-size: var(--text-sm);
   color: var(--ink-soft);
   overflow-wrap: anywhere;
-}
-
-.skill-facts .fact-runs {
-  color: var(--warn-ink);
 }
 
 .skill-title {
@@ -4697,6 +4711,7 @@ dl.facets,
     align-items: center;
   }
   .sidebar-wordmark,
+  .sidebar-version,
   .sidebar-heading,
   .palette-trigger > span,
   .palette-trigger > kbd,
@@ -4736,6 +4751,9 @@ dl.facets,
   .sidebar-explore-arrow {
     display: none;
   }
+  .sidebar-dot-rail {
+    display: block;
+  }
   .sidebar-count,
   .sidebar-dot {
     position: absolute;
@@ -4751,11 +4769,6 @@ dl.facets,
   .facet + .facet {
     border-left: 0;
     padding-left: 0;
-  .sidebar-version,
-  }
-  .project-head-woven .skein {
-    width: 36px;
-    height: 36px;
   }
 }
 
@@ -4794,9 +4807,6 @@ dl.facets,
 .sidebar-heading-link:focus-visible,
 .sidebar-heading-link[aria-current="page"] {
   color: var(--ink);
-  .sidebar-dot-rail {
-    display: block;
-  }
 }
 
 /* The library collection: one warp through every source's thread,
@@ -5014,41 +5024,6 @@ dl.facets,
 
 .preview-page {
   display: grid;
-  gap: var(--s4);
-}
-
-.community-head {
-  display: grid;
-  gap: 4px;
-}
-
-.community-head .page-title {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
-
-.preview-repo {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
-.preview-summary {
-  font-size: var(--text-lg);
-  color: var(--ink-soft);
-  max-width: 60ch;
-}
-
-.preview-facts {
-  padding: var(--s3) 0;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.preview-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   gap: var(--s4);
 }
 
@@ -5808,19 +5783,64 @@ dl.facets,
   font-weight: 400;
 }
 
-/* The name is the one word of the sentence you can write over. */
+/* The name is the one word of the sentence you can write over, so it looks like a field: raised
+   from the line, the saffron thread under it, a pencil inside. It warms when pointed at and rings
+   when it has the cursor. */
+.tok-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  padding-right: 0.35em;
+  border-radius: 6px;
+  background: var(--paper-raised);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline-strong),
+    inset 0 -2px 0 var(--thread);
+  cursor: text;
+  transition:
+    background var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+
+.tok-rename:hover:not(.is-locked) {
+  background: var(--thread-wash);
+}
+
+.tok-rename:focus-within {
+  box-shadow:
+    inset 0 0 0 1.5px var(--thread),
+    0 0 0 3px color-mix(in srgb, var(--thread) 22%, transparent);
+}
+
+.tok-rename .icon {
+  flex: none;
+  width: 0.6em;
+  height: 0.6em;
+  color: var(--ink-faint);
+  transition: color var(--duration) var(--ease);
+}
+
+.tok-rename:hover .icon,
+.tok-rename:focus-within .icon {
+  color: var(--thread-strong);
+}
+
+/* Locked while it is read: the word stays, the field goes. */
+.tok-rename.is-locked {
+  padding-right: 0;
+  background: var(--thread-wash);
+  box-shadow: none;
+  cursor: default;
+}
+
 .tok-input {
   border: 0;
-  border-bottom: 1.5px solid var(--thread);
+  background: transparent;
   font: inherit;
   font-weight: 600;
   letter-spacing: inherit;
-  outline-offset: 2px;
+  outline: none;
   cursor: text;
-}
-
-.tok-input:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--thread) 22%, transparent);
 }
 
 .tok-input:disabled {
@@ -5857,6 +5877,14 @@ dl.facets,
 .connect-loom .weaving.is-waiting {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Waiting, the warp is a texture in the room the form leaves, not a picture: faint, and rising
+   out of the page rather than standing in it. It comes forward once a library is being read. */
+.connect-loom.lp-loom .weaving.is-waiting {
+  opacity: 0.3;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 70%);
+  mask-image: linear-gradient(to bottom, transparent, #000 70%);
 }
 
 .connect-loom .weaving.is-waiting .weaving-cloth {
@@ -5940,12 +5968,6 @@ dl.facets,
   gap: var(--s6);
 }
 
-.libraries-first {
-  max-width: 62ch;
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
 /* One rhythm for every group: thread, who, what is in it, one word of
    trust, where it stands. Nothing is a card. */
 .libraries .library-row.is-entry {
@@ -5965,7 +5987,10 @@ dl.facets,
   white-space: nowrap;
 }
 
+/* A long location (a local folder) shrinks to an ellipsis rather than pushing the arrow onto its own line. */
 .library-row.is-entry .library-row-repo {
+  flex: 1 1 0;
+  min-width: 0;
   font-size: var(--text-2xs);
   color: var(--ink-faint);
 }
@@ -6052,14 +6077,6 @@ dl.facets,
   line-height: 1.05;
 }
 
-.strip-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s2) var(--s4);
-}
-
 .strip-facts {
   display: flex;
   flex-wrap: wrap;
@@ -6074,11 +6091,6 @@ dl.facets,
   content: "·";
   margin: 0 var(--s2);
   color: var(--ink-faint);
-}
-
-.strip-name {
-  font-weight: 600;
-  color: var(--ink);
 }
 
 .strip-trust {
@@ -6451,46 +6463,6 @@ button.signal-where:focus-visible {
   color: var(--warn-ink);
 }
 
-.skill-fit {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
-  max-width: 64ch;
-  margin: var(--s2) 0 0;
-  font-size: var(--text-sm);
-  color: var(--ok-ink);
-}
-
-.skill-fit svg {
-  flex: none;
-  align-self: center;
-}
-
-.connect-confirm {
-  display: grid;
-  gap: var(--s3);
-  font-size: var(--text-sm);
-}
-
-.connect-confirm p {
-  margin: 0;
-}
-
-.catalog-fits {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
-  margin: 0 0 var(--s3);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
-.catalog-fits svg {
-  flex: none;
-  align-self: center;
-  color: var(--ink-faint);
-}
-
 /* Where an adopted copy came from, kept beside the copy. */
 .provenance {
   display: flex;
@@ -6643,12 +6615,6 @@ button.signal-where:focus-visible {
   .library-row.is-entry .library-row-summary {
     grid-column: span 1;
   }
-}
-
-ul.connect-confirm {
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 /* ---------- Libraries: a fluid page ----------
@@ -6970,11 +6936,6 @@ ul.connect-confirm {
 /* While a library is read, the page is the weaving: it takes the width. */
 .page.narrow.preview-page {
   max-width: none;
-}
-
-.preview-page > .preview-summary,
-.preview-page > .community-head {
-  max-width: 70ch;
 }
 
 /* A weaving that stopped: the cloth stays as it was, mid-row, with a loose
@@ -7379,6 +7340,20 @@ ul.connect-confirm {
   height: 12px;
   border-radius: 2px;
   background: var(--mark);
+}
+
+/* A quiet word beside the name: a hairline pill, no colour of its own. */
+.tip-badge {
+  margin-left: 2px;
+  padding: 0 7px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
 }
 
 .tip-mark.is-stitched {
@@ -8472,6 +8447,7 @@ button.chooser-crumb:focus-visible {
   font-size: var(--text-sm);
   color: var(--ink-muted);
   max-width: 46ch;
+  text-wrap: pretty;
 }
 
 .set-action {
@@ -8596,21 +8572,28 @@ button.chooser-crumb:focus-visible {
   outline-offset: 4px;
 }
 
+/* One line per tool: its name, then whether it is here, in a column of their own. A missing one
+   says how to get it on a thread beneath, the way a library's details hang from its name. */
 .tool-list {
   display: grid;
-  gap: var(--s1);
-  width: 100%;
-  max-width: 320px;
-  margin: 0;
+  gap: var(--s2);
+  margin: var(--s1) 0 0;
   padding: 0;
   list-style: none;
 }
 
 .tool {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
+  display: grid;
+  grid-template-columns: 8.5em max-content;
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+}
+
+.tool .ws-fix {
+  grid-column: 1 / -1;
+  margin: 0 0 var(--s1);
+  padding: 2px 0 2px var(--s3);
+  border-left: 2px solid var(--hairline-strong);
 }
 
 .tool-name {

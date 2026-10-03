@@ -18,7 +18,12 @@ import { SkillsView } from "../views/skills/SkillsView";
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
+const actions: Actions = {
+  openProject: vi.fn(async () => {}),
+  newSkill: vi.fn(),
+  addSkills: vi.fn(),
+  showWelcome: vi.fn(),
+};
 
 function wrap(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -191,6 +196,12 @@ describe("what a client does with two copies", () => {
   });
 });
 
+/** Opens a row's ⋯ menu and returns the item named `item`. */
+async function menuItem(skill: string, item: string | RegExp) {
+  await userEvent.click(await screen.findByRole("button", { name: `More for ${skill}` }));
+  return screen.findByRole("menuitem", { name: item });
+}
+
 describe("On this machine", () => {
   it("is absent when no skills are found", async () => {
     wrap(<OnThisMachine />);
@@ -216,19 +227,69 @@ describe("On this machine", () => {
     const alpha = rows[0] as HTMLElement;
     expect(within(alpha).getByText("Global")).toBeTruthy();
     expect(within(alpha).getByText("Link")).toBeTruthy();
-    expect(within(alpha).getByText("~/.claude/skills/alpha")).toBeTruthy();
-    expect(within(alpha).getByText(/read by Claude Code and Cursor/)).toBeTruthy();
+    // Where it is lives in the tools' tooltips, not in a line of its own.
+    const reach = within(alpha).getByRole("img", { name: "Read by Claude Code and Cursor" });
+    expect(within(reach).getByText("Claude Code").getAttribute("data-tip")).toContain(
+      "~/.claude/skills/alpha",
+    );
     expect(within(alpha).getByText("billing")).toBeTruthy();
     expect(within(alpha).getByText(/identical/)).toBeTruthy();
     expect(within(alpha).getByText(/On this machine Claude Code uses the global copy/)).toBeTruthy();
-    expect(within(rows[1] as HTMLElement).getByText(/read by Codex and Cursor/)).toBeTruthy();
+    expect(
+      within(rows[1] as HTMLElement).getByRole("img", { name: "Read by Cursor and Codex" }),
+    ).toBeTruthy();
     expect(within(rows[1] as HTMLElement).queryByText("Link")).toBeNull();
+  });
+
+  it("shows a skill installed for several agent tools once, with every folder and every reader", async () => {
+    const managed = {
+      key: "machine:mattpocock/code-review",
+      library: "Matt Pocock",
+      state: "current" as const,
+    };
+    machine = [
+      machineSkill({ id: "claude/code-review", name: "code-review", managed, inProjects: [sharedCopy] }),
+      machineSkill({
+        id: "agents/code-review",
+        name: "code-review",
+        location: "~/.agents/skills/code-review",
+        readers: ["codex", "cursor", "junie"],
+        digest: "sha256:bbb",
+        managed,
+        inProjects: [sharedCopy],
+      }),
+    ];
+    wrap(<OnThisMachine />);
+    const list = await screen.findByRole("list", { name: "Skills on this machine" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(1);
+    const row = rows[0] as HTMLElement;
+    const reach = within(row).getByRole("img", { name: "Read by Claude Code, Cursor, Codex and Junie" });
+    // Cursor reads both folders, so its tooltip names both.
+    const cursor = within(reach).getByText("Cursor").getAttribute("data-tip") ?? "";
+    expect(cursor).toContain("~/.claude/skills/alpha");
+    expect(cursor).toContain("~/.agents/skills/code-review");
+    // One menu, saying where it came from.
+    await userEvent.click(within(row).getByRole("button", { name: "More for code-review" }));
+    expect(screen.getAllByRole("menuitem", { name: /From Matt Pocock/ })).toHaveLength(1);
+    expect(within(row).getAllByText("billing")).toHaveLength(1);
+    expect(screen.getByText(/1 skill in your own folders/)).toBeTruthy();
+  });
+
+  it("keeps copies apart when their files differ and Habi did not install them", async () => {
+    machine = [
+      machineSkill(),
+      machineSkill({ id: "agents/alpha", location: "~/.agents/skills/alpha", digest: "sha256:ccc" }),
+    ];
+    wrap(<OnThisMachine />);
+    const list = await screen.findByRole("list", { name: "Skills on this machine" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
   });
 
   it("copies into My skills through the add dialog and never writes anywhere itself", async () => {
     machine = [machineSkill()];
     wrap(<OnThisMachine />);
-    await userEvent.click(await screen.findByRole("button", { name: "Add alpha to My skills" }));
+    await userEvent.click(await menuItem("alpha", /Add to My skills/));
     expect(actions.addSkills).toHaveBeenCalledWith({ source: "machine", id: "claude/alpha" });
     expect(invoke).not.toHaveBeenCalledWith("import_skills", expect.anything());
   });
@@ -236,15 +297,14 @@ describe("On this machine", () => {
   it("offers the copy it already made instead of a second one", async () => {
     machine = [machineSkill({ importedAs: "k1" })];
     wrap(<OnThisMachine />);
-    expect(await screen.findByRole("button", { name: "Open my copy" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Add alpha to My skills/ })).toBeNull();
-    expect(screen.getByText(/a copy is in My skills/)).toBeTruthy();
+    expect(await menuItem("alpha", /Open my copy/)).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: /Add to My skills/ })).toBeNull();
   });
 
   it("brings a skill into My skills and then asks which project to use it in", async () => {
     machine = [machineSkill()];
     wrap(<OnThisMachine />);
-    await userEvent.click(await screen.findByRole("button", { name: "Use alpha in a project" }));
+    await userEvent.click(await menuItem("alpha", /Use in a project/));
     expect(await screen.findByRole("dialog", { name: /Use Alpha/ })).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_skills", {
       from: { type: "machine", id: "claude/alpha" },
@@ -265,7 +325,7 @@ describe("On this machine", () => {
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
     wrap(<OnThisMachine />);
-    await userEvent.click(await screen.findByRole("button", { name: "Use alpha in a project" }));
+    await userEvent.click(await menuItem("alpha", /Use in a project/));
     await waitFor(() =>
       expect(actions.addSkills).toHaveBeenCalledWith({ source: "machine", id: "claude/alpha" }),
     );
@@ -276,7 +336,7 @@ describe("On this machine", () => {
     machine = [machineSkill({ mentionsHome: ["SKILL.md", "references/setup.md"] })];
     wrap(<OnThisMachine />);
     expect(await screen.findByText("Mentions a home folder")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Use alpha in a project" }));
+    await userEvent.click(await menuItem("alpha", /Use in a project/));
     const warning = await screen.findByRole("dialog", { name: /mentions folders on your machine/ });
     expect(within(warning).getByText("references/setup.md")).toBeTruthy();
     // Nothing has been copied yet.
@@ -290,7 +350,7 @@ describe("On this machine", () => {
   it("cancelling the warning copies nothing", async () => {
     machine = [machineSkill({ mentionsHome: ["SKILL.md"] })];
     wrap(<OnThisMachine />);
-    await userEvent.click(await screen.findByRole("button", { name: "Use alpha in a project" }));
+    await userEvent.click(await menuItem("alpha", /Use in a project/));
     const warning = await screen.findByRole("dialog");
     await userEvent.click(within(warning).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -301,9 +361,12 @@ describe("On this machine", () => {
   it("will not offer to copy a skill whose files cannot all be copied", async () => {
     machine = [machineSkill({ complete: false })];
     wrap(<OnThisMachine />);
-    const add = await screen.findByRole("button", { name: "Add alpha to My skills" });
+    const add = await menuItem("alpha", /Add to My skills/);
     expect((add as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/cannot be copied/)).toBeTruthy();
+    expect(
+      ((await screen.findByRole("menuitem", { name: /Use in a project/ })) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(screen.getAllByText(/can’t be copied|cannot be copied/).length).toBeGreaterThan(0);
   });
 
   it("shows nothing, and does not break the page, when the folders cannot be read", async () => {
@@ -322,7 +385,7 @@ describe("My skills page", () => {
     machine = [machineSkill()];
     wrap(<SkillsView />);
     expect(await screen.findByText("On this machine")).toBeTruthy();
-    expect(screen.getByText("~/.claude/skills/alpha")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Skills on this machine" })).toHaveTextContent("alpha");
   });
 
   it("shows it below the skills Habi owns", async () => {

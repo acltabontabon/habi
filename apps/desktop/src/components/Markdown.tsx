@@ -3,12 +3,15 @@
  * sanitized; links open in the system browser (https only) after a click.
  * Links that Habi will not follow say so instead of silently doing nothing.
  */
-import type { ReactNode } from "react";
-import ReactMarkdown from "react-markdown";
+import { memo, type ReactNode, useMemo, useRef } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { useOpenExternal } from "../lib/safeInvoke";
 import { highlight } from "./highlight";
+
+const PLUGINS = [remarkGfm];
+const REHYPE = [rehypeSanitize];
 
 function isRelative(url: string): boolean {
   return Boolean(url) && !url.startsWith("#") && !url.startsWith("/") && !/^[a-z][a-z0-9+.-]*:/i.test(url);
@@ -42,7 +45,13 @@ function Inert({ children, note, title }: { children: ReactNode; note: string; t
   );
 }
 
-export function Markdown({
+/**
+ * Memoized, and the rendered tree is kept until the text, its folder or the skill's files change:
+ * parsing and highlighting a long skill is the costly part, and the screens around it re-render
+ * often (scrolling, autosave, hover). The callbacks are read when a link is used, so new function
+ * props never re-render the tree.
+ */
+export const Markdown = memo(function Markdown({
   text,
   onLocalLink,
   files,
@@ -57,82 +66,89 @@ export function Markdown({
   files?: string[];
 }) {
   const openExternal = useOpenExternal();
-  return (
-    <div className="prose">
-      <ReactMarkdown
-        skipHtml
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
-        components={{
-          a: ({ href, children }) => {
-            const url = href ?? "";
-            if (url.startsWith("https://")) {
-              return (
-                <a
-                  href={url}
-                  title={`Opens ${url} in your browser`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    openExternal(url);
-                  }}
-                >
-                  {children}
-                </a>
-              );
-            }
-            if (url.startsWith("#")) return <span>{children}</span>;
-            if (url.startsWith("http://")) {
-              return (
-                <Inert note="not opened: Habi opens only https links" title={url}>
-                  {children}
-                </Inert>
-              );
-            }
-            const local = isRelative(url) ? localLinkPath(base ? `${base}/${url}` : url) : null;
-            if (local && onLocalLink && (!files || files.includes(local))) {
-              return (
-                <button
-                  type="button"
-                  className="link-btn"
-                  title={`Show ${local}`}
-                  onClick={() => onLocalLink(local)}
-                >
-                  {children}
-                </button>
-              );
-            }
-            if (local) {
-              return (
-                <Inert
-                  note={
-                    files && !files.includes(local)
-                      ? `${local} is not among this skill's files`
-                      : `file in this skill: ${local}`
-                  }
-                  title={url}
-                >
-                  {children}
-                </Inert>
-              );
-            }
-            return (
-              <Inert note="link not opened" title={url}>
-                {children}
-              </Inert>
-            );
-          },
-          img: ({ alt }) => <span className="muted">[image: {alt ?? "no description"}]</span>,
-          code: ({ className, children }) => {
-            // Fenced code names its language; inline code does not.
-            const lang = /language-([\w+-]+)/.exec(className ?? "")?.[1];
-            const text = String(children ?? "");
-            const spans = lang ? highlight(text.replace(/\n$/, ""), lang) : null;
-            return <code className={className}>{spans ?? children}</code>;
-          },
-        }}
-      >
-        {text}
-      </ReactMarkdown>
-    </div>
-  );
-}
+  const external = useRef(openExternal);
+  external.current = openExternal;
+  const local = useRef(onLocalLink);
+  local.current = onLocalLink;
+  const opensLocal = Boolean(onLocalLink);
+  // By content: callers often pass a fresh array of the same paths.
+  const fileList = files?.join("\0");
+
+  return useMemo(() => {
+    const known = fileList === undefined ? undefined : fileList.split("\0");
+    const components: Components = {
+      a: ({ href, children }) => {
+        const url = href ?? "";
+        if (url.startsWith("https://")) {
+          return (
+            <a
+              href={url}
+              title={`Opens ${url} in your browser`}
+              onClick={(event) => {
+                event.preventDefault();
+                external.current(url);
+              }}
+            >
+              {children}
+            </a>
+          );
+        }
+        if (url.startsWith("#")) return <span>{children}</span>;
+        if (url.startsWith("http://")) {
+          return (
+            <Inert note="not opened: Habi opens only https links" title={url}>
+              {children}
+            </Inert>
+          );
+        }
+        const path = isRelative(url) ? localLinkPath(base ? `${base}/${url}` : url) : null;
+        if (path && opensLocal && (!known || known.includes(path))) {
+          return (
+            <button
+              type="button"
+              className="link-btn"
+              title={`Show ${path}`}
+              onClick={() => local.current?.(path)}
+            >
+              {children}
+            </button>
+          );
+        }
+        if (path) {
+          return (
+            <Inert
+              note={
+                known && !known.includes(path)
+                  ? `${path} is not among this skill's files`
+                  : `file in this skill: ${path}`
+              }
+              title={url}
+            >
+              {children}
+            </Inert>
+          );
+        }
+        return (
+          <Inert note="link not opened" title={url}>
+            {children}
+          </Inert>
+        );
+      },
+      img: ({ alt }) => <span className="muted">[image: {alt ?? "no description"}]</span>,
+      code: ({ className, children }) => {
+        // Fenced code names its language; inline code does not.
+        const lang = /language-([\w+-]+)/.exec(className ?? "")?.[1];
+        const code = String(children ?? "");
+        const spans = lang ? highlight(code.replace(/\n$/, ""), lang) : null;
+        return <code className={className}>{spans ?? children}</code>;
+      },
+    };
+    return (
+      <div className="prose">
+        <ReactMarkdown skipHtml remarkPlugins={PLUGINS} rehypePlugins={REHYPE} components={components}>
+          {text}
+        </ReactMarkdown>
+      </div>
+    );
+  }, [text, base, fileList, opensLocal]);
+});

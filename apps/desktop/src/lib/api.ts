@@ -108,7 +108,10 @@ export const api = {
   appInfo: () => call<AppInfo>("app_info"),
   /** Asks GitHub whether a newer Habi exists; null when this is the newest. */
   checkForUpdate: () => call<UpdateInfo | null>("check_for_update"),
-  /** Downloads and installs what the last check found (progress arrives as `update-progress`). */
+  /**
+   * Downloads and installs what the last check found (progress arrives as `update-progress`). On
+   * Windows it never returns: Habi ends as the installer starts, so write pending edits first.
+   */
   installUpdate: () => call<void>("install_update"),
   restartApp: () => call<void>("restart_app"),
   getSettings: () => call<Settings>("get_settings"),
@@ -323,5 +326,3 @@ export const api = {
   /** Removes old operation records and library snapshots, and stored file versions nothing refers to. */
   freeUpSpace: () => call<PruneReport>("free_up_space"),
 };
-
-export type Api = typeof api;

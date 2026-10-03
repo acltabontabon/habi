@@ -30,7 +30,8 @@ export type UpdateState =
   | { phase: "installing"; info: UpdateInfo; downloaded: number; total: number | null }
   /** Installed, waiting for edits that could not be saved before restarting. */
   | { phase: "ready"; info: UpdateInfo; unsaved: boolean }
-  | { phase: "error"; message: string; info?: UpdateInfo };
+  /** `installed`: the update is in place and only the restart failed, so trying again restarts. */
+  | { phase: "error"; message: string; info?: UpdateInfo; installed?: boolean };
 
 type Updates = {
   state: UpdateState;
@@ -55,6 +56,20 @@ const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
+const UNSAVED_BEFORE_UPDATE =
+  "Some edits are not saved yet, so the update did not start. Save or discard them, then try again.";
+
+/** Without a total, the byte count is redrawn every this many bytes. */
+const UNKNOWN_STEP = 512 * 1024;
+
+/** Whether the download moved far enough to show: a whole percent, the end, or (no total) a step of bytes. */
+export function visibleStep(shown: number, next: number, total: number | null): boolean {
+  if (next <= shown) return false;
+  if (!total) return Math.floor(next / UNKNOWN_STEP) !== Math.floor(shown / UNKNOWN_STEP);
+  if (next >= total) return true;
+  return Math.floor((next * 100) / total) !== Math.floor((shown * 100) / total);
+}
+
 export function UpdatesProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<UpdateState>({ phase: "idle" });
   // The newest state without waiting for a render, so overlapping calls see each other.
@@ -65,10 +80,11 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const check = useCallback(async () => {
-    const phase = current.current.phase;
+    const at = current.current;
+    const phase = at.phase;
     if (phase === "checking" || phase === "installing" || phase === "ready") return;
-    // An offer already found stands, even if asking again fails.
-    if (phase === "available") return;
+    // An offer already found stands, even if asking again fails; so does an installed update.
+    if (phase === "available" || (phase === "error" && at.installed)) return;
     set({ phase: "checking" });
     try {
       const info = await api.checkForUpdate();
@@ -80,9 +96,13 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
 
   const restart = useCallback(async () => {
     const at = current.current;
-    if (at.phase !== "ready" && at.phase !== "installing") return;
-    const { info } = at;
-    // Restarting does not wait for autosave, so nothing may be left unwritten.
+    const info =
+      at.phase === "ready" || at.phase === "installing" || (at.phase === "error" && at.installed)
+        ? at.info
+        : undefined;
+    if (!info) return;
+    // Restarting does not wait for autosave, so nothing may be left unwritten, including edits
+    // made while the update downloaded.
     if (!(await flushAutosaves())) {
       set({ phase: "ready", info, unsaved: true });
       return;
@@ -90,22 +110,30 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
     try {
       await api.restartApp();
     } catch (e) {
-      set({ phase: "error", message: messageOf(e), info });
+      set({ phase: "error", message: messageOf(e), info, installed: true });
     }
   }, [set]);
 
   const install = useCallback(async () => {
     const at = current.current;
-    const info = at.phase === "available" || at.phase === "error" ? at.info : undefined;
+    const info = at.phase === "available" || (at.phase === "error" && !at.installed) ? at.info : undefined;
     if (!info) return;
     set({ phase: "installing", info, downloaded: 0, total: null });
+    // On Windows installing never returns here: once the installer starts, the updater ends Habi
+    // at once. So edits are written first, and edits that cannot be written stop the update.
+    if (!(await flushAutosaves())) {
+      set({ phase: "error", message: UNSAVED_BEFORE_UPDATE, info });
+      return;
+    }
     let stop: (() => void) | undefined;
     try {
       stop = await listen<UpdateProgress>("update-progress", (event) => {
         const now = current.current;
-        if (now.phase === "installing") {
-          set({ ...now, downloaded: event.payload.downloaded, total: event.payload.total });
-        }
+        if (now.phase !== "installing") return;
+        const { downloaded, total } = event.payload;
+        // Progress arrives per chunk; the app re-renders only for a visible step.
+        if (total === now.total && !visibleStep(now.downloaded, downloaded, total)) return;
+        set({ ...now, downloaded, total });
       });
       await api.installUpdate();
       set({ phase: "ready", info, unsaved: false });

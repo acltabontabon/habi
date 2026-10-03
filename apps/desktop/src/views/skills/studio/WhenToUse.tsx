@@ -237,6 +237,22 @@ function Adder({
   );
 }
 
+/**
+ * After a row is removed, focus stays in its section: on the row that took
+ * its place, the one before it, or the section's Add.
+ */
+function keepFocus(from: HTMLElement) {
+  const section = from.closest(".wu-section");
+  if (!section) return;
+  const at = [...section.querySelectorAll(".wu-remove")].indexOf(from);
+  requestAnimationFrame(() => {
+    const rows = [...section.querySelectorAll<HTMLElement>(".wu-remove")];
+    const next =
+      rows[Math.min(at, rows.length - 1)] ?? section.querySelector<HTMLElement>(".wu-add, .is-ghost");
+    next?.focus();
+  });
+}
+
 function Rows({
   signals,
   onRemove,
@@ -259,7 +275,10 @@ function Rows({
               type="button"
               className="wu-remove"
               aria-label={`Remove: ${signalWords(s).text} ${signalWords(s).code ?? ""}`.trim()}
-              onClick={() => onRemove(s)}
+              onClick={(e) => {
+                keepFocus(e.currentTarget);
+                onRemove(s);
+              }}
             >
               <Icon name="close" size={12} />
             </button>
@@ -283,6 +302,13 @@ function signalsOf(form: ShareForm) {
     ...form.excludeDependencies.map((value): Signal => ({ kind: "dependency", value })),
   ];
   return { applies, excludes };
+}
+
+export function removeSignal(form: ShareForm, s: Signal): ShareForm {
+  if (s.kind === "tag") return { ...form, appliesTags: without(form.appliesTags, s.value) };
+  if (s.kind === "dependency")
+    return { ...form, appliesDependencies: without(form.appliesDependencies, s.value) };
+  return { ...form, appliesFiles: without(form.appliesFiles, s.value) };
 }
 
 export function addSignal(form: ShareForm, s: Signal): ShareForm {
@@ -331,6 +357,13 @@ export function WhenToUse({
   const [adding, setAdding] = useState<"applies" | "excludes" | "tool" | null>(null);
   const [toolName, setToolName] = useState("");
   const [toolCommands, setToolCommands] = useState("");
+  const root = useRef<HTMLDivElement>(null);
+  /** Closing an adder hands focus back to the button that opened it. */
+  const stopAdding = () => {
+    const which = adding;
+    setAdding(null);
+    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(`[data-adds="${which}"]`)?.focus());
+  };
   const project = projects.find((p) => p.id === projectId) ?? null;
   const suggestions = useQuery({
     queryKey: ["suggestions", projectId],
@@ -350,12 +383,7 @@ export function WhenToUse({
     setForm(addSignal(form, s));
     return null;
   };
-  const remove = (s: Signal) => {
-    if (s.kind === "tag") setForm({ ...form, appliesTags: without(form.appliesTags, s.value) });
-    else if (s.kind === "dependency")
-      setForm({ ...form, appliesDependencies: without(form.appliesDependencies, s.value) });
-    else setForm({ ...form, appliesFiles: without(form.appliesFiles, s.value) });
-  };
+  const remove = (s: Signal) => setForm(removeSignal(form, s));
   const addExclude = (s: Signal): string | null => {
     if (excludes.some((r) => r.kind === s.kind && r.value === s.value))
       return "That exception is already listed.";
@@ -462,7 +490,7 @@ export function WhenToUse({
   }
 
   return (
-    <div className="wu">
+    <div className="wu" ref={root}>
       {header}
       <fieldset className="wu-form" disabled={trashed}>
         <legend className="visually-hidden">When to suggest this skill</legend>
@@ -493,7 +521,7 @@ export function WhenToUse({
               observed={observed}
               observing={suggestions.isFetching}
               onAdd={add}
-              onClose={() => setAdding(null)}
+              onClose={stopAdding}
             />
           ) : null}
           {adding !== "applies" || applies.length > 1 ? (
@@ -501,7 +529,12 @@ export function WhenToUse({
               {adding === "applies" ? (
                 <span />
               ) : (
-                <button type="button" className="wu-add" onClick={() => setAdding("applies")}>
+                <button
+                  type="button"
+                  className="wu-add"
+                  data-adds="applies"
+                  onClick={() => setAdding("applies")}
+                >
                   <Icon name="plus" size={12} /> Add signal
                 </button>
               )}
@@ -542,10 +575,15 @@ export function WhenToUse({
               observed={observed}
               observing={suggestions.isFetching}
               onAdd={addExclude}
-              onClose={() => setAdding(null)}
+              onClose={stopAdding}
             />
           ) : (
-            <button type="button" className="wu-add" onClick={() => setAdding("excludes")}>
+            <button
+              type="button"
+              className="wu-add"
+              data-adds="excludes"
+              onClick={() => setAdding("excludes")}
+            >
               <Icon name="plus" size={12} /> Add exception
             </button>
           )}
@@ -598,7 +636,10 @@ export function WhenToUse({
                         type="button"
                         className="wu-remove"
                         aria-label={`Remove: ${tool.name}`}
-                        onClick={() => setForm({ ...form, tools: form.tools.filter((_, i) => i !== index) })}
+                        onClick={(e) => {
+                          keepFocus(e.currentTarget);
+                          setForm({ ...form, tools: form.tools.filter((_, i) => i !== index) });
+                        }}
                       >
                         <Icon name="close" size={12} />
                       </button>
@@ -631,20 +672,20 @@ export function WhenToUse({
                   } else if (e.key === "Escape") {
                     e.preventDefault();
                     e.stopPropagation();
-                    setAdding(null);
+                    stopAdding();
                   }
                 }}
               />
               <Button size="sm" onClick={addTool} disabled={!toolCommands.trim()}>
                 Add
               </Button>
-              <Button size="sm" variant="quiet" onClick={() => setAdding(null)}>
+              <Button size="sm" variant="quiet" onClick={stopAdding}>
                 Done
               </Button>
               <p className="wu-note">Looked up on PATH, never run.</p>
             </div>
           ) : (
-            <button type="button" className="wu-add" onClick={() => setAdding("tool")}>
+            <button type="button" className="wu-add" data-adds="tool" onClick={() => setAdding("tool")}>
               <Icon name="plus" size={12} /> Add tool
             </button>
           )}

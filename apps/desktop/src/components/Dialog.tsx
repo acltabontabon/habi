@@ -2,6 +2,7 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
+import { keepOpenForToasts } from "./Toasts";
 
 export function Dialog({
   open,
@@ -34,6 +35,7 @@ export function Dialog({
           className={`dialog${wide ? " dialog-wide" : ""}${steady ? " dialog-steady" : ""}`}
           // Without a description there is nothing to point to (and Radix would warn).
           {...(description ? {} : { "aria-describedby": undefined })}
+          onPointerDownOutside={keepOpenForToasts}
         >
           <header className="dialog-head">
             {mark ? <div className="dialog-mark">{mark}</div> : null}

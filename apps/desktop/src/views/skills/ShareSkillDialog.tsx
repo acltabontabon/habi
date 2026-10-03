@@ -39,6 +39,7 @@ export function ShareSkillDialog({
   const [sourceId, setSourceId] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [exported, setExported] = useState<string | null>(null);
 
@@ -86,6 +87,8 @@ export function ShareSkillDialog({
   };
 
   const exportZip = async () => {
+    if (exporting) return;
+    setExporting(true);
     setError(null);
     try {
       const path = await api.exportSkill(skill.summary.id);
@@ -95,6 +98,8 @@ export function ShareSkillDialog({
       }
     } catch (e) {
       setError(e);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -117,7 +122,12 @@ export function ShareSkillDialog({
                 <Button busy={busy} onClick={() => void start()}>
                   Start a new contribution
                 </Button>
-                <Button variant="primary" icon="share" onClick={() => openContribution(ongoing.id)}>
+                <Button
+                  variant="primary"
+                  icon="share"
+                  disabled={busy}
+                  onClick={() => openContribution(ongoing.id)}
+                >
                   Continue sharing
                 </Button>
               </>
@@ -185,7 +195,13 @@ export function ShareSkillDialog({
                 <span className="choice-detail">A Git repository of skills your team reviews together.</span>
               </span>
             </button>
-            <button type="button" className="share-option" onClick={() => void exportZip()}>
+            <button
+              type="button"
+              className="share-option"
+              disabled={exporting}
+              aria-busy={exporting || undefined}
+              onClick={() => void exportZip()}
+            >
               <Icon name="download" />
               <span>
                 <span className="choice-title">Export as zip…</span>

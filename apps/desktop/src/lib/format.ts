@@ -234,7 +234,3 @@ export function pruneSummary(r: PruneReport): string {
     r.skippedBusy === 1 ? "1 project or library was" : `${r.skippedBusy} projects or libraries were`;
   return `${done} ${busy} in use and skipped; try again later.`;
 }
-
-export function moduleLabel(id: string, name: string): string {
-  return id === "." || id === "*" ? name : `${name}`;
-}

@@ -14,6 +14,7 @@ import type { FolderEntry } from "../bindings/FolderEntry";
 import type { ProjectPick } from "../bindings/ProjectPick";
 import { Dialog } from "../components/Dialog";
 import { Icon } from "../components/Icon";
+import { keepOpenForToasts } from "../components/Toasts";
 import { Button, ErrorNotice } from "../components/ui";
 import { WaitingLoom } from "../components/Weaving";
 import { api } from "../lib/api";
@@ -148,6 +149,7 @@ export function ProjectChooser({
         <RadixDialog.Content
           className="dialog chooser"
           aria-describedby={undefined}
+          onPointerDownOutside={keepOpenForToasts}
           onOpenAutoFocus={(ev) => {
             ev.preventDefault();
             filter.current?.focus();

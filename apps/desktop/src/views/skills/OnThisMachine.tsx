@@ -8,17 +8,24 @@
  * will use. Nothing is shown when there are no such skills.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ImportFrom } from "../../bindings/ImportFrom";
 import type { LocalSkill } from "../../bindings/LocalSkill";
-import type { MachineSkill } from "../../bindings/MachineSkill";
+import { AgentReach } from "../../components/AgentReach";
 import { Dialog } from "../../components/Dialog";
+import { Loom } from "../../components/Loom";
 import { Menu } from "../../components/Menu";
 import { Button, ErrorNotice, Status } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
-import { clientsPhrase, plural } from "../../lib/format";
-import { copyState, homeMention, precedenceNote } from "../../lib/machine";
+import { clientLabel, plural } from "../../lib/format";
+import {
+  copyState,
+  groupMachineSkills,
+  homeMention,
+  type MachineGroup,
+  precedenceNote,
+} from "../../lib/machine";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useMachineSkills } from "../../lib/queries";
 import { purpose } from "../../lib/skills";
@@ -33,46 +40,56 @@ const managedState: Record<string, string> = {
   sourceUnavailable: "library not connected",
 };
 
+/** Which agent tools see the skill; hovering one names the folder it reads. */
+function Reach({ group }: { group: MachineGroup }) {
+  return (
+    <AgentReach
+      lit={group.readers}
+      tip={(c, on) => {
+        const from = group.copies.filter((s) => s.readers.includes(c)).map((s) => s.location);
+        return on
+          ? `${clientLabel[c]} reads ${from.join(" and ")}`
+          : `${clientLabel[c]} does not read these folders`;
+      }}
+    />
+  );
+}
+
 function Row({
-  skill: s,
+  group,
   busy,
   onAdd,
   onOpen,
   onUse,
   onReview,
 }: {
-  skill: MachineSkill;
+  group: MachineGroup;
   busy: boolean;
   onAdd: () => void;
   onOpen: (id: string) => void;
   onUse: () => void;
   onReview: (request: ReviewRequest) => void;
 }) {
-  const copies = s.inProjects;
-  const mention = homeMention(s);
+  const s = group.skill;
+  const copies = group.inProjects;
+  const mention = homeMention(group);
   const blocked = !s.complete;
+  const managed = group.copies.find((c) => c.managed)?.managed ?? null;
   return (
     <li className="mach-item">
       <span className="mach-main">
         <span className="mach-title">
           {s.name}
           <span className="mach-tag">Global</span>
-          {s.isLink ? <span className="mach-tag">Link</span> : null}
+          {group.isLink ? <span className="mach-tag">Link</span> : null}
+          {managed && managedState[managed.state] ? (
+            <span className="mach-tag is-state">{managedState[managed.state]}</span>
+          ) : null}
         </span>
         <span className="mys-purpose">
           {s.description ? purpose(s.description) : <span className="mys-none">No purpose yet</span>}
         </span>
-        <span className="mys-thread">
-          <span className="mono">{s.location}</span>
-          <span>read by {clientsPhrase(s.readers)}</span>
-          {s.importedAs ? <span>a copy is in My skills</span> : null}
-          {s.managed ? (
-            <span>
-              installed by Habi from {s.managed.library}
-              {managedState[s.managed.state] ? ` · ${managedState[s.managed.state]}` : ""}
-            </span>
-          ) : null}
-        </span>
+        <Reach group={group} />
         {copies.map((c) => (
           <span key={`${c.projectId}:${c.path}`} className="mach-note">
             <span>
@@ -93,44 +110,58 @@ function Row({
           </span>
         ) : null}
       </span>
+      {/* One quiet control per row: the list is what is here, and what to do with it is a click away. */}
       <span className="mach-acts">
-        {s.importedAs ? (
-          <Button size="sm" onClick={() => onOpen(s.importedAs ?? "")}>
-            Open my copy
-          </Button>
-        ) : (
-          <Button size="sm" disabled={blocked} onClick={onAdd} aria-label={`Add ${s.name} to My skills`}>
-            Add to My skills
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="primary"
-          busy={busy}
-          disabled={blocked}
-          onClick={onUse}
-          aria-label={`Use ${s.name} in a project`}
-        >
-          Use in a project…
-        </Button>
-        {s.managed ? (
-          <Menu
-            label={`More for ${s.name}`}
-            items={[
-              {
-                label: "Update…",
-                hint: "Reviewed like any install",
-                onSelect: () => onReview({ kind: "update", keys: [s.managed?.key ?? ""], title: s.name }),
-              },
-              {
-                label: "Remove from this machine…",
-                hint: "Only the files Habi installed",
-                danger: true,
-                onSelect: () => onReview({ kind: "remove", keys: [s.managed?.key ?? ""], title: s.name }),
-              },
-            ]}
-          />
+        {busy ? (
+          <span className="mach-busy" role="status" aria-label={`Copying ${s.name} into My skills`}>
+            <Loom />
+          </span>
         ) : null}
+        <Menu
+          label={`More for ${s.name}`}
+          items={[
+            [
+              group.importedAs
+                ? {
+                    label: "Open my copy",
+                    hint: "In My skills",
+                    icon: "pencil",
+                    onSelect: () => onOpen(group.importedAs ?? ""),
+                  }
+                : {
+                    label: "Add to My skills",
+                    hint: blocked ? "Some files can’t be copied" : "An editable copy",
+                    icon: "plus",
+                    disabled: blocked,
+                    onSelect: onAdd,
+                  },
+              {
+                label: "Use in a project…",
+                hint: blocked ? "Some files can’t be copied" : "Reviewed before it installs",
+                icon: "download",
+                disabled: blocked || busy,
+                onSelect: onUse,
+              },
+            ],
+            managed
+              ? [
+                  {
+                    label: "Update…",
+                    hint: `From ${managed.library}`,
+                    icon: "refresh",
+                    onSelect: () => onReview({ kind: "update", keys: [managed.key], title: s.name }),
+                  },
+                  {
+                    label: "Remove from this machine…",
+                    hint: "Only what Habi installed",
+                    icon: "trash",
+                    danger: true,
+                    onSelect: () => onReview({ kind: "remove", keys: [managed.key], title: s.name }),
+                  },
+                ]
+              : [],
+          ]}
+        />
       </span>
     </li>
   );
@@ -142,22 +173,27 @@ export function OnThisMachine() {
   const { addSkills } = useActions();
   const client = useQueryClient();
   const [using, setUsing] = useState<LocalSkill | null>(null);
-  const [warning, setWarning] = useState<MachineSkill | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [warning, setWarning] = useState<MachineGroup | null>(null);
+  // Each row is busy on its own; a second click on a busy row is ignored before it can import twice.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
+  const working = useRef(new Set<string>());
   const [review, setReview] = useState<ReviewRequest | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   // A folder Habi cannot read is not worth a broken page: show nothing.
-  const found = machine.data ?? [];
+  const found = groupMachineSkills(machine.data ?? []);
   if (found.length === 0) return null;
 
   /** Puts the skill in My skills if it is not there, then opens the dialog that chooses the project. */
-  const bringToProject = async (s: MachineSkill) => {
+  const bringToProject = async (group: MachineGroup) => {
+    const s = group.skill;
+    if (working.current.has(s.id)) return;
+    working.current.add(s.id);
+    setBusy(new Set(working.current));
     setWarning(null);
     setError(null);
-    setBusy(s.id);
     try {
-      let id = s.importedAs;
+      let id = group.importedAs;
       if (!id) {
         const from: ImportFrom = { type: "machine", id: s.id };
         const inspection = await api.inspectImport(from);
@@ -177,7 +213,8 @@ export function OnThisMachine() {
     } catch (e) {
       setError(e);
     } finally {
-      setBusy(null);
+      working.current.delete(s.id);
+      setBusy(new Set(working.current));
     }
   };
 
@@ -194,14 +231,14 @@ export function OnThisMachine() {
       </header>
       {error ? <ErrorNotice error={error} /> : null}
       <ul className="mach-rows" aria-label="Skills on this machine">
-        {found.map((s) => (
+        {found.map((g) => (
           <Row
-            key={s.id}
-            skill={s}
-            busy={busy === s.id}
-            onAdd={() => addSkills({ source: "machine", id: s.id })}
+            key={g.key}
+            group={g}
+            busy={busy.has(g.skill.id)}
+            onAdd={() => addSkills({ source: "machine", id: g.skill.id })}
             onOpen={(id) => navigate({ name: "skills", skillId: id })}
-            onUse={() => (homeMention(s) ? setWarning(s) : void bringToProject(s))}
+            onUse={() => (homeMention(g) ? setWarning(g) : void bringToProject(g))}
             onReview={setReview}
           />
         ))}
@@ -213,7 +250,7 @@ export function OnThisMachine() {
           onOpenChange={(open) => {
             if (!open) setWarning(null);
           }}
-          title={`${warning.name} mentions folders on your machine`}
+          title={`${warning.skill.name} mentions folders on your machine`}
           description="A skill that points into your home folder works for you and breaks for a teammate."
           footer={
             <>

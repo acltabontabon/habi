@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import type { ProjectOverview } from "../bindings/ProjectOverview";
 import type { Source } from "../bindings/Source";
 import { Icon, Mark } from "../components/Icon";
 import { useToast } from "../components/Toasts";
@@ -9,9 +10,17 @@ import { ProjectMark, Strand } from "../components/Weave";
 import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
 import { type Dye, useDyes } from "../lib/dye";
-import { freshnessText } from "../lib/format";
-import { useNav } from "../lib/nav";
-import { keys, useAppInfo, useContributions, useRecentProjects, useSources } from "../lib/queries";
+import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
+import { lastProject, useNav } from "../lib/nav";
+import {
+  keys,
+  useAppInfo,
+  useCatalog,
+  useContributions,
+  useRecentProjects,
+  useRepoFacts,
+  useSources,
+} from "../lib/queries";
 import { useNewVersionMark, useUpdates } from "../lib/updates";
 import { repositoryLabel } from "./sources/SourceSheet";
 
@@ -210,6 +219,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               source={s}
               dye={dyes(s.id)}
               active={activeLibrary === s.id}
+              projectId={route.name === "project" ? route.projectId : lastProject()}
               onOpen={openLibrary}
             />
           ))}
@@ -278,37 +288,82 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   );
 }
 
+/**
+ * The library's card on hover: what it is, how much it holds, how it is
+ * doing upstream (stars and last push, for a catalog library, asked of
+ * GitHub only once someone looks), and what it means for the project being
+ * worked on.
+ */
 function LibraryItem({
   source,
   dye,
   active,
+  projectId,
   onOpen,
 }: {
   source: Source;
   dye: Dye;
   active: boolean;
+  /** The project being worked on, if any: its overview says what fits. */
+  projectId: string | null;
   onOpen: (id: string) => void;
 }) {
   const fresh = freshnessText(source);
+  // Counts hovers: each look re-reads what is known (a project opened since may say what fits).
+  const [looks, setLooks] = useState(0);
+  const peeked = looks > 0;
+  const client = useQueryClient();
+  const entry = useCatalog().data?.find((e) => e.id === source.catalogId);
+  const facts = useRepoFacts(peeked ? (source.catalogId ?? undefined) : undefined).data;
+  // Only what is already known: hovering never runs a project's inspection.
+  const overview =
+    peeked && projectId ? client.getQueryData<ProjectOverview>(keys.overview(projectId)) : undefined;
+  const fits = overview?.recommendations.filter(
+    (r) => r.item.sourceId === source.id && r.applicability.applicability === "applies",
+  );
+  const installed = fits?.filter((r) => r.installState !== "notInstalled").length ?? 0;
+  const community = source.role === "community";
+  // A community library says so with a badge (and its stitched thread); the others in a line.
+  const kind = community
+    ? null
+    : source.location.startsWith("/") || source.location.startsWith("~")
+      ? "Local folder"
+      : "Team library";
+  const counts = [
+    plural(source.skillCount, "skill"),
+    facts ? `★ ${compactCount(facts.stars)}` : null,
+    facts?.pushedAt ? `pushed ${relativeTime(facts.pushedAt)}` : null,
+    facts?.archived ? "archived" : null,
+  ].filter(Boolean);
   return (
     <li>
       <button
         type="button"
         className={`sidebar-item${active ? " is-active" : ""}`}
         aria-current={active ? "page" : undefined}
+        onPointerEnter={() => setLooks((n) => n + 1)}
+        onFocus={() => setLooks((n) => n + 1)}
         {...tip({
           title: source.name,
           mark: dye.color,
           stitched: dye.community,
+          badge: community ? "community" : undefined,
           lines: [
-            {
-              text:
-                source.role === "community"
-                  ? "Community library · not reviewed by your team"
-                  : source.location.startsWith("/") || source.location.startsWith("~")
-                    ? "Local folder"
-                    : "Team library",
-            },
+            ...(entry?.summary ? [{ text: entry.summary }] : []),
+            { text: counts.join(" · ") },
+            ...(overview && fits
+              ? [
+                  {
+                    text:
+                      fits.length === 0
+                        ? `Nothing here fits ${overview.project.name}`
+                        : `${fits.length} ${fits.length === 1 ? "fits" : "fit"} ${overview.project.name}${
+                            installed > 0 ? ` · ${installed} installed` : ""
+                          }`,
+                  },
+                ]
+              : []),
+            ...(kind ? [{ text: kind }] : []),
             { text: repositoryLabel(source.location), mono: true },
           ],
           note: {
