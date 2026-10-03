@@ -174,6 +174,55 @@ pub enum ImportFrom {
     /// Items of a connected team library, to copy for editing.
     #[serde(rename_all = "camelCase")]
     Library { source_id: String },
+    /// A Git repository fetched only to copy from (`open_git_copy`): it is
+    /// not connected, and is forgotten afterwards.
+    #[serde(rename_all = "camelCase")]
+    GitCopy { source_id: String },
+}
+
+/// A repository fetched to copy skills from, without connecting it.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct GitCopy {
+    pub source_id: String,
+    /// The repository, as people say it ("acme/skills").
+    pub label: String,
+    /// The commit that was read.
+    pub snapshot: Option<String>,
+}
+
+/// Name prefix of sources fetched only to copy from. Like catalog previews
+/// they are hidden, never connected, and discarded by maintenance.
+const COPY_PREFIX: &str = "~copy:";
+
+fn is_copy_source(source: &Source) -> bool {
+    source.preview && source.name.starts_with(COPY_PREFIX)
+}
+
+/// "https://github.com/acme/skills" → "acme/skills".
+fn repository_label(source: &Source) -> String {
+    if crate::source::is_local_location(&source.location) {
+        return source
+            .location
+            .trim_end_matches(['/', '\\'])
+            .rsplit(['/', '\\'])
+            .next()
+            .unwrap_or(&source.location)
+            .trim_end_matches(".git")
+            .to_string();
+    }
+    let identity = portable_identity(source);
+    let trimmed = identity
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_end_matches(".git");
+    trimmed
+        .strip_prefix("github.com/")
+        .or_else(|| trimmed.strip_prefix("gitlab.com/"))
+        .or_else(|| trimmed.strip_prefix("codeberg.org/"))
+        .unwrap_or(trimmed)
+        .to_string()
 }
 
 /// The applicability rules to preview: an unsaved form, unsaved raw
@@ -1514,12 +1563,39 @@ impl Habi {
                 });
                 Ok((shown.clone(), packages))
             }
+            ImportFrom::GitCopy { source_id } => {
+                let source = self.sources.get(source_id)?;
+                if !is_copy_source(&source) {
+                    return Err(HabiError::invalid(
+                        "that is not a repository opened for copying; open it again",
+                    ));
+                }
+                let label = repository_label(&source);
+                let packages = self.library_packages(&source, &label, cancel)?;
+                Ok((label, packages))
+            }
             ImportFrom::Library { source_id } => {
                 if source_id == LOCAL_SOURCE_ID {
                     return Err(HabiError::invalid("those skills are already yours"));
                 }
                 let source = self.sources.connected(source_id)?;
-                let index = self.sources.index(source_id)?;
+                let packages = self.library_packages(&source, &source.name, cancel)?;
+                Ok((source.name, packages))
+            }
+        }
+    }
+
+    /// The skills of a fetched library as packages to copy, each remembering
+    /// the library (`source_name`), the item and the version it came from.
+    fn library_packages(
+        &self,
+        source: &Source,
+        source_name: &str,
+        cancel: &CancelToken,
+    ) -> Result<Vec<Package>> {
+        {
+            {
+                let index = self.sources.index(&source.id)?;
                 let mut packages = Vec::new();
                 for item in index
                     .items
@@ -1545,17 +1621,78 @@ impl Habi {
                         path: item.id.clone(),
                         tree,
                         origin: SkillOrigin::Library {
-                            source_name: source.name.clone(),
-                            source_identity: portable_identity(&source),
+                            source_name: source_name.to_string(),
+                            source_identity: portable_identity(source),
                             item_id: item.id.clone(),
                             snapshot: index.snapshot.clone(),
-                            upstream: Some(self.upstream_of(&source, item)),
+                            upstream: Some(self.upstream_of(source, item)),
                         },
                         title: Some(item.title.clone()),
                     });
                 }
-                Ok((source.name, packages))
+                Ok(packages)
             }
+        }
+    }
+
+    /// Fetches a Git repository so its skills can be copied into My skills,
+    /// without connecting it as a library: it stays hidden, is never
+    /// refreshed on its own, and is discarded with `forget_git_copy` (or by
+    /// maintenance). Copies remember the repository, so connecting it later
+    /// lets them follow its updates. Nothing in it is run.
+    pub fn open_git_copy(&self, location: &str, cancel: &CancelToken) -> Result<GitCopy> {
+        let location = location.trim();
+        let name = format!(
+            "{COPY_PREFIX}{}",
+            crate::fsutil::short(&crate::fsutil::sha256(location.as_bytes()))
+        );
+        let existing = self
+            .sources
+            .list_previews()?
+            .into_iter()
+            .find(|s| s.name == name);
+        let source = match existing {
+            Some(s) => s,
+            None => {
+                let added = self.sources.add_with(
+                    &crate::source::NewSource {
+                        name,
+                        location: location.to_string(),
+                        subdir: None,
+                        tracked: TrackedRef::Default,
+                    },
+                    &crate::source::CatalogBinding {
+                        catalog_id: None,
+                        include: Vec::new(),
+                        exclude: Vec::new(),
+                        preview: true,
+                    },
+                )?;
+                // Published by others until someone decides otherwise.
+                self.sources
+                    .set_role(&added.id, crate::source::SourceRole::Community)?
+            }
+        };
+        if let Err(e) = self.sources.refresh(&source.id, cancel) {
+            // A repository that could not be read is not left behind.
+            let _ = self.sources.remove(&source.id);
+            return Err(e);
+        }
+        let source = self.sources.get(&source.id)?;
+        Ok(GitCopy {
+            label: repository_label(&source),
+            snapshot: source.snapshot.clone(),
+            source_id: source.id,
+        })
+    }
+
+    /// Discards a repository opened for copying (copies already made keep
+    /// their own record of their original). Anything else is left alone.
+    pub fn forget_git_copy(&self, source_id: &str) -> Result<()> {
+        match self.sources.get(source_id) {
+            Ok(source) if is_copy_source(&source) => self.sources.remove(source_id),
+            Ok(_) | Err(HabiError::NotFound(_)) => Ok(()),
+            Err(e) => Err(e),
         }
     }
 
@@ -1577,6 +1714,9 @@ impl Habi {
                     "No SKILL.md was found in this folder or the folders inside it.".to_string()
                 }
                 ImportFrom::Library { .. } => "This library has no skills yet.".into(),
+                ImportFrom::GitCopy { .. } => {
+                    "No SKILL.md was found in this repository.".to_string()
+                }
             });
         }
         Ok(ImportInspection {

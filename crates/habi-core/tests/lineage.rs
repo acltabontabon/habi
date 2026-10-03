@@ -419,3 +419,104 @@ fn one_project_can_be_evaluated_with_the_tools_it_needs() {
     assert_eq!(status("Maven"), Some(PrerequisiteStatus::Present));
     assert_eq!(status("Nothing"), Some(PrerequisiteStatus::Missing));
 }
+
+fn git(dir: &Path, args: &[&str]) {
+    let ok = std::process::Command::new("git")
+        .args([
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "init.defaultBranch=main",
+        ])
+        .args(args)
+        .current_dir(dir)
+        .status()
+        .unwrap();
+    assert!(ok.success());
+}
+
+#[test]
+fn a_one_off_copy_from_git_connects_nothing_and_remembers_where_it_came_from() {
+    let home = tempfile::tempdir().unwrap();
+    let repo = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    put(repo.path(), "skills/review/SKILL.md", REVIEW_SKILL);
+    put(repo.path(), "skills/review/references/a.md", "A1\n");
+    git(repo.path(), &["init", "-q"]);
+    git(repo.path(), &["add", "-A"]);
+    git(repo.path(), &["commit", "-qm", "skills"]);
+
+    let copy = habi
+        .open_git_copy(&repo.path().to_string_lossy(), &CancelToken::new())
+        .unwrap();
+    assert!(copy.snapshot.is_some());
+    // Fetched, but not a library: nothing appears among connected sources.
+    assert!(habi.sources().list().unwrap().is_empty());
+    let from = ImportFrom::GitCopy {
+        source_id: copy.source_id.clone(),
+    };
+    let found = habi.inspect_import(&from, &CancelToken::new()).unwrap();
+    assert_eq!(found.candidates.len(), 1);
+    // Copying from it the way a connected library is copied is refused.
+    assert!(
+        habi.inspect_import(
+            &ImportFrom::Library {
+                source_id: copy.source_id.clone()
+            },
+            &CancelToken::new()
+        )
+        .is_err()
+    );
+    let imported = habi
+        .import_skills(
+            &from,
+            &[ImportSelection {
+                path: found.candidates[0].path.clone(),
+                rename: None,
+            }],
+            &CancelToken::new(),
+        )
+        .unwrap();
+    let id = imported.imported[0].id.clone();
+    habi.forget_git_copy(&copy.source_id).unwrap();
+    assert!(habi.sources().get(&copy.source_id).is_err());
+
+    let skill = habi.skills().get(&id).unwrap();
+    match &skill.summary.origin {
+        habi_core::skills::SkillOrigin::Library {
+            source_name,
+            snapshot,
+            ..
+        } => {
+            assert_eq!(source_name, &copy.label);
+            assert_eq!(Some(snapshot), copy.snapshot.as_ref());
+        }
+        other => panic!("unexpected origin {other:?}"),
+    }
+    assert_eq!(skill.summary.modified_locally, Some(false));
+    // Its original is kept even though the repository was discarded.
+    let changes = habi.skill_local_changes(&id).unwrap();
+    assert!(changes.known, "{:?}", changes.detail);
+    // A source that is not a copy is never discarded by forget_git_copy.
+    let lib = tempfile::tempdir().unwrap();
+    put(
+        lib.path(),
+        "skills/other/SKILL.md",
+        "---\nname: other\ndescription: x\n---\n",
+    );
+    let connected = habi
+        .sources()
+        .add(&NewSource {
+            name: "Team".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.forget_git_copy(&connected.id).unwrap();
+    assert!(habi.sources().get(&connected.id).is_ok());
+}

@@ -512,15 +512,18 @@ export function ConnectLibrary({
   onCancel,
   compact = false,
   mode = "git",
+  initialLocation = "",
 }: {
   onConnected: (source: Source, itemCount: number) => void;
+  /** An address the person already typed elsewhere. */
+  initialLocation?: string;
   onCancel?: () => void;
   compact?: boolean;
   /** A Git repository (by URL) or a folder on this machine (picked). */
   mode?: "git" | "folder";
 }) {
   const client = useQueryClient();
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(initialLocation);
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const [subdir, setSubdir] = useState("");

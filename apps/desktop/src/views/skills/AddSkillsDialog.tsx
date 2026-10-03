@@ -1,7 +1,13 @@
 /**
- * Add skills: one entry point, three sources. Habi inspects before writing —
- * it lists the packages it found, their origin, problems and what importing
- * would create — and imports only what the user selects.
+ * Add skills: one entry point, wherever the skills are — a project you
+ * opened, a folder, a Git repository, a library you connected. Habi looks
+ * before writing: it lists what it found, where it came from, its problems
+ * and duplicates, and copies only what is chosen, never over anything.
+ *
+ * A Git repository offers two different things, said apart at the point of
+ * choosing: *make my own copy* (fetch it once, copy skills to edit; nothing
+ * stays connected) or *connect a library* (keep it to browse and update
+ * from; nothing is copied).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +18,7 @@ import { Dialog } from "../../components/Dialog";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Status, Working } from "../../components/ui";
+import { Weaving } from "../../components/Weaving";
 import { api, HabiError, newJobId } from "../../lib/api";
 import { NO_RULES_PHRASE, plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
@@ -28,7 +35,8 @@ export type AddSkillsStart =
 
 type Step =
   | { name: "choose" }
-  | { name: "git" }
+  | { name: "git"; location?: string }
+  | { name: "fetching"; job: string; label: string }
   | { name: "inspecting"; job: string; label: string }
   | { name: "review"; from: ImportFrom; inspection: ImportInspection };
 
@@ -167,6 +175,9 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
   const available = (projects.data ?? []).filter((p) => p.exists);
   const [projectId, setProjectId] = useState(start.source === "project" ? start.projectId : "");
   const chosenProject = projectId || available[0]?.id || "";
+  const [gitUrl, setGitUrl] = useState("");
+  // A repository fetched only to copy from is forgotten when the dialog closes.
+  const copySource = useRef<string | null>(null);
 
   // Closing the dialog cancels a look that is still running, and work that
   // finishes afterwards does not navigate.
@@ -177,6 +188,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
     return () => {
       mounted.current = false;
       if (jobRef.current) void api.cancelJob(jobRef.current);
+      if (copySource.current) void api.forgetGitCopy(copySource.current).catch(() => {});
     };
   }, []);
 
@@ -191,6 +203,31 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
       setStep({ name: "review", from, inspection });
     } catch (e) {
       // Cancelling is the user's choice, not a failure.
+      if (!(e instanceof HabiError && e.code === "cancelled")) setError(e);
+      setStep({ name: "choose" });
+    } finally {
+      if (jobRef.current === job) jobRef.current = null;
+    }
+  };
+
+  /** Fetches the repository once, then shows what can be copied from it. */
+  const copyFromGit = async () => {
+    const location = gitUrl.trim();
+    if (!location) return;
+    setError(null);
+    const job = newJobId();
+    jobRef.current = job;
+    setStep({ name: "fetching", job, label: location });
+    try {
+      const copy = await api.openGitCopy(location, job);
+      if (!mounted.current) {
+        void api.forgetGitCopy(copy.sourceId);
+        return;
+      }
+      copySource.current = copy.sourceId;
+      if (jobRef.current === job) jobRef.current = null;
+      await inspect({ type: "gitCopy", sourceId: copy.sourceId }, copy.label);
+    } catch (e) {
       if (!(e instanceof HabiError && e.code === "cancelled")) setError(e);
       setStep({ name: "choose" });
     } finally {
@@ -275,6 +312,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
       )
     : false;
   const fromLibrary = review?.from.type === "library";
+  const fromGit = review?.from.type === "gitCopy";
   // Arriving with one skill in mind ("Edit a copy"): show that one first.
   const focus = start.source === "project" || start.source === "library" ? (start.preselect ?? null) : null;
   const focused = focus && review ? review.inspection.candidates.find((c) => c.path === focus) : undefined;
@@ -294,7 +332,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
           : review
             ? focused
               ? `Edit a copy of ${focused.title}`
-              : fromLibrary
+              : fromLibrary || fromGit
                 ? `Copy from ${review.inspection.origin}`
                 : `Skills found in ${shortOrigin(review.inspection.origin)}`
             : "Add skills"
@@ -305,7 +343,9 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
           : review
             ? fromLibrary
               ? `Copies the whole package to My skills, linked to ${review.inspection.origin} so you can share edits back. The library stays as it is.`
-              : "Copies the whole package to My skills. The originals stay where they are."
+              : fromGit
+                ? `Copies to My skills, remembering ${review.inspection.origin} and the version read. Nothing stays connected; connect it later to follow its updates.`
+                : "Copies the whole package to My skills. The originals stay where they are."
             : undefined
       }
       footer={
@@ -339,16 +379,17 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
       ) : null}
 
       {step.name === "choose" ? (
-        <ul className="source-choices">
-          <li className="source-choice">
+        <ol className="ways">
+          <li className="way">
             <Icon name="folder" />
-            <div className="source-choice-body">
-              <h3 className="source-choice-title">From a project</h3>
-              <p className="muted">
-                Skill folders in a repository you opened (<span className="mono">.claude/skills</span>…).
+            <div className="way-body">
+              <h3 className="way-title">A project you opened</h3>
+              <p className="way-note">
+                Skill folders already in a repository (<span className="mono">.claude/skills</span>,{" "}
+                <span className="mono">.agents/skills</span>…).
               </p>
               {available.length > 0 ? (
-                <div className="input-row">
+                <div className="way-row">
                   <label className="visually-hidden" htmlFor="add-project">
                     Project
                   </label>
@@ -367,61 +408,119 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
                   <Button
                     onClick={() => void inspect({ type: "project", projectId: chosenProject }, "the project")}
                   >
-                    Look in project
+                    Look inside
                   </Button>
                 </div>
               ) : (
-                <p className="muted">Open a project first to look inside it.</p>
+                <p className="way-note">Open a project first to look inside it.</p>
               )}
             </div>
           </li>
-          <li className="source-choice">
+          <li className="way">
             <Icon name="file" />
-            <div className="source-choice-body">
-              <h3 className="source-choice-title">From a folder</h3>
-              <p className="muted">A skill folder, or a folder of skills such as your personal ones.</p>
-              <Button onClick={() => void fromFolder()}>Choose a folder…</Button>
-            </div>
-          </li>
-          <li className="source-choice">
-            <Icon name="library" />
-            <div className="source-choice-body">
-              <h3 className="source-choice-title">From a Git repository</h3>
-              <p className="muted">Connects it as a library that stays current when you refresh.</p>
-              <div className="input-row">
-                <Button onClick={() => setStep({ name: "git" })}>Connect a repository…</Button>
-                {gitSources.length > 0 ? (
-                  <>
-                    <label className="visually-hidden" htmlFor="add-library">
-                      Connected library
-                    </label>
-                    <select
-                      id="add-library"
-                      className="input"
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value)
-                          void inspect({ type: "library", sourceId: e.target.value }, "the library");
-                      }}
-                    >
-                      <option value="">Copy from a connected library…</option>
-                      {gitSources.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                ) : null}
+            <div className="way-body">
+              <h3 className="way-title">A folder on this machine</h3>
+              <p className="way-note">One skill, or a folder of skills such as your personal ones.</p>
+              <div className="way-row">
+                <Button onClick={() => void fromFolder()}>Choose a folder…</Button>
               </div>
             </div>
           </li>
-        </ul>
+          <li className="way">
+            <Icon name="branch" />
+            <div className="way-body">
+              <h3 className="way-title">A Git repository</h3>
+              <div className="way-row">
+                <label className="visually-hidden" htmlFor="add-git">
+                  Repository address
+                </label>
+                <input
+                  id="add-git"
+                  className="input mono"
+                  value={gitUrl}
+                  placeholder="https://github.com/acme/skills"
+                  spellCheck={false}
+                  autoComplete="off"
+                  onChange={(e) => setGitUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void copyFromGit();
+                    }
+                  }}
+                />
+              </div>
+              <div className="way-fork">
+                <button
+                  type="button"
+                  className="way-choice"
+                  disabled={!gitUrl.trim()}
+                  onClick={() => void copyFromGit()}
+                >
+                  <span className="way-choice-title">Make my own copy</span>
+                  <span className="way-choice-note">
+                    Read it once and copy skills to edit. Nothing stays connected.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="way-choice"
+                  disabled={!gitUrl.trim()}
+                  onClick={() => setStep({ name: "git", location: gitUrl.trim() })}
+                >
+                  <span className="way-choice-title">Connect as a library</span>
+                  <span className="way-choice-note">
+                    Keep it to browse and update from. Nothing is copied.
+                  </span>
+                </button>
+              </div>
+            </div>
+          </li>
+          {gitSources.length > 0 ? (
+            <li className="way">
+              <Icon name="library" />
+              <div className="way-body">
+                <h3 className="way-title">A library you connected</h3>
+                <p className="way-note">Copies stay linked to the library, so you can review its updates.</p>
+                <div className="way-row">
+                  <label className="visually-hidden" htmlFor="add-library">
+                    Connected library
+                  </label>
+                  <select
+                    id="add-library"
+                    className="input"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value)
+                        void inspect({ type: "library", sourceId: e.target.value }, "the library");
+                    }}
+                  >
+                    <option value="">Choose a library…</option>
+                    {gitSources.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </li>
+          ) : null}
+        </ol>
+      ) : null}
+
+      {step.name === "fetching" ? (
+        <Weaving
+          label={`Reading ${step.label}`}
+          hint="Fetched to look at, not connected. Nothing in it is run."
+          onCancel={() => void api.cancelJob(step.job)}
+        />
       ) : null}
 
       {step.name === "git" ? (
         <ConnectLibrary
           compact
+          initialLocation={step.location}
           onCancel={() => (start.source === "git" ? onClose() : setStep({ name: "choose" }))}
           onConnected={(source, count) => {
             toast.show(`${source.name} connected: ${plural(count, "item")} available.`);

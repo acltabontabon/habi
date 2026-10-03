@@ -2300,3 +2300,100 @@
   height: 2px;
   border-radius: 1px;
 }
+
+/* ---------- Add skills: where from ---------- */
+
+.ways {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.way {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--s3);
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.way:last-child {
+  border-bottom: 0;
+}
+
+.way > svg {
+  margin-top: 2px;
+  color: var(--ink-muted);
+}
+
+.way-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.way-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.way-note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.way-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: 2px;
+}
+
+.way-row .input {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 32px;
+}
+
+.way-fork {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: var(--s2);
+  margin-top: 4px;
+}
+
+.way-choice {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline-strong);
+  border-left: 3px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  text-align: left;
+  transition: border-color var(--duration) var(--ease);
+}
+
+.way-choice:not(:disabled):hover,
+.way-choice:not(:disabled):focus-visible {
+  border-left-color: var(--thread);
+}
+
+.way-choice:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.way-choice-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.way-choice-note {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}

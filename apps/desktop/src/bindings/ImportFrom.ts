@@ -3,4 +3,4 @@
 /**
  * Where "Add skills" looks for packages.
  */
-export type ImportFrom = { "type": "project", projectId: string, } | { "type": "folder", path: string, } | { "type": "library", sourceId: string, };
+export type ImportFrom = { "type": "project", projectId: string, } | { "type": "folder", path: string, } | { "type": "library", sourceId: string, } | { "type": "gitCopy", sourceId: string, };

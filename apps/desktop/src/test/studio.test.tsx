@@ -9,6 +9,7 @@ import type { SkillStanding } from "../bindings/SkillStanding";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider, type Route, useNav } from "../lib/nav";
+import { AddSkillsDialog } from "../views/skills/AddSkillsDialog";
 import { SkillsView } from "../views/skills/SkillsView";
 import { SkillStudio } from "../views/skills/studio/SkillStudio";
 
@@ -528,5 +529,67 @@ describe("My skills", () => {
     expect(performance.now() - started).toBeLessThan(3000);
     await userEvent.click(screen.getByRole("button", { name: "A–Z" }));
     expect(within(list).getByText("S")).toBeInTheDocument();
+  });
+});
+
+describe("Add skills", () => {
+  it("makes a one-off copy from Git without connecting it, and forgets the repository after", async () => {
+    const forgotten = vi.fn(() => null);
+    handlers.open_git_copy = () => ({ sourceId: "c1", label: "acme/skills", snapshot: "abc" });
+    handlers.forget_git_copy = forgotten;
+    handlers.inspect_import = (args) => {
+      expect(args.from).toEqual({ type: "gitCopy", sourceId: "c1" });
+      return {
+        origin: "acme/skills",
+        notes: [],
+        candidates: [
+          {
+            path: "review",
+            name: "review",
+            title: "Review",
+            description: "Reviews changes.",
+            license: "MIT",
+            hasMetadata: false,
+            files: ["SKILL.md"],
+            size: 10,
+            problems: [],
+            complete: true,
+            digest: "d",
+            duplicate: null,
+            suggestedName: null,
+          },
+        ],
+      };
+    };
+    const onClose = vi.fn();
+    const view = wrap(<AddSkillsDialog start={{ source: "choose" }} onClose={onClose} />, { name: "skills" });
+    const dialog = await screen.findByRole("dialog", { name: "Add skills" });
+    // Two different things, said apart, before anything is fetched.
+    expect(within(dialog).getByRole("button", { name: /Make my own copy/ })).toBeDisabled();
+    await userEvent.type(
+      within(dialog).getByLabelText("Repository address"),
+      "https://github.com/acme/skills",
+    );
+    expect(within(dialog).getByText(/Nothing stays connected/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Keep it to browse and update from. Nothing is copied."),
+    ).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: /Make my own copy/ }));
+    expect(await screen.findByRole("dialog", { name: "Copy from acme/skills" })).toBeInTheDocument();
+    expect(screen.getByText(/connect it later to follow its updates/)).toBeInTheDocument();
+    view.unmount();
+    await waitFor(() => expect(forgotten).toHaveBeenCalled());
+  });
+
+  it("connects a repository as a library from the same address", async () => {
+    wrap(<AddSkillsDialog start={{ source: "choose" }} onClose={() => {}} />, { name: "skills" });
+    const dialog = await screen.findByRole("dialog", { name: "Add skills" });
+    await userEvent.type(
+      within(dialog).getByLabelText("Repository address"),
+      "https://github.com/acme/skills",
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: /Connect as a library/ }));
+    expect(await screen.findByDisplayValue("https://github.com/acme/skills")).toBeInTheDocument();
+    expect(invoke.mock.calls.some((c) => c[0] === "open_git_copy")).toBe(false);
   });
 });
