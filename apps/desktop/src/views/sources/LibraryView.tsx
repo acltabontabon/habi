@@ -27,6 +27,7 @@ import type { Recommendation } from "../../bindings/Recommendation";
 import type { Source } from "../../bindings/Source";
 import { BackLink } from "../../components/BackLink";
 import { Icon } from "../../components/Icon";
+import { Menu } from "../../components/Menu";
 import { Button, Empty, ErrorNotice, Working } from "../../components/ui";
 import { Strand } from "../../components/Weave";
 import { useActions } from "../../lib/actions";
@@ -54,6 +55,7 @@ import {
 } from "../../lib/skillFacts";
 import { useMedia } from "../../lib/useMedia";
 import { ContentsToggle, SkillReader, usePackage } from "../reader/SkillReader";
+import { ReviewDialog } from "../review/ReviewDialog";
 import { SampleBanner } from "../SampleWorkspace";
 import { AddToProjectDialog } from "./AddToProjectDialog";
 import { DisconnectButton } from "./DisconnectButton";
@@ -397,6 +399,7 @@ function SkillHead({
   const { addSkills } = useActions();
   const pkg = usePackage();
   const [adding, setAdding] = useState(false);
+  const [onMachine, setOnMachine] = useState(false);
   const shape = pkg?.shape ?? packageShape(item.files);
   const summary = summarize(item.description);
   const lineage = item.basedOn ? lineageParts(item.basedOn) : null;
@@ -503,14 +506,26 @@ function SkillHead({
             Add to a project…
           </Button>
           {item.kind !== "instructions" ? (
-            <button
-              type="button"
-              className="link-quiet"
-              title={`Copies the whole package to My skills, linked to ${source.name}`}
-              onClick={() => addSkills({ source: "library", sourceId: source.id, preselect: item.id })}
-            >
-              Edit a copy
-            </button>
+            <Menu
+              label="More ways to use this skill"
+              trigger={
+                <>
+                  More <Icon name="chevronDown" size={12} />
+                </>
+              }
+              items={[
+                {
+                  label: "Add to this machine…",
+                  hint: "Your own agent folders: every project reads it",
+                  onSelect: () => setOnMachine(true),
+                },
+                {
+                  label: "Edit a copy",
+                  hint: `A copy in My skills, linked to ${source.name}`,
+                  onSelect: () => addSkills({ source: "library", sourceId: source.id, preselect: item.id }),
+                },
+              ]}
+            />
           ) : null}
         </div>
       </div>
@@ -621,6 +636,19 @@ function SkillHead({
         </dl>
       ) : null}
       {adding ? <AddToProjectDialog item={item} onClose={() => setAdding(false)} /> : null}
+      {onMachine ? (
+        <ReviewDialog
+          projectId={null}
+          request={{
+            kind: "install",
+            items: [{ sourceId: item.sourceId, itemId: item.id }],
+            title: item.title,
+            // Only the team's own library is reviewed by the team; anything else needs a tick.
+            unaudited: Boolean(entry?.ownership) || community,
+          }}
+          onClose={() => setOnMachine(false)}
+        />
+      ) : null}
     </header>
   );
 }

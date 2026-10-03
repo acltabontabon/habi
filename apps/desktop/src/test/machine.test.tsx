@@ -49,6 +49,7 @@ function machineSkill(over: Partial<MachineSkill> = {}): MachineSkill {
     importedAs: null,
     mentionsHome: [],
     inProjects: [],
+    managed: null,
     ...over,
   };
 }

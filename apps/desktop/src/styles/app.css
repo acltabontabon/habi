@@ -3675,8 +3675,17 @@ dl.facets,
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--s4);
+  gap: var(--s2);
   padding-top: 4px;
+}
+
+/* The menu beside the main action is the same size as it: height, type and weight. */
+.skill-actions .menu-trigger:not(.is-icon) {
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: var(--text-md);
+  font-weight: 550;
 }
 
 .skill-purpose {

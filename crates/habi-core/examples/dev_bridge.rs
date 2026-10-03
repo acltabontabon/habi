@@ -201,6 +201,25 @@ impl Bridge {
             "plan_restore" => {
                 out(h.plan_restore(&s("projectId")?, &s("operationId")?, &arg(a, "decisions")?)?)
             }
+            "plan_install_machine" => out(h.plan_install_machine(
+                &arg::<Vec<_>>(a, "items")?,
+                &arg::<Vec<_>>(a, "clients")?,
+                &arg(a, "decisions")?,
+            )?),
+            "plan_update_machine" => {
+                out(h.plan_update_machine(&arg::<Vec<String>>(a, "keys")?, &arg(a, "decisions")?)?)
+            }
+            "plan_remove_machine" => {
+                out(h.plan_remove_machine(&arg::<Vec<String>>(a, "keys")?, &arg(a, "decisions")?)?)
+            }
+            "plan_restore_machine" => {
+                out(h.plan_restore_machine(&s("operationId")?, &arg(a, "decisions")?)?)
+            }
+            "machine_install_preview" => out(h.machine_install_preview(
+                &arg::<Vec<_>>(a, "items")?,
+                &arg::<Vec<_>>(a, "clients")?,
+            )?),
+            "machine_history" => out(h.machine_history()?),
             "apply_plan" => out(h.apply(&s("planId")?)?),
             "history" => out(h.history(&s("projectId")?)?),
             "recover" => out(h.recover(&s("projectId")?)?),

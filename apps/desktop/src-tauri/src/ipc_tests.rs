@@ -574,3 +574,135 @@ fn machine_skills_are_listed_and_imported_by_id_only() {
     let relisted = call(&webview, "machine_skills", json!({})).unwrap();
     assert_eq!(relisted[0]["importedAs"], done["imported"][0]["id"]);
 }
+
+/// Installing on this machine over IPC: the camelCase shapes the webview
+/// sends, the preview of what it would sit next to, and that a plan names the
+/// home folder rather than any project.
+#[test]
+fn machine_install_contract_end_to_end() {
+    let data = tempfile::tempdir().unwrap();
+    let person = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    copy_tree(
+        &fixtures().join("libraries/example-team-library"),
+        lib.path(),
+    );
+    git(lib.path(), &["init", "-q"]);
+    git(lib.path(), &["add", "-A"]);
+    git(lib.path(), &["commit", "-qm", "lib"]);
+    let habi = Habi::open(AppPaths::at(data.path().to_path_buf()))
+        .unwrap()
+        .with_user_home(person.path().to_path_buf());
+    let source = habi
+        .sources()
+        .add(&habi_core::source::NewSource {
+            name: "Team library".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: habi_core::source::TrackedRef::Branch {
+                name: "main".into(),
+            },
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &habi_core::cancel::CancelToken::new())
+        .unwrap();
+
+    let app = mock_builder()
+        .invoke_handler(tauri::generate_handler![
+            commands::plan_install_machine,
+            commands::plan_update_machine,
+            commands::plan_remove_machine,
+            commands::plan_restore_machine,
+            commands::machine_install_preview,
+            commands::machine_history,
+            commands::machine_skills,
+            commands::apply_plan,
+        ])
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    app.manage(AppState::new(Some(habi), None, None));
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let items = json!([{ "sourceId": source.id, "itemId": "liquibase-migration-review" }]);
+
+    let shadows = call(
+        &webview,
+        "machine_install_preview",
+        json!({ "items": items, "clients": ["claude-code"] }),
+    )
+    .unwrap();
+    assert_eq!(shadows[0]["name"], "liquibase-migration-review");
+    assert_eq!(shadows[0]["copies"], json!([]));
+
+    let plan = call(
+        &webview,
+        "plan_install_machine",
+        json!({ "items": items, "clients": ["claude-code"], "decisions": {} }),
+    )
+    .unwrap();
+    // The plan names the home folder (shown as `~` for the real one), not a project.
+    assert_eq!(plan["project"], person.path().to_string_lossy().as_ref());
+    assert!(plan["title"].as_str().unwrap().ends_with("on this machine"));
+    assert!(
+        plan["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["path"] == ".claude/skills/liquibase-migration-review/SKILL.md")
+    );
+    // Nothing is written until the plan is applied.
+    assert!(!person.path().join(".claude").exists());
+    call(&webview, "apply_plan", json!({ "planId": plan["id"] })).unwrap();
+    assert!(
+        person
+            .path()
+            .join(".claude/skills/liquibase-migration-review/SKILL.md")
+            .is_file()
+    );
+
+    let listed = call(&webview, "machine_skills", json!({})).unwrap();
+    assert_eq!(listed[0]["managed"]["library"], "Team library");
+    assert_eq!(listed[0]["managed"]["state"], "current");
+    let key = listed[0]["managed"]["key"].clone();
+
+    let removal = call(
+        &webview,
+        "plan_remove_machine",
+        json!({ "keys": [key], "decisions": {} }),
+    )
+    .unwrap();
+    let done = call(&webview, "apply_plan", json!({ "planId": removal["id"] })).unwrap();
+    let history = call(&webview, "machine_history", json!({})).unwrap();
+    assert!(
+        history
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|o| o["id"] == done["id"])
+    );
+    let restore = call(
+        &webview,
+        "plan_restore_machine",
+        json!({ "operationId": done["id"], "decisions": {} }),
+    )
+    .unwrap();
+    assert!(restore["conflicts"].as_array().unwrap().is_empty());
+
+    // Instruction files are refused, and a bad decision key is rejected at the boundary.
+    let bad = call(
+        &webview,
+        "plan_install_machine",
+        json!({ "items": items, "clients": ["claude-code"], "decisions": { "../x": "keep" } }),
+    )
+    .unwrap_err();
+    assert_eq!(bad["code"], "invalidInput");
+    let none = call(
+        &webview,
+        "plan_install_machine",
+        json!({ "items": [], "clients": ["claude-code"], "decisions": {} }),
+    )
+    .unwrap_err();
+    assert_eq!(none["code"], "invalidInput");
+}

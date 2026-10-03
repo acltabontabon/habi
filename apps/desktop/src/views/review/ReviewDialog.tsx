@@ -8,6 +8,7 @@ import { useState } from "react";
 import type { ChangeOp } from "../../bindings/ChangeOp";
 import type { ClientId } from "../../bindings/ClientId";
 import type { FileChange } from "../../bindings/FileChange";
+import type { InstallShadow } from "../../bindings/InstallShadow";
 import type { ItemRef } from "../../bindings/ItemRef";
 import type { Plan } from "../../bindings/Plan";
 import type { Resolution } from "../../bindings/Resolution";
@@ -18,11 +19,19 @@ import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { api, type Decisions, HabiError } from "../../lib/api";
 import { ALL_CLIENTS, clientLabel, plural } from "../../lib/format";
+import { copyState, precedenceNote } from "../../lib/machine";
 import { beginOwnChange, endOwnChange, staleKey } from "../../lib/ownChanges";
-import { invalidateProjectData, useSettings } from "../../lib/queries";
+import { invalidateProjectData, invalidateSkills, useSettings } from "../../lib/queries";
 
 export type ReviewRequest =
-  | { kind: "install"; items: ItemRef[]; title: string; includeMcp?: boolean }
+  | {
+      kind: "install";
+      items: ItemRef[];
+      title: string;
+      includeMcp?: boolean;
+      /** The library is not the team's own: installing on this machine needs a tick. */
+      unaudited?: boolean;
+    }
   | { kind: "update"; keys: string[]; title: string }
   | { kind: "remove"; keys: string[]; title: string }
   | { kind: "restore"; operationId: string; title: string };
@@ -31,6 +40,13 @@ const clientWhere: Record<ClientId, string> = {
   "claude-code": "reads .claude/skills and CLAUDE.md",
   cursor: "reads .agents/skills (or .claude/skills) and AGENTS.md",
   codex: "reads .agents/skills and AGENTS.md",
+};
+
+/** On this machine only skills are written, so only the skill folders are named. */
+const clientWhereOnMachine: Record<ClientId, string> = {
+  "claude-code": "reads ~/.claude/skills",
+  cursor: "reads ~/.agents/skills (or ~/.claude/skills)",
+  codex: "reads ~/.agents/skills",
 };
 
 const opLabel: Record<ChangeOp, string> = { create: "Create", modify: "Modify", delete: "Delete" };
@@ -51,15 +67,65 @@ function ChangeRow({ change }: { change: FileChange }) {
   );
 }
 
+/**
+ * What a global install changes that a project install does not: it is read in
+ * every project, it can outrank a project's own copy, and a library that is not
+ * the team's own needs an explicit tick.
+ */
+function MachineWarnings({
+  shadows,
+  unaudited,
+  understood,
+  onUnderstood,
+}: {
+  shadows: InstallShadow[];
+  unaudited: boolean;
+  understood: boolean;
+  onUnderstood: (understood: boolean) => void;
+}) {
+  const copies = shadows.flatMap((s) => s.copies.map((c) => ({ skill: s, copy: c })));
+  return (
+    <div className="machine-warnings">
+      {copies.length > 0 ? (
+        <Notice tone="warn" title="Projects that already have this skill">
+          <ul className="review-notes">
+            {copies.map(({ skill, copy }) => (
+              <li key={`${skill.name}:${copy.projectId}:${copy.path}`}>
+                <strong>{copy.projectName}</strong> <span className="mono">{copy.path}</span> ·{" "}
+                {copyState(copy)}.{" "}
+                {precedenceNote(copy) ?? "No agent reads both, so neither hides the other."}
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      ) : null}
+      {unaudited ? (
+        <label className="check machine-tick">
+          <input type="checkbox" checked={understood} onChange={(e) => onUnderstood(e.target.checked)} />
+          <span>
+            <strong>This library is not audited.</strong>{" "}
+            <span className="muted">
+              I understand the skill will be read by my agents in every project, and that I have not reviewed
+              it.
+            </span>
+          </span>
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
 export function ReviewDialog({
   projectId,
   request,
   onClose,
 }: {
-  projectId: string;
+  /** The project to change, or `null` for the person's own skill folders ("this machine"). */
+  projectId: string | null;
   request: ReviewRequest;
   onClose: () => void;
 }) {
+  const machine = projectId === null;
   const settings = useSettings();
   const client = useQueryClient();
   const toast = useToast();
@@ -70,7 +136,17 @@ export function ReviewDialog({
   const [decisions, setDecisions] = useState<Decisions>({});
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
+  const [understood, setUnderstood] = useState(false);
   const chosen = clients ?? settings.data?.defaultClients ?? ["claude-code"];
+  const needsTick = machine && request.kind === "install" && request.unaudited === true;
+
+  // What a machine install would sit next to: projects that already hold the skill.
+  const shadows = useQuery({
+    queryKey: ["machineShadows", request.kind === "install" ? request.items : null, chosen],
+    enabled: machine && request.kind === "install" && chosen.length > 0,
+    retry: false,
+    queryFn: () => api.machineInstallPreview(request.kind === "install" ? request.items : [], chosen),
+  });
 
   const plan = useQuery<Plan>({
     queryKey: ["plan", projectId, request, chosen, includeMcp, decisions],
@@ -83,13 +159,21 @@ export function ReviewDialog({
     queryFn: () => {
       switch (request.kind) {
         case "install":
-          return api.planInstall(projectId, request.items, chosen, includeMcp, decisions);
+          return projectId === null
+            ? api.planInstallMachine(request.items, chosen, decisions)
+            : api.planInstall(projectId, request.items, chosen, includeMcp, decisions);
         case "update":
-          return api.planUpdate(projectId, request.keys, decisions);
+          return projectId === null
+            ? api.planUpdateMachine(request.keys, decisions)
+            : api.planUpdate(projectId, request.keys, decisions);
         case "remove":
-          return api.planRemove(projectId, request.keys, decisions);
+          return projectId === null
+            ? api.planRemoveMachine(request.keys, decisions)
+            : api.planRemove(projectId, request.keys, decisions);
         case "restore":
-          return api.planRestore(projectId, request.operationId, decisions);
+          return projectId === null
+            ? api.planRestoreMachine(request.operationId, decisions)
+            : api.planRestore(projectId, request.operationId, decisions);
       }
     },
   });
@@ -105,22 +189,29 @@ export function ReviewDialog({
   const apply = async (p: Plan) => {
     setApplying(true);
     setApplyError(null);
-    beginOwnChange(projectId);
+    if (projectId !== null) beginOwnChange(projectId);
     try {
       const op = await api.applyPlan(p.id);
-      // These are Habi's own writes, not outside changes to warn about.
-      client.setQueryData(staleKey(projectId), null);
-      invalidateProjectData(client, projectId);
-      toast.show(
-        `${p.title}: done (${plural(op.files.length, "file")}). You can restore it from Installed & history.`,
-      );
+      if (projectId !== null) {
+        // These are Habi's own writes, not outside changes to warn about.
+        client.setQueryData(staleKey(projectId), null);
+        invalidateProjectData(client, projectId);
+        toast.show(
+          `${p.title}: done (${plural(op.files.length, "file")}). You can restore it from Installed & history.`,
+        );
+      } else {
+        // A skill on this machine can change what any project's agents read.
+        invalidateSkills(client);
+        invalidateProjectData(client);
+        toast.show(`${p.title}: done (${plural(op.files.length, "file")}).`);
+      }
       onClose();
     } catch (e) {
       setApplyError(e);
       // A stale or used plan cannot be retried; fetch a fresh preview.
       void plan.refetch();
     } finally {
-      endOwnChange(projectId);
+      if (projectId !== null) endOwnChange(projectId);
       setApplying(false);
     }
   };
@@ -168,7 +259,12 @@ export function ReviewDialog({
             <Button
               variant={request.kind === "remove" ? "danger" : "primary"}
               busy={applying}
-              disabled={unresolved > 0 || p.conflicts.some((c) => c.options.length === 0) || plan.isFetching}
+              disabled={
+                unresolved > 0 ||
+                p.conflicts.some((c) => c.options.length === 0) ||
+                plan.isFetching ||
+                (needsTick && !understood)
+              }
               onClick={() => void apply(p)}
             >
               {p.title}
@@ -184,24 +280,38 @@ export function ReviewDialog({
             <label key={c} className="check">
               <input type="checkbox" checked={chosen.includes(c)} onChange={() => toggleClient(c)} />
               <span>
-                <strong>{clientLabel[c]}</strong> <span className="muted">— {clientWhere[c]}</span>
+                <strong>{clientLabel[c]}</strong>{" "}
+                <span className="muted">— {(machine ? clientWhereOnMachine : clientWhere)[c]}</span>
               </span>
             </label>
           ))}
-          <label className="check">
-            <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />
-            <span>
-              <strong>Add suggested MCP configuration</strong>{" "}
-              <span className="muted">
-                — only for servers the item requires and your project lacks; no secrets are written
+          {machine ? null : (
+            <label className="check">
+              <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />
+              <span>
+                <strong>Add suggested MCP configuration</strong>{" "}
+                <span className="muted">
+                  — only for servers the item requires and your project lacks; no secrets are written
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
           <p className="muted scope-note">
-            <Icon name="folder" size={14} /> Scope: this project only. Habi does not change your global agent
-            settings.
+            <Icon name="folder" size={14} />{" "}
+            {machine
+              ? "Scope: every project on this machine. The skill goes in your own agent folders, and Habi changes no agent settings."
+              : "Scope: this project only. Habi does not change your global agent settings."}
           </p>
         </fieldset>
+      ) : null}
+
+      {machine && request.kind === "install" ? (
+        <MachineWarnings
+          shadows={shadows.data ?? []}
+          unaudited={needsTick}
+          understood={understood}
+          onUnderstood={setUnderstood}
+        />
       ) : null}
 
       {plan.isPending && chosen.length > 0 ? <Working>Preparing the preview…</Working> : null}
@@ -215,7 +325,9 @@ export function ReviewDialog({
           error={applyError}
           title={
             applyError instanceof HabiError && applyError.code === "stalePlan"
-              ? "The project changed"
+              ? machine
+                ? "Your skill folders changed"
+                : "The project changed"
               : "Not applied"
           }
         />
@@ -224,7 +336,8 @@ export function ReviewDialog({
       {p ? (
         <div className="review">
           <p className="review-project">
-            <Icon name="folder" size={14} /> <span className="mono">{p.project}</span>
+            <Icon name="folder" size={14} /> {machine ? <span>This machine · </span> : null}
+            <span className="mono">{p.project}</span>
           </p>
           {p.items.length > 0 ? (
             <ul className="review-items">
@@ -279,7 +392,9 @@ export function ReviewDialog({
 
           {p.changes.length === 0 && p.conflicts.length === 0 ? (
             <Notice tone="ok" title="Nothing to change">
-              The project already matches. Installing again would not modify any file.
+              {machine
+                ? "Your skill folders already match. Installing again would not modify any file."
+                : "The project already matches. Installing again would not modify any file."}
             </Notice>
           ) : null}
 
