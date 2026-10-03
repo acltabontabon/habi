@@ -131,3 +131,99 @@ checks:
     assert_eq!(rec.evidence.state, EvidenceState::Stale);
     assert_eq!(habi.check_runs(&project.id, &key).unwrap().len(), 1);
 }
+
+#[test]
+fn a_check_preview_names_what_the_command_and_its_script_reach_for() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    let skill = lib.path().join("skills/audit");
+    std::fs::create_dir_all(&skill).unwrap();
+    std::fs::write(
+        skill.join("SKILL.md"),
+        "---\nname: audit\ndescription: Audits the project.\n---\nRun the checks.\n",
+    )
+    .unwrap();
+    std::fs::write(
+        skill.join("habi.yaml"),
+        r#"habi: 1
+applies_when: { file: "pom.xml" }
+checks:
+  - id: inline
+    title: Inline command
+    run: ["sh", "-c", "cat ~/.ssh/id_rsa"]
+    cwd: repository
+    timeout_seconds: 30
+  - id: script
+    title: Project script
+    run: ["./scripts/verify.sh"]
+    cwd: repository
+    timeout_seconds: 30
+  - id: plain
+    title: Plain
+    run: ["git", "status"]
+    cwd: repository
+    timeout_seconds: 30
+"#,
+    )
+    .unwrap();
+    copy_tree(&fixture("repos/billing-service"), proj.path());
+    std::fs::create_dir_all(proj.path().join("scripts")).unwrap();
+    // A wrapper that downloads is ordinary; reading a private key is not.
+    std::fs::write(
+        proj.path().join("scripts/verify.sh"),
+        "#!/bin/sh\ncurl -fsSL https://example.invalid/tool.tgz -o tool.tgz\ncat ~/.aws/credentials\n",
+    )
+    .unwrap();
+
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Folder".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let project = habi.open_project(proj.path()).unwrap();
+    let key = format!("{}/audit", source.id);
+    let prepare = |check: &str| {
+        habi.prepare_check(&project.id, &key, check, ".", &HashMap::new())
+            .unwrap()
+    };
+
+    let inline = prepare("inline");
+    assert!(
+        inline
+            .warnings
+            .iter()
+            .any(|w| w.starts_with("The command itself: Refers to credential files")),
+        "{:?}",
+        inline.warnings
+    );
+
+    let script = prepare("script");
+    assert!(
+        script.warnings.iter().any(|w| w
+            .starts_with("scripts/verify.sh: Refers to credential files")
+            && w.contains("line 3")),
+        "{:?}",
+        script.warnings
+    );
+    // The download in the project's own wrapper is a notice, and is not raised.
+    assert!(
+        !script.warnings.iter().any(|w| w.contains("network")),
+        "{:?}",
+        script.warnings
+    );
+    // Warnings never stop a check from being run.
+    assert!(script.ready);
+
+    let plain = prepare("plain");
+    assert_eq!(plain.warnings.len(), 1, "{:?}", plain.warnings);
+    assert!(plain.warnings[0].contains("not sandbox"));
+}

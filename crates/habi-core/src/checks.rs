@@ -12,6 +12,7 @@ use crate::cancel::CancelToken;
 use crate::error::{HabiError, Result};
 use crate::inspect::model::ProjectInspection;
 use crate::library::model::{BindingKind, CheckArg, CheckCwd, LibraryItem};
+use crate::library::signals::{self, SignalSeverity};
 use crate::paths::{RelPath, display_path, resolve_for_read};
 use crate::process::{self, Spec};
 use crate::store::Store;
@@ -205,6 +206,7 @@ pub fn prepare(
         "This command runs code from this repository and its build (plugins, tests, scripts). Habi does not sandbox it.".to_string(),
     ];
     let resolved = resolve_program(root, &cwd_rel, &cwd_path, &program, &mut warnings);
+    warnings.extend(signal_warnings(root, &argv, &program, resolved.as_deref()));
     Ok(CheckPreview {
         preview_id: String::new(),
         item_key: item.key.clone(),
@@ -225,6 +227,67 @@ pub fn prepare(
         warnings,
         bindings,
     })
+}
+
+/// What a static reading of the command and, for a `./script`, of that one
+/// script finds worth knowing before it runs. It is a warning, never a
+/// block: a check may have a good reason to touch what it names. The script
+/// is read as data; scripts it calls are not followed.
+fn signal_warnings(
+    root: &Path,
+    argv: &[String],
+    program: &str,
+    resolved: Option<&Path>,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    // The command line is what the skill declared, so notices count too.
+    for s in signals::scan_command(argv) {
+        if s.severity >= SignalSeverity::Notice {
+            out.push(format!("The command itself: {}", describe(&s)));
+        }
+    }
+    // A script belongs to the project, and build wrappers legitimately
+    // download and install, so only what could do harm is raised.
+    if program.starts_with("./")
+        && let Some(path) = resolved
+        && let Some(text) = read_script(path)
+    {
+        let name = path
+            .strip_prefix(root)
+            .map(display_path)
+            .unwrap_or_else(|_| program.to_string());
+        for s in signals::scan_code(&name, &text) {
+            if s.severity >= SignalSeverity::Caution {
+                out.push(format!("{name}: {}", describe(&s)));
+            }
+        }
+    }
+    out
+}
+
+fn describe(s: &signals::Signal) -> String {
+    let mut text = s.summary.clone();
+    if let Some(line) = s.line {
+        text.push_str(&format!(" (line {line}"));
+        if s.more > 0 {
+            text.push_str(&format!(", and {} more", s.more));
+        }
+        text.push(')');
+    }
+    if let Some(detail) = &s.detail {
+        text.push_str(&format!(": {detail}"));
+    }
+    text
+}
+
+/// The script's text if it is a regular file small enough to read.
+fn read_script(path: &Path) -> Option<String> {
+    const LIMIT: u64 = 256 * 1024;
+    let meta = std::fs::symlink_metadata(path).ok()?;
+    if !meta.is_file() || meta.len() > LIMIT {
+        return None;
+    }
+    String::from_utf8(std::fs::read(path).ok()?).ok()
 }
 
 fn resolve_program(
