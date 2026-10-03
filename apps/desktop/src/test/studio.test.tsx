@@ -9,6 +9,7 @@ import type { SkillStanding } from "../bindings/SkillStanding";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider, type Route, useNav } from "../lib/nav";
+import { SkillsView } from "../views/skills/SkillsView";
 import { SkillStudio } from "../views/skills/studio/SkillStudio";
 
 const invoke = vi.fn();
@@ -441,5 +442,91 @@ describe("the Skill Studio", () => {
     fireEvent.keyDown(window, { key: "3", metaKey: true });
     expect(screen.getByText("Drop files onto the window to add them.")).toBeInTheDocument();
     expect(invoke.mock.calls.some((c) => c[0] === "add_dropped_skill_files")).toBe(false);
+  });
+});
+
+describe("My skills", () => {
+  const summary = (i: number, over: Partial<LocalSkill["summary"]> = {}): LocalSkill["summary"] => ({
+    ...skill().summary,
+    id: `s${i}`,
+    name: `skill-${i}`,
+    title: `Skill ${String(i).padStart(3, "0")}`,
+    description: `Does thing ${i}. Use when thing ${i} happens.`,
+    updatedAt: new Date(Date.now() - i * 3_600_000).toISOString(),
+    ...over,
+  });
+
+  it("narrows by what is true about each skill, and says only that", async () => {
+    handlers.list_skills = () => [
+      summary(1),
+      summary(2, {
+        origin: {
+          type: "library",
+          sourceName: "Team",
+          sourceIdentity: "x",
+          itemId: "a",
+          snapshot: "s",
+          upstream: null,
+        },
+        modifiedLocally: true,
+      }),
+      summary(3, { errors: 2 }),
+    ];
+    handlers.skills_overview = () => [
+      {
+        skillId: "s2",
+        installedIn: [{ projectId: "p", projectName: "billing", clients: ["claude-code"], current: true }],
+        upstream: "changed",
+      },
+    ];
+    const { container } = wrap(<SkillsView />, { name: "skills" });
+    const list = await screen.findByRole("list", { name: "Skills" });
+    expect(within(list).getAllByRole("button")).toHaveLength(3);
+    // The purpose is the first sentence, not the trigger text.
+    expect(within(list).getByText("Does thing 1.")).toBeInTheDocument();
+    expect(await within(list).findByText("Update available")).toBeInTheDocument();
+    expect(within(list).getByText("Changed here")).toBeInTheDocument();
+    expect(within(list).getByText("In billing")).toBeInTheDocument();
+    expect(within(list).getByText("2 things to finish")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Updates/ }));
+    expect(within(list).getAllByRole("button")).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: /^Unfinished/ }));
+    expect(within(list).getByText("Skill 003")).toBeInTheDocument();
+    // Facets nothing matches are not offered.
+    expect(screen.queryByRole("button", { name: /^Imported 0/ })).not.toBeInTheDocument();
+    const results = await axe.run(container);
+    expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+  });
+
+  it("finds with / and moves with the keyboard", async () => {
+    handlers.list_skills = () => [summary(1), summary(2), summary(3)];
+    wrap(<SkillsView />, { name: "skills" });
+    await screen.findByRole("list", { name: "Skills" });
+    fireEvent.keyDown(window, { key: "/" });
+    const search = screen.getByLabelText("Find a skill");
+    expect(search).toHaveFocus();
+    await userEvent.type(search, "002");
+    const list = screen.getByRole("list", { name: "Skills" });
+    expect(within(list).getAllByRole("button")).toHaveLength(1);
+    await userEvent.clear(search);
+    await userEvent.keyboard("{ArrowDown}");
+    const rows = within(list).getAllByRole("button");
+    expect(rows[0]).toHaveFocus();
+    await userEvent.keyboard("j");
+    expect(rows[1]).toHaveFocus();
+    await userEvent.keyboard("k");
+    expect(rows[0]).toHaveFocus();
+  });
+
+  it("stays quick with three hundred skills", async () => {
+    handlers.list_skills = () => Array.from({ length: 300 }, (_, i) => summary(i + 1));
+    const started = performance.now();
+    wrap(<SkillsView />, { name: "skills" });
+    const list = await screen.findByRole("list", { name: "Skills" });
+    expect(within(list).getAllByRole("button")).toHaveLength(300);
+    expect(performance.now() - started).toBeLessThan(3000);
+    await userEvent.click(screen.getByRole("button", { name: "A–Z" }));
+    expect(within(list).getByText("S")).toBeInTheDocument();
   });
 });
