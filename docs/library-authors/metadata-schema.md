@@ -62,7 +62,7 @@ excludes:
   not:                                   # negation
     dependency:
       name: "org.jooq:*"                 # `*` wildcards, at most three
-      ecosystem: jvm                     # maven | gradle | npm | jvm
+      ecosystem: jvm                     # maven | gradle | npm | go | cargo | pypi | composer | jvm
       version: ">=3.18, <4"              # semver requirement
 ```
 

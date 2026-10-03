@@ -1,6 +1,7 @@
 /** Project home: identity, a concise understanding, and the workbench. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import type { Ecosystem } from "../../bindings/Ecosystem";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
@@ -31,14 +32,39 @@ export function understanding(overview: ProjectOverview): string[] {
       tags.set(f.subject.tag, (tags.get(f.subject.tag) ?? 0) + 1);
     }
   }
-  const order = ["framework:", "lang:", "orm:", "db:", "api:", "build:", "test:", "ci:", "container:"];
+  const order = [
+    "framework:",
+    "data:",
+    "lang:",
+    "orm:",
+    "db:",
+    "api:",
+    "build:",
+    "test:",
+    "ci:",
+    "container:",
+  ];
   const labels = [...tags.keys()]
     .sort((a, b) => order.findIndex((p) => a.startsWith(p)) - order.findIndex((p) => b.startsWith(p)))
     .map(tagLabel);
   return [...new Set(labels)].slice(0, 9);
 }
 
-/** The project's languages, the most used first. */
+/** The language a build ecosystem's modules are written in. */
+const ECOSYSTEM_LANGUAGE: Record<Ecosystem, string> = {
+  maven: "Java",
+  gradle: "Java",
+  npm: "JavaScript",
+  go: "Go",
+  cargo: "Rust",
+  pypi: "Python",
+  composer: "PHP",
+};
+
+/**
+ * The project's languages, the most used first; before any source file is
+ * seen, the languages its build files are for.
+ */
 export function languages(overview: ProjectOverview): string[] {
   const counts = new Map<string, number>();
   for (const f of overview.inspection.facts) {
@@ -46,7 +72,11 @@ export function languages(overview: ProjectOverview): string[] {
       counts.set(f.subject.tag, (counts.get(f.subject.tag) ?? 0) + 1);
     }
   }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([tag]) => tagLabel(tag));
+  const found = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([tag]) => tagLabel(tag));
+  if (found.length > 0) return found;
+  return [
+    ...new Set(overview.inspection.modules.flatMap((m) => m.ecosystems.map((e) => ECOSYSTEM_LANGUAGE[e]))),
+  ];
 }
 
 export function ProjectView({
@@ -98,7 +128,8 @@ export function ProjectView({
   ).length;
   const facts = useMemo(() => (data ? understanding(data) : []), [data]);
   // The project's own colors: its languages' dyes, woven into its swatch.
-  const cloth = useMemo(() => (data ? stackDyes(languages(data)) : []), [data]);
+  const langs = useMemo(() => (data ? languages(data) : []), [data]);
+  const cloth = useMemo(() => stackDyes(langs), [langs]);
   const dyes = useDyes();
   // The libraries this project is woven from: those with items that fit it
   // (or that the team requires), in order of how much they contribute.
@@ -188,6 +219,16 @@ export function ProjectView({
                   </li>
                 );
               })
+            ) : langs.length > 0 ? (
+              langs.map((l) => (
+                <li
+                  key={l}
+                  className={`stack-token${stackDye(l) ? " is-dyed" : ""}`}
+                  style={stackDye(l) ? ({ "--dye": stackDye(l) } as CSSProperties) : undefined}
+                >
+                  {l}
+                </li>
+              ))
             ) : (
               <li className="stack-token stack-token-quiet">no recognized frameworks or languages</li>
             )}

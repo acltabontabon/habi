@@ -11,6 +11,14 @@ The first version, 0.1.0, is not released yet. It will contain the following.
   manifests and lockfiles, recognizes OpenAPI specs, Liquibase changelogs, CI and agent
   instruction files, and understands monorepos module by module. Repository-level facts (CI,
   agent files, Dockerfiles) count for every module, and results refresh when manifests change.
+- Go, Rust, Python and PHP projects are read like Java and JavaScript ones: `go.mod`,
+  `Cargo.toml`/`Cargo.lock` (workspaces included), `pyproject.toml` (PEP 621 and Poetry),
+  `requirements*.txt`, `Pipfile` and their lockfiles, and `composer.json`/`composer.lock`
+  become modules with dependencies and pinned versions. Their frameworks are recognized
+  (Gin, Axum, Tauri, Django, FastAPI, Laravel, …), and so are data-engineering tools: dbt
+  (also from `dbt_project.yml`), Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great
+  Expectations, pandas, Polars and DuckDB. Skill rules can target `go`, `cargo`, `pypi` and
+  `composer` dependencies.
 - Open a project from Habi's own chooser: repositories in your code folders, latest work
   first, each with its stack, branch, remote and twelve weeks of commits, and a mark where
   agent instructions already exist. Type to narrow by name, stack, branch or remote. A folder

@@ -17,6 +17,10 @@ pub enum EcosystemFilter {
     Maven,
     Gradle,
     Npm,
+    Go,
+    Cargo,
+    Pypi,
+    Composer,
     /// Maven or Gradle.
     Jvm,
 }
@@ -27,6 +31,10 @@ impl EcosystemFilter {
             EcosystemFilter::Maven => e == Ecosystem::Maven,
             EcosystemFilter::Gradle => e == Ecosystem::Gradle,
             EcosystemFilter::Npm => e == Ecosystem::Npm,
+            EcosystemFilter::Go => e == Ecosystem::Go,
+            EcosystemFilter::Cargo => e == Ecosystem::Cargo,
+            EcosystemFilter::Pypi => e == Ecosystem::Pypi,
+            EcosystemFilter::Composer => e == Ecosystem::Composer,
             EcosystemFilter::Jvm => e.is_jvm(),
         }
     }
@@ -36,6 +44,10 @@ impl EcosystemFilter {
             EcosystemFilter::Maven => &[Ecosystem::Maven],
             EcosystemFilter::Gradle => &[Ecosystem::Gradle],
             EcosystemFilter::Npm => &[Ecosystem::Npm],
+            EcosystemFilter::Go => &[Ecosystem::Go],
+            EcosystemFilter::Cargo => &[Ecosystem::Cargo],
+            EcosystemFilter::Pypi => &[Ecosystem::Pypi],
+            EcosystemFilter::Composer => &[Ecosystem::Composer],
             EcosystemFilter::Jvm => &[Ecosystem::Maven, Ecosystem::Gradle],
         }
     }
@@ -96,6 +108,10 @@ impl Condition {
                     Some(EcosystemFilter::Maven) => s.push_str(" (Maven)"),
                     Some(EcosystemFilter::Gradle) => s.push_str(" (Gradle)"),
                     Some(EcosystemFilter::Npm) => s.push_str(" (npm)"),
+                    Some(EcosystemFilter::Go) => s.push_str(" (Go)"),
+                    Some(EcosystemFilter::Cargo) => s.push_str(" (Cargo)"),
+                    Some(EcosystemFilter::Pypi) => s.push_str(" (PyPI)"),
+                    Some(EcosystemFilter::Composer) => s.push_str(" (Composer)"),
                     Some(EcosystemFilter::Jvm) | None => {}
                 }
                 s
@@ -166,6 +182,10 @@ fn parse_node(value: &Value, depth: usize, nodes: &mut usize) -> Result<Conditio
                     Some("maven") => Some(EcosystemFilter::Maven),
                     Some("gradle") => Some(EcosystemFilter::Gradle),
                     Some("npm") => Some(EcosystemFilter::Npm),
+                    Some("go") => Some(EcosystemFilter::Go),
+                    Some("cargo") => Some(EcosystemFilter::Cargo),
+                    Some("pypi") => Some(EcosystemFilter::Pypi),
+                    Some("composer") => Some(EcosystemFilter::Composer),
                     Some("jvm") => Some(EcosystemFilter::Jvm),
                     Some(other) => return Err(format!("unknown ecosystem `{other}`")),
                 };

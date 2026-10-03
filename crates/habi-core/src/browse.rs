@@ -633,7 +633,10 @@ mod tests {
         fs::write(home.join("Documents/package.json"), "{}").unwrap();
         let at_home = list(&home, &home).unwrap();
         let names: Vec<&str> = at_home.entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, vec!["dev", "Documents", "IdeaProjects", "sdk", "Workspace"]);
+        assert_eq!(
+            names,
+            vec!["dev", "Documents", "IdeaProjects", "sdk", "Workspace"]
+        );
         // Guarded by macOS: named, not looked inside, until opened.
         assert_eq!(at_home.entries[1].kind, FolderKind::Folder);
         assert_eq!(

@@ -5,11 +5,15 @@
 //! describing what could not be established. It never runs builds, Git,
 //! package managers or hooks.
 
+pub mod cargo;
+pub mod composer;
 pub mod files;
+pub mod golang;
 pub mod gradle;
 pub mod maven;
 pub mod model;
 pub mod npm;
+pub mod python;
 pub mod repo;
 pub mod tags;
 pub mod walk;
@@ -272,6 +276,19 @@ pub fn inspect(
         .filter(|p| !p.starts_with("buildSrc/") && !p.starts_with("build-logic/"))
         .collect();
     let package_jsons = names("package.json");
+    let go_mods = names("go.mod");
+    let cargo_tomls = names("Cargo.toml");
+    let composer_jsons = names("composer.json");
+    // Python declares dependencies in several files; any of them makes a module.
+    let pyprojects = names("pyproject.toml");
+    let pipfiles = names("Pipfile");
+    let mut requirement_files: Vec<String> = by_name
+        .iter()
+        .filter(|(n, _)| n.starts_with("requirements") && n.ends_with(".txt"))
+        .flat_map(|(_, paths)| paths.iter().map(|p| p.to_string()))
+        .collect();
+    requirement_files.sort();
+    let setup_pys = names("setup.py");
 
     // Modules: every directory with a build manifest, plus the root.
     let mut module_ecosystems: BTreeMap<String, BTreeSet<Ecosystem>> = BTreeMap::new();
@@ -293,6 +310,23 @@ pub fn inspect(
             .entry(dir_of(p))
             .or_default()
             .insert(Ecosystem::Npm);
+    }
+    let other_manifests = [
+        (&go_mods, Ecosystem::Go),
+        (&cargo_tomls, Ecosystem::Cargo),
+        (&composer_jsons, Ecosystem::Composer),
+        (&pyprojects, Ecosystem::Pypi),
+        (&pipfiles, Ecosystem::Pypi),
+        (&requirement_files, Ecosystem::Pypi),
+        (&setup_pys, Ecosystem::Pypi),
+    ];
+    for (paths, ecosystem) in other_manifests {
+        for p in paths {
+            module_ecosystems
+                .entry(dir_of(p))
+                .or_default()
+                .insert(ecosystem);
+        }
     }
     let module_ids: Vec<String> = module_ecosystems.keys().cloned().collect();
     let lookup = model::ModuleLookup::new(module_ids.iter().map(String::as_str));
@@ -458,6 +492,135 @@ pub fn inspect(
     }
     npm::collect(&packages, &locks, &mut out);
 
+    // Go, Rust, Python and PHP: a manifest per module, a lockfile where the
+    // ecosystem has one. A file that cannot be read marks its area failed.
+    let read_manifest = |p: &str,
+                         area: &str,
+                         out: &mut Collector,
+                         report: &mut ScanReport,
+                         fingerprint: &mut Vec<(String, String)>| {
+        match read_text(&root, p, MANIFEST_LIMIT) {
+            Ok(text) => {
+                fingerprint.push((p.to_string(), sha256(text.as_bytes())));
+                Some(text)
+            }
+            Err(e) => {
+                report.unreadable.push(p.to_string());
+                out.coverage(&dir_of(p), area, CoverageStatus::Failed, vec![e]);
+                None
+            }
+        }
+    };
+
+    let mut go = Vec::new();
+    for p in &go_mods {
+        cancel.check()?;
+        if let Some(text) = read_manifest(p, "go", &mut out, &mut report, &mut fingerprint_parts) {
+            let m = golang::parse(p, &dir_of(p), &text);
+            if let Some(name) = m.name.as_deref().and_then(golang::display_name) {
+                module_names.entry(m.module.clone()).or_insert(name);
+            }
+            go.push(m);
+        }
+    }
+    golang::collect(&go, &mut out);
+
+    let mut crates = Vec::new();
+    for p in &cargo_tomls {
+        cancel.check()?;
+        if let Some(text) = read_manifest(p, "cargo", &mut out, &mut report, &mut fingerprint_parts)
+        {
+            match cargo::parse(p, &dir_of(p), &text) {
+                Ok(c) => {
+                    if let Some(n) = &c.name {
+                        module_names
+                            .entry(c.module.clone())
+                            .or_insert_with(|| n.clone());
+                    }
+                    crates.push(c);
+                }
+                Err(e) => out.coverage(&dir_of(p), "cargo", CoverageStatus::Failed, vec![e]),
+            }
+        }
+    }
+    let cargo_locks: Vec<cargo::CargoLock> = names("Cargo.lock")
+        .iter()
+        .filter_map(|p| {
+            let text = read_text(&root, p, LOCKFILE_LIMIT).ok()?;
+            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
+            cargo::parse_lock(p, &text).ok()
+        })
+        .collect();
+    cargo::collect(&crates, &cargo_locks, &mut out);
+
+    let mut python_manifests = Vec::new();
+    for p in pyprojects.iter().chain(&pipfiles).chain(&requirement_files) {
+        cancel.check()?;
+        let module = dir_of(p);
+        let Some(text) = read_manifest(p, "pypi", &mut out, &mut report, &mut fingerprint_parts)
+        else {
+            continue;
+        };
+        let parsed = if p.ends_with("pyproject.toml") {
+            python::parse_pyproject(p, &module, &text)
+        } else if p.ends_with("Pipfile") {
+            python::parse_pipfile(p, &module, &text)
+        } else {
+            Ok(python::parse_requirements(p, &module, &text))
+        };
+        match parsed {
+            Ok(m) => {
+                if let Some(n) = &m.name {
+                    module_names
+                        .entry(module.clone())
+                        .or_insert_with(|| n.clone());
+                }
+                python_manifests.push(m);
+            }
+            Err(e) => out.coverage(&module, "pypi", CoverageStatus::Failed, vec![e]),
+        }
+    }
+    let python_locks: Vec<python::PythonLock> = names("uv.lock")
+        .into_iter()
+        .chain(names("poetry.lock"))
+        .chain(names("Pipfile.lock"))
+        .filter_map(|p| {
+            let text = read_text(&root, &p, LOCKFILE_LIMIT).ok()?;
+            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
+            python::parse_lock(&p, &text).ok()
+        })
+        .collect();
+    python::collect(&python_manifests, &python_locks, &mut out);
+
+    let mut composers = Vec::new();
+    for p in &composer_jsons {
+        cancel.check()?;
+        if let Some(text) =
+            read_manifest(p, "composer", &mut out, &mut report, &mut fingerprint_parts)
+        {
+            match composer::parse(p, &dir_of(p), &text) {
+                Ok(c) => {
+                    if let Some(n) = c.name.as_deref().and_then(|n| n.rsplit('/').next()) {
+                        module_names
+                            .entry(c.module.clone())
+                            .or_insert_with(|| n.to_string());
+                    }
+                    composers.push(c);
+                }
+                Err(e) => out.coverage(&dir_of(p), "composer", CoverageStatus::Failed, vec![e]),
+            }
+        }
+    }
+    let composer_locks: Vec<composer::ComposerLock> = names("composer.lock")
+        .iter()
+        .filter_map(|p| {
+            let text = read_text(&root, p, LOCKFILE_LIMIT).ok()?;
+            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
+            composer::parse_lock(p, &text).ok()
+        })
+        .collect();
+    composer::collect(&composers, &composer_locks, &mut out);
+
     // Recognized files and derived tags.
     cancel.check()?;
     files::collect(&root, &files, &mut out, &module_of);
@@ -562,6 +725,26 @@ pub fn inspect(
     watched.extend(gradle_builds.iter().cloned());
     watched.extend(package_jsons.iter().cloned());
     watched.extend(lockfiles.iter().cloned());
+    for paths in [
+        &go_mods,
+        &cargo_tomls,
+        &composer_jsons,
+        &pyprojects,
+        &pipfiles,
+        &requirement_files,
+        &setup_pys,
+    ] {
+        watched.extend(paths.iter().cloned());
+    }
+    for lock in [
+        "Cargo.lock",
+        "uv.lock",
+        "poetry.lock",
+        "Pipfile.lock",
+        "composer.lock",
+    ] {
+        watched.extend(names(lock));
+    }
     for name in [
         "settings.gradle",
         "settings.gradle.kts",
@@ -630,6 +813,84 @@ mod tests {
             .find(|c| c.module == "web" && c.area == "npm")
             .unwrap();
         assert_eq!(npm.status, CoverageStatus::Failed);
+    }
+
+    #[test]
+    fn go_rust_python_and_php_modules_are_read_with_their_frameworks() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |path: &str, text: &str| {
+            let p = dir.path().join(path);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, text).unwrap();
+        };
+        write(
+            "api/go.mod",
+            "module github.com/acme/api\n\ngo 1.22\n\nrequire github.com/gin-gonic/gin v1.10.0\n",
+        );
+        write("api/main.go", "package main\n");
+        write(
+            "desktop/Cargo.toml",
+            "[package]\nname = \"desktop\"\n\n[dependencies]\ntauri = \"2\"\n",
+        );
+        write(
+            "desktop/Cargo.lock",
+            "[[package]]\nname = \"tauri\"\nversion = \"2.0.6\"\n",
+        );
+        write(
+            "pipelines/pyproject.toml",
+            "[project]\nname = \"pipelines\"\ndependencies = [\"apache-airflow>=2.9\", \"dbt-postgres==1.8.2\"]\n",
+        );
+        write("pipelines/dbt_project.yml", "name: warehouse\n");
+        write(
+            "shop/composer.json",
+            r#"{"name":"acme/shop","require":{"php":"^8.2","laravel/framework":"^11"}}"#,
+        );
+        write("shop/app/Http/Kernel.php", "<?php\n");
+
+        let i = inspect(dir.path(), &WalkOptions::default(), &CancelToken::new()).unwrap();
+        let ecosystems = |id: &str| {
+            i.modules
+                .iter()
+                .find(|m| m.id == id)
+                .unwrap()
+                .ecosystems
+                .clone()
+        };
+        assert_eq!(ecosystems("api"), vec![Ecosystem::Go]);
+        assert_eq!(ecosystems("desktop"), vec![Ecosystem::Cargo]);
+        assert_eq!(ecosystems("pipelines"), vec![Ecosystem::Pypi]);
+        assert_eq!(ecosystems("shop"), vec![Ecosystem::Composer]);
+        let name = |id: &str| i.modules.iter().find(|m| m.id == id).unwrap().name.clone();
+        assert_eq!(name("api"), "api");
+        assert_eq!(name("shop"), "shop");
+
+        let tags = |module: &str| -> Vec<&str> {
+            i.facts
+                .iter()
+                .filter(|f| f.module == module)
+                .filter_map(|f| f.tag())
+                .collect()
+        };
+        assert!(tags("api").contains(&"framework:gin"), "{:?}", tags("api"));
+        assert!(tags("api").contains(&"lang:go"));
+        assert!(tags("desktop").contains(&"framework:tauri"));
+        assert!(tags("pipelines").contains(&"data:airflow"));
+        assert!(tags("pipelines").contains(&"data:dbt"));
+        assert!(tags("shop").contains(&"framework:laravel"));
+        assert!(tags("shop").contains(&"lang:php"));
+        assert_eq!(
+            coverage_of(&i, "desktop", "cargo"),
+            CoverageStatus::Complete
+        );
+
+        // An edited go.mod is noticed by a cached inspection.
+        let before = i.fingerprint.clone();
+        write(
+            "api/go.mod",
+            "module github.com/acme/api\n\nrequire github.com/gin-gonic/gin v1.10.1\n",
+        );
+        let after = inspect(dir.path(), &WalkOptions::default(), &CancelToken::new()).unwrap();
+        assert_ne!(before, after.fingerprint);
     }
 
     fn coverage_of(i: &ProjectInspection, module: &str, area: &str) -> CoverageStatus {

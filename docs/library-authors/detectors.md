@@ -33,8 +33,9 @@ README text as evidence.
 
 ## Modules
 
-Every directory containing `pom.xml`, `build.gradle(.kts)` or `package.json` is a module;
-the root is always one. Files belong to the deepest enclosing module. Conditions with
+Every directory containing a build manifest is a module: `pom.xml`, `build.gradle(.kts)`,
+`package.json`, `go.mod`, `Cargo.toml`, `composer.json`, `pyproject.toml`, `Pipfile`,
+`requirements*.txt` or `setup.py`. The root is always one. Files belong to the deepest enclosing module. Conditions with
 `scope: module` are evaluated per module, so a backend skill does not apply to a whole
 monorepo because one service uses that stack.
 
@@ -84,6 +85,38 @@ presence (and is reported with its module).
   `package-lock.json` (v2/v3) or `pnpm-lock.yaml` importers, or an exact pin. `yarn.lock`
   is not parsed (versions stay ranges).
 
+## Go (`go.mod`)
+
+- The module path (its last segment names the module) and `require` entries, single-line
+  and block. Versions in `go.mod` are exact, so every requirement is *resolved*;
+  `// indirect` requirements are kept, with that scope. `replace` and `exclude` are not
+  followed.
+
+## Rust (`Cargo.toml`, `Cargo.lock`)
+
+- `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and their
+  `[target.*]` forms; a renamed crate (`package = "…"`) matches by its real name.
+- Workspaces: a member's `dep = { workspace = true }` takes its requirement from the root's
+  `[workspace.dependencies]`. A requirement (`1.0`) is a *range*; the nearest `Cargo.lock`
+  pins the built version. Path and Git dependencies have no version.
+
+## Python (`pyproject.toml`, `requirements*.txt`, `Pipfile`, `uv.lock`, `poetry.lock`, `Pipfile.lock`)
+
+- PEP 621 `[project] dependencies` and `optional-dependencies`, PEP 735
+  `[dependency-groups]`, Poetry `[tool.poetry.dependencies]` and groups, `Pipfile`
+  packages, and requirement files (`-r`, `-e`, URLs and options are skipped).
+- Names are compared normalized (PEP 503): `Great_Expectations` is `great-expectations`.
+  `==` pins are *resolved*; other specifiers are *ranges* until `uv.lock`, `poetry.lock`
+  or `Pipfile.lock` pins them. `setup.py` marks a module but is not executed or parsed.
+
+## PHP (`composer.json`, `composer.lock`)
+
+- `require` and `require-dev`; platform requirements (`php`, `ext-*`, `lib-*`) are left
+  out. Constraints are *ranges* until the `composer.lock` beside the manifest pins them.
+
+A project's languages come from its source files. Before any is seen (a fresh `go.mod`),
+its colors in Habi fall back to the language of its build files; `lang:` conditions do not.
+
 ## Recognized files
 
 | Role | How |
@@ -105,8 +138,14 @@ Defined in `crates/habi-core/src/inspect/tags.rs`, each with its evidence basis
 `build:vite`, `test:junit · testcontainers · jest · vitest · playwright · cypress`,
 `db:liquibase · flyway · jooq`, `orm:jpa`, `api:openapi · springdoc`,
 `ci:github-actions · gitlab`, `container:docker`,
+Go `framework:gin · echo · fiber · wails`, `orm:gorm`;
+Rust `framework:axum · actix · tauri · tokio`, `orm:diesel`, `db:sqlx`;
+Python `framework:django · flask · fastapi`, `orm:sqlalchemy`, `test:pytest`;
+PHP `framework:laravel · symfony`, `orm:doctrine`, `test:phpunit`;
+data engineering `data:dbt` (also from `dbt_project.yml`) `· airflow · dagster · prefect ·
+spark · beam · kafka · great-expectations · pandas · polars · duckdb`,
 `agents:agents-md · claude-md · cursor-rules · skills`,
-and languages from source extensions: `lang:java · kotlin · typescript · javascript · python · go · rust · csharp`.
+and languages from source extensions: `lang:java · kotlin · typescript · javascript · python · go · rust · csharp · php`.
 
 A tag Habi cannot detect (e.g. a team-specific `team:payments`) is always *unknown* until
 the user declares it for the project.

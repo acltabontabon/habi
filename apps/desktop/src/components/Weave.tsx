@@ -180,8 +180,8 @@ export function initialsOf(name: string): string {
  * sidebar): its initials on a tile in its main language's dye.
  */
 export function ProjectMark({ name, languages }: { name: string; languages: string[] }) {
-  const lead = languages[0];
-  const dye = (lead ? stackDye(tagLabel(lead)) : undefined) ?? "var(--ink-muted)";
+  // The first language that has a dye (SQL or shell scripts do not).
+  const dye = languages.map((l) => stackDye(tagLabel(l))).find(Boolean) ?? "var(--ink-muted)";
   return (
     <span className="project-mark" style={{ "--dye": dye } as CSSProperties} aria-hidden="true">
       {initialsOf(name)}
