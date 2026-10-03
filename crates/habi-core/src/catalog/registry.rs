@@ -456,7 +456,7 @@ mod tests {
         ] {
             assert_eq!(kind(id), PublisherKind::Builder, "{id}");
         }
-        for id in ["superpowers", "addyosmani", "wshobson"] {
+        for id in ["superpowers", "addyosmani", "wshobson", "mattpocock"] {
             assert_eq!(kind(id), PublisherKind::Community, "{id}");
         }
     }
