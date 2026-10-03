@@ -107,7 +107,15 @@ fn a_project_alone_is_enough_to_discover_knowledge_and_start_a_draft() {
     let skill = &found.skills[0];
     assert_eq!(skill.path, ".claude/skills/jpa-entity-review");
     assert_eq!(skill.name, "jpa-entity-review");
-    assert_eq!(skill.readers, vec![ClientId::ClaudeCode, ClientId::Cursor]);
+    assert_eq!(
+        skill.readers,
+        vec![
+            ClientId::ClaudeCode,
+            ClientId::Cursor,
+            ClientId::Copilot,
+            ClientId::OpenCode
+        ]
+    );
     assert_eq!(skill.managed_by, None);
     assert_eq!(skill.imported_as, None);
     let paths: Vec<&str> = found.instructions.iter().map(|i| i.path.as_str()).collect();

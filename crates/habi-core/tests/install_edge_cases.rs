@@ -841,3 +841,106 @@ fn other_skill_folder_links_are_named_conflicts() {
     .unwrap_err();
     assert_eq!(err.code(), "pathEscape", "{err}");
 }
+
+#[test]
+fn all_seven_clients_get_one_skill_copy_per_folder_and_each_their_own_mcp_file() {
+    let w = world(None);
+    let team = team_lib(&w.tmp);
+    let a = payload(&team, "github-pr-summary");
+    let p = install(&w, std::slice::from_ref(&a), &ClientId::ALL, true);
+    // Copilot reads the file Claude Code reads, so the server is written once.
+    assert!(
+        p.notes
+            .iter()
+            .any(|n| n.contains("GitHub Copilot reads the same .mcp.json")),
+        "{:?}",
+        p.notes
+    );
+    w.apply(&p);
+
+    let name = &a.item.name;
+    for folder in [".agents/skills", ".claude/skills"] {
+        assert!(w.root.join(format!("{folder}/{name}/SKILL.md")).is_file());
+    }
+    // Folders only one client owns are never written.
+    for folder in [
+        ".cursor/skills",
+        ".gemini/skills",
+        ".github/skills",
+        ".opencode/skills",
+        ".junie/skills",
+    ] {
+        assert!(!w.root.join(folder).exists(), "{folder}");
+    }
+
+    assert!(mcp_servers(&w, ".mcp.json").get("github").is_some());
+    assert!(mcp_servers(&w, ".cursor/mcp.json").get("github").is_some());
+    assert!(
+        mcp_servers(&w, ".gemini/settings.json")
+            .get("github")
+            .is_some()
+    );
+    assert!(
+        mcp_servers(&w, ".junie/mcp/mcp.json")
+            .get("github")
+            .is_some()
+    );
+    let opencode: serde_json::Value = serde_json::from_str(&w.read("opencode.json")).unwrap();
+    assert_eq!(opencode["mcp"]["github"]["type"], "local");
+    assert!(
+        w.read(".codex/config.toml")
+            .contains("[mcp_servers.github]")
+    );
+
+    let lock = w.lock();
+    let item = lock.find(&a.key()).unwrap();
+    let files: std::collections::BTreeSet<&str> =
+        item.mcp.iter().map(|m| m.file.as_str()).collect();
+    assert_eq!(item.mcp.len(), files.len(), "one entry per file");
+    assert_eq!(files.len(), 6);
+    assert_eq!(item.clients.len(), 7);
+
+    // Removing the item takes out everything Habi created.
+    w.apply(&plan::plan_remove(&w.root, &[a.key()], &none()).unwrap());
+    for file in [
+        ".mcp.json",
+        ".cursor/mcp.json",
+        ".codex/config.toml",
+        ".gemini/settings.json",
+        "opencode.json",
+        ".junie/mcp/mcp.json",
+    ] {
+        assert!(!w.root.join(file).exists(), "{file} should be gone");
+    }
+    for folder in [".agents/skills", ".claude/skills"] {
+        assert!(!w.root.join(folder).join(name).exists(), "{folder}/{name}");
+    }
+}
+
+#[test]
+fn copilot_joins_a_server_claude_code_already_has_from_another_item() {
+    let w = world(None);
+    let team = team_lib(&w.tmp);
+    let (a, b) = github_pair(&team);
+    w.apply(&install(
+        &w,
+        std::slice::from_ref(&a),
+        &[ClientId::ClaudeCode],
+        true,
+    ));
+    let p = install(&w, std::slice::from_ref(&b), &[ClientId::Copilot], true);
+    assert!(
+        p.notes
+            .iter()
+            .any(|n| n.contains("already has the `github` MCP server")),
+        "{:?}",
+        p.notes
+    );
+    w.apply(&p);
+    // Still one entry in the file, kept while either item needs it.
+    assert_eq!(mcp_servers(&w, ".mcp.json").as_object().unwrap().len(), 1);
+    w.apply(&plan::plan_remove(&w.root, &[a.key()], &none()).unwrap());
+    assert!(mcp_servers(&w, ".mcp.json").get("github").is_some());
+    w.apply(&plan::plan_remove(&w.root, &[b.key()], &none()).unwrap());
+    assert!(!w.root.join(".mcp.json").exists());
+}

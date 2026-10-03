@@ -14,16 +14,34 @@ pub enum ClientId {
     ClaudeCode,
     Cursor,
     Codex,
+    GeminiCli,
+    Copilot,
+    #[serde(rename = "opencode")]
+    #[ts(rename = "opencode")]
+    OpenCode,
+    Junie,
 }
 
 impl ClientId {
-    pub const ALL: [ClientId; 3] = [ClientId::ClaudeCode, ClientId::Cursor, ClientId::Codex];
+    pub const ALL: [ClientId; 7] = [
+        ClientId::ClaudeCode,
+        ClientId::Cursor,
+        ClientId::Codex,
+        ClientId::GeminiCli,
+        ClientId::Copilot,
+        ClientId::OpenCode,
+        ClientId::Junie,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
             ClientId::ClaudeCode => "Claude Code",
             ClientId::Cursor => "Cursor",
             ClientId::Codex => "Codex",
+            ClientId::GeminiCli => "Gemini CLI",
+            ClientId::Copilot => "GitHub Copilot",
+            ClientId::OpenCode => "OpenCode",
+            ClientId::Junie => "Junie",
         }
     }
 
@@ -32,6 +50,10 @@ impl ClientId {
             ClientId::ClaudeCode => "claude-code",
             ClientId::Cursor => "cursor",
             ClientId::Codex => "codex",
+            ClientId::GeminiCli => "gemini-cli",
+            ClientId::Copilot => "copilot",
+            ClientId::OpenCode => "opencode",
+            ClientId::Junie => "junie",
         }
     }
 

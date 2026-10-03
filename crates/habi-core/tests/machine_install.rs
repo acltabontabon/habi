@@ -447,7 +447,9 @@ fn the_preview_names_projects_that_hold_the_same_skill_and_which_copy_wins() {
         wins,
         [
             (ClientId::ClaudeCode, Precedence::PersonalWins),
-            (ClientId::Cursor, Precedence::NotDocumented)
+            (ClientId::Cursor, Precedence::NotDocumented),
+            (ClientId::Copilot, Precedence::NotDocumented),
+            (ClientId::OpenCode, Precedence::NotDocumented)
         ]
     );
 

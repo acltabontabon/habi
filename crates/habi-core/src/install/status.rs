@@ -158,14 +158,10 @@ pub fn installation(
 /// Skill directories that exist in the project for `name` but are not
 /// recorded in the lock file (installed by hand or by another tool).
 pub fn unmanaged_copies(root: &Path, name: &str, lock: &super::lock::LockFile) -> Vec<String> {
-    [
-        layout::AGENTS_SKILLS,
-        layout::CLAUDE_SKILLS,
-        ".cursor/skills",
-    ]
-    .iter()
-    .map(|base| format!("{base}/{name}/SKILL.md"))
-    .filter(|p| matches!(read_project_file(root, p), Ok(Some(_))))
-    .filter(|p| lock.owner_of(p).is_none())
-    .collect()
+    layout::PROJECT_SKILL_DIRS
+        .iter()
+        .map(|base| format!("{base}/{name}/SKILL.md"))
+        .filter(|p| matches!(read_project_file(root, p), Ok(Some(_))))
+        .filter(|p| lock.owner_of(p).is_none())
+        .collect()
 }

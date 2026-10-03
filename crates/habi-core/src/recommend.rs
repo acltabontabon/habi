@@ -296,6 +296,8 @@ pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String])
                 Err(_) => unreadable.push(file),
             }
         }
+        unreadable.sort_unstable();
+        unreadable.dedup();
         let (status, detail) = if !configured.is_empty() {
             (
                 PrerequisiteStatus::Configured,
