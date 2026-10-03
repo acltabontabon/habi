@@ -32,7 +32,9 @@ function makeClient() {
 }
 
 export function App() {
-  const client = useMemo(makeClient, []);
+  // State, not useMemo: a hot reload recomputes memos, and a new client would leave
+  // everything already mounted (the sidebar) watching the old one.
+  const [client] = useState(makeClient);
   return (
     <QueryClientProvider client={client}>
       <ToastProvider>
