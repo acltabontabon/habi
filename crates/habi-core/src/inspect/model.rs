@@ -244,6 +244,9 @@ pub struct ScanReport {
 pub struct ProjectInspection {
     pub root: String,
     pub name: String,
+    /// What the project's authors say it is: the root manifest's description,
+    /// else the README's opening paragraph. Absent when neither offers one.
+    pub description: Option<String>,
     pub repository: RepositoryInfo,
     pub modules: Vec<Module>,
     pub facts: Vec<Fact>,

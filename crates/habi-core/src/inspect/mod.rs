@@ -7,6 +7,7 @@
 
 pub mod cargo;
 pub mod composer;
+mod describe;
 pub mod files;
 pub mod golang;
 pub mod gradle;
@@ -754,6 +755,7 @@ pub fn inspect(
     ] {
         watched.extend(names(name));
     }
+    watched.extend(describe::readme_of(&files).map(str::to_string));
     watched.push("gradle/libs.versions.toml".into());
     watched.push(".git/HEAD".into());
     watched.extend(walked_dirs);
@@ -766,10 +768,12 @@ pub fn inspect(
         .find(|m| m.id == ".")
         .map(|m| m.name.clone())
         .unwrap_or_default();
+    let description = describe::describe(&root, &name, &files);
 
     let inspection = ProjectInspection {
         root: crate::paths::display_path(&root),
         name,
+        description,
         repository,
         modules,
         facts,

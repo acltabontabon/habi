@@ -5,7 +5,12 @@ import type { Module } from "./Module";
 import type { RepositoryInfo } from "./RepositoryInfo";
 import type { ScanReport } from "./ScanReport";
 
-export type ProjectInspection = { root: string, name: string, repository: RepositoryInfo, modules: Array<Module>, facts: Array<Fact>, coverage: Array<Coverage>, scan: ScanReport, 
+export type ProjectInspection = { root: string, name: string, 
+/**
+ * What the project's authors say it is: the root manifest's description,
+ * else the README's opening paragraph. Absent when neither offers one.
+ */
+description: string | null, repository: RepositoryInfo, modules: Array<Module>, facts: Array<Fact>, coverage: Array<Coverage>, scan: ScanReport, 
 /**
  * Changes when any manifest or recognized file changes.
  */

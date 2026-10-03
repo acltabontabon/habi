@@ -1,14 +1,14 @@
 /** Project home: identity, a concise understanding, and the workbench. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, Fragment, useEffect, useMemo, useState } from "react";
 import type { Ecosystem } from "../../bindings/Ecosystem";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
+import { tip } from "../../components/Tooltips";
 import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
 import { initialsOf, Strand, Swatch } from "../../components/Weave";
 import { api } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
-import { plural } from "../../lib/format";
 import type { ProjectTab } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
 import { useSafeInvoke } from "../../lib/safeInvoke";
@@ -24,30 +24,63 @@ import { History } from "./History";
 import { ProjectSettings } from "./ProjectSettings";
 import { fitsProject, Workbench } from "./Workbench";
 
-export function understanding(overview: ProjectOverview): string[] {
-  const { inspection } = overview;
+/** How a recognized technology reads on the page: what it is written in, what it is built on, or what builds and tests it. */
+export type StackRole = "language" | "stack" | "tooling";
+
+export interface StackToken {
+  label: string;
+  role: StackRole;
+}
+
+const TOOLING_PREFIXES = ["build:", "test:", "ci:", "container:"];
+/** Frameworks first, then the data, persistence and API layers. */
+const STACK_ORDER = ["framework:", "data:", "orm:", "db:", "api:"];
+
+/**
+ * What Habi recognized, in reading order: languages (most used first), then
+ * what the project is built on, then its tooling.
+ */
+export function understanding(overview: ProjectOverview): StackToken[] {
   const tags = new Map<string, number>();
-  for (const f of inspection.facts) {
+  for (const f of overview.inspection.facts) {
     if (f.subject.type === "tag" && !f.subject.tag.startsWith("agents:")) {
       tags.set(f.subject.tag, (tags.get(f.subject.tag) ?? 0) + 1);
     }
   }
-  const order = [
-    "framework:",
-    "data:",
-    "lang:",
-    "orm:",
-    "db:",
-    "api:",
-    "build:",
-    "test:",
-    "ci:",
-    "container:",
+  const rank = (tag: string) => {
+    const i = STACK_ORDER.findIndex((p) => tag.startsWith(p));
+    return i < 0 ? STACK_ORDER.length : i;
+  };
+  const entries = [...tags.entries()];
+  const pick = (keep: (tag: string) => boolean) => entries.filter(([tag]) => keep(tag));
+  const isLanguage = (tag: string) => tag.startsWith("lang:");
+  const isTooling = (tag: string) => TOOLING_PREFIXES.some((p) => tag.startsWith(p));
+  const grouped: [StackRole, string[]][] = [
+    [
+      "language",
+      pick(isLanguage)
+        .sort((a, b) => b[1] - a[1])
+        .map(([tag]) => tag),
+    ],
+    [
+      "stack",
+      pick((t) => !isLanguage(t) && !isTooling(t))
+        .sort((a, b) => rank(a[0]) - rank(b[0]))
+        .map(([tag]) => tag),
+    ],
+    ["tooling", pick(isTooling).map(([tag]) => tag)],
   ];
-  const labels = [...tags.keys()]
-    .sort((a, b) => order.findIndex((p) => a.startsWith(p)) - order.findIndex((p) => b.startsWith(p)))
-    .map(tagLabel);
-  return [...new Set(labels)].slice(0, 9);
+  const seen = new Set<string>();
+  const tokens: StackToken[] = [];
+  for (const [role, group] of grouped) {
+    for (const tag of group) {
+      const label = tagLabel(tag);
+      if (seen.has(label)) continue;
+      seen.add(label);
+      tokens.push({ label, role });
+    }
+  }
+  return tokens.slice(0, 9);
 }
 
 /** The language a build ecosystem's modules are written in. */
@@ -126,7 +159,7 @@ export function ProjectView({
   const byHand = (data?.recommendations ?? []).filter(
     (r) => r.group === "available" && r.installState === "notInstalled",
   ).length;
-  const facts = useMemo(() => (data ? understanding(data) : []), [data]);
+  const tokens = useMemo(() => (data ? understanding(data) : []), [data]);
   // The project's own colors: its languages' dyes, woven into its swatch.
   const langs = useMemo(() => (data ? languages(data) : []), [data]);
   const cloth = useMemo(() => stackDyes(langs), [langs]);
@@ -172,7 +205,10 @@ export function ProjectView({
   }
 
   const { project, inspection } = data;
-  const modules = inspection.modules.filter((m) => m.ecosystems.length > 0);
+  // What it is written in, then what it is built on, then the tooling around it.
+  const written = tokens.filter((t) => t.role === "language").map((t) => t.label);
+  const builtOn = tokens.filter((t) => t.role !== "language");
+  if (written.length === 0) written.push(...langs);
   return (
     <div className="project">
       <header className="project-head project-head-woven">
@@ -194,57 +230,52 @@ export function ProjectView({
             {project.sample ? " · sample" : ""}
           </p>
           <div className="project-title-row">
-            <h1 className="project-title">{project.name}</h1>
-            {project.sample ? <Label tone="thread">Sample project</Label> : null}
-          </div>
-          <p className="project-path mono" title={project.path}>
-            {project.path}
+            <h1 className="project-title" title={project.path}>
+              {project.name}
+            </h1>
             {inspection.repository.branch ? (
-              <span className="project-branch">
-                <Icon name="branch" size={13} /> {inspection.repository.branch}
+              <span className="project-branch mono" title={`Branch ${inspection.repository.branch}`}>
+                <Icon name="branch" size={12} /> {inspection.repository.branch}
               </span>
             ) : null}
-          </p>
+            {project.sample ? <Label tone="thread">Sample project</Label> : null}
+          </div>
+          {inspection.description ? <p className="project-description">{inspection.description}</p> : null}
           <ul className="stack-tokens" aria-label="What Habi recognized">
-            {facts.length > 0 ? (
-              facts.map((f) => {
-                const dye = stackDye(f);
-                return (
-                  <li
-                    key={f}
-                    className={`stack-token${dye ? " is-dyed" : ""}`}
-                    style={dye ? ({ "--dye": dye } as CSSProperties) : undefined}
-                  >
-                    {f}
-                  </li>
-                );
-              })
-            ) : langs.length > 0 ? (
-              langs.map((l) => (
-                <li
-                  key={l}
-                  className={`stack-token${stackDye(l) ? " is-dyed" : ""}`}
-                  style={stackDye(l) ? ({ "--dye": stackDye(l) } as CSSProperties) : undefined}
-                >
-                  {l}
-                </li>
-              ))
-            ) : (
+            {written.map((l) => (
+              <li
+                key={l}
+                className={`stack-token${stackDye(l) ? " is-dyed" : ""}`}
+                style={stackDye(l) ? ({ "--dye": stackDye(l) } as CSSProperties) : undefined}
+              >
+                {l}
+              </li>
+            ))}
+            {builtOn.map((t, i) => (
+              <Fragment key={t.label}>
+                {/* A hairline where a new kind starts: written in, built on, tooling. */}
+                {(i === 0 && written.length > 0) || (i > 0 && builtOn[i - 1]?.role !== t.role) ? (
+                  <li className="stack-rule" aria-hidden="true" />
+                ) : null}
+                <li className={`stack-token${t.role === "tooling" ? " stack-token-tool" : ""}`}>{t.label}</li>
+              </Fragment>
+            ))}
+            {written.length === 0 && builtOn.length === 0 ? (
               <li className="stack-token stack-token-quiet">no recognized frameworks or languages</li>
-            )}
-            <li className="stack-token stack-token-quiet">{plural(Math.max(modules.length, 1), "module")}</li>
+            ) : null}
           </ul>
         </div>
         <div className="project-actions">
-          <Button
-            size="sm"
-            icon="refresh"
+          <button
+            type="button"
+            className={`icon-btn${overview.isFetching ? " is-working" : ""}`}
+            aria-label="Rescan"
+            data-tip="Rescan — look at the project again"
             onClick={rescan}
-            busy={overview.isFetching}
-            title="Look at the project again"
+            disabled={overview.isFetching}
           >
-            Rescan
-          </Button>
+            <Icon name="refresh" />
+          </button>
           <button
             type="button"
             className="icon-btn"
@@ -263,15 +294,15 @@ export function ProjectView({
           >
             <Icon name="settings" />
           </button>
-          <Button
-            size="sm"
-            icon="external"
-            variant="quiet"
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Show the folder"
+            {...tip({ title: "Show the folder", lines: [{ text: project.path, mono: true }] })}
             onClick={() => safely(() => api.revealProjectPath(projectId, null), "The folder was not shown")}
-            title="Show the folder"
           >
-            Reveal
-          </Button>
+            <Icon name="folder" />
+          </button>
         </div>
       </header>
 
