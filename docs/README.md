@@ -1,12 +1,8 @@
 # Habi documentation
 
-Habi finds the skills and instructions that fit the repository you are working in, installs
-them for the agent tools you already use, and sends what you improve back to your team's
-library for review. It is a desktop app for macOS and Windows, and it runs
-entirely on your machine: no account, no telemetry, no model calls.
+**New here?** Start with [Getting started](guide/getting-started.md)—sample workspace included, takes ~5 minutes.
 
-New here? Start with [Getting started](guide/getting-started.md). It takes a few minutes, and
-the sample workspace means you need neither a library nor a project of your own.
+Habi finds skills that fit your repo, installs them for your agent tools, and carries improvements back to your library. Local, no account or telemetry.
 
 ## Using Habi
 
@@ -47,13 +43,13 @@ the sample workspace means you need neither a library nor a project of your own.
 | [The website](dev/website.md) | Build the site, and see how these pages are published on it |
 | [Decisions](dev/decisions/) | Read why Habi supports [seven agent tools](dev/decisions/0001-seven-agent-tools.md) and [installs on this machine](dev/decisions/0002-install-on-this-machine.md) the way it does |
 
-## Where documentation lives
+## Documentation map
 
-- `README.md`: what Habi is and how to build it.
-- `docs/guide/`: task-oriented guides for people using Habi.
-- `docs/library-authors/`: for people who write and curate skill libraries.
-- `docs/project/`: what Habi promises, how far along it is, and what it trusts.
-- `docs/dev/`: for people changing Habi. It says *why*; the code is the source of truth for *what*.
-- `website/`: the site at <https://acltabontabon.com/habi/>. It publishes this index, the guides,
-  the library authors' pages and the project pages under
-  [/habi/docs/](https://acltabontabon.com/habi/docs/); see [The website](dev/website.md).
+| Path | For |
+|------|-----|
+| `README.md` (root) | What Habi is & how to build it |
+| `docs/guide/` | Using Habi—tasks, step-by-step |
+| `docs/library-authors/` | Writing & curating skill libraries |
+| `docs/project/` | Product promises, status, security |
+| `docs/dev/` | Habi development (why, not what) |
+| `website/` | Published docs at [acltabontabon.com/habi/docs](https://acltabontabon.com/habi/docs) |

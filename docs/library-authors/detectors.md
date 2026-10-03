@@ -1,60 +1,62 @@
 # Detectors
 
-This page lists what inspection recognizes in a repository, so you know which conditions in
-`habi.yaml` Habi can establish, and where it says *unknown* instead.
+What can Habi establish as conditions in `habi.yaml`? This page lists what inspection finds.
 
-Inspection is **read-only**. Habi lists file names (respecting `.gitignore`, `.ignore`,
-`.habiignore` and per-project exclusions), reads build manifests and a few recognized files,
-and never runs builds, package managers, Git, hooks or repository code. It does not read
-README text as evidence.
+**Inspection is read-only:** lists files (respecting `.gitignore`, `.habiignore`), reads build
+manifests and config files, and never runs code, builds, Git, hooks, or package managers.
+READMEs are never inspected as evidence.
 
-## Traversal limits and exclusions
+## What's skipped
 
-- Always skipped, at any depth: `.git`, `node_modules`, `.gradle`, `.idea`, `.venv`,
-  `__pycache__`, `.next`, `.nuxt`, `.svelte-kit`, `.turbo`, `.cache`, `.yarn`,
-  `.terraform`, …
-- Skipped only where they are build output: `target`, `build`, `dist`, `out`, `vendor`,
-  `venv`, `coverage`. These names are also ordinary folder names (a Java package
-  `com/acme/build`, `docs/out`), so they are skipped only at the project root or directly
-  inside a directory that has a build manifest (`pom.xml`, `build.gradle(.kts)`,
-  `settings.gradle(.kts)`, `package.json`, `Cargo.toml`, `go.mod`, `composer.json`,
-  `Gemfile`, `pyproject.toml`, `setup.py`, `requirements.txt`, `build.sbt`, `build.xml`).
-  Elsewhere they are listed like any other directory.
-- Files that may hold secrets (`.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, …)
-  are excluded from the file index and never read or displayed.
-- Symbolic links are never followed (counted in the scan report).
-- Limits: 50 000 files, depth 24, manifests ≤ 2 MiB, lockfiles ≤ 48 MiB. Hitting the file or
-  depth limit marks the scan **incomplete**; a directory that cannot be read makes the file
-  listing (`files` coverage) **partial**. Either way, absence-based file, language, CI and
-  container conditions become *unknown*.
-- Content probes read the first 4 KiB of at most 600 YAML/JSON/XML/SQL files (build
-  manifests, lockfiles and well-known tool configs such as `pom.xml`, `package.json`,
-  `tsconfig*.json`, `logback.xml` are never probed). Probes have their own coverage area,
-  `content`: a module with candidates left unread (over the limit, or unreadable) has
-  partial `content` coverage, which only makes the absence of content-recognized tags
-  (`api:openapi`, `db:liquibase`) *unknown*. Other file conditions are unaffected.
+**Always:**
+`.git`, `node_modules`, `.gradle`, `.idea`, `.venv`, `__pycache__`, `.next`, `.nuxt`,
+`.svelte-kit`, `.turbo`, `.cache`, `.yarn`, `.terraform`, etc.
 
-## Modules
+**As build output (root or under a manifest only):**
+`target`, `build`, `dist`, `out`, `vendor`, `venv`, `coverage` (same names appear as code;
+limited to build contexts to avoid false negatives)
 
-Every directory containing a build manifest is a module: `pom.xml`, `build.gradle(.kts)`,
-`package.json`, `go.mod`, `Cargo.toml`, `composer.json`, `pyproject.toml`, `Pipfile`,
-`requirements*.txt` or `setup.py`. The root is always one. Files belong to the deepest enclosing module. Conditions with
-`scope: module` are evaluated per module, so a backend skill does not apply to a whole
-monorepo because one service uses that stack.
+**Secret files (never read or indexed):**
+`.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, etc.
 
-Some facts describe the repository rather than the directory that holds them: CI
-configuration, agent instructions and skills, MCP configuration, Dockerfiles and build
-wrappers (and the `ci:*`, `agents:*` and `container:docker` tags derived from them). A
-module also sees these facts from its enclosing modules, including the root, and the
-explanation says so ("detected at the repository root from `.github/workflows/ci.yml`").
-Dependencies and manifest-derived tags are not inherited this way; Maven parents and Gradle
-`subprojects {}` blocks are handled by their detectors. `file:` patterns stay relative to,
-and limited to, the module's own files.
+**Symbolic links:** never followed (counted in report)
 
-User declarations made for one module apply to that module only. In `scope: repository`
-evaluation, a module's "absent" declaration does not hide facts found elsewhere and does
-not establish absence for the repository; a module's "present" declaration establishes
-presence (and is reported with its module).
+## Scan limits
+
+| Limit | Impact |
+|-------|--------|
+| 50,000 files | Incomplete scan if exceeded |
+| Depth 24 | Incomplete scan if exceeded |
+| Manifests 2 MiB | Bounded parsing |
+| Lockfiles 48 MiB | Bounded parsing |
+| 600 content probes | First 4 KiB of YAML/JSON/XML/SQL files (build manifests/lockfiles never probed) |
+
+**Incomplete scan** → absence-based conditions (files, language, CI, containers) become *unknown*
+
+**Partial content coverage** → absence of content-recognized tags (`api:openapi`, `db:liquibase`)
+becomes *unknown*
+
+## Module discovery
+
+**What's a module?** Any directory with a build manifest:
+`pom.xml`, `build.gradle(.kts)`, `package.json`, `go.mod`, `Cargo.toml`, `composer.json`,
+`pyproject.toml`, `Pipfile`, `requirements*.txt`, `setup.py`
+
+The root is always a module. Files belong to the deepest module.
+
+**Scope inheritance:**
+- Conditions with `scope: module` evaluate per module (a backend skill doesn't apply to a
+  whole monorepo just because one service uses it)
+- **Repository-level facts** (CI, agent instructions, Dockerfiles, MCP, build wrappers and
+  derived tags) inherited from root and parent modules
+- Dependencies & manifest-derived tags are NOT inherited (Maven parents, Gradle subprojects
+  handled per-detector)
+- `file:` patterns limited to the module's own files
+
+**User declarations:**
+- Per-module only; don't affect other modules
+- In `scope: repository` eval: "absent" doesn't hide facts elsewhere; "present" establishes
+  it for the whole repository
 
 ## Maven (`pom.xml`)
 

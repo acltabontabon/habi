@@ -1,10 +1,7 @@
 # My skills
 
-My skills is where you write skills and keep your own copies of others'. You need only a
-repository and an idea: no library, account or model. When a skill is ready, you use it in a
-project or on this machine, and share it when it is worth sharing.
-
-Shortcuts are written for macOS; on Windows, use Ctrl where this page says ⌘.
+Write your own skills, edit others', test them against projects—all offline, no account or
+model needed. When ready, use in a project or on your machine. Share when it's worth sharing.
 
 ## What is where, and who owns it
 
@@ -21,48 +18,34 @@ Shortcuts are written for macOS; on Windows, use Ctrl where this page says ⌘.
 
 ## Creating a skill
 
-**New skill** (in My skills, *Create a skill* in the command palette, or ⌘N) opens an empty page with the cursor in
-it. There is no form and nothing to decide first.
-
-While the skill is a fresh draft of yours, Habi names it from what you write: the first heading
-becomes the title until you type one, and the title becomes the identifier (the Agent Skills
-`name`) until you change it or install the skill. With no purpose yet, *Use the opening line*
-takes the first sentence of the instructions.
+**New skill** opens a blank page. Habi auto-names it from your content: the first heading
+becomes the title, and the title becomes the identifier (until you change it or install).
+*Use the opening line* sets the purpose from your opening sentence.
 
 ## The Skill Studio
 
 ![The Skill Studio with a new skill, Review a pull request: its purpose under the title, when to use it and what it comes with, and the instructions as a document, with Ready, Share and Use at the top.](../media/skill-studio.jpg)
 
-A skill opens as one document: the title, the **purpose** (the `description` agents read to
-decide when to load it), where it came from, and the instructions. The other parts are layers
-of the same skill:
+Edit three layers of your skill:
 
-- **Instructions** (⌘1). Markdown, shown as the document it is: away from the cursor, headings
-  read as headings, code is highlighted, and links or backticked paths to the package's own
-  files read as references (⌘-click opens one). An empty skill offers starters. The outline
-  sits in the margin; ⌘⇧O opens it.
-- **When to use** (⌘2). Signals, written as facts about a project: *Playwright is used*,
-  *Depends on `@playwright/test`*, a file pattern. *Add signal* proposes what Habi could look
-  for, and what it saw in your most recent project. Then *Avoid when* (exceptions), *Check
-  within* (each module, or the whole repository) and the tools the skill needs, looked up on
-  PATH and never run. These write the `habi.yaml` conditions that recommendations use
-  ([Habi metadata](../library-authors/metadata-schema.md)). *Edit When to use as YAML*, in
-  the command palette, edits the file directly and shows how Habi reads it.
-- **Materials** (⌘3). What the skill brings with it, by kind: scripts, examples, references,
-  assets. Each says what it is for, in the instructions' own words. A material the
-  instructions never mention says so, with *Reference it* to add a line for it. *Add
-  material* places files by type (code in `scripts/`, writing in `references/`, the rest in
-  `assets/`); pasted code and dropped files are placed the same way. Scripts are stored and
-  shown, never run; *Open in your text editor* opens one as text.
+**Instructions** — Markdown as a document. Type freely; headings, code, and file references
+are highlighted. Starters are available for new skills.
 
-A skill without signals is used by hand: it is available when you choose it and never
-recommended. Habi never adds a signal on its own. When the instructions keep naming a
-technology, it offers the signal, and adds it only when you click.
+**When to use** — Define signals (conditions that trigger recommendations). Examples:
+- *Playwright is used*
+- *Depends on `@playwright/test`*
+- File patterns
 
-The bar above the skill shows **Ready** or **Draft**, **Use**, the share action, and **•••**
-for the rest: *Test against a project…*, *Where it came from*, *View source*, *View package
-source*, *Export as zip…*, *Show the package folder* and *Move to trash*. Everything is also in
-the command palette (⌘K).
+Also set exceptions (*Avoid when*), scope (*Check within*), and required tools. These write
+`habi.yaml` for recommendations. See [Habi metadata](../library-authors/metadata-schema.md).
+
+**Materials** — Scripts, examples, references, assets. Say what each does in your instructions.
+Files are auto-organized by type; scripts are stored but never run.
+
+**Skills without signals** are manual only—never recommended. Habi never auto-adds signals;
+you choose when to add them.
+
+Top bar shows **Ready** / **Draft** status and actions: **Use**, **Share**, and more (**•••**).
 
 ### Readiness
 
@@ -70,33 +53,22 @@ the command palette (⌘K).
 purpose, a valid identifier. The identifier is changed deliberately, with *Change the
 identifier*.
 
-### Saving
+### Saving & cleanup
 
-Drafts save as you type, on ⌘S, when the window loses focus and when you leave the skill.
-Saving is silent while it succeeds: the bar says *Saving…* during a write, and *Couldn’t save*
-with a retry when one failed, and keeps your text on screen.
+Drafts auto-save as you type, on demand, and when you leave. If the file changes outside Habi,
+you choose which version to keep.
 
-Every save names the version of the file it started from. If the file changed outside Habi in
-the meantime, saving pauses and you choose: **Show the other version** or **Keep mine**.
-Neither is overwritten silently.
-
-*Move to trash* can be undone from My skills → Trash → Restore; *Delete permanently…* is a
-separate, confirmed step.
+*Move to trash* can be restored later; *Delete permanently* is separate and confirmed.
 
 ## Testing against a project
 
-*Test against a project…* evaluates the skill's signals in a project you choose, with the
-same matcher recommendations use, and says why:
+Choose a project to test your signals against using the same matcher as recommendations:
 
-- *Would be suggested here*, with the facts and files behind each signal.
-- *Would not be suggested here*: a signal does not hold in a complete inspection, or an
-  exception does.
-- *Can’t tell yet*: something could not be established, for example a dependency inherited from
-  a parent build file outside the repository. Missing evidence is never treated as absence.
+- **Would be suggested here** — signals matched with evidence (files and lines)
+- **Would not be suggested here** — signal failed or exception triggered
+- **Can’t tell yet** — missing info (e.g., inherited dependencies outside the repo)
 
-The tools the skill needs are looked up, never run, and do not change the verdict. A verdict
-is about the rules only: it says nothing about the skill's quality or what an agent will do
-with it.
+Verdict is about rules only—not skill quality or agent behavior.
 
 ## Checks
 
