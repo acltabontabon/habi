@@ -4,13 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
-  # release.yml runs the same checks before building a release.
+  # release.yml runs the same checks before building a release. Installers are built there,
+  # from a tag, and nowhere else.
   workflow_call:
-    inputs:
-      skip-installers:
-        description: Skip the unsigned installer builds (the release builds its own).
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -23,8 +19,52 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Which jobs a change needs, from the files it touches: a docs fix does not build Rust on two
+  # operating systems. A release (a tag), a new branch, or a change to these workflows runs all.
+  changes:
+    name: What changed
+    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    outputs:
+      rust: ${{ steps.areas.outputs.rust }}
+      frontend: ${{ steps.areas.outputs.frontend }}
+      dependencies: ${{ steps.areas.outputs.dependencies }}
+      website: ${{ steps.areas.outputs.website }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - id: areas
+        shell: bash
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          everything() {
+            for area in rust frontend dependencies website; do echo "$area=true" >> "$GITHUB_OUTPUT"; done
+          }
+          if [ "$TAG" = "true" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            everything
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE"...HEAD)
+          printf '%s\n' "$files"
+          if grep -q '^\.github/workflows/' <<< "$files"; then
+            everything
+            exit 0
+          fi
+          touches() { grep -Eq "$1" <<< "$files" && echo true || echo false; }
+          {
+            echo "rust=$(touches '^(crates/|apps/desktop/src-tauri/|apps/desktop/src/bindings/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|\.cargo/|schema/|fixtures/|deny\.toml$)')"
+            echo "frontend=$(touches '^(apps/desktop/(src/|public/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|vite\.config\.ts$|tsconfig\.json$|biome\.json$|index\.html$|node-shims\.d\.ts$)|CHANGELOG\.md$|scripts/changelog\.mjs$)')"
+            echo "dependencies=$(touches '(^|/)(Cargo\.(toml|lock)|package\.json|pnpm-lock\.yaml)$|^deny\.toml$|^THIRD_PARTY_NOTICES\.md$|^scripts/third-party-notices\.mjs$')"
+            echo "website=$(touches '^(website/|docs/|README\.md$|CHANGELOG\.md$)')"
+          } >> "$GITHUB_OUTPUT"
+
   core:
     name: Rust core and CLI (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -62,14 +102,13 @@ jobs:
             exit 1
           fi
 
+  # Plain TypeScript and a browser test environment: one Linux run says what two would.
   frontend:
-    name: Frontend (${{ matrix.os }})
+    name: Frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15, windows-2025]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/desktop
@@ -91,8 +130,10 @@ jobs:
 
   website:
     name: Website
-    # website.yml builds and deploys on main; here it only guards pull requests.
-    if: github.event_name == 'pull_request'
+    # website.yml builds and deploys on main; here it only guards pull requests. The site renders
+    # docs/, so a broken link in a guide fails here first.
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.website == 'true'
     timeout-minutes: 15
     runs-on: ubuntu-24.04
     defaults:
@@ -113,6 +154,8 @@ jobs:
 
   licenses:
     name: Licenses and notices
+    needs: changes
+    if: needs.changes.outputs.dependencies == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-24.04
     steps:
@@ -149,38 +192,3 @@ jobs:
       - run: node scripts/check-links.mjs
       # CHANGELOG.md's format, and the update manifest the release publishes.
       - run: node --test scripts/*.test.mjs
-
-  desktop:
-    name: Desktop build (${{ matrix.os }})
-    if: ${{ !inputs.skip-installers }}
-    needs: [core, frontend]
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15, windows-2025]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master, 2026-10
-        with:
-          toolchain: "1.98.1"
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
-        with:
-          package_json_file: apps/desktop/package.json
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: apps/desktop/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: apps/desktop
-      - name: Build unsigned bundles (signing happens only in release.yml)
-        run: pnpm tauri build
-        working-directory: apps/desktop
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: habi-unsigned-${{ matrix.os }}
-          path: target/release/bundle
-          retention-days: 7

@@ -69,18 +69,11 @@ first launch therefore meets Gatekeeper or SmartScreen once, and
 [Getting started](../guide/getting-started.md#installing) says how to get past it. What protects
 users after that is the updater's own signature (below), not the operating system's.
 
-The release workflow would still pass these secrets to `tauri build` if they were ever added.
-**None are configured in this repository.**
-
-| What | Secrets / settings | State |
-|---|---|---|
-| macOS signing | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` (`bundle.macOS.signingIdentity`) | Wired up; no credentials |
-| macOS notarization | `APPLE_API_ISSUER`, `APPLE_API_KEY` (key id) and `APPLE_API_PRIVATE_KEY` (contents of the `.p8` file; the workflow writes it to a temporary file and sets `APPLE_API_KEY_PATH`) | Wired up; no credentials. Runs during `tauri build` |
-| Windows signing | Authenticode certificate (`bundle.windows.certificateThumbprint` or a `signCommand`) | Not implemented |
-| `habi` command-line binary | — | Not signed or notarized on either platform |
-
-Without them the workflow produces **unsigned** artifacts, as it does today, and the draft
-release says so. Never commit certificates or passwords.
+The release workflow signs nothing for Apple or Microsoft, and the draft release says so. The
+`habi` command-line binary is unsigned too. Should that change, Tauri reads the Apple
+certificate and notarization credentials from `APPLE_*` environment variables during
+`tauri build`, and a Windows Authenticode certificate from `bundle.windows`; see Tauri's
+distribution guides. Never commit certificates or passwords.
 
 ## Updates
 
@@ -92,8 +85,8 @@ person presses **Update and restart**, after pending edits are written. How a ch
 download and the signature fit together, and what leaves the machine, is in the
 [security model](../project/security-model.md#network-requests-habi-makes-on-its-own).
 
-**The updater key** is separate from the Apple and Windows code-signing credentials above, and
-needed for every release:
+**The updater key** has nothing to do with Apple or Windows code signing, and is needed for
+every release:
 
 | What | Where |
 |---|---|

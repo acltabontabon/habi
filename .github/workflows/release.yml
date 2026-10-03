@@ -16,8 +16,6 @@ jobs:
   checks:
     name: CI checks
     uses: ./.github/workflows/ci.yml
-    with:
-      skip-installers: true
     permissions:
       contents: read
 
@@ -88,38 +86,10 @@ jobs:
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
-      # Signing and notarization are configured only when the secrets exist; otherwise the
-      # artifacts are unsigned and the draft release says so. See docs/dev/release.md.
-      - name: macOS signing credentials (only when configured)
-        if: runner.os == 'macOS'
-        shell: bash
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
-        run: |
-          if [ -n "$APPLE_CERTIFICATE" ]; then
-            {
-              echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
-              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
-              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
-            } >> "$GITHUB_ENV"
-          fi
-          if [ -n "$APPLE_API_PRIVATE_KEY" ]; then
-            key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY.p8"
-            printf '%s' "$APPLE_API_PRIVATE_KEY" > "$key"
-            {
-              echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
-              echo "APPLE_API_KEY=$APPLE_API_KEY"
-              echo "APPLE_API_KEY_PATH=$key"
-            } >> "$GITHUB_ENV"
-          fi
+      # The installers are not signed by Apple or Microsoft, by choice (docs/dev/release.md).
       # Installed copies of Habi only accept an update signed by this key; without it a release
-      # could never be installed by the people already running Habi. Not the Apple or Windows
-      # code-signing credentials above: generate it once with `pnpm tauri signer generate`.
+      # could never be installed by the people already running Habi. It is not Apple or Windows
+      # code signing: generate it once with `pnpm tauri signer generate`.
       - name: Updater signing key
         shell: bash
         env:
@@ -214,9 +184,10 @@ jobs:
             printf '\n---\n\n'
             printf 'Draft release: check docs/dev/release.md before publishing. Publishing it is what\n'
             printf 'offers it to people already running Habi (`latest.json`).\n\n'
-            printf 'Installers are UNSIGNED for macOS and Windows unless code-signing secrets were configured\n'
-            printf 'for this run. Checksums: SHA256SUMS-macos.txt and SHA256SUMS-windows.txt. Verify\n'
-            printf 'provenance with `gh attestation verify <file> --repo acltabontabon/habi`.\n'
+            printf 'The installers are not signed by Apple or Microsoft. Opening them the first time:\n'
+            printf 'https://acltabontabon.com/habi/docs/getting-started/#installing\n\n'
+            printf 'Checksums: SHA256SUMS-macos.txt and SHA256SUMS-windows.txt. Verify provenance with\n'
+            printf '`gh attestation verify <file> --repo acltabontabon/habi`.\n'
           } > "$RUNNER_TEMP/body.md"
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
