@@ -1128,6 +1128,29 @@ pub async fn add_skill_files(
     .await
 }
 
+/// Copies files dropped onto the window into a skill. Only paths the person
+/// actually dropped (recently) are accepted; nothing is overwritten.
+#[tauri::command]
+pub async fn add_dropped_skill_files(
+    state: State<'_, AppState>,
+    id: String,
+    folder: String,
+    paths: Vec<String>,
+) -> CmdResult<LocalSkill> {
+    if !matches!(folder.as_str(), "" | "references" | "scripts" | "assets") {
+        return Err(HabiError::invalid("choose references, scripts or assets").to_info());
+    }
+    let wanted: Vec<std::path::PathBuf> = paths.iter().map(std::path::PathBuf::from).collect();
+    let Some(paths) = state.take_dropped(&wanted) else {
+        return Err(HabiError::invalid(
+            "only files dropped onto this window can be added this way; drop them again",
+        )
+        .to_info());
+    };
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.skills().add_files(&id, &folder, &paths)).await
+}
+
 #[tauri::command]
 pub async fn trash_skill(state: State<'_, AppState>, id: String) -> CmdResult<()> {
     let habi = state.habi()?;
@@ -1345,6 +1368,16 @@ pub async fn skill_templates(
 ) -> CmdResult<Vec<habi_core::skills::TemplateInfo>> {
     let habi = state.habi()?;
     blocking(habi, move |h| Ok(h.skill_templates())).await
+}
+
+#[tauri::command]
+pub async fn search_skill_files(
+    state: State<'_, AppState>,
+    id: String,
+    query: String,
+) -> CmdResult<Vec<habi_core::skills::FileMatch>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.search_skill_files(&id, &query)).await
 }
 
 // ----- updates for library copies --------------------------------------------------------

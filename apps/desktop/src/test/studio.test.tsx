@@ -387,4 +387,59 @@ describe("the Skill Studio", () => {
     const request = preview.mock.calls[0]?.[0].request as { projectId?: string } | undefined;
     expect(request?.projectId).toBe("p1");
   });
+
+  it("keeps the package as a small workspace where scripts are shown, never run", async () => {
+    handlers.get_skill = () => skill({ body: "Run `scripts/check.py`." });
+    handlers.read_skill_file = (args) => ({
+      path: args.path,
+      text: "#!/usr/bin/env python3\nprint('ok')\n",
+      binary: false,
+      size: 30,
+      digest: "e",
+      preview: null,
+    });
+    const written: string[] = [];
+    handlers.write_skill_file = (args) => {
+      written.push(`${args.path}`);
+      return {
+        ...skill(),
+        files: [
+          ...skill().files,
+          { path: String(args.path), size: 10, digest: "n", executable: false, text: true },
+        ],
+      };
+    };
+    handlers.set_skill_file_executable = (args) => ({
+      ...skill(),
+      files: [
+        ...skill().files,
+        { path: String(args.path), size: 10, digest: "n", executable: true, text: true },
+      ],
+    });
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "3", metaKey: true });
+    const files = document.getElementById("studio-mode-files") as HTMLElement;
+    // SKILL.md is written where it belongs.
+    expect(within(files).getByText("instructions →")).toBeInTheDocument();
+    await userEvent.click(within(files).getByTitle("scripts/check.py"));
+    expect(await within(files).findByText("python3 scripts/check.py")).toBeInTheDocument();
+    expect(within(files).getByText(/Habi never runs scripts/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Run/ })).not.toBeInTheDocument();
+
+    await userEvent.click(within(files).getByRole("button", { name: "New" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Shell script/ }));
+    await userEvent.type(within(files).getByLabelText("File name"), "verify{Enter}");
+    await waitFor(() => expect(written).toContain("scripts/verify.sh"));
+  });
+
+  it("refuses to add dropped files the window did not receive", async () => {
+    // Without the desktop shell there are no drops to take: the hint stays, nothing listens.
+    handlers.get_skill = () => skill({ body: "Steps." });
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "3", metaKey: true });
+    expect(screen.getByText("Drop files onto the window to add them.")).toBeInTheDocument();
+    expect(invoke.mock.calls.some((c) => c[0] === "add_dropped_skill_files")).toBe(false);
+  });
 });

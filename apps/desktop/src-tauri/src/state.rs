@@ -7,6 +7,10 @@ use habi_core::service::Habi;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
+
+/// How long a dropped file stays importable.
+const DROP_WINDOW: Duration = Duration::from_secs(120);
 
 pub struct AppState {
     pub habi: Option<Arc<Habi>>,
@@ -17,6 +21,10 @@ pub struct AppState {
     /// accepts local paths only from this set, so a compromised webview
     /// cannot make Habi ingest arbitrary folders.
     pub picked_folders: Mutex<HashSet<PathBuf>>,
+    /// Files dropped onto the window, with when. Importing a dropped file
+    /// accepts only paths the person dropped in the last few minutes, for
+    /// the same reason as `picked_folders`.
+    dropped: Mutex<HashMap<PathBuf, Instant>>,
     pub watcher: Mutex<Option<crate::watch::ProjectWatcher>>,
     _log_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
 }
@@ -32,9 +40,35 @@ impl AppState {
             startup_error,
             jobs: Mutex::new(HashMap::new()),
             picked_folders: Mutex::new(HashSet::new()),
+            dropped: Mutex::new(HashMap::new()),
             watcher: Mutex::new(None),
             _log_guard: guard,
         }
+    }
+
+    /// Remembers files the person dropped onto the window.
+    pub fn remember_dropped(&self, paths: &[PathBuf]) {
+        let mut dropped = self.dropped.lock().unwrap_or_else(PoisonError::into_inner);
+        let now = Instant::now();
+        dropped.retain(|_, at| now.duration_since(*at) < DROP_WINDOW);
+        for p in paths {
+            dropped.insert(p.clone(), now);
+        }
+    }
+
+    /// Takes the given paths if every one was dropped recently; each can be
+    /// taken once. `None` when any of them was not dropped (or too long ago).
+    pub fn take_dropped(&self, paths: &[PathBuf]) -> Option<Vec<PathBuf>> {
+        let mut dropped = self.dropped.lock().unwrap_or_else(PoisonError::into_inner);
+        let now = Instant::now();
+        dropped.retain(|_, at| now.duration_since(*at) < DROP_WINDOW);
+        if paths.is_empty() || !paths.iter().all(|p| dropped.contains_key(p)) {
+            return None;
+        }
+        for p in paths {
+            dropped.remove(p);
+        }
+        Some(paths.to_vec())
     }
 
     pub fn habi(&self) -> Result<Arc<Habi>, ErrorInfo> {

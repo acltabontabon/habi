@@ -124,6 +124,18 @@ pub enum SkillTemplate {
     ImplementationGuide,
 }
 
+/// A line of a package file that matched a search.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct FileMatch {
+    pub path: String,
+    /// 1-based.
+    pub line: u32,
+    /// The line, trimmed and shortened.
+    pub text: String,
+}
+
 /// A starter as the editor offers it.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -1328,6 +1340,37 @@ impl<'a> Skills<'a> {
         }
         self.touch(id)?;
         self.get(id)
+    }
+
+    /// Lines of the package's text files that contain `query` (ignoring
+    /// case), in path order, at most `MAX_MATCHES`. Reads only; nothing runs.
+    pub fn search_files(&self, id: &str, query: &str) -> Result<Vec<FileMatch>> {
+        const MAX_MATCHES: usize = 200;
+        let needle = query.trim().to_lowercase();
+        if needle.chars().count() < 2 {
+            return Ok(Vec::new());
+        }
+        let tree = self.tree(id)?;
+        let mut out = Vec::new();
+        for (path, bytes) in &tree.files {
+            if !crate::fsutil::is_probably_text(bytes) {
+                continue;
+            }
+            let text = String::from_utf8_lossy(bytes);
+            for (index, line) in text.lines().enumerate() {
+                if line.to_lowercase().contains(&needle) {
+                    out.push(FileMatch {
+                        path: path.clone(),
+                        line: u32::try_from(index + 1).unwrap_or(u32::MAX),
+                        text: line.trim().chars().take(160).collect(),
+                    });
+                    if out.len() >= MAX_MATCHES {
+                        return Ok(out);
+                    }
+                }
+            }
+        }
+        Ok(out)
     }
 
     pub fn read_file(&self, id: &str, rel: &str) -> Result<SkillFileContent> {

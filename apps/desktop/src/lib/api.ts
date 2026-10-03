@@ -21,6 +21,7 @@ import type { DiagnosticBundle } from "../bindings/DiagnosticBundle";
 import type { ErrorInfo } from "../bindings/ErrorInfo";
 import type { Excerpt } from "../bindings/Excerpt";
 import type { FileContent } from "../bindings/FileContent";
+import type { FileMatch } from "../bindings/FileMatch";
 import type { ImportFrom } from "../bindings/ImportFrom";
 import type { ImportInspection } from "../bindings/ImportInspection";
 import type { ImportOutcome } from "../bindings/ImportOutcome";
@@ -262,6 +263,11 @@ export const api = {
   /** What a copy changed since it was made or last updated; writes nothing. */
   skillLocalChanges: (id: string) => call<LocalChanges>("skill_local_changes", { id }),
   skillTemplates: () => call<TemplateInfo[]>("skill_templates"),
+  /** Lines of a skill's text files containing `query`; reads only. */
+  searchSkillFiles: (id: string, query: string) => call<FileMatch[]>("search_skill_files", { id, query }),
+  /** Copies files dropped onto the window into a folder of the skill; never overwrites. */
+  addDroppedSkillFiles: (id: string, folder: string, paths: string[]) =>
+    call<LocalSkill>("add_dropped_skill_files", { id, folder, paths }),
   /** For a copy of a library item: has that item changed, been removed, or can it not be compared? */
   skillUpstream: (id: string) => call<UpstreamStatus | null>("skill_upstream", { id }),
   /** File-by-file comparison with the library; writes nothing. */
