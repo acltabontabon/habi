@@ -8,6 +8,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { useOpenExternal } from "../lib/safeInvoke";
+import { highlight } from "./highlight";
 
 function isRelative(url: string): boolean {
   return Boolean(url) && !url.startsWith("#") && !url.startsWith("/") && !/^[a-z][a-z0-9+.-]*:/i.test(url);
@@ -121,6 +122,13 @@ export function Markdown({
             );
           },
           img: ({ alt }) => <span className="muted">[image: {alt ?? "no description"}]</span>,
+          code: ({ className, children }) => {
+            // Fenced code names its language; inline code does not.
+            const lang = /language-([\w+-]+)/.exec(className ?? "")?.[1];
+            const text = String(children ?? "");
+            const spans = lang ? highlight(text.replace(/\n$/, ""), lang) : null;
+            return <code className={className}>{spans ?? children}</code>;
+          },
         }}
       >
         {text}

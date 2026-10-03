@@ -50,12 +50,35 @@ its one signature — used only where it carries meaning.
 - **In this project** — skills and instruction files already in the repository, read-only,
   with real next actions (read, copy to My skills, turn part into a skill). Shown in place of
   recommendations when there is nothing to recommend yet.
-- **Skill editor** — title, save state and actions above; *Purpose · Instructions ·
-  Applicability · Files* in the main column; the applicability preview alongside (below on
-  narrow windows). Conditions hang on the thread, the same line that later ties each reason to
-  its evidence in the preview.
-- **Add skills** — three sources as rows, then an inspection list with origin, problems and
-  duplicate handling before anything is copied.
+- **My skills** — an index, not a wall of cards: a hanging letter (A–Z) or a time landmark
+  (recent) above each run of rows; each row is a title, the purpose's first sentence, the
+  origin with its library's dye (stitched for community), and status words only when true
+  (*2 things to finish*, *Changed here*, *Update available*, *In billing*). Facets appear
+  only when they match something; `/` finds, ↑/↓ or j/k move. Under the title, a thin strip
+  of threads shows where the collection comes from, by count.
+- **Skill Studio** — one skill as one document. The head is SKILL.md's frontmatter set as a
+  document head: the lineage line (the original's dye → the knot where it became yours → a
+  saffron thread for what was added since), the title, the purpose as the lede (`description:`
+  named quietly while it is written), `name:` with a deliberate *Change*, and the validity.
+  One action, *Use & share*; the rest behind ⋯. A sticky bar holds the three modes —
+  Instructions, When it applies, Files (⌘1–3) — and the panel toggle (⌘\\). The context
+  panel follows the work: outline, problems and package while writing; *Would Habi suggest
+  it?* while editing rules; file details among files; lineage; use & share. It docks beside
+  the document when the Studio has room and comes in as a sheet when it does not; below
+  700 px everything is one column and files are list-then-file.
+- **When it applies** — sentences, not a form: "Suggest this skill when *all/any* of these
+  hold", "Unless", "It needs", "Checked across *each module / the whole repository*". The
+  choices are words in the sentence; each condition hangs on a saffron thread, as its reason
+  will in a project. Tools are said apart: they never change whether Habi suggests a skill.
+  The YAML view shows "Habi reads this as" under the editor.
+- **Files** — a compact explorer (SKILL.md and habi.yaml lead to their modes) beside the open
+  file; one *New* menu; drop files on the window to add them to a chosen folder. A script
+  shows the command a person would run, to copy — there is no Run button anywhere.
+- **Add skills** — one list of where skills come from (a project, a folder, a Git repository,
+  a connected library), each with what it needs in place. A Git address forks into two
+  choices said apart: *Make my own copy* (read once, nothing connected) and *Connect as a
+  library* (nothing copied). Then an inspection list with origin, problems and duplicate
+  handling before anything is copied.
 - **Project home** — below 1020 px the header compacts (icon actions on the title row) and the
   workbench shows the list or one item with "← Recommendations", never both squeezed. The
   wide layout: the project's swatch, identity (name, path, branch), the recognized
