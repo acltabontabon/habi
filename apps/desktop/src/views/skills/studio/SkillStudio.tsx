@@ -8,7 +8,8 @@
  * suggest it, the materials that come with it (and, for developers, the
  * package as files). Testing it against a project and its provenance slide
  * in as sheets and leave again. The bar above says only where you are,
- * whether it is ready, and the one thing to do next: Use.
+ * whether it is ready, and the one thing to do next: Use when it is ready,
+ * and while it is a draft, the step that gets it there.
  *
  * Habi handles the machinery. While the skill is a fresh draft, its title
  * follows the first heading and its identifier follows the title; saving is
@@ -27,14 +28,14 @@ import { useToast } from "../../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
 import { useActions } from "../../../lib/actions";
 import { api } from "../../../lib/api";
+import { type Refinement, refinements } from "../../../lib/coach";
 import {
   firstHeading,
   isMaterial,
   materialsLine,
   materialsOf,
-  openingSentence,
+  type Signal,
   signalClause,
-  signalWords,
 } from "../../../lib/materials";
 import { useNav } from "../../../lib/nav";
 import {
@@ -48,6 +49,7 @@ import { useSafeInvoke } from "../../../lib/safeInvoke";
 import { type ScreenCommand, useRegisterScreenCommands } from "../../../lib/screenCommands";
 import { slugify } from "../../../lib/skills";
 import type { NavTarget, StudioLayer } from "../../../lib/studioNav";
+import { tagLabel } from "../../../lib/tags";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
@@ -55,9 +57,9 @@ import { Materials, useDropToAdd } from "./files/Materials";
 import { Instructions, Outline, useOutline } from "./Instructions";
 import { ProjectEvaluation } from "./ProjectEvaluation";
 import { isCopy, Provenance, ProvenanceSheet } from "./Provenance";
-import { Readiness } from "./Readiness";
+import { nextStep, Readiness } from "./Readiness";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
-import { addSignal, inferredSignal, WhenToUse, whenLine } from "./WhenToUse";
+import { addSignal, WhenToUse, whenLine } from "./WhenToUse";
 
 const LAYER_NAME: Record<StudioLayer, string> = {
   skill: "Instructions",
@@ -228,6 +230,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const editor = useRef<SourceEditorHandle>(null);
   const { outline, current } = useOutline(document.body, cursorLine);
   const materials = useMemo(() => materialsOf(skill.files, document.body), [skill.files, document.body]);
+  // Use only when there is something ready to use; until then, the next step.
+  const ready = !skill.diagnostics.some((d) => d.level === "error");
 
   // The project a test runs against: the one it was written for or copied from, else the most recent.
   const origin = skill.summary.origin;
@@ -312,7 +316,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
   const viewSource = (path: string | null) => {
     go("source");
-    setFile({ path });
+    setFile({ path: path ?? "SKILL.md" });
   };
 
   /** A material the instructions never mention: a line for it at the end, ready to be described. */
@@ -422,15 +426,31 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
   const showFolder = () => safely(() => api.revealSkill(id), "The folder was not shown");
 
-  const suggestFromInstructions = () => {
-    const s = inferredSignal(draft);
-    if (!s) return;
+  const suggestSignal = (signal: Signal) => {
     const before = draft.form;
-    draft.setForm(addSignal(before, s));
-    toast.show(`Habi will suggest it when ${signalClause(s)}.`, "ok", {
+    draft.setForm(addSignal(before, signal));
+    toast.show(`Habi will suggest it when ${signalClause(signal)}.`, "ok", {
       label: "Undo",
       run: () => draft.setForm(before),
     });
+  };
+
+  /** Each refinement's one action: the place, or the change, it asks for. */
+  const refine = (r: Refinement) => {
+    switch (r.kind) {
+      case "opening":
+        return setDocument((d) => ({ ...d, description: r.sentence }));
+      case "unfinished":
+        return reveal(r.line, true);
+      case "purpose":
+        return focusTarget({ field: "description" });
+      case "instructions":
+        return reveal(document.body.split("\n").length, true);
+      case "inferred":
+        return suggestSignal(r.signal);
+      case "signals":
+        return go("when");
+    }
   };
 
   const beforeChange = useCallback(async () => {
@@ -505,13 +525,17 @@ function Studio({ initial }: { initial: LocalSkill }) {
         icon: "play",
         run: () => commandsRef.current.openSheet("test"),
       },
-      {
-        id: "use",
-        label: "Use in a project…",
-        keywords: "install apply",
-        icon: "download",
-        run: () => void commandsRef.current.openDialog("use"),
-      },
+      ...(ready
+        ? [
+            {
+              id: "use",
+              label: "Use in a project…",
+              keywords: "install apply",
+              icon: "download" as const,
+              run: () => void commandsRef.current.openDialog("use"),
+            },
+          ]
+        : []),
       {
         id: "share",
         label: shareLabel.replace(/…$/, "…"),
@@ -553,19 +577,38 @@ function Studio({ initial }: { initial: LocalSkill }) {
         run: () => commandsRef.current.showFolder(),
       },
     ],
-    [shareLabel],
+    [shareLabel, ready],
   );
   useRegisterScreenCommands(title ? `In ${title}` : "In this skill", commands);
 
   const when = whenLine(draft);
   const brings = materialsLine(materials);
-  const inferred = layer === "skill" && !trashed ? inferredSignal(draft) : null;
   const filePath = layer === "materials" || layer === "source" ? file.path : null;
   const purposeLength = document.description.length;
+  const cameFrom = isCopy(origin) || origin.type === "instructions" || standing?.upstream != null;
   // Nothing written yet: nothing else asks for attention.
   const fresh =
     !title.trim() && !document.description.trim() && !document.body.trim() && materials.length === 0;
-  const opening = useMemo(() => openingSentence(document.body), [document.body]);
+  const { form } = draft;
+  const signalCount =
+    form.conditionsEditable && skill.metadataStatus !== "invalid"
+      ? form.appliesTags.length + form.appliesDependencies.length + form.appliesFiles.length
+      : null;
+  const better = useMemo(
+    () =>
+      trashed || broken
+        ? []
+        : refinements({
+            title,
+            description: document.description,
+            body: document.body,
+            signals: signalCount,
+            tagsLabel: tagLabel,
+          }),
+    [trashed, broken, title, document.description, document.body, signalCount],
+  );
+
+  const next = ready ? null : nextStep(draft);
 
   const sheetTitle = sheet === "test" ? "Test against a project" : "Where it came from";
 
@@ -639,7 +682,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
             identEditing={identEditing}
             setIdentEditing={setIdentEditing}
             onFix={focusTarget}
-            onWhen={() => go("when")}
+            better={better}
+            onRefine={refine}
           />
           {trashed ? (
             <Button variant="primary" onClick={() => void restore()}>
@@ -647,9 +691,15 @@ function Studio({ initial }: { initial: LocalSkill }) {
             </Button>
           ) : (
             <>
-              <Button variant="primary" onClick={() => void openDialog("use")}>
-                Use
-              </Button>
+              {next ? (
+                <Button variant="primary" onClick={() => focusTarget(next.target)}>
+                  {next.label}
+                </Button>
+              ) : ready ? (
+                <Button variant="primary" onClick={() => void openDialog("use")}>
+                  Use
+                </Button>
+              ) : null}
               <Menu
                 label="More for this skill"
                 items={[
@@ -762,7 +812,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
                           : ""
                       }`}
                 </p>
-                {fresh ? null : (
+                {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
+                {fresh || !cameFrom ? null : (
                   <Provenance
                     summary={skill.summary}
                     standing={standing}
@@ -783,26 +834,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     </span>
                   </button>
                 </nav>
-                {!trashed && !broken && !document.description.trim() && opening ? (
-                  <p className="sk-infer">
-                    No purpose yet.
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => setDocument((d) => ({ ...d, description: opening }))}
-                    >
-                      Use the opening line
-                    </button>
-                  </p>
-                ) : inferred ? (
-                  <p className="sk-infer">
-                    Looks related to {signalWords(inferred).text.replace(/ (is used|code is present)$/, "")}{" "}
-                    projects.
-                    <button type="button" className="link-btn" onClick={suggestFromInstructions}>
-                      Suggest it there
-                    </button>
-                  </p>
-                ) : null}
               </header>
               {broken ? (
                 <p className="sk-broken">
@@ -859,6 +890,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                 onPath={(path, line) => setFile({ path, line })}
                 onSource={(on) => (on ? viewSource(null) : go("materials"))}
                 onReference={reference}
+                onWhen={() => go("when")}
               />
             </div>
           </section>

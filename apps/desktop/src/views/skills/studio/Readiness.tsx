@@ -6,9 +6,11 @@
  * being ready, rarely something to look at.
  */
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import type { Diagnostic } from "../../../bindings/Diagnostic";
 import type { SkillStanding } from "../../../bindings/SkillStanding";
 import { Icon } from "../../../components/Icon";
 import { Button } from "../../../components/ui";
+import type { Refinement } from "../../../lib/coach";
 import { plural } from "../../../lib/format";
 import { useSkills } from "../../../lib/queries";
 import { identifierProblem, slugify } from "../../../lib/skills";
@@ -102,10 +104,27 @@ function Identifier({
   };
 
   if (!editing) {
+    // Without a name yet, one thing to say: where it will come from, or how to give it one.
+    if (!document.name) {
+      if (trashed) return <span className="rd-quiet">none</span>;
+      if (!title.trim()) return <span className="rd-quiet">follows the title</span>;
+      return (
+        <span className="rd-ident">
+          <button
+            type="button"
+            className="link-quiet"
+            id="studio-identifier"
+            onClick={() => setEditing(true)}
+          >
+            Set
+          </button>
+        </span>
+      );
+    }
     const nameProblem = identifierProblem(document.name);
     return (
       <span className="rd-ident">
-        <code className={nameProblem ? "is-problem" : undefined}>{document.name || "not set"}</code>
+        <code className={nameProblem ? "is-problem" : undefined}>{document.name}</code>
         {!trashed ? (
           <button
             type="button"
@@ -113,7 +132,7 @@ function Identifier({
             id="studio-identifier"
             onClick={() => setEditing(true)}
           >
-            {document.name ? "Change" : "Set"}
+            Change
           </button>
         ) : null}
       </span>
@@ -176,10 +195,60 @@ function Identifier({
   );
 }
 
+/**
+ * A problem as the author would put it. A draft without a name is asked for
+ * a title (its identifier follows), never told its frontmatter lacks `name`.
+ */
+function needWords(
+  d: Diagnostic,
+  draft: SkillDraft,
+): { text: string; target: NavTarget | null; label?: string } {
+  const p = plainProblem(d);
+  if (p.target?.field === "identifier" && !draft.document.name) {
+    return draft.title.trim()
+      ? { text: "It needs an identifier.", target: { field: "identifier" }, label: "Set the identifier" }
+      : {
+          text: "It needs a title; its identifier follows from it.",
+          target: { field: "title" },
+          label: "Give it a title",
+        };
+  }
+  return p;
+}
+
 export function readinessOf(draft: SkillDraft) {
   const errors = draft.skill.diagnostics.filter((d) => d.level === "error");
   const notes = draft.skill.diagnostics.filter((d) => d.level !== "error");
   return { errors, notes, ready: errors.length === 0 };
+}
+
+/**
+ * While a skill is not ready, the one thing to do next, in the words of the
+ * fix: name it, then say what it is for, then whatever else is left. A skill
+ * without a title is named by its title (the identifier follows it), not by
+ * its identifier.
+ */
+export function nextStep(draft: SkillDraft): { label: string; target: NavTarget } | null {
+  const { errors } = readinessOf(draft);
+  if (errors.length === 0) return null;
+  const problems = errors.map((d) => ({ d, p: plainProblem(d) }));
+  const naming = problems.find((x) => x.p.target?.field === "identifier");
+  if (naming && !draft.title.trim()) return { label: "Give it a title", target: { field: "title" } };
+  if (naming) {
+    return {
+      label: draft.document.name ? "Fix the identifier" : "Set the identifier",
+      target: { field: "identifier" },
+    };
+  }
+  const purpose = problems.find((x) => x.p.target?.field === "description");
+  if (purpose) {
+    return {
+      label: draft.document.description.trim() ? "Shorten the purpose" : "Add a purpose",
+      target: { field: "description" },
+    };
+  }
+  const first = problems.find((x) => x.p.target);
+  return first?.p.target ? { label: targetLabel(first.p.target), target: first.p.target } : null;
 }
 
 export function Readiness({
@@ -188,16 +257,19 @@ export function Readiness({
   identEditing,
   setIdentEditing,
   onFix,
-  onWhen,
+  better,
+  onRefine,
 }: {
   draft: SkillDraft;
   standing: SkillStanding | undefined;
   identEditing: boolean;
   setIdentEditing: (on: boolean) => void;
   onFix: (t: NavTarget) => void;
-  onWhen: () => void;
+  /** What would make it better beyond being valid, most useful first. */
+  better: Refinement[];
+  onRefine: (r: Refinement) => void;
 }) {
-  const { skill, document, trashed } = draft;
+  const { document, trashed } = draft;
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const { errors, notes, ready } = readinessOf(draft);
@@ -225,7 +297,6 @@ export function Readiness({
     {
       done: ready,
       label: "A valid Agent Skills package",
-      detail: <span className="rd-quiet">works without Habi</span>,
     },
   ];
 
@@ -242,6 +313,13 @@ export function Readiness({
         <span className="rd-dot" aria-hidden="true" />
         {ready ? "Ready" : "Draft"}
         {!ready ? <span className="rd-count"> · {plural(errors.length, "thing")} to finish</span> : null}
+        {/* Ready, with ways to make it better: a saffron knot, its count unfolding on hover. */}
+        {ready && better.length > 0 ? (
+          <span className="rd-better">
+            <span className="rd-better-dot" aria-hidden="true" />
+            <span className="rd-better-count"> · {better.length} to improve</span>
+          </span>
+        ) : null}
       </button>
       <Popover
         open={open}
@@ -259,7 +337,7 @@ export function Readiness({
             <p className="rd-kicker">Needs attention</p>
             <ul className="rd-list">
               {errors.map((d, i) => {
-                const p = plainProblem(d);
+                const p = needWords(d, draft);
                 return (
                   <li key={i} className="rd-item is-todo">
                     <span className="rd-mark" aria-hidden="true">
@@ -275,7 +353,7 @@ export function Readiness({
                             className="link-btn"
                             onClick={() => p.target && fix(p.target)}
                           >
-                            {targetLabel(p.target)}
+                            {p.label ?? targetLabel(p.target)}
                           </button>
                         </>
                       ) : null}
@@ -299,30 +377,30 @@ export function Readiness({
             ))}
           </ul>
         </section>
-        {notes.length > 0 || !skill.summary.hasApplicability ? (
+        {notes.length > 0 || better.length > 0 ? (
           <section className="rd-group">
-            <p className="rd-kicker">Optional</p>
+            <p className="rd-kicker">To make it better</p>
             <ul className="rd-list">
-              {!skill.summary.hasApplicability ? (
-                <li className="rd-item is-optional">
+              {better.map((r) => (
+                <li key={r.kind} className="rd-item is-optional">
                   <span className="rd-mark" aria-hidden="true">
                     ○
                   </span>
                   <span>
-                    Habi won’t suggest it on its own.{" "}
+                    {r.text}{" "}
                     <button
                       type="button"
                       className="link-btn"
                       onClick={() => {
                         setOpen(false);
-                        onWhen();
+                        onRefine(r);
                       }}
                     >
-                      Add signals
+                      {r.action}
                     </button>
                   </span>
                 </li>
-              ) : null}
+              ))}
               {notes.map((d, i) => {
                 const p = plainProblem(d);
                 return (

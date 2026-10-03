@@ -50,6 +50,7 @@ export function FileEditor({
   line,
   onSaved,
   onState,
+  bare,
 }: {
   skillId: string;
   file: SkillFileContent;
@@ -58,6 +59,8 @@ export function FileEditor({
   line?: number | null;
   onSaved: (skill: LocalSkill) => void;
   onState?: (path: string, state: SaveState) => void;
+  /** The file exactly as written: no preview, no language label (the head says it). */
+  bare?: boolean;
 }) {
   const [text, setText] = useState(file.text ?? "");
   const [previewing, setPreviewing] = useState(false);
@@ -121,8 +124,10 @@ export function FileEditor({
 
   return (
     <div className="file-editor">
-      <div className="file-editor-bar">
-        {language === "markdown" ? (
+      <div className={`file-editor-bar${bare ? " is-bare" : ""}`}>
+        {bare ? (
+          <span />
+        ) : language === "markdown" ? (
           <fieldset className="studio-switch">
             <legend className="visually-hidden">View</legend>
             <button

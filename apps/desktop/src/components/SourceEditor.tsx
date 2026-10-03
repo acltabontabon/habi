@@ -140,7 +140,7 @@ export type SourceEditorHandle = {
 };
 
 /** A problem on a line, marked in the margin with its explanation. */
-export type LineMark = { line: number; level: "error" | "warning" | "info"; message: string };
+export type LineMark = { line: number; level: "error" | "warning" | "info" | "todo"; message: string };
 
 const theme = EditorView.theme({
   "&": { color: "var(--ink)", backgroundColor: "transparent", fontSize: "13.5px" },

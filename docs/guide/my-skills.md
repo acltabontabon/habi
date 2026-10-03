@@ -32,7 +32,8 @@ there is no purpose yet, *Use the opening line* takes the first sentence of the 
 ## The Skill Studio
 
 A skill opens inside its knowledge: the title, the **purpose** (the `description` agents read
-to decide when to load it), where it came from, and the instructions. Everything else is a
+to decide when to load it), where it came from (for a skill that came from a library, a folder
+or a project; one written here needs no line), and the instructions. Everything else is a
 layer of the same skill, named in one line each under the purpose:
 
 - **Instructions** (⌘1) — Markdown, written as the document it is. Away from the caret the
