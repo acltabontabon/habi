@@ -292,7 +292,7 @@ export function SkillReader({
     return () => window.removeEventListener("keydown", onKey);
   }, [file, open, openFile, setOpen]);
 
-  if (detail.isPending) return <Working>Reading the skill…</Working>;
+  if (detail.isPending) return <Working stage>Reading the skill…</Working>;
   if (detail.isError) return <ErrorNotice error={detail.error} />;
   if (!item || !shape) return null;
   const { body, source } = detail.data;

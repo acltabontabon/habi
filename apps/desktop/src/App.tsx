@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider, useToast } from "./components/Toasts";
+import { Tooltips } from "./components/Tooltips";
 import { ErrorNotice, Working } from "./components/ui";
 import { type Actions, ActionsContext, type NewSkillContext } from "./lib/actions";
 import { api } from "./lib/api";
@@ -36,6 +37,7 @@ export function App() {
     <QueryClientProvider client={client}>
       <ToastProvider>
         <Startup />
+        <Tooltips />
       </ToastProvider>
     </QueryClientProvider>
   );

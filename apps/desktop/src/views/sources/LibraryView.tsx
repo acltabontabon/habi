@@ -794,7 +794,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
       <section className="library-reader" ref={readerBox}>
         {source.sample ? <SampleBanner /> : null}
         {/* A catalog library carries its back link in its header; others get one of their own. */}
-        {entry && library.data ? null : (
+        {(entry && library.data) || (entry && library.isPending) ? null : (
           <div className="library-back">
             <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
             {source.sample ? null : <DisconnectButton source={source} />}
@@ -854,6 +854,8 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
           />
         ) : library.data ? (
           <Empty title="This library has no skills yet" />
+        ) : library.isPending ? (
+          <Working stage>Reading the library…</Working>
         ) : null}
       </section>
       {sheet ? <SourceSheet source={source} onClose={() => setSheet(false)} /> : null}
