@@ -147,6 +147,8 @@ jobs:
         with:
           node-version: 24
       - run: node scripts/check-links.mjs
+      # CHANGELOG.md's format, and the update manifest the release publishes.
+      - run: node --test scripts/*.test.mjs
 
   desktop:
     name: Desktop build (${{ matrix.os }})

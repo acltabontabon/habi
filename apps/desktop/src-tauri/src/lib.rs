@@ -9,6 +9,7 @@ mod commands;
 #[cfg(test)]
 mod ipc_tests;
 mod state;
+mod updates;
 mod watch;
 
 use habi_core::service::Habi;
@@ -129,6 +130,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let state = match (paths, paths_error) {
                 (Some(paths), _) => match Habi::open(paths) {
@@ -157,6 +159,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
+            updates::check_for_update,
+            updates::install_update,
+            updates::restart_app,
             commands::get_settings,
             commands::set_settings,
             commands::cancel_job,

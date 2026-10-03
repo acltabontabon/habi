@@ -84,6 +84,11 @@ Open:
   not implemented. Until both exist, installers are unsigned and users see Gatekeeper or
   SmartScreen warnings. The `habi` command-line binary is not signed or notarized on either
   platform.
+- **Updater key.** The key pair exists (the public key is in `tauri.conf.json`), but the
+  private key is not yet a GitHub secret (`TAURI_SIGNING_PRIVATE_KEY`), and the release
+  workflow stops without it. Updating also needs the repository public, since `latest.json`
+  is fetched from its releases anonymously. No release has been published yet, so an update
+  check currently finds nothing.
 - **Client smoke tests** have not been run against installed Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie.
 - **Manual Windows smoke test.** The Windows installers are built in CI but have not been
   installed and used by hand.

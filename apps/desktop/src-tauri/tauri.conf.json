@@ -69,5 +69,16 @@
       "../../../NOTICE": "NOTICE",
       "../../../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUyREQ5RTIyMUREMUZDRjcKUldUMy9ORWRJcDdkNG9EM05JdWxqQkptWHhmVG55NFR4SHhyZ2hHbks3aExwUk1Qc010eTZLd0YK",
+      "endpoints": [
+        "https://github.com/acltabontabon/habi/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
