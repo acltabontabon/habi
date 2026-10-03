@@ -785,6 +785,12 @@ pub fn plan(p: &Plan) {
     for n in &p.notes {
         println!("\n  note: {}", cli_wording(n));
     }
+    for s in p.mcp_suggestions.iter().filter(|s| !s.added) {
+        println!(
+            "\n  note: `{}` now suggests the `{}` MCP server. Add it with `habi update --mcp`.",
+            s.item, s.server
+        );
+    }
     for c in &p.conflicts {
         println!("\n  CONFLICT {} — {}", c.path, c.message);
         if !c.options.is_empty() {

@@ -230,6 +230,7 @@ describe("review dialog", () => {
       },
     ],
     notes: [],
+    mcpSuggestions: [],
     recovery: "Restore from history.",
   };
 
@@ -281,5 +282,39 @@ describe("review dialog", () => {
     expect(screen.getByText(/1 file will change/)).toBeInTheDocument();
     // The button states the scope, so there is no separate Scope section.
     expect(apply).toHaveAttribute("title", plan.title);
+  });
+
+  it("offers MCP servers an update newly suggests and plans again when asked", async () => {
+    const user = userEvent.setup();
+    const suggestion = { item: "JPA entity review", server: "github" };
+    invoke.mockImplementation(async (cmd: string, args: { addMcp?: boolean }) => {
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "plan_update") {
+        return {
+          ...plan,
+          action: "update",
+          conflicts: [],
+          mcpSuggestions: [{ ...suggestion, added: !!args.addMcp }],
+        };
+      }
+      throw { code: "notFound", message: cmd };
+    });
+    wrap(
+      <ReviewDialog
+        projectId="p"
+        request={{ kind: "update", keys: ["k"], title: "JPA entity review" }}
+        onClose={() => {}}
+      />,
+      "p",
+    );
+    const box = await screen.findByRole("checkbox", { name: /Add the suggested MCP configuration/ });
+    expect(box).not.toBeChecked();
+    expect(screen.getByText("github")).toBeInTheDocument();
+    expect(invoke).toHaveBeenCalledWith("plan_update", expect.objectContaining({ addMcp: false }));
+    await user.click(box);
+    expect(
+      await screen.findByRole("checkbox", { name: /Add the suggested MCP configuration/ }),
+    ).toBeChecked();
+    expect(invoke).toHaveBeenCalledWith("plan_update", expect.objectContaining({ addMcp: true }));
   });
 });

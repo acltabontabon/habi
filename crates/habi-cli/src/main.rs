@@ -108,6 +108,9 @@ Examples:
     Update {
         /// Installed item ids to update (default: every item with an update).
         items: Vec<String>,
+        /// Also add MCP servers an item suggests now but did not when it was installed.
+        #[arg(long)]
+        mcp: bool,
         #[command(flatten)]
         project: ProjectArg,
         #[command(flatten)]
@@ -1065,6 +1068,7 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
         }
         Command::Update {
             items,
+            mcp,
             project: p,
             apply,
         } => {
@@ -1110,7 +1114,7 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
             if !apply.dry_run {
                 project.keep();
             }
-            let plan = habi.plan_update(&project.id, &keys, &decisions(&apply))?;
+            let plan = habi.plan_update(&project.id, &keys, mcp, &decisions(&apply))?;
             review_and_apply(ctx, plan, &apply, &project, "update")
         }
         Command::Remove {

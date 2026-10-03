@@ -244,9 +244,7 @@ By design, or not solved yet:
   Microsoft code signing, so the first launch needs one confirmation
   ([how](../guide/getting-started.md#installing)). Updates are signed with Habi's own updater key
   and verified before they install.
-- Smaller gaps: an update does not add an MCP server an item newly suggests, and restoring a
-  case-only rename keeps the new letter case
-  ([recovery](../guide/recovery.md#known-limitations)); an install on this machine is journaled
+- Smaller gaps: an install on this machine is journaled
   but no screen offers to restore it; turning an existing file into an
   OpenAPI specification is noticed after a rescan ([detectors](../library-authors/detectors.md));
   comments inside `habi.yaml` are not kept when the share form rewrites it

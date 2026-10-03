@@ -72,6 +72,7 @@ habi install liquibase-migration-review --client claude-code,cursor
 habi install jpa-entity-review --client codex --mcp --dry-run
 habi status                                    # installed items, local edits, updates
 habi update                                    # every item with an update, three-way
+habi update --mcp                              # ...and add MCP servers items suggest only now
 habi remove jpa-entity-review
 habi history                                   # operations Habi performed here
 habi restore <operation>                       # undo an operation

@@ -723,11 +723,15 @@ pub async fn plan_update(
     state: State<'_, AppState>,
     project_id: String,
     keys: Vec<String>,
+    add_mcp: bool,
     decisions: Decisions,
 ) -> CmdResult<Plan> {
     check_decisions(&decisions)?;
     let habi = state.habi()?;
-    blocking(habi, move |h| h.plan_update(&project_id, &keys, &decisions)).await
+    blocking(habi, move |h| {
+        h.plan_update(&project_id, &keys, add_mcp, &decisions)
+    })
+    .await
 }
 
 #[tauri::command]

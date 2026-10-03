@@ -782,7 +782,7 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
         .unwrap()
         .key;
     let update = habi
-        .plan_update(&project_id, &[key], &Decisions::new())
+        .plan_update(&project_id, &[key], false, &Decisions::new())
         .unwrap();
     assert!(update.is_blocked());
     assert_eq!(update.conflicts[0].kind, ConflictKind::LocalEdits);

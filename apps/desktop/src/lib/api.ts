@@ -183,8 +183,8 @@ export const api = {
     includeMcp: boolean,
     decisions: Decisions,
   ) => call<Plan>("plan_install", { projectId, items, clients, includeMcp, decisions }),
-  planUpdate: (projectId: string, keys: string[], decisions: Decisions) =>
-    call<Plan>("plan_update", { projectId, keys, decisions }),
+  planUpdate: (projectId: string, keys: string[], addMcp: boolean, decisions: Decisions) =>
+    call<Plan>("plan_update", { projectId, keys, addMcp, decisions }),
   planRemove: (projectId: string, keys: string[], decisions: Decisions) =>
     call<Plan>("plan_remove", { projectId, keys, decisions }),
   planRestore: (projectId: string, operationId: string, decisions: Decisions) =>

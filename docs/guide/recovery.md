@@ -38,18 +38,21 @@ Restore recomputes `.habi/lock.json` (doesn't restore it as-is) to handle overla
 - All others → go back to pre-operation entries
 - Only files actually on disk are recorded; deleted files are unlisted
 
-## Known limitations
+Restoring a case-only rename (`checklist.md` → `Checklist.md`) renames the file back, also on
+case-insensitive filesystems (macOS, Windows default), where both names are the same file.
 
-**Case-only renames** — On case-insensitive filesystems (macOS, Windows default), restoring
-`checklist.md` → `Checklist.md` keeps the new case (content same; lock finds the file).
-Rename by hand if the old case matters.
+## MCP updates
+
+An update adopts changed server definitions and removes servers the item no longer needs. A
+server the item suggests only now is never added unasked: the update preview lists it under
+*New MCP server* with *Add the suggested MCP configuration* (off by default; `habi update --mcp`
+in the CLI). Items installed without MCP configuration are not offered any.
+
+## Known limitations
 
 **Pre-release lock files** — Builds before 0.1.0 don't record file creation. Habi deletes
 `AGENTS.md`/`CLAUDE.md` only if empty; skips MCP file deletion. Shared sections/servers handled
 conservatively. Reinstall affected items to update the record.
-
-**MCP updates** — Updates adopt changed server definitions and remove unneeded ones. Don't
-auto-add newly suggested servers; reinstall with *Add suggested MCP configuration* to add them.
 
 ## Libraries
 

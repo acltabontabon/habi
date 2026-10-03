@@ -1345,6 +1345,7 @@ impl Habi {
         &self,
         project: &str,
         keys: &[String],
+        add_mcp: bool,
         decisions: &Decisions,
     ) -> Result<Plan> {
         let p = self.existing_project(project)?;
@@ -1353,7 +1354,7 @@ impl Habi {
             .iter()
             .map(|k| self.payload_for_key(k, &libraries))
             .collect::<Result<Vec<_>>>()?;
-        Ok(self.keep(plan::plan_update(&p.root, &payloads, decisions)?))
+        Ok(self.keep(plan::plan_update(&p.root, &payloads, add_mcp, decisions)?))
     }
 
     pub fn plan_remove(

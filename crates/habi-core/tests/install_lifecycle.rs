@@ -277,7 +277,12 @@ fn full_lifecycle_preserves_user_content() {
         .unwrap();
     let update = env
         .habi
-        .plan_update(&env.project_id, std::slice::from_ref(&installed_key), &none)
+        .plan_update(
+            &env.project_id,
+            std::slice::from_ref(&installed_key),
+            false,
+            &none,
+        )
         .unwrap();
     assert_eq!(update.conflicts.len(), 1);
     assert_eq!(update.conflicts[0].kind, ConflictKind::LocalEdits);
@@ -298,7 +303,12 @@ fn full_lifecycle_preserves_user_content() {
     );
     let update = env
         .habi
-        .plan_update(&env.project_id, std::slice::from_ref(&installed_key), &keep)
+        .plan_update(
+            &env.project_id,
+            std::slice::from_ref(&installed_key),
+            false,
+            &keep,
+        )
         .unwrap();
     assert!(update.conflicts.is_empty());
     env.habi.apply(&update.id).unwrap();
@@ -811,11 +821,12 @@ fn case_only_renames_executable_bits_and_user_deletions() {
         .plan_update(
             &env.project_id,
             std::slice::from_ref(&key),
+            false,
             &Decisions::new(),
         )
         .unwrap();
     assert!(update.conflicts.is_empty(), "{:?}", update.conflicts);
-    env.habi.apply(&update.id).unwrap();
+    let updated = env.habi.apply(&update.id).unwrap();
     let names: Vec<String> = std::fs::read_dir(installed.join("references"))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -832,6 +843,34 @@ fn case_only_renames_executable_bits_and_user_deletions() {
         habi_core::fsutil::is_executable(&installed.join("scripts/validate.sh")),
         "scripts stay executable"
     );
+
+    // Restoring the update gives the file its old letter case back, also on
+    // file systems that read both names as one file.
+    let restore = env
+        .habi
+        .plan_restore(&env.project_id, &updated.id, &Decisions::new())
+        .unwrap();
+    assert!(restore.conflicts.is_empty(), "{:?}", restore.conflicts);
+    env.habi.apply(&restore.id).unwrap();
+    let names: Vec<String> = std::fs::read_dir(installed.join("references"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, vec!["checklist.md".to_string()], "case restored");
+    assert!(!installed.join("scripts/validate.sh").exists());
+    let lock = std::fs::read_to_string(env.project.join(".habi/lock.json")).unwrap();
+    assert!(lock.contains("references/checklist.md") && !lock.contains("references/Checklist.md"));
+    // Put the update back for the rest of the test.
+    let again = env
+        .habi
+        .plan_update(
+            &env.project_id,
+            std::slice::from_ref(&key),
+            false,
+            &Decisions::new(),
+        )
+        .unwrap();
+    env.habi.apply(&again.id).unwrap();
 
     // A user deletes an installed file: Habi asks before putting it back.
     std::fs::remove_file(installed.join("SKILL.md")).unwrap();

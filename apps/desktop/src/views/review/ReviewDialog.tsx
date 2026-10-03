@@ -317,6 +317,8 @@ export function ReviewDialog({
   const [includeMcp, setIncludeMcp] = useState(
     request.kind === "install" ? (request.includeMcp ?? false) : false,
   );
+  // An update does not add MCP servers an item suggests only now, unless asked.
+  const [addMcp, setAddMcp] = useState(false);
   const [decisions, setDecisions] = useState<Decisions>({});
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
@@ -357,7 +359,7 @@ export function ReviewDialog({
   );
 
   const plan = useQuery<Plan>({
-    queryKey: ["plan", projectId, request, chosen, includeMcp, decisions],
+    queryKey: ["plan", projectId, request, chosen, includeMcp, addMcp, decisions],
     enabled: request.kind !== "install" || (chosen.length > 0 && !detecting),
     retry: false,
     gcTime: 0,
@@ -373,7 +375,7 @@ export function ReviewDialog({
         case "update":
           return projectId === null
             ? api.planUpdateMachine(request.keys, decisions)
-            : api.planUpdate(projectId, request.keys, decisions);
+            : api.planUpdate(projectId, request.keys, addMcp, decisions);
         case "remove":
           return projectId === null
             ? api.planRemoveMachine(request.keys, decisions)
@@ -635,6 +637,31 @@ export function ReviewDialog({
                       ? "Your skill folders already match. Installing again would not modify any file."
                       : "The project already matches. Installing again would not modify any file."}
                   </Notice>
+                ) : null}
+
+                {p.mcpSuggestions.length > 0 ? (
+                  <section aria-labelledby="mcp-title">
+                    <h3 id="mcp-title" className="review-heading">
+                      New MCP {p.mcpSuggestions.length === 1 ? "server" : "servers"}
+                    </h3>
+                    <label
+                      className="check mcp-option"
+                      title="Only the servers listed here; no secrets are written."
+                    >
+                      <input type="checkbox" checked={addMcp} onChange={(e) => setAddMcp(e.target.checked)} />
+                      <span>
+                        <strong>Add the suggested MCP configuration</strong>
+                        <ul className="review-notes">
+                          {p.mcpSuggestions.map((s) => (
+                            <li key={`${s.item}-${s.server}`}>
+                              <span className="mono">{s.server}</span>
+                              <span className="muted"> · suggested by {s.item} since you installed it</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </span>
+                    </label>
+                  </section>
                 ) : null}
 
                 {p.changes.length > 0 ? (

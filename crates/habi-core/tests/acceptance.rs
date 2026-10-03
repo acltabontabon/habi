@@ -217,7 +217,12 @@ fn acceptance_scenario() {
     local.push_str("\nTeam note: page the DBA for changes to the invoice table.\n");
     std::fs::write(&installed_path, &local).unwrap();
     let update = habi
-        .plan_update(&project.id, std::slice::from_ref(&key), &Decisions::new())
+        .plan_update(
+            &project.id,
+            std::slice::from_ref(&key),
+            false,
+            &Decisions::new(),
+        )
         .unwrap();
     assert_eq!(update.conflicts.len(), 1);
     assert_eq!(update.conflicts[0].kind, ConflictKind::LocalEdits);
@@ -226,7 +231,7 @@ fn acceptance_scenario() {
         ".agents/skills/liquibase-migration-review/SKILL.md".into(),
         Resolution::Keep,
     );
-    let update = habi.plan_update(&project.id, &[key], &keep).unwrap();
+    let update = habi.plan_update(&project.id, &[key], false, &keep).unwrap();
     if !update.changes.is_empty() {
         habi.apply(&update.id).unwrap();
     }
