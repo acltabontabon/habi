@@ -31,7 +31,7 @@ export function CommandPalette({
   const projects = useRecentProjects();
   const sources = useSources();
   const skills = useSkills();
-  const { openProject, newSkill, addSkills } = useActions();
+  const { openProject, newSkill, addSkills, showWelcome } = useActions();
   const client = useQueryClient();
   const toast = useToast();
   const sample = useCreateSample();
@@ -241,6 +241,12 @@ export function CommandPalette({
                     onSelect={() => run(() => navigate({ name: "sources", view: "folder" }))}
                   >
                     <Icon name="folder" /> <span>Use a folder as a library…</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="welcome setup git tools prerequisites intro"
+                    onSelect={() => run(showWelcome)}
+                  >
+                    <Icon name="thread" /> <span>Welcome and setup</span>
                   </Command.Item>
                   <Command.Item value="refresh all libraries" onSelect={() => run(() => void refreshAll())}>
                     <Icon name="refresh" /> <span>Refresh all libraries</span>

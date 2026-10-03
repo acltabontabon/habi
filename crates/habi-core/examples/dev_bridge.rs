@@ -98,7 +98,9 @@ impl Bridge {
                 .store
                 .setting("desktop")?
                 .and_then(|t| serde_json::from_str(&t).ok())
-                .unwrap_or(json!({ "autoRefreshHours": 12, "checkForUpdates": true }))),
+                .unwrap_or(
+                    json!({ "autoRefreshHours": 12, "checkForUpdates": true, "showWelcome": true }),
+                )),
             "set_settings" => {
                 let settings: Value = arg(a, "settings")?;
                 h.store.set_setting("desktop", &settings.to_string())?;

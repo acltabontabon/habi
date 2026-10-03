@@ -27,3 +27,7 @@ All notable changes to Habi are listed here. The format follows
   libraries are marked as not reviewed by your team, and anything that downloads code or touches
   credentials is flagged. Habi never runs a skill's scripts.
 - **A `habi` command-line tool** with the same abilities, for terminals and scripts.
+- **A welcome that checks your setup.** On start, Habi says what it is for and shows whether Git
+  (needed to pull libraries) and the GitHub and GitLab CLIs (for pull and merge requests) are on
+  this machine, with how to install any that are missing. Turn it off from the welcome itself;
+  Settings brings it back.

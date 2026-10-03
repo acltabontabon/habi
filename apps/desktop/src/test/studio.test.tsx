@@ -44,7 +44,7 @@ const templates = [
   },
 ];
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn() };
+const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
 
 function wrap(ui: ReactNode, initial: Route = { name: "skills", skillId: "k" }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -22,7 +22,7 @@ import previewSource from "./fixtures/catalog-source-preview.json";
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn() };
+const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
 
 const catalog = catalogFixture as unknown as CatalogEntry[];
 const library = previewLibrary as unknown as LibraryIndex;

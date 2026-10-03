@@ -21,6 +21,7 @@ const actions: Actions = {
   openProject: vi.fn(async () => undefined),
   newSkill: vi.fn(),
   addSkills: vi.fn(),
+  showWelcome: vi.fn(),
 };
 
 function wrap(ui: ReactNode, projectId: string) {

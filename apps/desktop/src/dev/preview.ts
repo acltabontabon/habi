@@ -18,6 +18,8 @@ import plan from "../test/fixtures/plan-install.json";
 
 type Args = Record<string, unknown> | undefined;
 
+const has = (flag: string) => new URLSearchParams(window.location.search).has(flag);
+
 /** Cancels the fetch the design preview is holding open, if any. */
 let heldFetch: (() => void) | null = null;
 
@@ -28,7 +30,7 @@ const overviews: Record<string, unknown> = {
 
 const projects = [billing.project, monorepo.project];
 const source = billing.sources[0];
-let settings = { autoRefreshHours: 12, checkForUpdates: true };
+let settings = { autoRefreshHours: 12, checkForUpdates: true, showWelcome: true };
 
 // A newer release waiting, then what updating to it changed: so the offer, the
 // report and the marks in the index can all be looked at.
@@ -64,8 +66,9 @@ function answer(cmd: string, args: Args): unknown {
         version: "0.1.0-preview",
         dataDir: "~/Library/Application Support/com.acltabontabon.Habi",
         platform: "macos",
-        gitAvailable: true,
-        ghAvailable: true,
+        // `?nogit` shows a machine without the tools, `?nogh` one with only Git.
+        gitAvailable: !has("nogit"),
+        ghAvailable: !has("nogit") && !has("nogh"),
         glabAvailable: false,
         startupError: null,
       };

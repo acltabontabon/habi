@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectPick } from "./bindings/ProjectPick";
 import type { ProjectRecord } from "./bindings/ProjectRecord";
+import type { Settings } from "./bindings/Settings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { Tooltips } from "./components/Tooltips";
@@ -12,7 +13,7 @@ import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
 import { NavProvider, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
-import { invalidateSkills, keys, useAppInfo } from "./lib/queries";
+import { invalidateSkills, keys, useAppInfo, useSettings } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
 import { UpdatesProvider } from "./lib/updates";
 import { AboutView } from "./views/AboutView";
@@ -27,6 +28,7 @@ import { AddSkillsDialog, type AddSkillsStart } from "./views/skills/AddSkillsDi
 import { SkillsView } from "./views/skills/SkillsView";
 import { SourcesView } from "./views/sources/SourcesView";
 import { Welcome } from "./views/Welcome";
+import { WelcomeOverlay } from "./views/WelcomeOverlay";
 
 function makeClient() {
   return new QueryClient({
@@ -111,6 +113,27 @@ function Shell() {
   const [adding, setAdding] = useState<AddSkillsStart | null>(null);
   useScheduledRefresh();
 
+  // The welcome opens once as Habi starts, unless the person turned it off.
+  const settings = useSettings();
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const welcomeDecided = useRef(false);
+  useEffect(() => {
+    if (welcomeDecided.current || !settings.data) return;
+    welcomeDecided.current = true;
+    if (settings.data.showWelcome === true) setWelcomeOpen(true);
+  }, [settings.data]);
+  const closeWelcome = (hideNext: boolean) => {
+    setWelcomeOpen(false);
+    const current = client.getQueryData<Settings>(keys.settings);
+    if (!current || (current.showWelcome === false) === hideNext) return;
+    const next = { ...current, showWelcome: !hideNext };
+    client.setQueryData(keys.settings, next);
+    api.setSettings(next).catch((e: unknown) => {
+      toast.show(`Settings not saved: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      void client.invalidateQueries({ queryKey: keys.settings });
+    });
+  };
+
   const [opening, setOpening] = useState<Opening | null>(null);
 
   const opened = useCallback(
@@ -171,6 +194,7 @@ function Shell() {
       openProject,
       newSkill: (context) => void newSkill(context),
       addSkills: (start) => setAdding(start ?? { source: "choose" }),
+      showWelcome: () => setWelcomeOpen(true),
     }),
     [openProject, newSkill],
   );
@@ -303,6 +327,7 @@ function Shell() {
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         {adding ? <AddSkillsDialog start={adding} onClose={() => setAdding(null)} /> : null}
+        {welcomeOpen ? <WelcomeOverlay onClose={closeWelcome} /> : null}
         {opening?.step === "chooser" ? (
           <ProjectChooser
             onOpen={(path) => void openFolder(api.openBrowsedProject(path), opening.stay)}
