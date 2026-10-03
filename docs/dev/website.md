@@ -52,7 +52,10 @@ colors, instead of in a code repository.
 - **Images** live in `docs/media/` and are served from there, at `/habi/docs/media/`; a PNG or
   JPEG keeps its space before it loads. The screenshots are taken from the running app by
   `node scripts/docs-screenshots.mjs`, which walks the sample workspace like a first-time user
-  (its header says how to start it), so retaking them after a change is one command.
+  (its header says how to start it), so retaking them after a change is one command. The pictures
+  in the sharing guide come from `node scripts/docs-screenshots-sharing.mjs`, which needs a GitHub
+  repository to open a pull request against (it closes the request when it finishes); both scripts
+  drive Chrome through `scripts/lib/cdp.mjs`.
 - **On a narrow screen** the list of pages folds into a `<details>`, so the pages need no script.
 
 `pnpm dev` renders the docs again on every request and reloads the page when a file in `docs/`
