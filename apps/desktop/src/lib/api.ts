@@ -22,6 +22,7 @@ import type { ErrorInfo } from "../bindings/ErrorInfo";
 import type { Excerpt } from "../bindings/Excerpt";
 import type { FileContent } from "../bindings/FileContent";
 import type { FileMatch } from "../bindings/FileMatch";
+import type { FolderListing } from "../bindings/FolderListing";
 import type { GitCopy } from "../bindings/GitCopy";
 import type { ImportFrom } from "../bindings/ImportFrom";
 import type { ImportInspection } from "../bindings/ImportInspection";
@@ -41,6 +42,8 @@ import type { Plan } from "../bindings/Plan";
 import type { PreviewRequest } from "../bindings/PreviewRequest";
 import type { ProjectKnowledge } from "../bindings/ProjectKnowledge";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
+import type { ProjectPick } from "../bindings/ProjectPick";
+import type { ProjectPlaces } from "../bindings/ProjectPlaces";
 import type { ProjectRecord } from "../bindings/ProjectRecord";
 import type { PruneReport } from "../bindings/PruneReport";
 import type { PublishOutcome } from "../bindings/PublishOutcome";
@@ -105,7 +108,12 @@ export const api = {
   cancelJob: (jobId: string) => call<boolean>("cancel_job", { jobId }),
   logUiError: (message: string, detail: string | null) => call<void>("log_ui_error", { message, detail }),
 
-  pickProject: () => call<ProjectRecord | null>("pick_project"),
+  pickProject: () => call<ProjectPick | null>("pick_project"),
+  /** A folder `pickProject` held back as a skills folder, opened anyway. */
+  openPickedProject: (path: string) => call<ProjectRecord>("open_picked_project", { path }),
+  projectPlaces: () => call<ProjectPlaces>("project_places"),
+  browseFolder: (path: string) => call<FolderListing>("browse_folder", { path }),
+  openBrowsedProject: (path: string) => call<ProjectRecord>("open_browsed_project", { path }),
   openRecentProject: (projectId: string) => call<ProjectRecord>("open_recent_project", { projectId }),
   recentProjects: () => call<ProjectRecord[]>("recent_projects"),
   forgetProject: (projectId: string) => call<void>("forget_project", { projectId }),

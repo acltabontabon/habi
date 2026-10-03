@@ -82,6 +82,66 @@ pub fn skipped_dir(name: &str, parent: &Path, root: &Path) -> bool {
     parent == root || BUILD_MANIFESTS.iter().any(|m| parent.join(m).is_file())
 }
 
+/// A chosen folder at a glance, before it is opened as a project.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FolderShape {
+    /// `SKILL.md` files near the top (the folder itself and three levels
+    /// down, hidden and dependency directories left out).
+    pub skills: u32,
+    /// Whether the folder itself has a build manifest.
+    pub build_manifest: bool,
+}
+
+impl FolderShape {
+    /// Skills and no build files: a library or a skill, not code to work on.
+    pub fn is_skills(&self) -> bool {
+        self.skills > 0 && !self.build_manifest
+    }
+}
+
+/// Looks at the top of `root` only: a few hundred directories at most.
+pub fn folder_shape(root: &Path) -> FolderShape {
+    folder_shape_within(root, 3, 400)
+}
+
+/// `folder_shape`, at most `depth` levels down and `max_dirs` directories in.
+pub fn folder_shape_within(root: &Path, depth_limit: usize, max_dirs: usize) -> FolderShape {
+    let build_manifest = BUILD_MANIFESTS.iter().any(|m| root.join(m).is_file());
+    let mut skills = 0;
+    let mut visited = 0;
+    let mut queue = std::collections::VecDeque::from([(root.to_path_buf(), 0)]);
+    while let Some((dir, depth)) = queue.pop_front() {
+        visited += 1;
+        if visited > max_dirs {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            // Never follows symbolic links: `file_type` does not.
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
+            if kind.is_file() && name == crate::library::SKILL_FILE {
+                skills += 1;
+            } else if kind.is_dir()
+                && depth < depth_limit
+                && !name.starts_with('.')
+                && !DEFAULT_SKIPPED_DIRS.contains(&name.as_ref())
+            {
+                queue.push_back((entry.path(), depth + 1));
+            }
+        }
+    }
+    FolderShape {
+        skills,
+        build_manifest,
+    }
+}
+
 /// File names that may hold secrets. They are left out of the file index so
 /// no pattern can surface them, and their contents are never read.
 const SECRET_FILE_PATTERNS: &[&str] = &[
@@ -410,6 +470,31 @@ mod tests {
     }
 
     #[cfg(unix)]
+    #[test]
+    fn folder_shape_tells_a_skills_folder_from_a_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("skills/review-a-pull-request")).unwrap();
+        fs::write(root.join("skills/review-a-pull-request/SKILL.md"), "").unwrap();
+        let shape = folder_shape(root);
+        assert_eq!(shape.skills, 1);
+        assert!(shape.is_skills());
+
+        // A single skill folder, chosen directly.
+        assert!(folder_shape(&root.join("skills/review-a-pull-request")).is_skills());
+
+        // A project with skills installed for its agents is still a project.
+        fs::write(root.join("package.json"), "{}").unwrap();
+        assert!(!folder_shape(root).is_skills());
+
+        let project = tempfile::tempdir().unwrap();
+        fs::create_dir_all(project.path().join(".claude/skills/x")).unwrap();
+        fs::write(project.path().join(".claude/skills/x/SKILL.md"), "").unwrap();
+        fs::create_dir_all(project.path().join("node_modules/y")).unwrap();
+        fs::write(project.path().join("node_modules/y/SKILL.md"), "").unwrap();
+        assert_eq!(folder_shape(project.path()).skills, 0);
+    }
+
     #[test]
     fn unreadable_directories_are_counted() {
         use std::os::unix::fs::PermissionsExt;

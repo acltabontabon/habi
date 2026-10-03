@@ -20,6 +20,7 @@
 #![cfg_attr(not(test), warn(clippy::string_slice, clippy::indexing_slicing))]
 
 pub mod brand;
+pub mod browse;
 pub mod cancel;
 pub mod catalog;
 pub mod checks;

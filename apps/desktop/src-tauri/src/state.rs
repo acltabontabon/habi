@@ -21,6 +21,9 @@ pub struct AppState {
     /// accepts local paths only from this set, so a compromised webview
     /// cannot make Habi ingest arbitrary folders.
     pub picked_folders: Mutex<HashSet<PathBuf>>,
+    /// Folders Habi's own project chooser listed. Only these can be browsed
+    /// into or opened from it; the chooser stays inside the home folder.
+    pub browsed_folders: Mutex<HashSet<PathBuf>>,
     /// Files dropped onto the window, with when. Importing a dropped file
     /// accepts only paths the person dropped in the last few minutes, for
     /// the same reason as `picked_folders`.
@@ -40,6 +43,7 @@ impl AppState {
             startup_error,
             jobs: Mutex::new(HashMap::new()),
             picked_folders: Mutex::new(HashSet::new()),
+            browsed_folders: Mutex::new(HashSet::new()),
             dropped: Mutex::new(HashMap::new()),
             watcher: Mutex::new(None),
             _log_guard: guard,
