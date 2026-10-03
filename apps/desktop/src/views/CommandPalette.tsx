@@ -266,6 +266,12 @@ export function CommandPalette({
                     <Icon name="settings" /> <span>Settings</span> <span className="palette-meta">⌘,</span>
                   </Command.Item>
                   <Command.Item
+                    value="privacy security data telemetry network safe"
+                    onSelect={() => run(() => navigate({ name: "privacy" }))}
+                  >
+                    <Icon name="eye" /> <span>Privacy and security</span>
+                  </Command.Item>
+                  <Command.Item
                     value="about whats new version changelog release notes"
                     onSelect={() => run(() => navigate({ name: "about" }))}
                   >

@@ -27,7 +27,9 @@ export type Route =
   | { name: "contributions"; contributionId?: string }
   | { name: "settings" }
   /** The version, what changed in each one, and who made Habi. */
-  | { name: "about" };
+  | { name: "about" }
+  /** What stays on this machine, what leaves it, and what Habi will never do on its own. */
+  | { name: "privacy" };
 
 type Nav = {
   route: Route;

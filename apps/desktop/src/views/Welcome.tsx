@@ -113,24 +113,29 @@ export function Welcome() {
       />
 
       <footer className="home-foot">
-        {projects.length === 0 ? (
-          <p className="home-more">
-            Or{" "}
-            <button
-              type="button"
-              className="link-quiet"
-              disabled={sample.busy}
-              title="Example libraries and projects, all labeled. Everything stays on this machine."
-              onClick={() => void sample.create()}
-            >
-              {sample.busy ? "Setting up the sample…" : "try the sample workspace"}
-            </button>{" "}
-            ·{" "}
-            <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
-              connect a library
-            </button>
-          </p>
-        ) : null}
+        <div className="home-left">
+          {projects.length === 0 ? (
+            <p className="home-more">
+              Or{" "}
+              <button
+                type="button"
+                className="link-quiet"
+                disabled={sample.busy}
+                title="Example libraries and projects, all labeled. Everything stays on this machine."
+                onClick={() => void sample.create()}
+              >
+                {sample.busy ? "Setting up the sample…" : "try the sample workspace"}
+              </button>{" "}
+              ·{" "}
+              <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
+                connect a library
+              </button>
+            </p>
+          ) : null}
+          <button type="button" className="link-quiet" onClick={() => navigate({ name: "privacy" })}>
+            What leaves this machine
+          </button>
+        </div>
         <p className="home-keys">
           <span>
             <Kbd>⌘N</Kbd> new skill

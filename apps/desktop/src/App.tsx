@@ -19,6 +19,7 @@ import { AboutView } from "./views/AboutView";
 import { CommandPalette } from "./views/CommandPalette";
 import { ContributionsView } from "./views/contributions/ContributionsView";
 import { ProjectChooser, SkillsFolderCaught } from "./views/OpenProject";
+import { PrivacyView } from "./views/PrivacyView";
 import { ProjectView } from "./views/project/ProjectView";
 import { SettingsView } from "./views/SettingsView";
 import { Sidebar } from "./views/Sidebar";
@@ -297,6 +298,7 @@ function Shell() {
             {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
             {route.name === "settings" && <SettingsView />}
             {route.name === "about" && <AboutView />}
+            {route.name === "privacy" && <PrivacyView />}
           </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
