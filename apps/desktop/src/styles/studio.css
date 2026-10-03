@@ -2838,6 +2838,87 @@ button.rd-word:hover,
   padding: var(--s5) 0 var(--s2) 40px;
 }
 
+/* Actions on a row: hidden at rest, in place of its state when pointed at or focused. */
+.mys-item {
+  position: relative;
+}
+
+.mys-acts {
+  position: absolute;
+  top: 50%;
+  right: var(--s2);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(4px);
+  transition:
+    opacity var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.mys-item:hover .mys-acts,
+.mys-item:focus-within .mys-acts {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%);
+}
+
+.mys-side {
+  transition: opacity var(--duration) var(--ease);
+}
+
+.mys-item:hover .mys-side,
+.mys-item:focus-within .mys-side {
+  opacity: 0;
+}
+
+/*
+ * Actions in a row speak at the row's own size: no boxes, one soft pill under
+ * whichever is pointed at, and Use a little brighter than the rest.
+ */
+.mys-acts {
+  gap: 2px;
+}
+
+.mys-acts .btn,
+.mys-acts .menu-trigger.is-icon {
+  height: 28px;
+  min-height: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.mys-acts .menu-trigger.is-icon {
+  width: 28px;
+  padding: 0;
+}
+
+.mys-acts .btn-primary {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mys-acts .btn-primary span::after {
+  content: " →";
+  color: var(--thread);
+}
+
+.mys-acts .btn:hover,
+.mys-acts .btn:focus-visible,
+.mys-acts .menu-trigger.is-icon:hover,
+.mys-acts .menu-trigger[aria-expanded="true"] {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
 .mys-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;

@@ -1183,20 +1183,29 @@ pub async fn export_skill(
     id: String,
 ) -> CmdResult<Option<String>> {
     let habi = state.habi()?;
+    let name = {
+        let (habi, id) = (habi.clone(), id.clone());
+        blocking(habi, move |h| Ok(h.skills().get(&id)?.summary.name)).await?
+    };
     let picked = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
-            .set_title("Choose where to put the skill folder")
-            .blocking_pick_folder()
+            .set_title("Save the skill as a zip")
+            .set_file_name(format!(
+                "{}.zip",
+                if name.is_empty() { "skill" } else { &name }
+            ))
+            .add_filter("Zip archive", &["zip"])
+            .blocking_save_file()
     })
     .await
     .map_err(|e| internal(e.to_string()))?;
-    let Some(folder) = picked else {
+    let Some(file) = picked else {
         return Ok(None);
     };
-    let dir = folder.into_path().map_err(|e| internal(e.to_string()))?;
+    let dest = file.into_path().map_err(|e| internal(e.to_string()))?;
     blocking(habi, move |h| {
-        let path = h.skills().export(&id, &dir)?;
+        let path = h.skills().export_zip(&id, &dest)?;
         Ok(Some(habi_core::paths::display_path(&path)))
     })
     .await

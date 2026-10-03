@@ -144,7 +144,7 @@ destination (library and branch), the last update, and one next action: *Continu
 | In the library | After a refresh, the library's tracked ref contains exactly the contributed files. |
 
 A contribution from My skills is a snapshot of the skill when sharing started. With no Git
-library connected, the skill can be exported as a plain folder instead; the draft is kept
+library connected, the skill can be exported as a zip instead; the draft is kept
 either way.
 
 Git hosts — not Habi — decide who may push, whether branches are protected and who must
@@ -154,7 +154,7 @@ every commit "approved". An `owner` field is attribution only.
 ## Requirements
 
 - The library must be a Git source (remote or local clone). Folder sources cannot receive
-  contributions (export the skill as a folder instead).
+  contributions (export the skill as a zip instead).
 - Git must know your name and email (`git config --global user.name/user.email`).
 
 ## CLI

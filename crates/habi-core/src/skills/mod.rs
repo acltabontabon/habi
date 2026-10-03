@@ -15,6 +15,7 @@
 //!   a `conflict` instead of overwriting.
 //! - Nothing here executes package content.
 
+mod archive;
 pub mod intake;
 pub mod lineage;
 pub mod upstream;
@@ -1731,6 +1732,21 @@ impl<'a> Skills<'a> {
             )?;
         }
         Ok(target)
+    }
+
+    /// The package as one zip archive at `dest` (replaced if it is there),
+    /// its files under a folder named by the identifier. Only a skill that
+    /// is ready can be exported.
+    pub fn export_zip(&self, id: &str, dest: &Path) -> Result<PathBuf> {
+        let (item, tree) = self.installable(id)?;
+        let bytes = archive::zip(
+            &item.name,
+            &tree.files,
+            &tree.executables,
+            archive::local_now(),
+        )?;
+        atomic_write_mode(dest, &bytes, Some(false))?;
+        Ok(dest.to_path_buf())
     }
 
     /// Local skills that are valid packages, as one library index. Items

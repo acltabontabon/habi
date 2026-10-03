@@ -305,8 +305,8 @@ impl Bridge {
             "restore_skill" => out(h.skills().restore(&s("id")?)?),
             "purge_skill" => out(h.skills().purge(&s("id")?)?),
             "export_skill" => match picked(a)? {
-                Some(dir) => {
-                    let path = h.skills().export(&s("id")?, &dir)?;
+                Some(file) => {
+                    let path = h.skills().export_zip(&s("id")?, &file)?;
                     Ok(json!(habi_core::paths::display_path(&path)))
                 }
                 None => Ok(Value::Null),
