@@ -435,3 +435,72 @@ fn local_skill_contract_end_to_end() {
     let restored = call(&webview, "restore_skill", json!({ "id": id })).unwrap();
     assert!(restored["summary"]["deletedAt"].is_null());
 }
+
+#[test]
+fn only_files_dropped_on_the_window_can_be_added_by_dropping() {
+    let home = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let skill = habi
+        .create_skill(
+            &habi_core::skills::NewSkill {
+                title: "Review".into(),
+                description: String::new(),
+                template: habi_core::skills::SkillTemplate::Blank,
+            },
+            None,
+        )
+        .unwrap();
+    let id = skill.summary.id.clone();
+    let checklist = outside.path().join("checklist.md");
+    std::fs::write(&checklist, "- look for the rollback\n").unwrap();
+    let secret = outside.path().join("id_rsa");
+    std::fs::write(&secret, "not dropped\n").unwrap();
+
+    let app = mock_builder()
+        .invoke_handler(tauri::generate_handler![
+            commands::add_dropped_skill_files,
+            commands::search_skill_files,
+        ])
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    app.manage(AppState::new(Some(habi), None, None));
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let add = |paths: &[&Path]| {
+        call(
+            &webview,
+            "add_dropped_skill_files",
+            json!({ "id": id, "folder": "references", "paths": paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>() }),
+        )
+    };
+
+    // A path the person did not drop is refused, whatever the webview says.
+    let refused = add(&[secret.as_path()]).unwrap_err();
+    assert_eq!(refused["code"], "invalidInput");
+
+    app.state::<AppState>()
+        .remember_dropped(std::slice::from_ref(&checklist));
+    // Asking for a dropped file together with one that was not is refused as a whole.
+    assert!(add(&[checklist.as_path(), secret.as_path()]).is_err());
+    let added = add(&[checklist.as_path()]).unwrap();
+    assert!(
+        added["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["path"] == "references/checklist.md")
+    );
+    // Each drop is taken once.
+    assert!(add(&[checklist.as_path()]).is_err());
+
+    let found = call(
+        &webview,
+        "search_skill_files",
+        json!({ "id": id, "query": "ROLLBACK" }),
+    )
+    .unwrap();
+    assert_eq!(found[0]["path"], "references/checklist.md");
+    assert_eq!(found[0]["line"], 1);
+}

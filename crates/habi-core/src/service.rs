@@ -1678,6 +1678,15 @@ impl Habi {
         self.skills().local_changes(id, &self.sources)
     }
 
+    /// Lines in a skill's text files that contain `query`.
+    pub fn search_skill_files(
+        &self,
+        id: &str,
+        query: &str,
+    ) -> Result<Vec<crate::skills::FileMatch>> {
+        self.skills().search_files(id, query)
+    }
+
     /// The starters the skill editor offers.
     pub fn skill_templates(&self) -> Vec<crate::skills::TemplateInfo> {
         crate::skills::SkillTemplate::offered()

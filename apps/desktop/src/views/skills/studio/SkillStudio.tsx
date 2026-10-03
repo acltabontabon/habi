@@ -23,17 +23,18 @@ import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
 import { useActions } from "../../../lib/actions";
 import { api } from "../../../lib/api";
 import { useNav } from "../../../lib/nav";
+import { fileLink } from "../../../lib/packageLinks";
 import { invalidateSkills, keys, useRecentProjects, useSkillsOverview } from "../../../lib/queries";
 import { useSafeInvoke } from "../../../lib/safeInvoke";
 import { type ScreenCommand, useRegisterScreenCommands } from "../../../lib/screenCommands";
 import type { NavTarget, StudioMode } from "../../../lib/studioNav";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
-import { FilesPane } from "../FilesPane";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
+import { FilesMode } from "./files/FilesMode";
 import { InstructionsMode } from "./InstructionsMode";
 import { Masthead } from "./Masthead";
-import { InstructionsPanel, LineagePanel, SharePanel } from "./Panels";
+import { FilesPanel, InstructionsPanel, LineagePanel, SharePanel } from "./Panels";
 import { ProjectEvaluation } from "./ProjectEvaluation";
 import { RulesMode } from "./RulesMode";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
@@ -120,7 +121,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const [writing, setWriting] = useState(true);
   const [cursorLine, setCursorLine] = useState(1);
   const [identEditing, setIdentEditing] = useState(false);
-  const [fileRequest, setFileRequest] = useState<{ path: string; nonce: number } | null>(null);
+  const [fileRequest, setFileRequest] = useState<{ path: string; line?: number; nonce: number } | null>(null);
+  const [openFilePath, setOpenFilePath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
   const editor = useRef<SourceEditorHandle>(null);
   const tabs = useRef<HTMLDivElement>(null);
@@ -190,11 +192,18 @@ function Studio({ initial }: { initial: LocalSkill }) {
     requestAnimationFrame(() => requestAnimationFrame(() => editor.current?.revealLine(line)));
   };
 
-  const openFile = (path: string) => {
-    if (path === "SKILL.md") return go("instructions");
+  const openFile = (path: string, line?: number) => {
+    if (path === "SKILL.md" && !broken) return line ? reveal(line) : go("instructions");
     if (/^habi\.ya?ml$/.test(path)) return go("rules");
     go("files");
-    setFileRequest({ path, nonce: Date.now() });
+    setFileRequest({ path, line, nonce: Date.now() });
+  };
+
+  /** From a file to the instructions, with a link to it where the caret was. */
+  const linkFromInstructions = (path: string) => {
+    go("instructions");
+    setWriting(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => editor.current?.insert(fileLink(path))));
   };
 
   /** From a problem, a dialog or the palette to the place that fixes it. */
@@ -211,7 +220,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
       );
       return;
     }
-    if (t.path) return openFile(t.path);
+    if (t.path) return openFile(t.path, t.line);
     if (t.mode === "instructions" && t.line) return reveal(t.line);
     if (t.mode) go(t.mode);
   };
@@ -478,10 +487,14 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     }
                   />
                 ) : (
-                  <FilesPane
+                  <FilesMode
                     skill={skill}
                     readOnly={trashed}
+                    active={mode === "files"}
+                    broken={broken}
                     request={fileRequest}
+                    onGoTo={go}
+                    onOpenChange={setOpenFilePath}
                     beforeChange={async () => {
                       if (!(await draft.flushAll())) throw new Error(NOT_SAVED);
                     }}
@@ -581,7 +594,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                 onOpenProject={() => void openProject({ stay: true })}
               />
             ) : (
-              <FilesAbout />
+              <FilesPanel draft={draft} path={openFilePath} onInsertLink={linkFromInstructions} />
             )}
           </div>
         </aside>
@@ -646,19 +659,6 @@ function StudioNotices({ draft, onRepair }: { draft: SkillDraft; onRepair: () =>
           {skill.documentError}. Repair the file as plain text; nothing was overwritten.
         </Notice>
       ) : null}
-    </div>
-  );
-}
-
-function FilesAbout() {
-  return (
-    <div className="panel-section">
-      <p className="panel-note">
-        A skill is a folder: <span className="mono">SKILL.md</span>, and optionally{" "}
-        <span className="mono">scripts/</span>, <span className="mono">references/</span> and{" "}
-        <span className="mono">assets/</span>. Agents read them when the instructions point there.
-      </p>
-      <p className="panel-note">Habi never runs a script. Viewing one is only viewing.</p>
     </div>
   );
 }

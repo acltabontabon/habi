@@ -144,6 +144,10 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // Files dropped onto the window may be imported, and only those.
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                window.state::<AppState>().remember_dropped(paths);
+            }
             if let tauri::WindowEvent::Destroyed = event {
                 // Stop background work and file watching when the window closes.
                 let state = window.state::<AppState>();
@@ -242,6 +246,8 @@ pub fn run() {
             commands::inspect_import,
             commands::import_skills,
             commands::skills_overview,
+            commands::search_skill_files,
+            commands::add_dropped_skill_files,
             commands::skill_local_changes,
             commands::skill_templates,
             commands::skill_upstream,

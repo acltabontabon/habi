@@ -15,11 +15,13 @@ import { api } from "../../../lib/api";
 import { plural, relativeTime } from "../../../lib/format";
 import { markdownOutline, sectionAt } from "../../../lib/markdownOutline";
 import { useNav } from "../../../lib/nav";
+import { KIND_WORD, kindOf } from "../../../lib/packageFiles";
 import { fileLink, scriptDoc } from "../../../lib/packageLinks";
 import { useOpenExternal } from "../../../lib/safeInvoke";
 import { originText, provenanceText, upstreamUrl } from "../../../lib/skills";
 import { type NavTarget, plainProblem, targetLabel } from "../../../lib/studioNav";
 import { UpstreamReview } from "../UpstreamPanel";
+import { size } from "./files/FileEditor";
 import type { SkillDraft } from "./useSkillDraft";
 
 export function PanelSection({
@@ -461,6 +463,130 @@ export function LineagePanel({
           onClose={() => setReviewing(false)}
           onApplied={reloadFromDisk}
         />
+      ) : null}
+    </>
+  );
+}
+
+// ----- among files --------------------------------------------------------------------------
+
+export function FilesPanel({
+  draft,
+  path,
+  onInsertLink,
+}: {
+  draft: SkillDraft;
+  /** The open file, if any. */
+  path: string | null;
+  onInsertLink: (path: string) => void;
+}) {
+  const { skill, document } = draft;
+  const entry = path ? skill.files.find((f) => f.path === path) : undefined;
+  if (!entry) {
+    const supporting = skill.files.filter((f) => f.path !== "SKILL.md" && !/^habi\.ya?ml$/.test(f.path));
+    const total = skill.files.reduce((n, f) => n + f.size, 0);
+    const unmentioned = supporting.filter((f) => !document.body.includes(f.path));
+    return (
+      <>
+        <PanelSection title="Package">
+          <p className="panel-note">
+            {plural(skill.files.length, "file")} · {size(total)}. Works without Habi wherever Agent Skills are
+            read.
+          </p>
+        </PanelSection>
+        {unmentioned.length > 0 ? (
+          <PanelSection title={`Not mentioned · ${unmentioned.length}`}>
+            <p className="panel-note">
+              Agents find supporting files through the instructions. These are not mentioned there yet:
+            </p>
+            <ul className="panel-files">
+              {unmentioned.map((f) => (
+                <li key={f.path}>
+                  <span className="panel-file">
+                    <span className="mono">{f.path}</span>
+                  </span>
+                  <span className="panel-file-actions is-shown">
+                    <button
+                      type="button"
+                      className="link-quiet"
+                      aria-label={`Link ${f.path} from the instructions`}
+                      onClick={() => onInsertLink(f.path)}
+                    >
+                      Link
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </PanelSection>
+        ) : null}
+        <PanelSection title="Safety">
+          <p className="panel-note">
+            Habi never runs a script — not when a skill is imported, opened, previewed or checked. Viewing one
+            is only viewing.
+          </p>
+        </PanelSection>
+      </>
+    );
+  }
+  const kind = kindOf(entry.path, entry.executable);
+  const mentioned = document.body.includes(entry.path);
+  const findings = skill.diagnostics.filter((d) => d.path === entry.path);
+  return (
+    <>
+      <PanelSection title="This file">
+        <dl className="panel-facts">
+          <dt>Kind</dt>
+          <dd>{KIND_WORD[kind]}</dd>
+          <dt>Size</dt>
+          <dd>{size(entry.size)}</dd>
+          <dt>Text</dt>
+          <dd>{entry.text ? "yes" : "no — kept as it is"}</dd>
+          {kind === "script" || entry.executable ? (
+            <>
+              <dt>Executable</dt>
+              <dd>{entry.executable ? "yes" : "no"}</dd>
+            </>
+          ) : null}
+        </dl>
+      </PanelSection>
+      <PanelSection title="From the instructions">
+        {mentioned ? (
+          <p className="panel-verdict tone-ok">
+            <Icon name="check" size={14} /> Mentioned, so agents can find it.
+          </p>
+        ) : (
+          <>
+            <p className="panel-note">
+              Not mentioned yet; agents find supporting files through the instructions.
+            </p>
+            <Button size="sm" variant="quiet" icon="plus" onClick={() => onInsertLink(entry.path)}>
+              Link it from the instructions
+            </Button>
+          </>
+        )}
+      </PanelSection>
+      {findings.length > 0 ? (
+        <PanelSection title="Problems">
+          <ul className="panel-findings">
+            {findings.map((d, i) => (
+              <li key={i} className={`panel-finding is-${d.level}`}>
+                <Icon name={d.level === "error" ? "warning" : "info"} size={13} />
+                <span className="panel-finding-text">
+                  {d.line ? <span className="mono">line {d.line} </span> : null}
+                  {d.message}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </PanelSection>
+      ) : null}
+      {kind === "script" ? (
+        <PanelSection title="Safety">
+          <p className="panel-note">
+            Habi stores this script and never runs it. An agent may, when it uses the skill.
+          </p>
+        </PanelSection>
       ) : null}
     </>
   );
