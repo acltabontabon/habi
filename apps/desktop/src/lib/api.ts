@@ -22,6 +22,7 @@ import type { ErrorInfo } from "../bindings/ErrorInfo";
 import type { Excerpt } from "../bindings/Excerpt";
 import type { FileContent } from "../bindings/FileContent";
 import type { FileMatch } from "../bindings/FileMatch";
+import type { GitCopy } from "../bindings/GitCopy";
 import type { ImportFrom } from "../bindings/ImportFrom";
 import type { ImportInspection } from "../bindings/ImportInspection";
 import type { ImportOutcome } from "../bindings/ImportOutcome";
@@ -256,6 +257,11 @@ export const api = {
   pickImportFolder: () => call<string | null>("pick_import_folder"),
   inspectImport: (from: ImportFrom, jobId?: string) =>
     call<ImportInspection>("inspect_import", { from, jobId: jobId ?? null }),
+  /** Fetches a Git repository to copy from, without connecting it (remote addresses only). */
+  openGitCopy: (location: string, jobId?: string) =>
+    call<GitCopy>("open_git_copy", { location, jobId: jobId ?? null }),
+  /** Discards a repository opened for copying; copies already made keep their original. */
+  forgetGitCopy: (sourceId: string) => call<void>("forget_git_copy", { sourceId }),
   importSkills: (from: ImportFrom, selections: ImportSelection[], jobId?: string) =>
     call<ImportOutcome>("import_skills", { from, selections, jobId: jobId ?? null }),
   /** Where each skill is installed and whether its library has a newer version; reads lock files. */

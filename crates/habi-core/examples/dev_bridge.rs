@@ -322,6 +322,8 @@ impl Bridge {
                 arg(a, "endLine")?,
                 &s("title")?,
             )?),
+            "open_git_copy" => out(h.open_git_copy(&s("location")?, cancel)?),
+            "forget_git_copy" => out(h.forget_git_copy(&s("sourceId")?)?),
             "inspect_import" => out(h.inspect_import(&arg(a, "from")?, cancel)?),
             "import_skills" => {
                 out(h.import_skills(&arg(a, "from")?, &arg::<Vec<_>>(a, "selections")?, cancel)?)

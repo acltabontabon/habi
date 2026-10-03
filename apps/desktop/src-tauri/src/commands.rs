@@ -1326,6 +1326,32 @@ pub async fn inspect_import(
     blocking(habi, move |h| h.inspect_import(&from, &cancel)).await
 }
 
+/// Fetches a Git repository to copy skills from, without connecting it.
+/// Only remote addresses: a local folder is chosen with the folder picker
+/// (Add skills → a folder), so the webview cannot name arbitrary paths.
+#[tauri::command]
+pub async fn open_git_copy(
+    state: State<'_, AppState>,
+    location: String,
+    job_id: Option<String>,
+) -> CmdResult<habi_core::service::GitCopy> {
+    if habi_core::source::is_local_location(location.trim()) {
+        return Err(HabiError::invalid(
+            "that is a folder on this machine; choose it with Add skills → A folder",
+        )
+        .to_info());
+    }
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.open_git_copy(&location, &cancel)).await
+}
+
+#[tauri::command]
+pub async fn forget_git_copy(state: State<'_, AppState>, source_id: String) -> CmdResult<()> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.forget_git_copy(&source_id)).await
+}
+
 #[tauri::command]
 pub async fn import_skills(
     state: State<'_, AppState>,
