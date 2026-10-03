@@ -80,7 +80,7 @@ habi recover                                   # roll back an interrupted operat
 
 `--client` takes a comma-separated list of `claude-code`, `cursor`, `codex`, `gemini-cli`,
 `copilot`, `opencode` and `junie`. Without it, Habi installs for the agent tools the project
-already uses ([how it tells](../guide/agent-tools.md#choosing-agent-tools)); if it finds none, it asks
+already uses ([how it tells](../guide/agent-tools.md#choosing-which-tools)); if it finds none, it asks
 you to name them. `--mcp` also adds the MCP server configuration an item suggests.
 
 Installing on this machine (into your own skill folders) is available in the desktop app only.
