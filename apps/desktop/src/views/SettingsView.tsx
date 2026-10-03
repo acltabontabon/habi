@@ -1,18 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import pkg from "../../package.json";
 import type { DiagnosticBundle } from "../bindings/DiagnosticBundle";
 import type { Settings } from "../bindings/Settings";
 import { useToast } from "../components/Toasts";
 import { Button, ErrorNotice, Section, Status, Working } from "../components/ui";
 import { api } from "../lib/api";
 import { pruneSummary } from "../lib/format";
+import { REPOSITORY } from "../lib/links";
+import { useNav } from "../lib/nav";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { useOpenExternal } from "../lib/safeInvoke";
 import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
-
-/** The repository Habi is developed in (from package.json). */
-const REPOSITORY = pkg.repository.url.replace(/\.git$/, "");
+import { UpdateStatus } from "./UpdateStatus";
 
 export function SettingsView() {
   const settings = useSettings();
@@ -20,6 +19,7 @@ export function SettingsView() {
   const client = useQueryClient();
   const toast = useToast();
   const openExternal = useOpenExternal();
+  const { navigate } = useNav();
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [error, setError] = useState<unknown>(null);
   const hasSample = useHasSample();
@@ -87,6 +87,29 @@ export function SettingsView() {
         </p>
       </Section>
 
+      <Section title="Habi updates" id="updates">
+        <label className="field">
+          <span className="field-label">Look for a newer version of Habi</span>
+          <select
+            className="input"
+            value={s.checkForUpdates ? "auto" : "manual"}
+            onChange={(e) => {
+              const on = e.target.value === "auto";
+              save((current) => ({ ...current, checkForUpdates: on }));
+            }}
+          >
+            <option value="auto">Automatically while Habi is open</option>
+            <option value="manual">Only when I ask</option>
+          </select>
+        </label>
+        <UpdateStatus />
+        <p className="muted">
+          Checking downloads one small file from this project's GitHub releases; nothing about you or your
+          projects is sent. A new version installs only when you press Update, and is verified against Habi's
+          signing key first.
+        </p>
+      </Section>
+
       <Section title="Data and space" id="data">
         <div className="settings-row">
           <p className="muted">
@@ -139,7 +162,12 @@ export function SettingsView() {
       <Section title="About" id="about">
         <dl className="meta-grid">
           <dt>Version</dt>
-          <dd>{info.data?.version}</dd>
+          <dd>
+            {info.data?.version}{" "}
+            <button type="button" className="link-quiet" onClick={() => navigate({ name: "about" })}>
+              What's new
+            </button>
+          </dd>
           <dt>Source</dt>
           <dd>
             <button type="button" className="link-quiet" onClick={() => openExternal(REPOSITORY)}>
@@ -169,8 +197,6 @@ export function SettingsView() {
           </dd>
           <dt>Privacy</dt>
           <dd>No account, no telemetry. Inspection and matching run on this machine.</dd>
-          <dt>Updates</dt>
-          <dd>Habi does not update itself. Install new versions manually from your release source.</dd>
         </dl>
       </Section>
     </div>

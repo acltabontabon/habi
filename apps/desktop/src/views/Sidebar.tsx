@@ -12,6 +12,7 @@ import { type Dye, useDyes } from "../lib/dye";
 import { freshnessText } from "../lib/format";
 import { useNav } from "../lib/nav";
 import { keys, useAppInfo, useContributions, useRecentProjects, useSources } from "../lib/queries";
+import { useNewVersionMark, useUpdates } from "../lib/updates";
 import { repositoryLabel } from "./sources/SourceSheet";
 
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
@@ -21,6 +22,9 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const sources = useSources();
   const contributions = useContributions();
   const info = useAppInfo();
+  const { state: update } = useUpdates();
+  const version = info.data?.version;
+  const unseen = useNewVersionMark(version);
   const [allProjects, setAllProjects] = useState(false);
   const client = useQueryClient();
   const toast = useToast();
@@ -230,7 +234,30 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           <Icon name="settings" />
           <span className="sidebar-item-text">Settings</span>
         </button>
-        {info.data?.version ? <span className="sidebar-version">v{info.data.version}</span> : null}
+        {version ? (
+          <button
+            type="button"
+            className={`sidebar-version${route.name === "about" ? " is-active" : ""}`}
+            aria-current={route.name === "about" ? "page" : undefined}
+            title={
+              update.phase === "available" || update.phase === "installing" || update.phase === "ready"
+                ? `Habi ${update.info.version} is available — what's new`
+                : "About Habi and what's new"
+            }
+            onClick={() => navigate({ name: "about" })}
+          >
+            v{version}
+            {update.phase === "available" || update.phase === "installing" || update.phase === "ready" ? (
+              <span className="sidebar-dot tone-warn">
+                <span className="visually-hidden"> An update is available</span>
+              </span>
+            ) : unseen ? (
+              <span className="sidebar-dot tone-ok">
+                <span className="visually-hidden"> New in this version</span>
+              </span>
+            ) : null}
+          </button>
+        ) : null}
       </div>
     </nav>
   );

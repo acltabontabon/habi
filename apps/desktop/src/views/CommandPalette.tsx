@@ -11,10 +11,13 @@ import { useActions } from "../lib/actions";
 import { api, newJobId } from "../lib/api";
 import { applicabilityLabel } from "../lib/format";
 import { setInspectorOpen } from "../lib/inspector";
+import { SUPPORT } from "../lib/links";
 import { useNav } from "../lib/nav";
 import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
+import { useOpenExternal } from "../lib/safeInvoke";
 import { useScreenCommands } from "../lib/screenCommands";
 import { summarize } from "../lib/skillFacts";
+import { useUpdates } from "../lib/updates";
 import { RemoveSampleDialog, useCreateSample, useHasSample } from "./SampleWorkspace";
 
 export function CommandPalette({
@@ -32,6 +35,8 @@ export function CommandPalette({
   const client = useQueryClient();
   const toast = useToast();
   const sample = useCreateSample();
+  const updates = useUpdates();
+  const openExternal = useOpenExternal();
   const hasSample = useHasSample();
   const [removingSample, setRemovingSample] = useState(false);
   const screen = useScreenCommands();
@@ -259,6 +264,29 @@ export function CommandPalette({
                     onSelect={() => run(() => navigate({ name: "settings" }))}
                   >
                     <Icon name="settings" /> <span>Settings</span> <span className="palette-meta">⌘,</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="about whats new version changelog release notes"
+                    onSelect={() => run(() => navigate({ name: "about" }))}
+                  >
+                    <Icon name="info" /> <span>About Habi and what's new</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="check for updates new version upgrade"
+                    onSelect={() =>
+                      run(() => {
+                        navigate({ name: "about" });
+                        void updates.check();
+                      })
+                    }
+                  >
+                    <Icon name="download" /> <span>Check for updates</span>
+                  </Command.Item>
+                  <Command.Item
+                    value="support coffee donate sponsor tip developer"
+                    onSelect={() => run(() => openExternal(SUPPORT))}
+                  >
+                    <Icon name="coffee" /> <span>Buy the developer a coffee</span>
                   </Command.Item>
                   <Command.Item
                     value="home welcome start"

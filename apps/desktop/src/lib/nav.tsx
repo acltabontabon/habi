@@ -25,7 +25,9 @@ export type Route =
       file?: string;
     }
   | { name: "contributions"; contributionId?: string }
-  | { name: "settings" };
+  | { name: "settings" }
+  /** The version, what changed in each one, and who made Habi. */
+  | { name: "about" };
 
 type Nav = {
   route: Route;

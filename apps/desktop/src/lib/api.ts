@@ -64,6 +64,7 @@ import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
 import type { TemplateInfo } from "../bindings/TemplateInfo";
+import type { UpdateInfo } from "../bindings/UpdateInfo";
 import type { UpdateReport } from "../bindings/UpdateReport";
 import type { UpstreamChoice } from "../bindings/UpstreamChoice";
 import type { UpstreamPlan } from "../bindings/UpstreamPlan";
@@ -105,6 +106,11 @@ export function newJobId(): string {
 
 export const api = {
   appInfo: () => call<AppInfo>("app_info"),
+  /** Asks GitHub whether a newer Habi exists; null when this is the newest. */
+  checkForUpdate: () => call<UpdateInfo | null>("check_for_update"),
+  /** Downloads and installs what the last check found (progress arrives as `update-progress`). */
+  installUpdate: () => call<void>("install_update"),
+  restartApp: () => call<void>("restart_app"),
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<Settings>("set_settings", { settings }),
   cancelJob: (jobId: string) => call<boolean>("cancel_job", { jobId }),
