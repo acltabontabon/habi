@@ -67,83 +67,87 @@ export function ReviewPanel({
   const inline = (review?.comments ?? []).filter((x) => x.kind === "inline").length;
 
   return (
-    <Section
-      title="Review"
-      id="review"
-      aside={
-        <div className="review-actions">
-          {url ? (
-            <Button variant="quiet" size="sm" icon="external" onClick={() => openExternal(url)}>
-              Open on {host}
-            </Button>
-          ) : null}
-          {canAsk ? (
-            <Button size="sm" icon="refresh" busy={busy === "check"} onClick={onCheck}>
-              Check status
-            </Button>
-          ) : null}
-          {c.state !== "draft" && !finished ? (
-            <Button
-              size="sm"
-              variant={review?.state === "changesRequested" ? "primary" : "secondary"}
-              icon="pencil"
-              busy={busy === "revise"}
-              onClick={onRevise}
-            >
-              Revise…
-            </Button>
-          ) : null}
-        </div>
-      }
-    >
-      {!canAsk ? (
-        <p className="muted">
-          {c.remote?.requestUnavailable ?? "Habi cannot reach a Git host for this library."} Review happens
-          wherever your team looks at the branch.
-        </p>
-      ) : review ? (
-        <>
+    <div className="review-card">
+      <Section
+        title={`${word[0]?.toUpperCase()}${word.slice(1)} on ${host}`}
+        id="review"
+        aside={
+          <div className="review-actions">
+            {url ? (
+              <Button variant="quiet" size="sm" icon="external" onClick={() => openExternal(url)}>
+                Open on {host}
+              </Button>
+            ) : null}
+            {canAsk ? (
+              <Button size="sm" icon="refresh" busy={busy === "check"} onClick={onCheck}>
+                Check status
+              </Button>
+            ) : null}
+            {c.state !== "draft" && !finished ? (
+              <Button
+                size="sm"
+                variant={review?.state === "changesRequested" ? "primary" : "secondary"}
+                icon="pencil"
+                busy={busy === "revise"}
+                onClick={onRevise}
+              >
+                Revise…
+              </Button>
+            ) : null}
+          </div>
+        }
+      >
+        {!canAsk ? (
           <p className="muted">
-            {host} {word} #{review.number}, checked {relativeTime(review.checkedAt)}. Habi asks only when you
-            check.
-            {review.approvedBy.length > 0 ? ` Approved by ${review.approvedBy.join(", ")}.` : ""}
-            {inline > 0 ? ` ${inline} comment${inline === 1 ? "" : "s"} on lines appear with the files.` : ""}
+            {c.remote?.requestUnavailable ?? "Habi cannot reach a Git host for this library."} Review happens
+            wherever your team looks at the branch.
           </p>
-          {general.length > 0 ? (
-            <ul className="review-comments" aria-label="Review comments">
-              {general.map((x, i) => (
-                <CommentItem key={i} comment={x} />
-              ))}
-            </ul>
-          ) : review.comments.length === 0 ? (
-            <p className="muted">No comments yet.</p>
-          ) : null}
-          {review.commentsTruncated ? (
-            <p className="muted">More comments exist than Habi shows; open the request to see all.</p>
-          ) : null}
-        </>
-      ) : (
-        <p className="muted">
-          Not checked yet. {c.publishedNote ? `${c.publishedNote} ` : ""}Checking reads the {word}'s state and
-          comments with your {host === "GitLab" ? "glab" : host === "GitHub" ? "gh" : "gh or glab"} sign-in;
-          nothing is sent.
-        </p>
-      )}
-      {finished ? (
-        <p className="muted">
-          This {word} is {review?.state === "merged" ? "merged" : "closed"}. To change the skill further,
-          share it again as a new contribution.
-        </p>
-      ) : c.state !== "draft" ? (
-        <p className="muted">
-          Revise sends a new commit to the same branch{url ? ` and ${word}` : ""}.{" "}
-          {c.origin.type === "localSkill"
-            ? "Edit the skill in My skills first; revising copies it again."
-            : c.origin.type === "projectSkill"
-              ? "Edit the skill in its project first; revising copies it again."
-              : "Revising reopens the files and form here."}
-        </p>
-      ) : null}
-    </Section>
+        ) : review ? (
+          <>
+            <p className="muted">
+              {host} {word} #{review.number}, checked {relativeTime(review.checkedAt)}. Habi asks only when
+              you check.
+              {review.approvedBy.length > 0 ? ` Approved by ${review.approvedBy.join(", ")}.` : ""}
+              {inline > 0
+                ? ` ${inline} comment${inline === 1 ? "" : "s"} on lines appear with the files.`
+                : ""}
+            </p>
+            {general.length > 0 ? (
+              <ul className="review-comments" aria-label="Review comments">
+                {general.map((x, i) => (
+                  <CommentItem key={i} comment={x} />
+                ))}
+              </ul>
+            ) : review.comments.length === 0 ? (
+              <p className="muted">No comments yet.</p>
+            ) : null}
+            {review.commentsTruncated ? (
+              <p className="muted">More comments exist than Habi shows; open the request to see all.</p>
+            ) : null}
+          </>
+        ) : (
+          <p className="muted">
+            Not checked yet. {c.publishedNote ? `${c.publishedNote} ` : ""}Checking reads the {word}'s state
+            and comments with your {host === "GitLab" ? "glab" : host === "GitHub" ? "gh" : "gh or glab"}{" "}
+            sign-in; nothing is sent.
+          </p>
+        )}
+        {finished ? (
+          <p className="muted">
+            This {word} is {review?.state === "merged" ? "merged" : "closed"}. To change the skill further,
+            share it again as a new contribution.
+          </p>
+        ) : c.state !== "draft" ? (
+          <p className="muted">
+            Revise sends a new commit to the same branch{url ? ` and ${word}` : ""}.{" "}
+            {c.origin.type === "localSkill"
+              ? "Edit the skill in My skills first; revising copies it again."
+              : c.origin.type === "projectSkill"
+                ? "Edit the skill in its project first; revising copies it again."
+                : "Revising reopens the files and form here."}
+          </p>
+        ) : null}
+      </Section>
+    </div>
   );
 }

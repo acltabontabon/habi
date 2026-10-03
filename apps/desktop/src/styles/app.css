@@ -2807,8 +2807,21 @@ details > summary.change-head::-webkit-details-marker {
 
 .contribution-head {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: var(--s3);
+}
+
+.contribution-kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.contribution-head .page-title {
+  margin-bottom: var(--s1);
+  font-size: clamp(28px, 2.6vw, 36px);
+  text-wrap: balance;
 }
 
 .start-contribution {
@@ -2817,12 +2830,38 @@ details > summary.change-head::-webkit-details-marker {
   justify-items: start;
 }
 
-.start-contribution .field-row {
+.start-contribution > .field,
+.start-grid {
   width: 100%;
 }
 
+.start-from {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--s5);
+}
+
+/* Two even columns, so every label and control shares an edge. */
+.start-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+  align-items: start;
+}
+
+.start-grid > .span-2 {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .start-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .contribution {
-  max-width: 1240px;
+  max-width: 1320px;
+  container: contribution / inline-size;
 }
 
 .contribution-status {
@@ -2871,72 +2910,388 @@ details > summary.change-head::-webkit-details-marker {
   color: var(--ink-muted);
 }
 
-/* Contributions: one dense row per contribution. */
+/* ---------- Contributions: a fluid page of cards ----------
+   Each contribution hangs on its library's warp thread (solid for the
+   team, stitched for the community). Cards share one grid, so their edges,
+   rows and buttons line up whatever the window; what needs you comes
+   first. */
+
+.page.narrow.sharing {
+  max-width: 1480px;
+}
+
+.sharing-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "kick new" "title new" "lead lead";
+  column-gap: var(--s6);
+  align-items: start;
+}
+
+.sharing-head > .kicker {
+  grid-area: kick;
+}
+
+.sharing-head > .page-title {
+  grid-area: title;
+  font-size: clamp(26px, 2.3vw, 32px);
+  text-wrap: balance;
+}
+
+.sharing-head > .lead-sm {
+  grid-area: lead;
+  margin-bottom: var(--s5);
+}
+
+.sharing-head > .sharing-new {
+  grid-area: new;
+  align-self: center;
+}
+
 .share-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--hairline-strong);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: var(--s4);
 }
 
 .share-row {
+  --dye: var(--hairline-strong);
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 236px 64px 150px;
-  align-items: center;
-  gap: var(--s4);
-  padding: 10px var(--s2);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.share-row-main {
-  display: grid;
-  gap: 2px;
+  grid-template-rows: auto auto auto 1fr;
+  gap: var(--s2);
   min-width: 0;
+  padding: var(--s4) var(--s4) var(--s3) calc(var(--s4) + 14px);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+  transition: border-color var(--duration) var(--ease);
 }
 
-.share-row-title {
-  font-weight: 500;
+.share-row:hover {
+  border-color: var(--hairline-strong);
+}
+
+/* The library's warp thread, down the card's left edge. */
+.share-row::before {
+  content: "";
+  position: absolute;
+  left: var(--s4);
+  top: var(--s4);
+  bottom: var(--s4);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--dye);
+}
+
+.share-row.is-stitched::before {
+  background: repeating-linear-gradient(to bottom, var(--dye) 0 6px, transparent 6px 10px);
+}
+
+.share-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 20px;
+}
+
+.share-row-lib {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.share-row-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.012em;
+  text-align: left;
+  text-wrap: balance;
+}
+
+.share-row .link-btn.share-row-title {
+  display: -webkit-box;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.share-row .link-btn.share-row-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.share-row-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
 }
 
 .share-row-dest {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .share-row-when {
+  flex: none;
   font-size: var(--text-sm);
-  color: var(--ink-muted);
-  text-align: right;
 }
 
-.share-row > .btn {
-  justify-self: end;
+/* Stitched seam between what the card is and what to do with it. */
+.share-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  align-self: end;
+  margin-top: var(--s1);
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--hairline-strong);
+}
+
+.share-row-foot > .state {
+  flex-wrap: wrap;
+  min-width: 0;
+  white-space: normal;
+  row-gap: 2px;
+}
+
+.share-row-foot > .btn {
+  flex: none;
+}
+
+/* Three knots on a thread: filled as the steps really happen. */
+.knots {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.knot {
+  position: relative;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  margin-left: 16px;
+  border: 1.5px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper-raised);
+}
+
+.knot:first-child {
+  margin-left: 0;
+}
+
+.knot + .knot::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 16px;
+  height: 1.5px;
+  background: var(--hairline-strong);
+  transform: translateY(-50%);
+}
+
+.knot.is-done {
+  border-color: var(--thread);
+  background: var(--thread);
+}
+
+.knot.is-done + .knot::before {
+  background: var(--thread);
+}
+
+.knot.is-current {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  box-shadow: 0 0 0 3px var(--thread-wash);
+}
+
+.knot.is-current.is-trouble {
+  border-color: var(--danger-ink);
+  background: var(--danger-wash);
+  box-shadow: 0 0 0 3px var(--danger-wash);
+}
+
+/* Nothing yet: the way it works, before there is anything to show. */
+.share-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--s3);
+  max-width: 520px;
+  padding: var(--s4) 0;
+}
+
+.share-empty > .steps {
+  margin: var(--s2) 0;
 }
 
 @media (max-width: 720px) {
-  .share-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .sharing-head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "kick" "title" "lead" "new";
   }
-  .share-row > .state {
-    justify-self: end;
+  .sharing-head > .sharing-new {
+    justify-self: start;
   }
-  .share-row-when {
-    text-align: left;
-  }
+}
+
+/* ---------- Contribution page: a thread down the page ----------
+   The three steps are stations on one thread. A knot fills as its step
+   really happens and the thread below takes color once it is done; what is
+   still ahead is stitched, not drawn. */
+
+.contribution .review-card {
+  margin: var(--s4) 0 var(--s5);
+  padding: var(--s4) var(--s5);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.review-card .section {
+  padding: 0;
+  border-top: 0;
+}
+
+.cthread-knot {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.is-done > .cthread-knot {
+  border-color: var(--thread);
+  background: var(--thread);
+  color: var(--paper);
+}
+
+.is-current > .cthread-knot {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  box-shadow: 0 0 0 4px var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+.cthread {
+  display: grid;
+  margin-top: var(--s6);
+}
+
+.cthread-stop {
+  position: relative;
+  min-width: 0;
+  padding: 0 0 var(--s7) 52px;
+}
+
+.cthread-stop:last-child {
+  padding-bottom: var(--s5);
+}
+
+.cthread-stop > .cthread-knot {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* The thread to the next station: stitched while ahead, solid once done. */
+.cthread-stop::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 36px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(to bottom, var(--hairline-strong) 0 5px, transparent 5px 9px);
+}
+
+.cthread-stop.is-done::before {
+  background: var(--thread);
+}
+
+.cthread-stop:last-child::before {
+  display: none;
+}
+
+.cthread-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 24px;
+}
+
+.cthread-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.014em;
+}
+
+.cthread-stop.is-todo .cthread-title {
+  color: var(--ink-muted);
+}
+
+.cthread-hint {
+  margin: 6px 0 0;
+  max-width: 72ch;
+  color: var(--ink-muted);
+}
+
+.cthread-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s5);
+  min-width: 0;
+  margin-top: var(--s4);
 }
 
 /* Review: the file list beside the selected file's diff. */
 .files-review {
   display: grid;
-  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
-  gap: var(--s4);
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  column-gap: var(--s4);
+  row-gap: var(--s2);
   align-items: start;
+}
+
+.rf-summary {
+  grid-column: 1 / -1;
 }
 
 .rf-list {
@@ -2948,22 +3303,44 @@ details > summary.change-head::-webkit-details-marker {
 .rf-rows {
   list-style: none;
   margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--hairline);
+  padding: var(--s1);
+  display: grid;
+  gap: 2px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
 }
 
 .rf-row {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
   align-items: center;
   gap: var(--s2);
-  border-bottom: 1px solid var(--hairline);
-  border-left: 2px solid transparent;
-  padding-left: var(--s2);
+  padding: 0 var(--s3) 0 var(--s3);
+  border-radius: var(--radius);
+}
+
+.rf-row:hover {
+  background: var(--paper-sunken);
 }
 
 .rf-row.is-selected {
-  border-left-color: var(--thread);
   background: var(--paper-selected);
+  box-shadow:
+    0 0 0 1px var(--hairline-strong),
+    var(--shadow-raised);
+}
+
+.rf-row.is-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--thread);
 }
 
 .rf-row.is-excluded .rf-name {
@@ -2976,40 +3353,43 @@ details > summary.change-head::-webkit-details-marker {
   flex: none;
   width: 14px;
   margin: 0;
+  accent-color: var(--ink);
 }
 
 .rf-pick {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex: 1;
+  display: grid;
+  gap: 3px;
   min-width: 0;
-  padding: 6px var(--s2) 6px 0;
+  padding: 9px 0;
   border: 0;
   background: none;
   text-align: left;
   cursor: pointer;
 }
 
-.rf-pick:hover .rf-name {
-  color: var(--ink);
-}
-
-.rf-pick .change-op {
-  min-width: 70px;
-  margin-right: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-}
-
 .rf-name {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12.5px;
-  color: var(--ink-soft);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.rf-dir {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.rf-facts {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.rf-facts .diffstat {
+  font-size: var(--text-xs);
 }
 
 .rf-comments {
@@ -3027,48 +3407,176 @@ details > summary.change-head::-webkit-details-marker {
   color: var(--ink-muted);
 }
 
+/* What happened to a file, as a small tag. */
+.rf-facts .change-op,
+.rf-diff-head .change-op {
+  min-width: 0;
+  margin: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--muted-wash);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.rf-facts .op-added,
+.rf-diff-head .op-added {
+  background: var(--ok-wash);
+}
+.rf-facts .op-modified,
+.rf-diff-head .op-modified {
+  background: var(--warn-wash);
+}
+.rf-facts .op-removed,
+.rf-diff-head .op-removed {
+  background: var(--danger-wash);
+}
+.rf-facts .op-renamed,
+.rf-diff-head .op-renamed {
+  background: var(--unknown-wash);
+}
+
 .rf-diff {
   display: grid;
-  gap: var(--s2);
   min-width: 0;
+  overflow: hidden;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
 }
 
 .rf-diff-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s2);
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunken);
+  border-bottom: 1px solid var(--hairline);
   font-size: var(--text-sm);
+}
+
+.rf-diff-name {
+  font-weight: 600;
+}
+
+.rf-diff > p {
+  margin: 0;
+  padding: var(--s3) var(--s4) 0;
+}
+
+.rf-diff > p:last-child {
+  padding-bottom: var(--s3);
 }
 
 .rf-diff .diff {
   margin: 0;
-  max-height: 70vh;
+  max-height: min(60vh, 560px);
+  border: 0;
+  border-radius: 0;
 }
 
 .rf-diff .diff-empty {
-  padding: 0;
+  padding: var(--s3) var(--s4);
+}
+
+.rf-diff .review-comments-file {
+  margin: 0;
+  border-left: 0;
+  border-top: 1px solid var(--hairline);
 }
 
 .op-renamed {
   color: var(--unknown-ink);
 }
 
+/* Checks: one calm line when all is well; the problems stand out when not. */
+.checks-block {
+  display: grid;
+  gap: var(--s3);
+}
+
+.checks-seal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--ok-wash);
+  border-radius: var(--radius-lg);
+}
+
+.checks-seal p {
+  margin: 0;
+  min-width: 0;
+}
+
+.checks-seal .status {
+  white-space: normal;
+}
+
 .validation-group {
   display: grid;
   gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--warn-ink);
+  border-radius: var(--radius-lg);
+}
+
+.validation-group.is-blocking {
+  background: var(--danger-wash);
+  border-left-color: var(--danger-ink);
 }
 
 .contribution-metadata {
-  margin: var(--s2) 0 var(--s4);
+  margin: 0;
 }
 
-/* Send: where it goes beside the title, message and the one action. */
-.send-layout {
+/* Prepare: the words for the reviewer beside what will go on the branch. */
+.prepare-layout {
   display: grid;
-  grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
   gap: var(--s5);
   align-items: start;
+}
+
+.commit-card {
+  display: grid;
+  gap: 4px;
+  padding: var(--s4);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-lg);
+}
+
+.commit-card p {
+  margin: 0;
+}
+
+.commit-card-files {
+  margin-top: var(--s1);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.commit-card-lines {
+  font-size: var(--text-md);
+}
+
+.commit-card-lines .diffstat-add {
+  color: var(--ok-ink);
+}
+
+.commit-card-lines .diffstat-del {
+  color: var(--danger-ink);
+}
+
+.commit-card-note {
+  margin-top: var(--s1);
+  font-size: var(--text-sm);
 }
 
 .send-main {
@@ -3080,10 +3588,133 @@ details > summary.change-head::-webkit-details-marker {
 .contribution-form {
   display: grid;
   gap: var(--s3);
-  max-width: 680px;
+  max-width: 720px;
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.reviewer-summary {
+  padding-left: var(--s4);
+  border-left: 3px solid var(--thread);
+}
+
+/* Send: the route the branch takes, then the one action and the quiet facts. */
+.route {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.25fr) minmax(104px, auto) minmax(0, 1.25fr) minmax(104px, auto)
+    minmax(0, 0.9fr);
+  align-items: stretch;
+}
+
+.route-stop {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--s3) var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+.route-stop.is-target {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--hairline-strong);
+  box-shadow: none;
+}
+
+.route-kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.route-name {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.route-name.mono {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.route-sub {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.route-link {
+  display: grid;
+  grid-template-rows: auto 8px;
+  align-content: center;
+  justify-items: center;
+  row-gap: 4px;
+  padding: 0 var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  text-align: center;
+  color: var(--ink-muted);
+}
+
+.route-link > span {
+  grid-row: 1;
+}
+
+.route-link::before,
+.route-link::after {
+  content: "";
+  grid-row: 2;
+  grid-column: 1;
+  align-self: center;
+}
+
+.route-link::before {
+  width: 100%;
+  border-top: 1.5px solid var(--thread);
+}
+
+.route-link::after {
+  justify-self: end;
+  width: 6px;
+  height: 6px;
+  border-top: 1.5px solid var(--thread);
+  border-right: 1.5px solid var(--thread);
+  transform: rotate(45deg);
+}
+
+/* A maintainer merges, never Habi: the stitched half of the route. */
+.route-link.is-merge::before {
+  border-top-style: dashed;
+  border-top-color: var(--ink-faint);
+}
+
+.route-link.is-merge::after {
+  border-color: var(--ink-faint);
+}
+
+.send-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+  gap: var(--s5);
+  align-items: start;
+  margin-top: var(--s5);
+}
+
+.send-layout > .destination {
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunken);
+  border-radius: var(--radius-lg);
 }
 
 .send-actions {
@@ -3106,15 +3737,52 @@ details > summary.change-head::-webkit-details-marker {
 }
 
 .discard {
-  margin-top: var(--s3);
-  padding-top: var(--s3);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
   border-top: 1px solid var(--hairline);
 }
 
-@media (max-width: 1020px) {
+@container contribution (max-width: 900px) {
   .files-review,
+  .prepare-layout,
   .send-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .route {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .route-link {
+    grid-template-rows: none;
+    grid-auto-flow: column;
+    justify-content: start;
+    align-content: center;
+    column-gap: var(--s2);
+    padding: var(--s2) var(--s4);
+  }
+
+  .route-link > span {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .route-link::before {
+    grid-row: 1;
+    grid-column: 1;
+    width: 0;
+    height: 20px;
+    border-top: 0;
+    border-left: 1.5px solid var(--thread);
+  }
+
+  .route-link.is-merge::before {
+    border-left-style: dashed;
+    border-left-color: var(--ink-faint);
+  }
+
+  .route-link::after {
+    display: none;
   }
 }
 

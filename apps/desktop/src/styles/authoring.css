@@ -1549,10 +1549,6 @@
   border-color: var(--ink);
 }
 
-.share-other {
-  margin-top: var(--s6);
-}
-
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1020px) {
