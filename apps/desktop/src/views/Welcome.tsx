@@ -1,10 +1,9 @@
 /**
- * Home: the question, where things stand in one plain line, and the loom —
+ * Home: the question, its one-line answer, and the loom —
  * your libraries across your projects, with the next project as an unwoven
  * row. One next step leads: open a project. On first run the sample
- * workspace is the one alternative, and connecting a library or writing a
- * skill are quiet links; everything else lives in the sidebar, the palette
- * and the project views.
+ * workspace and connecting a library are quiet links beneath; the rest lives
+ * in the sidebar, the palette and the project views.
  */
 import { useMemo } from "react";
 import { Button, ErrorNotice, Kbd, Working } from "../components/ui";
@@ -21,7 +20,7 @@ const SHOWN = 7;
 
 export function Welcome() {
   const { navigate } = useNav();
-  const { openProject, newSkill } = useActions();
+  const { openProject } = useActions();
   const recent = useRecentProjects();
   const skills = useSkills();
   const sources = useSources();
@@ -32,8 +31,6 @@ export function Welcome() {
   const projects = (recent.data ?? []).filter((p) => p.exists);
   const drafts = (skills.data ?? []).filter((s) => s.deletedAt === null);
   const shared = (contributions.data ?? []).filter((c) => c.state !== "discarded");
-  const moving = shared.filter((c) => !c.inLibrary);
-  const libraryCount = (sources.data ?? []).length;
 
   const loomSources = useMemo(() => {
     const list: LoomSource[] = [];
@@ -90,33 +87,6 @@ export function Welcome() {
           What one developer learns, <em>every project</em> keeps.
         </h1>
         <p className="home-lead">Find what applies. Improve what works. Share what you learn.</p>
-        <p className="home-status">
-          {libraryCount > 0 ? (
-            <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
-              {plural(libraryCount, "library", "libraries")}
-            </button>
-          ) : (
-            "0 libraries"
-          )}
-          <span aria-hidden="true"> · </span>
-          {drafts.length > 0 ? (
-            <button type="button" className="link-quiet" onClick={() => navigate({ name: "skills" })}>
-              {drafts.length === 1 ? "1 skill of yours" : `${drafts.length} of your skills`}
-            </button>
-          ) : (
-            "0 of your skills"
-          )}
-          <span aria-hidden="true"> · </span>
-          {shared.length > 0 ? (
-            <button type="button" className="link-quiet" onClick={() => navigate({ name: "contributions" })}>
-              {moving.length > 0
-                ? `${plural(moving.length, "contribution")} under way`
-                : `${plural(shared.length, "contribution")} shared`}
-            </button>
-          ) : (
-            "nothing shared yet"
-          )}
-        </p>
       </header>
 
       <Loom
@@ -142,36 +112,26 @@ export function Welcome() {
         }
       />
 
-      {projects.length === 0 ? (
-        <section className="home-start" aria-label="Getting started">
-          <p className="home-next">
-            Habi reads the project's build files and folder names, then shows which skills fit and why.
-            Nothing changes until you review a plan.
-          </p>
-          <p className="home-sample">
-            <Button busy={sample.busy} onClick={() => void sample.create()}>
-              Try the sample workspace
-            </Button>
-            <span>Example libraries and projects, all labeled. Everything stays on this machine.</span>
-          </p>
+      <footer className="home-foot">
+        {projects.length === 0 ? (
           <p className="home-more">
             Or{" "}
-            <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
-              Connect a library
+            <button
+              type="button"
+              className="link-quiet"
+              disabled={sample.busy}
+              title="Example libraries and projects, all labeled. Everything stays on this machine."
+              onClick={() => void sample.create()}
+            >
+              {sample.busy ? "Setting up the sample…" : "try the sample workspace"}
             </button>{" "}
             ·{" "}
-            <button type="button" className="link-quiet" onClick={() => newSkill()}>
-              Write a skill
+            <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
+              connect a library
             </button>
           </p>
-        </section>
-      ) : null}
-
-      <footer className="home-foot">
+        ) : null}
         <p className="home-keys">
-          <span>
-            <Kbd>⌘O</Kbd> open a project
-          </span>
           <span>
             <Kbd>⌘N</Kbd> new skill
           </span>
