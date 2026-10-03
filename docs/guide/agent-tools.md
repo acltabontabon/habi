@@ -174,5 +174,4 @@ recognizes them:
 | An agent tool discovers and loads the skill | **Not automated.** Checked by hand with the [smoke tests](../dev/compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it) |
 | An agent follows the instructions | Not claimed by Habi |
 
-Installed means the files are where the agent looks. Whether the smoke tests have been run
-for this release is tracked in [Project status](../project/status.md#known-limitations).
+Installed means the files are where the agent looks; the smoke tests check the rest, by hand.

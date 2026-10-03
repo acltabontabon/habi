@@ -30,7 +30,6 @@ the sample workspace means you need neither a library nor a project of your own.
 
 | Document | Read it to |
 | --- | --- |
-| [Status](project/status.md) | See what is verified, what is known not to work yet, and what stands before the first release |
 | [Product contract](project/product.md) | Read the principles Habi keeps, what it is not, and where it is going |
 | [Security model](project/security-model.md) | Know what Habi trusts, what it never does, and every network request it makes |
 
