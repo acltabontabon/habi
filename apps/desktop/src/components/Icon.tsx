@@ -40,6 +40,8 @@ const paths = {
   panel: "M2.5 3.5h11v9h-11zM10 3.5v9",
   outline: "M3 4h10M5.5 8h7.5M5.5 12h7.5",
   upload: "M8 10.5V3M5 6l3-3 3 3M3.5 12.5h9",
+  coffee:
+    "M3 6.5h7.5v3A3.5 3.5 0 017 13H6.5A3.5 3.5 0 013 9.5zM10.5 7.5h.7a1.8 1.8 0 010 3.6h-.9M5.5 2.5v1.5M8 2.5v1.5",
 } as const;
 
 export type IconName = keyof typeof paths;

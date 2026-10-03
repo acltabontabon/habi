@@ -14,6 +14,8 @@ import { NavProvider, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
 import { invalidateSkills, keys, useAppInfo } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
+import { UpdatesProvider } from "./lib/updates";
+import { AboutView } from "./views/AboutView";
 import { CommandPalette } from "./views/CommandPalette";
 import { ContributionsView } from "./views/contributions/ContributionsView";
 import { ProjectChooser, SkillsFolderCaught } from "./views/OpenProject";
@@ -80,9 +82,11 @@ function Startup() {
     );
   }
   return (
-    <NavProvider initial={{ name: "welcome" }}>
-      <Shell />
-    </NavProvider>
+    <UpdatesProvider>
+      <NavProvider initial={{ name: "welcome" }}>
+        <Shell />
+      </NavProvider>
+    </UpdatesProvider>
   );
 }
 
@@ -292,6 +296,7 @@ function Shell() {
             )}
             {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
             {route.name === "settings" && <SettingsView />}
+            {route.name === "about" && <AboutView />}
           </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />

@@ -188,7 +188,8 @@ described in [SECURITY.md](SECURITY.md).
 
 Habi is maintained by one developer (Alvin Cris Tabontabon) in their own time. Issues and
 pull requests are read, but responses are best effort; security reports come first. See
-[SUPPORT.md](SUPPORT.md).
+[SUPPORT.md](SUPPORT.md). If Habi saves you time, you can
+[buy me a coffee](https://ko-fi.com/aclt_attic).
 
 ## License
 

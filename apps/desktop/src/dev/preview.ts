@@ -28,7 +28,7 @@ const overviews: Record<string, unknown> = {
 
 const projects = [billing.project, monorepo.project];
 const source = billing.sources[0];
-let settings = { autoRefreshHours: 12 };
+let settings = { autoRefreshHours: 12, checkForUpdates: true };
 
 // A newer release waiting, then what updating to it changed: so the offer, the
 // report and the marks in the index can all be looked at.
@@ -69,6 +69,20 @@ function answer(cmd: string, args: Args): unknown {
         glabAvailable: false,
         startupError: null,
       };
+    case "check_for_update":
+      // `?update` in the address shows a newer release waiting.
+      return new URLSearchParams(window.location.search).has("update")
+        ? {
+            version: "0.2.0",
+            currentVersion: "0.1.0-preview",
+            date: new Date().toISOString(),
+            notes:
+              "### Added\n\n- **Something new.** What people can now do, in a sentence.\n\n### Fixed\n\n- A problem that is gone.",
+          }
+        : null;
+    case "install_update":
+    case "restart_app":
+      return null;
     case "get_settings":
       return settings;
     case "set_settings":

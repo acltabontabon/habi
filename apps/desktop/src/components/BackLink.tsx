@@ -21,6 +21,8 @@ function useRouteLabel(route: Route | undefined): string | null {
       return route.sourceId || route.entry ? "the library" : "Libraries";
     case "settings":
       return "Settings";
+    case "about":
+      return "About";
     case "welcome":
       return "Home";
   }
