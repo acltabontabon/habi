@@ -98,7 +98,7 @@ impl Bridge {
                 .store
                 .setting("desktop")?
                 .and_then(|t| serde_json::from_str(&t).ok())
-                .unwrap_or(json!({ "autoRefreshHours": 12, "defaultClients": ["claude-code"] }))),
+                .unwrap_or(json!({ "autoRefreshHours": 12 }))),
             "set_settings" => {
                 let settings: Value = arg(a, "settings")?;
                 h.store.set_setting("desktop", &settings.to_string())?;
@@ -214,6 +214,9 @@ impl Bridge {
             }
             "plan_restore_machine" => {
                 out(h.plan_restore_machine(&s("operationId")?, &arg(a, "decisions")?)?)
+            }
+            "detected_clients" => {
+                out(h.detected_clients(a.get("projectId").and_then(Value::as_str))?)
             }
             "machine_install_preview" => out(h.machine_install_preview(
                 &arg::<Vec<_>>(a, "items")?,

@@ -55,7 +55,7 @@ const monoOverview = monorepo as unknown as ProjectOverview;
 beforeEach(() => {
   invoke.mockReset();
   invoke.mockImplementation(async (cmd: string) => {
-    if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+    if (cmd === "get_settings") return { autoRefreshHours: 12 };
     throw { code: "notFound", message: `no mock for ${cmd}` };
   });
 });
@@ -165,7 +165,7 @@ describe("review dialog", () => {
   it("requires a decision for every conflict before applying", async () => {
     const user = userEvent.setup();
     invoke.mockImplementation(async (cmd: string, args: { decisions?: Record<string, string> }) => {
-      if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
       if (cmd === "plan_install") {
         const decided = Object.keys(args.decisions ?? {}).length > 0;
         return decided

@@ -207,6 +207,7 @@ pub fn run() {
             commands::plan_remove_machine,
             commands::plan_restore_machine,
             commands::machine_install_preview,
+            commands::detected_clients,
             commands::machine_history,
             commands::apply_plan,
             commands::history,

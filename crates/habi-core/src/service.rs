@@ -1905,6 +1905,15 @@ impl Habi {
 
     /// What installing these skills on this machine would sit next to: the
     /// projects that hold a skill of the same name, and whether it matches.
+    /// The clients to preselect: those a project already uses, or, with no
+    /// project, those set up in the home folder. Empty when there is no sign.
+    pub fn detected_clients(&self, project_id: Option<&str>) -> Result<Vec<ClientId>> {
+        Ok(match project_id {
+            Some(id) => crate::clients::in_project(&self.project(id)?.root),
+            None => crate::clients::on_machine(&self.user_home),
+        })
+    }
+
     pub fn machine_install_preview(
         &self,
         items: &[ItemRef],

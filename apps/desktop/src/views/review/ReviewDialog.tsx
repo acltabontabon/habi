@@ -24,7 +24,7 @@ import { useDyes } from "../../lib/dye";
 import { ALL_CLIENTS, clientLabel, plural } from "../../lib/format";
 import { copyState, precedenceNote } from "../../lib/machine";
 import { beginOwnChange, endOwnChange, staleKey } from "../../lib/ownChanges";
-import { invalidateProjectData, invalidateSkills, keys, useSettings, useSources } from "../../lib/queries";
+import { invalidateProjectData, invalidateSkills, keys, useSources } from "../../lib/queries";
 
 export type ReviewRequest =
   | {
@@ -39,26 +39,6 @@ export type ReviewRequest =
   | { kind: "remove"; keys: string[]; title: string }
   | { kind: "restore"; operationId: string; title: string };
 
-/** What each agent reads in a project, and (skills only) in the person's own folders. */
-const clientReads: Record<ClientId, string[]> = {
-  "claude-code": [".claude/skills", "CLAUDE.md"],
-  cursor: [".agents/skills", ".claude/skills", "AGENTS.md"],
-  codex: [".agents/skills", "AGENTS.md"],
-  "gemini-cli": [".agents/skills"],
-  copilot: [".agents/skills", ".claude/skills", "AGENTS.md"],
-  opencode: [".agents/skills", ".claude/skills", "AGENTS.md"],
-  junie: [".agents/skills", "AGENTS.md"],
-};
-const clientReadsOnMachine: Record<ClientId, string[]> = {
-  "claude-code": ["~/.claude/skills"],
-  cursor: ["~/.agents/skills", "~/.claude/skills"],
-  codex: ["~/.agents/skills"],
-  "gemini-cli": ["~/.agents/skills"],
-  copilot: ["~/.agents/skills", "~/.claude/skills"],
-  opencode: ["~/.agents/skills", "~/.claude/skills"],
-  junie: ["~/.agents/skills"],
-};
-
 const opLabel: Record<ChangeOp, string> = { create: "Create", modify: "Modify", delete: "Delete" };
 const opGlyph: Record<ChangeOp, string> = { create: "+", modify: "~", delete: "−" };
 
@@ -66,6 +46,7 @@ const kindTitle: Record<ChangeKind, string> = {
   skillFile: "Skill files",
   instructionsSection: "Instructions",
   claudeBridge: "Claude Code bridge",
+  geminiBridge: "Gemini CLI bridge",
   mcpConfig: "MCP configuration",
   lockFile: "Habi's record",
   restore: "Restored files",
@@ -328,7 +309,6 @@ export function ReviewDialog({
   onClose: () => void;
 }) {
   const machine = projectId === null;
-  const settings = useSettings();
   const sources = useSources();
   const dyeOf = useDyes();
   const client = useQueryClient();
@@ -341,14 +321,21 @@ export function ReviewDialog({
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
   // At least one agent is always picked: the last one cannot be unticked, so there is never an empty preview.
-  const defaults = settings.data?.defaultClients;
-  const chosen = clients ?? (defaults && defaults.length > 0 ? defaults : ["claude-code"]);
+  // Preselected: the agents the project (or this machine) already shows signs of using.
+  const detected = useQuery({
+    queryKey: ["detectedClients", projectId],
+    queryFn: () => api.detectedClients(projectId),
+    retry: false,
+  });
+  const detecting = clients === null && detected.isPending;
+  const found = detected.data ?? [];
+  const chosen: ClientId[] = clients ?? (found.length > 0 ? found : ["claude-code"]);
   const unaudited = machine && request.kind === "install" && request.unaudited === true;
 
   // What a machine install would sit next to: projects that already hold the skill.
   const shadows = useQuery({
     queryKey: ["machineShadows", request.kind === "install" ? request.items : null, chosen],
-    enabled: machine && request.kind === "install" && chosen.length > 0,
+    enabled: machine && request.kind === "install" && chosen.length > 0 && !detecting,
     retry: false,
     queryFn: () => api.machineInstallPreview(request.kind === "install" ? request.items : [], chosen),
   });
@@ -371,7 +358,7 @@ export function ReviewDialog({
 
   const plan = useQuery<Plan>({
     queryKey: ["plan", projectId, request, chosen, includeMcp, decisions],
-    enabled: request.kind !== "install" || chosen.length > 0,
+    enabled: request.kind !== "install" || (chosen.length > 0 && !detecting),
     retry: false,
     gcTime: 0,
     // Choosing a conflict option or a client re-plans; keep showing the
@@ -501,18 +488,7 @@ export function ReviewDialog({
                 <span className="agent-tick" aria-hidden="true">
                   <Icon name="check" size={12} />
                 </span>
-                <span className="agent-text">
-                  <strong>{clientLabel[c]}</strong>
-                  <span className="agent-reads">
-                    reads{" "}
-                    {(machine ? clientReadsOnMachine : clientReads)[c].map((path, i) => (
-                      <span key={path}>
-                        {i > 0 ? ", " : ""}
-                        <code className="mono">{path}</code>
-                      </span>
-                    ))}
-                  </span>
-                </span>
+                <strong>{clientLabel[c]}</strong>
               </span>
             </label>
           ))}

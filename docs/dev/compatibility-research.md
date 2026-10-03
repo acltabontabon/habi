@@ -245,7 +245,7 @@ Notes:
 ### Unverified / could not fetch
 
 - Whether Gemini CLI reads project `mcpServers` in an untrusted folder.
-- Whether Gemini CLI's `GEMINI.md` accepts an `@AGENTS.md` import.
+- Whether Gemini CLI follows an `@./AGENTS.md` import that sits between Habi's `<!-- habi:begin -->` comment lines. Imports with `@file.md` are documented (<https://geminicli.com/docs/cli/gemini-md/>).
 - Junie: environment-variable syntax in `mcp.json`, and whether `AGENTS.md` is read in every surface. The `www.jetbrains.com/help/junie/` pages returned no content; the `junie.jetbrains.com/docs` pages were used instead.
 - How any of Gemini CLI, Copilot, OpenCode and Junie handles the same skill `name` found in two folders.
 - Windsurf: a project-level MCP file for the current Devin agent. The CLI configuration page returned 404, and the `mcp_config.json` on the Cascade page is global and applies to the legacy agent only.

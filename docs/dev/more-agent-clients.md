@@ -1,6 +1,7 @@
 # More agent clients
 
-Status: proposed. Adds Gemini CLI, GitHub Copilot, OpenCode and Junie next to Claude Code, Cursor and
+Status: built (skills, MCP and the GEMINI.md import). The clients preselected in an install come
+from what the project already uses, not from a setting. Adds Gemini CLI, GitHub Copilot, OpenCode and Junie next to Claude Code, Cursor and
 Codex. Folders, file formats and the pages they come from are in
 [compatibility research §8](compatibility-research.md#8-gemini-cli-copilot-opencode-and-junie).
 
@@ -36,7 +37,9 @@ to have been loaded by a client.
 - "On this machine" and the project page read the new clients' own folders (`~/.gemini/skills`,
   `~/.copilot/skills`, `~/.config/opencode/skills`, `~/.junie/skills`) so a skill there is seen.
   Habi never writes to them, as with `~/.cursor/skills` today.
-- Settings, the review dialog and the CLI list the new clients.
+- The review dialog and the CLI list the new clients. The install review preselects the clients
+  the project already uses (the files at its root), or Claude Code when it shows none; the
+  "preselected clients" setting is removed.
 
 ## Out of Scope
 
@@ -72,8 +75,9 @@ to have been loaded by a client.
 - **Gemini's settings file.** `.gemini/settings.json` also holds unrelated settings, and a
   project's settings may be ignored in a folder Gemini does not trust. Whether that applies to
   `mcpServers` is not documented in the pages read. Say so in the review.
-- **Gemini's import syntax.** That `GEMINI.md` can import `AGENTS.md` with `@AGENTS.md` is not in the
-  pages read. Verify with the smoke test before writing it.
+- **Gemini's import syntax.** Gemini CLI documents `@file.md` imports in `GEMINI.md`, with relative
+  paths; Habi writes `@./AGENTS.md`. Whether the import is followed from inside Habi's marker
+  comments is checked by the smoke test.
 - **OpenCode config format.** `opencode.json` may be `.jsonc`; a file with comments or trailing
   commas needs a different merge than plain JSON.
 - **Copilot is a family.** VS Code, Copilot CLI, the desktop app and the cloud agent read different
@@ -119,6 +123,5 @@ to have been loaded by a client.
 ## Open questions
 
 - Does Gemini CLI read project `mcpServers` in an untrusted folder?
-- Does Gemini CLI's `GEMINI.md` accept `@AGENTS.md`, or must `context.fileName` be set instead?
 - Does Junie expand any variable syntax in `mcp.json`?
 - Does Copilot read `AGENTS.md` in every surface Habi cares about, or only in VS Code?

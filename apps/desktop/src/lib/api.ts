@@ -181,6 +181,8 @@ export const api = {
   planRestore: (projectId: string, operationId: string, decisions: Decisions) =>
     call<Plan>("plan_restore", { projectId, operationId, decisions }),
   /** The same reviewed plans for the person's own skill folders ("this machine"). */
+  /** The agents a project (or, with `null`, this machine) already shows signs of using. */
+  detectedClients: (projectId: string | null) => call<ClientId[]>("detected_clients", { projectId }),
   planInstallMachine: (items: ItemRef[], clients: ClientId[], decisions: Decisions) =>
     call<Plan>("plan_install_machine", { items, clients, decisions }),
   planUpdateMachine: (keys: string[], decisions: Decisions) =>

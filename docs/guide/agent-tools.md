@@ -1,27 +1,52 @@
-# Agent tools: what Habi writes for Claude Code, Cursor and Codex
+# Agent tools: what Habi writes for each supported tool
 
-When you install an item, you choose the agent tools it is for. Habi writes ordinary files
-in the project, where each tool looks for them, and the review shows every file before
-anything is written. Nothing needs Habi running afterwards.
+Habi supports Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie.
+
+When you install an item, you choose the agent tools it is for. Habi preselects the ones the
+project already uses, judged by the files at its root (`.claude/` or `CLAUDE.md`, `.cursor/`,
+`.codex/`, `.gemini/` or `GEMINI.md`, `.github/copilot-instructions.md`, `.opencode/` or
+`opencode.json`, `.junie/`); when it sees none, it preselects Claude Code. For an install on
+this machine it looks at the folders in your home folder instead. You can change the choice
+in the review. Habi writes ordinary files in the project, where each tool looks for them, and
+the review shows every file before anything is written. Nothing needs Habi running afterwards.
 
 The paths below come from each tool's own documentation; the dated research, with sources,
 is in [compatibility research](../dev/compatibility-research.md).
 
 ## Where files go
 
-| | Claude Code | Cursor | Codex |
-|---|---|---|---|
-| Skills | `.claude/skills/<name>/` | `.agents/skills/<name>/` (also reads `.claude/skills/`) | `.agents/skills/<name>/` |
-| Instructions | A managed section in `AGENTS.md`, and an `@AGENTS.md` line in `CLAUDE.md` | A managed section in `AGENTS.md` | A managed section in `AGENTS.md` |
-| MCP servers (optional) | `.mcp.json`, secrets as `${VAR}` | `.cursor/mcp.json`, secrets as `${env:VAR}` | `.codex/config.toml`, secrets as `env_vars` |
+**Skills.** Habi writes into one or both of two folders, and never into a folder only one tool
+owns (`.cursor/skills`, `.gemini/skills`, `.github/skills`, `.opencode/skills`,
+`.junie/skills`). Those are read, so a skill already there is found, but not written.
+
+| | Claude Code | Cursor | Codex | Gemini CLI | GitHub Copilot | OpenCode | Junie |
+|---|---|---|---|---|---|---|---|
+| Reads `.agents/skills` | no | yes | yes | yes | yes | yes | yes |
+| Reads `.claude/skills` | yes | yes | no | no | yes | yes | no |
+
+**Instructions** go into a managed section of `AGENTS.md`. Codex, Cursor, GitHub Copilot,
+OpenCode and Junie read it directly. Claude Code reads `CLAUDE.md`, and Gemini CLI reads
+`GEMINI.md`, so Habi adds a one-line import to each (`@AGENTS.md` and `@./AGENTS.md`) when
+instructions are installed for that tool, and takes it out again when the last one is removed.
+
+**MCP servers** (optional, without secrets) are written to the file each tool reads:
+
+| Tool | File | Secrets are written as |
+|---|---|---|
+| Claude Code, GitHub Copilot | `.mcp.json` (written once for both) | `${VAR}` |
+| Cursor | `.cursor/mcp.json` | `${env:VAR}` |
+| Codex | `.codex/config.toml` | `env_vars` |
+| Gemini CLI | `.gemini/settings.json` | `${VAR}` in `env`; a bearer token for a remote server is not written, because Gemini CLI does not expand variables in headers |
+| OpenCode | `opencode.json`, under `mcp` | `{env:VAR}` |
+| Junie | `.junie/mcp/mcp.json` | `${VAR}` (Junie does not document expansion; the review says so) |
 
 Habi writes as few skill copies as it can:
 
 | Agent tools selected | Skill written to |
 |---|---|
-| Codex and/or Cursor | `.agents/skills/<name>/` |
-| Claude Code, with or without Cursor | `.claude/skills/<name>/` |
-| Claude Code and Codex (with or without Cursor) | Both folders, as two ordinary copies |
+| Any of Codex, Gemini CLI, Junie, Cursor, GitHub Copilot and OpenCode, without Claude Code | `.agents/skills/<name>/` |
+| Claude Code, with or without Cursor, GitHub Copilot and OpenCode | `.claude/skills/<name>/` |
+| Claude Code and any of Codex, Gemini CLI, Junie | Both folders, as two ordinary copies |
 
 ## What you may need to do in the tool
 
@@ -30,14 +55,24 @@ Habi writes as few skill copies as it can:
   `@AGENTS.md` line Habi adds makes it read the instructions anyway.
 - **Codex** reads a project's `.codex/config.toml` only when you mark the project as
   trusted, and an `AGENTS.override.md` replaces `AGENTS.md` in its folder.
-- **Cursor**, with all three tools selected, finds the same skill in both `.agents/skills`
-  and `.claude/skills`. Its documentation does not say what happens then; the install review
-  notes it.
+- **GitHub Copilot** in VS Code asks you to trust an MCP server before it starts. Its
+  documentation does not say whether it expands `${VAR}` in `.mcp.json`, so check that a
+  server that needs a secret receives it.
+- **Gemini CLI**: its documentation does not say whether `.gemini/settings.json` applies in a
+  folder you have not trusted. Habi never edits other settings in that file.
+- **OpenCode** also reads `opencode.jsonc`. Habi writes `opencode.json` and does not edit a
+  file that has comments; the preview names it as a conflict instead.
+- **Junie** documents no variable expansion in `mcp.json`: check that a server that needs a
+  secret receives it.
+- **Cursor, GitHub Copilot and OpenCode**, when selected together with a tool that needs the
+  other folder (Claude Code and Codex, Gemini CLI or Junie), find the same skill in both
+  `.agents/skills` and `.claude/skills`. Their documentation does not say what happens then;
+  the install review names the tools affected.
 
 ## How Habi writes
 
 - **Copies, not symlinks.** When both `.agents/skills` and `.claude/skills` are needed
-  (Claude Code + Codex), Habi writes two ordinary copies. Habi refuses to write through or
+  (for example Claude Code + Codex), Habi writes two ordinary copies. Habi refuses to write through or
   create symbolic links (see the [security model](../project/security-model.md)), symlinks
   are unreliable on Windows, and a copy keeps each client's files independently editable.
   The lock file tracks both copies; drift in either is detected separately. If the project

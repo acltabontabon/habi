@@ -111,14 +111,12 @@ fn which(program: &str) -> bool {
 pub struct Settings {
     /// 0 disables scheduled refresh.
     pub auto_refresh_hours: u32,
-    pub default_clients: Vec<ClientId>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Settings {
             auto_refresh_hours: 12,
-            default_clients: vec![ClientId::ClaudeCode],
         }
     }
 }
@@ -807,6 +805,17 @@ pub async fn plan_restore_machine(
         h.plan_restore_machine(&operation_id, &decisions)
     })
     .await
+}
+
+/// The clients to preselect for an install: those the project (or, with no
+/// project, the machine) already shows signs of using.
+#[tauri::command]
+pub async fn detected_clients(
+    state: State<'_, AppState>,
+    project_id: Option<String>,
+) -> CmdResult<Vec<ClientId>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.detected_clients(project_id.as_deref())).await
 }
 
 /// What a machine install would sit next to: projects with a skill of that name.

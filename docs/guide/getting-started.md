@@ -31,8 +31,8 @@ the sample again at any time from the command palette.
    use manually* or *Does not apply*. When Habi could not establish something (for example, a dependency
    inherited from a parent build file outside the repository), you can answer the question;
    your answer is labeled as yours and can be undone.
-4. Install an item: choose the agent tools (Claude Code, Cursor, Codex), review every file
-   that would be created or changed, and confirm.
+4. Install an item: check the agent tools Habi preselected (the ones the project already uses),
+   review every file that would be created or changed, and confirm.
 
 From there, [My skills](my-skills.md) covers writing and editing your own skills, and
 [Sharing](sharing.md) covers sending an improvement back for review.

@@ -226,7 +226,7 @@ the copied version is no longer cached, the editor says so and offers nothing.
 ## Using a skill
 
 *Use in a project…* lists your projects with what the skill's rules say about each, then opens
-the usual review: choose Claude Code, Cursor or Codex, see every file that would be created
+the usual review: check the agent tools Habi preselected, see every file that would be created
 or changed, and confirm. Compatibility notes for the chosen agents appear in that review.
 
 Installed means the files are where the agent looks. It does not mean the agent loaded or
