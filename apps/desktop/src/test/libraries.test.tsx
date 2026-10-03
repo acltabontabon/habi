@@ -501,7 +501,10 @@ describe("a connected catalog library", () => {
   it("offers what a connected library offers, and no second way to connect", async () => {
     wrap(inLibrary({ itemId: "migrations" }));
     expect(await screen.findByRole("button", { name: /Add to a project/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Edit a copy/ })).toBeInTheDocument();
+    // The other ways to use it sit behind one menu rather than beside the main button.
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("menuitem", { name: /Add to this machine/ })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Edit a copy/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Connect/ })).toBeNull();
   });
 

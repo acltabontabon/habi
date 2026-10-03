@@ -1851,13 +1851,8 @@ impl Habi {
         let skills = self.skills();
         let local = skills.list()?;
         let digests = skills.origin_digests()?;
-        let project_ids: Vec<String> = {
-            let conn = self.store.conn()?;
-            let mut stmt = conn.prepare("SELECT id FROM projects ORDER BY last_opened_at DESC")?;
-            stmt.query_map([], |r| r.get(0))?
-                .collect::<rusqlite::Result<_>>()?
-        };
-        let projects: Vec<ProjectRecord> = project_ids
+        let projects: Vec<ProjectRecord> = self
+            .all_project_ids()?
             .iter()
             .filter_map(|id| self.project(id).ok())
             .filter(|p| p.exists)
@@ -1870,11 +1865,141 @@ impl Habi {
                 root: &p.root,
             })
             .collect();
+        // What Habi itself installed here, from its record under the home folder.
+        let lock = read_lock(&self.user_home).unwrap_or_default();
+        let installs = if lock.items.is_empty() {
+            Vec::new()
+        } else {
+            self.installations(
+                &self.user_home,
+                &lock,
+                &self.libraries().unwrap_or_default(),
+            )
+        };
         for skill in &mut found {
             skill.imported_as = intake::already_imported(&skill.digest, &local, &digests);
-            skill.in_projects = machine::project_copies(skill, &refs);
+            skill.in_projects =
+                machine::project_copies(&skill.folder, &skill.digest, &skill.readers, &refs);
+            skill.managed = machine::skill_file(&skill.id)
+                .and_then(|file| lock.owner_of(&file))
+                .and_then(|owner| {
+                    installs.iter().find(|i| i.key == owner.key()).map(|i| {
+                        machine::ManagedInstall {
+                            key: i.key.clone(),
+                            library: i.source_name.clone(),
+                            state: i.state,
+                        }
+                    })
+                });
         }
         Ok(found)
+    }
+
+    /// The folder machine installs write under: the home folder, which must exist.
+    fn machine_root(&self) -> Result<&Path> {
+        if self.user_home.as_os_str().is_empty() || !self.user_home.is_dir() {
+            return Err(HabiError::NotFound("your home folder".into()));
+        }
+        Ok(&self.user_home)
+    }
+
+    /// What installing these skills on this machine would sit next to: the
+    /// projects that hold a skill of the same name, and whether it matches.
+    pub fn machine_install_preview(
+        &self,
+        items: &[ItemRef],
+        clients: &[ClientId],
+    ) -> Result<Vec<crate::skills::machine::InstallShadow>> {
+        use crate::skills::machine::{self, ProjectRef};
+        let readers = machine::readers_for(clients);
+        let projects: Vec<ProjectRecord> = self
+            .all_project_ids()?
+            .iter()
+            .filter_map(|id| self.project(id).ok())
+            .filter(|p| p.exists)
+            .collect();
+        let refs: Vec<ProjectRef> = projects
+            .iter()
+            .map(|p| ProjectRef {
+                id: &p.id,
+                name: &p.name,
+                root: &p.root,
+            })
+            .collect();
+        items
+            .iter()
+            .map(|r| {
+                let payload = self.payload_for_ref(r)?;
+                Ok(machine::InstallShadow {
+                    name: payload.item.name.clone(),
+                    title: payload.item.title.clone(),
+                    copies: machine::project_copies(
+                        &payload.item.name,
+                        &payload.item.content_digest,
+                        &readers,
+                        &refs,
+                    ),
+                })
+            })
+            .collect()
+    }
+
+    fn all_project_ids(&self) -> Result<Vec<String>> {
+        let conn = self.store.conn()?;
+        let mut stmt = conn.prepare("SELECT id FROM projects ORDER BY last_opened_at DESC")?;
+        Ok(stmt
+            .query_map([], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// `plan_install` for the person's own skill folders. Skills only.
+    pub fn plan_install_machine(
+        &self,
+        items: &[ItemRef],
+        clients: &[ClientId],
+        decisions: &Decisions,
+    ) -> Result<Plan> {
+        let home = self.machine_root()?;
+        let payloads = items
+            .iter()
+            .map(|r| self.payload_for_ref(r))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(self.keep(plan::plan_install_on_machine(
+            home, &payloads, clients, decisions,
+        )?))
+    }
+
+    pub fn plan_update_machine(&self, keys: &[String], decisions: &Decisions) -> Result<Plan> {
+        let home = self.machine_root()?;
+        let libraries = self.libraries()?;
+        let payloads = keys
+            .iter()
+            .map(|k| self.payload_for_key(k, &libraries))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(self.keep(plan::plan_update_on_machine(home, &payloads, decisions)?))
+    }
+
+    pub fn plan_remove_machine(&self, keys: &[String], decisions: &Decisions) -> Result<Plan> {
+        let home = self.machine_root()?;
+        Ok(self.keep(plan::plan_remove_on_machine(home, keys, decisions)?))
+    }
+
+    pub fn plan_restore_machine(&self, operation_id: &str, decisions: &Decisions) -> Result<Plan> {
+        let home = self.machine_root()?;
+        let (title, steps) = self.applier().restore_steps(home, operation_id)?;
+        Ok(self.keep(plan::plan_restore_on_machine(
+            home, &steps, &title, decisions,
+        )?))
+    }
+
+    /// What Habi has done on this machine, newest first.
+    pub fn machine_history(&self) -> Result<Vec<OperationSummary>> {
+        self.applier().history(self.machine_root()?)
+    }
+
+    /// Finishes or undoes a machine operation that was interrupted.
+    pub fn machine_recover(&self) -> Result<Vec<OperationSummary>> {
+        self.applier().recover(self.machine_root()?)
     }
 
     /// Where each of My skills stands beyond its own files: which projects

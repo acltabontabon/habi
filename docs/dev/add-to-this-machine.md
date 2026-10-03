@@ -1,8 +1,9 @@
 # Add to this machine
 
-Status: proposed, not built. Follows "On this machine" on the My skills page, which reads the
+Status: built. Follows "On this machine" on the My skills page, which reads the
 person's own skill folders and never writes to them. This page covers the write side: putting a
-skill there on purpose. Client folders and precedence come from
+skill there on purpose. Where the built version differs from what was first proposed, it says so
+under [What was built](#what-was-built). Client folders and precedence come from
 [compatibility research](compatibility-research.md).
 
 ## Problem Statement
@@ -23,11 +24,12 @@ and remove it, and it says plainly what a global install changes.
 
 - A second target next to "Add to a project…", for library skills and for My skills.
 - Choosing the clients the skill is for, as a project install does. The folders written are
-  `~/.claude/skills` (Claude Code), `~/.agents/skills` (Codex and Cursor) and, for Cursor alone,
-  `~/.cursor/skills`, using the same "smallest set of folders" rule as projects.
+  `~/.claude/skills` (Claude Code, and Cursor when it is chosen with Claude Code) and
+  `~/.agents/skills` (Codex, and Cursor on its own), using the same "smallest set of folders" rule
+  as projects. `~/.cursor/skills` is read but never written.
 - The reviewed plan, journal, atomic writes, restore and conflict handling that installs already have.
-- A record of what Habi installed, kept in Habi's own data folder and not in the home folder, so that
-  update and remove work and a skill Habi did not install is never touched.
+- A record of what Habi installed, in `~/.habi/lock.json`, so that update and remove work and a skill
+  Habi did not install is never touched.
 - Update and remove for skills Habi installed there, from the "On this machine" section.
 - A conflict, not an overwrite, when a folder with that name already exists and Habi did not put it there.
 - Warnings: a global copy wins over a project copy in Claude Code, the order is not documented for
@@ -51,8 +53,8 @@ and remove it, and it says plainly what a global install changes.
 - The home folder is injectable, so tests never touch the real one.
 - Every path written must resolve inside one of the three user skill folders. A symlink along the
   way is not followed for writing (see Decisions).
-- Habi never writes a file into the home folder that is not part of the skill: no lock file, no
-  metadata.
+- The only files Habi writes in the home folder are the skill's own files and its record,
+  `~/.habi/lock.json`. No other metadata.
 - Client folders and precedence come from `crates/habi-core/src/clients/layout.rs`; undocumented
   behavior is labelled "not documented", not guessed.
 
@@ -71,8 +73,10 @@ and remove it, and it says plainly what a global install changes.
   "On this machine" should show when the library has something newer.
 - **Duplicates.** Cursor reads both `~/.claude/skills` and `~/.agents/skills`; installing for all
   three clients can show one skill twice, as it can in a project.
-- **Lost record.** If Habi's data folder is deleted, Habi forgets what it installed. Skills stay
+- **Lost record.** If `~/.habi/lock.json` is deleted, Habi forgets what it installed. Skills stay
   where they are and appear in "On this machine" as ordinary global skills.
+- **A new folder in the home directory.** `~/.habi/` is created on the first machine install. It holds
+  one small file, and is the price of reusing the project install machinery unchanged.
 
 ## Acceptance Criteria
 
@@ -84,43 +88,50 @@ and remove it, and it says plainly what a global install changes.
 4. A folder of the same name that Habi did not install is reported as a conflict and left untouched.
 5. The review names every project Habi knows that holds a skill of the same name, says whether it is
    identical, and says which copy Claude Code uses and that Cursor's and Codex's order is not documented.
-6. For a library marked "not audited" the confirm button stays disabled until the person ticks a
-   box saying they have not reviewed it.
+6. For a library that is not the team's own (a community library, or one marked "not audited") the
+   confirm button stays disabled until the person ticks a box saying they understand that.
 7. Update shows what changed upstream and what the person changed locally in the global copy, as a
    project update does, and never overwrites a local change without a decision.
 8. Remove deletes only the files Habi installed and recorded, and leaves a file the person added
    to that folder.
-9. If the skills folder, or the skill folder, is a symlink, Habi refuses to write and explains why,
-   or follows the chosen behavior in Decisions.
+9. If the skills folder, or the skill folder, is a symlink, Habi refuses to write, explains why, and
+   offers no override.
 10. Restore (undo) works on a global install as it does on a project one.
 11. No test reads or writes the real home folder.
 
 ## Implementation Notes
 
-- `install::plan::plan_install` already takes a root folder and a set of client folders. Make the
-  base folders a parameter, so a machine install passes the injected home and the user-level
-  folders from `USER_SKILL_DIRS`, and a project install passes the project root and
-  `skill_dirs` as it does now.
-- The lock file is project-relative today (`read_lock(root)`). Add a lock location that is Habi's
-  data folder for the machine target, keyed by the home folder, and have status, update and remove
-  read it. Skills in a machine lock count as "installed by Habi" in `machine_skills`.
-- Add `Habi::plan_install_machine(items, clients, decisions)` and make the review request carry a
-  target (project or machine). In the UI the review dialog takes the target; the library item page
-  and "Use" get a menu with both.
-- `machine_skills` already finds the collisions the review needs; reuse `ProjectCopy` and
-  `precedence`.
-- Reuse the "looks personal" scan only if the source is one of My skills.
+- `install::plan` plans against any root folder. A machine install passes the home folder as the root
+  and gets the same plan, journal, conflict handling, status and restore as a project install.
+  Project installs are unchanged.
+- The folders written are the same relative paths as in a project (`.claude/skills`, `.agents/skills`),
+  which at the home folder are the person's own skill folders.
+- Instruction files are refused up front; MCP configuration is never written.
+- `machine_skills` marks a skill as installed by Habi, and from which library, when the record owns it.
+- The review for a machine install lists the projects that hold a skill of the same name, and uses
+  the same wording for which copy wins as everywhere else (`lib/machine.ts`).
 
-### Decisions to make before building
+### Decisions
 
-1. **Symlinked skill folders.** Recommended: refuse, and say where the link points, with no
-   override in the first version. The alternative (follow it, with a warning) writes into someone's
-   dotfiles repository.
-2. **Default clients.** Recommended: the same default as projects (`defaultClients` setting), shown
-   and changeable in the review.
-3. **My skills as a source.** Recommended: yes, same flow, so a skill written in Habi can be put
-   everywhere in one step.
-4. **Unaudited libraries.** Recommended: an explicit checkbox, not just a warning line.
+1. **Symlinked skill folders:** refuse, with no override. This falls out of the planner, which does
+   not write through links; a link that leaves the home folder is refused too.
+2. **Default clients:** the same default as projects, shown and changeable in the review.
+3. **My skills as a source:** yes, from the Use dialog ("On this machine…").
+4. **Libraries that are not the team's own:** an explicit checkbox that gates the confirm button.
+
+## What was built
+
+- Core: `plan_install_machine`, `plan_update_machine`, `plan_remove_machine`, `plan_restore_machine`,
+  `machine_install_preview`, `machine_history` on `Habi`, and the matching Tauri commands.
+- UI: "Add to this machine…" under a "More" menu beside "Add to a project…" on a library skill;
+  "On this machine…" in the Use dialog for My skills; Update and Remove in a menu on skills Habi
+  installed, in the "On this machine" section.
+- **Differs from the first proposal:** the record is `~/.habi/lock.json`, not a file in Habi's data
+  folder. The planner, journal, restore and status code all read and write the record inside the root
+  folder, so keeping it elsewhere would have meant threading a second root through all of them. The
+  cost is one hidden folder in the home directory.
+- **Not surfaced:** restore and the machine history exist in core and as commands, but no screen
+  offers them yet.
 
 ## Final AI Implementation Prompt
 
@@ -141,8 +152,8 @@ skill_dirs does for projects. Never write anywhere else.
 CORE
 - Parameterize install::plan::plan_install over its base folders so a machine install uses the
   injected home and USER_SKILL_DIRS, and project installs are unchanged (existing tests pass).
-- Keep Habi's record of machine installs in Habi's data folder (keyed by the home folder), never
-  in the home folder. Status, update, remove and restore read it. A skill not in the record is
+- Keep Habi's record of machine installs in `~/.habi/lock.json`, as a project keeps its own.
+  Status, update, remove and restore read it. A skill not in the record is
   never modified or removed, and a same-named folder not in the record is a conflict, not an
   overwrite.
 - Refuse to write if the skills folder or the skill folder is a symlink; say where it points.

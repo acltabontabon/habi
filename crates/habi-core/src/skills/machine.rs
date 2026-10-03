@@ -11,6 +11,7 @@ use super::{Tree, TreeLimits, describe_tree, read_tree};
 use crate::clients::ClientId;
 use crate::clients::layout::{self, Precedence, USER_SKILL_DIRS};
 use crate::error::{HabiError, Result};
+use crate::install::status::InstallState;
 use crate::library::SKILL_FILE;
 use crate::library::model::Diagnostic;
 use crate::paths::{RelPath, resolve_for_read};
@@ -49,6 +50,29 @@ pub struct ProjectCopy {
     pub shared_readers: Vec<ClientUse>,
 }
 
+/// A skill Habi installed into the person's own folders from a library.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ManagedInstall {
+    /// The record's key, for updating or removing it.
+    pub key: String,
+    /// The library it came from.
+    pub library: String,
+    pub state: InstallState,
+}
+
+/// What putting a skill on this machine would sit next to.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct InstallShadow {
+    pub name: String,
+    pub title: String,
+    /// Projects that hold a skill of this name, and how it compares.
+    pub copies: Vec<ProjectCopy>,
+}
+
 /// A skill in one of the person's own skill folders.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -74,6 +98,8 @@ pub struct MachineSkill {
     /// Files whose text names a folder under a home directory.
     pub mentions_home: Vec<String>,
     pub in_projects: Vec<ProjectCopy>,
+    /// Set when Habi installed it from a library.
+    pub managed: Option<ManagedInstall>,
 }
 
 /// A skill folder that was asked for by id, found and checked.
@@ -168,6 +194,7 @@ fn describe(
             imported_as: None,
             mentions_home: tree.map(|t| mentions_home(t, home)).unwrap_or_default(),
             in_projects: Vec::new(),
+            managed: None,
         }
     };
     match read_tree(path, &TreeLimits::PACKAGE) {
@@ -222,20 +249,26 @@ pub(crate) fn locate(home: &Path, id: &str) -> Result<Found> {
     })
 }
 
-/// The copies a project holds under the same folder name, whether or not
-/// they match.
-pub(crate) fn project_copies(skill: &MachineSkill, projects: &[ProjectRef]) -> Vec<ProjectCopy> {
+/// The copies projects hold under the folder name `folder`, whether or not
+/// they match `digest`. `readers` are the clients that would read the
+/// personal copy, to find which of them see both.
+pub(crate) fn project_copies(
+    folder: &str,
+    digest: &str,
+    readers: &[ClientId],
+    projects: &[ProjectRef],
+) -> Vec<ProjectCopy> {
     let mut copies = Vec::new();
     for project in projects {
         for base in layout::PROJECT_SKILL_DIRS {
-            let rel = format!("{base}/{}", skill.folder);
+            let rel = format!("{base}/{folder}");
             let dir = RelPath::new(&rel)
                 .ok()
                 .and_then(|r| resolve_for_read(project.root, &r).ok().flatten());
             let Some(dir) = dir.filter(|d| d.join(SKILL_FILE).is_file()) else {
                 continue;
             };
-            let digest = read_tree(&dir, &TreeLimits::PACKAGE)
+            let theirs = read_tree(&dir, &TreeLimits::PACKAGE)
                 .ok()
                 .and_then(|t| describe_tree(&t).item.map(|i| i.content_digest))
                 .unwrap_or_default();
@@ -244,9 +277,8 @@ pub(crate) fn project_copies(skill: &MachineSkill, projects: &[ProjectRef]) -> V
                 project_id: project.id.to_string(),
                 project_name: project.name.to_string(),
                 path: rel,
-                identical: !digest.is_empty() && digest == skill.digest,
-                shared_readers: skill
-                    .readers
+                identical: !theirs.is_empty() && theirs == digest,
+                shared_readers: readers
                     .iter()
                     .filter(|c| seen_by.contains(c))
                     .map(|&client| ClientUse {
@@ -258,6 +290,28 @@ pub(crate) fn project_copies(skill: &MachineSkill, projects: &[ProjectRef]) -> V
         }
     }
     copies
+}
+
+/// The project-relative path of a skill's `SKILL.md` as Habi records it, from
+/// the id of a skill in one of the scanned folders ("claude/pdf").
+pub(crate) fn skill_file(id: &str) -> Option<String> {
+    let (key, folder) = id.split_once('/')?;
+    let dir = USER_SKILL_DIRS.iter().find(|d| d.key == key)?;
+    Some(format!("{}/{folder}/{SKILL_FILE}", dir.base))
+}
+
+/// Clients that would read a skill installed for `clients`: everyone who
+/// reads any of the folders Habi would write it to.
+pub(crate) fn readers_for(clients: &[ClientId]) -> Vec<ClientId> {
+    let (dirs, _) = layout::skill_dirs(clients);
+    let mut readers: Vec<ClientId> = dirs
+        .iter()
+        .filter_map(|d| USER_SKILL_DIRS.iter().find(|u| u.base == d.base))
+        .flat_map(|u| u.readers.iter().copied())
+        .collect();
+    readers.sort();
+    readers.dedup();
+    readers
 }
 
 /// A folder under a home directory, written the way a person's own machine

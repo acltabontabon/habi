@@ -381,7 +381,34 @@ impl<'a> Workspace<'a> {
     }
 }
 
+/// Where a plan writes: into one project, or into the person's own skill
+/// folders under their home folder (the "root" is then the home folder).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Scope {
+    Project,
+    Machine,
+}
+
+impl Scope {
+    /// "this project" / "this machine", for sentences about what a plan changes.
+    fn here(self) -> &'static str {
+        match self {
+            Scope::Project => "this project",
+            Scope::Machine => "this machine",
+        }
+    }
+
+    /// "in this project" / "on this machine".
+    fn on(self) -> &'static str {
+        match self {
+            Scope::Project => "in this project",
+            Scope::Machine => "on this machine",
+        }
+    }
+}
+
 struct Planner<'a> {
+    scope: Scope,
     ws: Workspace<'a>,
     lock: LockFile,
     original_lock: LockFile,
@@ -410,9 +437,10 @@ fn conflict(
 }
 
 impl<'a> Planner<'a> {
-    fn new(root: &'a Path, decisions: &'a Decisions) -> Result<Self> {
+    fn new(root: &'a Path, decisions: &'a Decisions, scope: Scope) -> Result<Self> {
         let lock = read_lock(root)?;
         Ok(Planner {
+            scope,
             ws: Workspace::new(root),
             original_lock: lock.clone(),
             lock,
@@ -857,15 +885,23 @@ impl<'a> Planner<'a> {
             )));
         }
         if item.license_restricted && existing.is_none() {
-            self.notes.push(format!(
-                "{} declares a proprietary licence (\u{201c}{}\u{201d}). Installing copies it into this project; check its terms{} before committing it where others can see it.",
-                item.title,
-                item.license.as_deref().unwrap_or_default(),
-                item.license_file
-                    .as_deref()
-                    .map(|f| format!(" ({f} in the library)"))
-                    .unwrap_or_default()
-            ));
+            let terms = item
+                .license_file
+                .as_deref()
+                .map(|f| format!(" ({f} in the library)"))
+                .unwrap_or_default();
+            self.notes.push(match self.scope {
+                Scope::Project => format!(
+                    "{} declares a proprietary licence (\u{201c}{}\u{201d}). Installing copies it into this project; check its terms{terms} before committing it where others can see it.",
+                    item.title,
+                    item.license.as_deref().unwrap_or_default(),
+                ),
+                Scope::Machine => format!(
+                    "{} declares a proprietary licence (\u{201c}{}\u{201d}). Installing copies it into your own skill folders; check its terms{terms}.",
+                    item.title,
+                    item.license.as_deref().unwrap_or_default(),
+                ),
+            });
         }
         let (dirs, dir_notes) = layout::skill_dirs(clients);
         self.notes.extend(dir_notes);
@@ -1720,7 +1756,10 @@ impl<'a> Planner<'a> {
                 ChangeKind::LockFile,
                 "",
                 &[],
-                "Records what Habi installed (sources, versions, file digests) so it can detect updates and local edits. Safe to commit; contains no absolute paths or secrets.",
+                match self.scope {
+                    Scope::Project => "Records what Habi installed (sources, versions, file digests) so it can detect updates and local edits. Safe to commit; contains no absolute paths or secrets.",
+                    Scope::Machine => "Records what Habi installed on this machine (sources, versions, file digests) so it can detect updates and local edits. Personal to this machine; contains no absolute paths or secrets.",
+                },
             )?;
         }
         // Codex stops reading instructions after 32 KiB, and Habi appends its
@@ -1744,7 +1783,10 @@ impl<'a> Planner<'a> {
             changes,
             conflicts: self.conflicts,
             notes: dedup(self.notes),
-            recovery: "Habi keeps every replaced or deleted file in its operation journal. Use Restore in the project's history (or `habi restore`) to put them back; restore also checks for edits made since.".into(),
+            recovery: match self.scope {
+                Scope::Project => "Habi keeps every replaced or deleted file in its operation journal. Use Restore in the project's history (or `habi restore`) to put them back; restore also checks for edits made since.".into(),
+                Scope::Machine => "Habi keeps every replaced or deleted file in its operation journal, and checks for edits made since before it restores anything.".into(),
+            },
             root: root.to_path_buf(),
         })
     }
@@ -1812,10 +1854,50 @@ pub fn plan_install(
     include_mcp: bool,
     decisions: &Decisions,
 ) -> Result<Plan> {
+    install_in(
+        root,
+        payloads,
+        clients,
+        include_mcp,
+        decisions,
+        Scope::Project,
+    )
+}
+
+/// Plans installing skills into the person's own skill folders under `home`
+/// (`~/.claude/skills`, `~/.agents/skills`), recorded in `~/.habi/lock.json`.
+/// Skills only: instruction files and MCP configuration are never written
+/// outside a project.
+pub fn plan_install_on_machine(
+    home: &Path,
+    payloads: &[Payload],
+    clients: &[ClientId],
+    decisions: &Decisions,
+) -> Result<Plan> {
+    if let Some(p) = payloads
+        .iter()
+        .find(|p| p.item.kind == ItemKind::Instructions)
+    {
+        return Err(HabiError::invalid(format!(
+            "`{}` is an instruction file; Habi adds those to a project, not to this machine",
+            p.item.title
+        )));
+    }
+    install_in(home, payloads, clients, false, decisions, Scope::Machine)
+}
+
+fn install_in(
+    root: &Path,
+    payloads: &[Payload],
+    clients: &[ClientId],
+    include_mcp: bool,
+    decisions: &Decisions,
+    scope: Scope,
+) -> Result<Plan> {
     if clients.is_empty() {
         return Err(HabiError::invalid("choose at least one client"));
     }
-    let mut planner = Planner::new(root, decisions)?;
+    let mut planner = Planner::new(root, decisions, scope)?;
     let mut all_clients = BTreeSet::new();
     for p in payloads {
         let (mut wanted, notes) = compatible_clients(&p.item, clients);
@@ -1865,18 +1947,37 @@ pub fn plan_install(
         planner.upsert_lock(locked);
     }
     let clients: Vec<ClientId> = all_clients.into_iter().collect();
-    let title = format!("Install for {} in this project", clients_phrase(&clients));
+    let title = format!("Install for {} {}", clients_phrase(&clients), scope.on());
     planner.finish(root, PlanAction::Install, title)
 }
 
 /// Plans updating installed items to the given payloads (same clients).
 pub fn plan_update(root: &Path, payloads: &[Payload], decisions: &Decisions) -> Result<Plan> {
-    let mut planner = Planner::new(root, decisions)?;
+    update_in(root, payloads, decisions, Scope::Project)
+}
+
+/// `plan_update` for skills installed on this machine.
+pub fn plan_update_on_machine(
+    home: &Path,
+    payloads: &[Payload],
+    decisions: &Decisions,
+) -> Result<Plan> {
+    update_in(home, payloads, decisions, Scope::Machine)
+}
+
+fn update_in(
+    root: &Path,
+    payloads: &[Payload],
+    decisions: &Decisions,
+    scope: Scope,
+) -> Result<Plan> {
+    let mut planner = Planner::new(root, decisions, scope)?;
     for p in payloads {
         let Some(existing) = planner.lock.find(&p.key()).cloned() else {
             return Err(HabiError::NotFound(format!(
-                "`{}` is not installed in this project",
-                p.item.title
+                "`{}` is not installed on {}",
+                p.item.title,
+                scope.here()
             )));
         };
         let clients = existing.clients.clone();
@@ -1899,14 +2000,24 @@ pub fn plan_update(root: &Path, payloads: &[Payload], decisions: &Decisions) -> 
     planner.finish(
         root,
         PlanAction::Update,
-        "Adopt the reviewed update in this project".into(),
+        format!("Adopt the reviewed update {}", scope.on()),
     )
 }
 
 /// Plans removing installed items. Only unchanged, Habi-managed content is
 /// deleted unless the user explicitly chooses otherwise per file.
 pub fn plan_remove(root: &Path, keys: &[String], decisions: &Decisions) -> Result<Plan> {
-    let mut planner = Planner::new(root, decisions)?;
+    remove_in(root, keys, decisions, Scope::Project)
+}
+
+/// `plan_remove` for skills installed on this machine. Only files Habi
+/// installed (and recorded) are deleted; anything added to those folders stays.
+pub fn plan_remove_on_machine(home: &Path, keys: &[String], decisions: &Decisions) -> Result<Plan> {
+    remove_in(home, keys, decisions, Scope::Machine)
+}
+
+fn remove_in(root: &Path, keys: &[String], decisions: &Decisions, scope: Scope) -> Result<Plan> {
+    let mut planner = Planner::new(root, decisions, scope)?;
     for key in keys {
         let Some(existing) = planner.lock.find(key).cloned() else {
             return Err(HabiError::NotFound(format!("installed item {key}")));
@@ -1959,7 +2070,11 @@ pub fn plan_remove(root: &Path, keys: &[String], decisions: &Decisions) -> Resul
         });
         planner.lock.items.retain(|i| &i.key() != key);
     }
-    planner.finish(root, PlanAction::Remove, "Remove from this project".into())
+    planner.finish(
+        root,
+        PlanAction::Remove,
+        format!("Remove from {}", scope.here()),
+    )
 }
 
 /// A file to restore: put `content` back if the file still has `expected`.
@@ -1986,7 +2101,27 @@ pub fn plan_restore(
     label: &str,
     decisions: &Decisions,
 ) -> Result<Plan> {
-    let mut planner = Planner::new(root, decisions)?;
+    restore_in(root, steps, label, decisions, Scope::Project)
+}
+
+/// `plan_restore` for an operation on this machine.
+pub fn plan_restore_on_machine(
+    home: &Path,
+    steps: &[RestoreStep],
+    label: &str,
+    decisions: &Decisions,
+) -> Result<Plan> {
+    restore_in(home, steps, label, decisions, Scope::Machine)
+}
+
+fn restore_in(
+    root: &Path,
+    steps: &[RestoreStep],
+    label: &str,
+    decisions: &Decisions,
+    scope: Scope,
+) -> Result<Plan> {
+    let mut planner = Planner::new(root, decisions, scope)?;
     let mut lock_step = None;
     for step in steps {
         if step.path == brand::LOCK_FILE {

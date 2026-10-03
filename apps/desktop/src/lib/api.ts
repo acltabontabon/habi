@@ -28,6 +28,7 @@ import type { ImportFrom } from "../bindings/ImportFrom";
 import type { ImportInspection } from "../bindings/ImportInspection";
 import type { ImportOutcome } from "../bindings/ImportOutcome";
 import type { ImportSelection } from "../bindings/ImportSelection";
+import type { InstallShadow } from "../bindings/InstallShadow";
 import type { InstructionDocument } from "../bindings/InstructionDocument";
 import type { ItemDetail } from "../bindings/ItemDetail";
 import type { ItemRef } from "../bindings/ItemRef";
@@ -179,6 +180,19 @@ export const api = {
     call<Plan>("plan_remove", { projectId, keys, decisions }),
   planRestore: (projectId: string, operationId: string, decisions: Decisions) =>
     call<Plan>("plan_restore", { projectId, operationId, decisions }),
+  /** The same reviewed plans for the person's own skill folders ("this machine"). */
+  planInstallMachine: (items: ItemRef[], clients: ClientId[], decisions: Decisions) =>
+    call<Plan>("plan_install_machine", { items, clients, decisions }),
+  planUpdateMachine: (keys: string[], decisions: Decisions) =>
+    call<Plan>("plan_update_machine", { keys, decisions }),
+  planRemoveMachine: (keys: string[], decisions: Decisions) =>
+    call<Plan>("plan_remove_machine", { keys, decisions }),
+  planRestoreMachine: (operationId: string, decisions: Decisions) =>
+    call<Plan>("plan_restore_machine", { operationId, decisions }),
+  /** Projects that hold a skill of the same name as each item, and how the copies compare. */
+  machineInstallPreview: (items: ItemRef[], clients: ClientId[]) =>
+    call<InstallShadow[]>("machine_install_preview", { items, clients }),
+  machineHistory: () => call<OperationSummary[]>("machine_history"),
   applyPlan: (planId: string) => call<OperationSummary>("apply_plan", { planId }),
   history: (projectId: string) => call<OperationSummary[]>("history", { projectId }),
   recover: (projectId: string) => call<OperationSummary[]>("recover", { projectId }),

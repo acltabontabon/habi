@@ -753,6 +753,82 @@ pub async fn plan_restore(
     .await
 }
 
+// The same reviewed plans, for the person's own skill folders ("this machine").
+
+#[tauri::command]
+pub async fn plan_install_machine(
+    state: State<'_, AppState>,
+    items: Vec<ItemRef>,
+    clients: Vec<ClientId>,
+    decisions: Decisions,
+) -> CmdResult<Plan> {
+    check_decisions(&decisions)?;
+    if items.is_empty() || items.len() > 100 {
+        return Err(HabiError::invalid("choose between 1 and 100 items").to_info());
+    }
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.plan_install_machine(&items, &clients, &decisions)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn plan_update_machine(
+    state: State<'_, AppState>,
+    keys: Vec<String>,
+    decisions: Decisions,
+) -> CmdResult<Plan> {
+    check_decisions(&decisions)?;
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.plan_update_machine(&keys, &decisions)).await
+}
+
+#[tauri::command]
+pub async fn plan_remove_machine(
+    state: State<'_, AppState>,
+    keys: Vec<String>,
+    decisions: Decisions,
+) -> CmdResult<Plan> {
+    check_decisions(&decisions)?;
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.plan_remove_machine(&keys, &decisions)).await
+}
+
+#[tauri::command]
+pub async fn plan_restore_machine(
+    state: State<'_, AppState>,
+    operation_id: String,
+    decisions: Decisions,
+) -> CmdResult<Plan> {
+    check_decisions(&decisions)?;
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.plan_restore_machine(&operation_id, &decisions)
+    })
+    .await
+}
+
+/// What a machine install would sit next to: projects with a skill of that name.
+#[tauri::command]
+pub async fn machine_install_preview(
+    state: State<'_, AppState>,
+    items: Vec<ItemRef>,
+    clients: Vec<ClientId>,
+) -> CmdResult<Vec<habi_core::skills::machine::InstallShadow>> {
+    if items.len() > 100 {
+        return Err(HabiError::invalid("choose between 1 and 100 items").to_info());
+    }
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.machine_install_preview(&items, &clients)).await
+}
+
+#[tauri::command]
+pub async fn machine_history(state: State<'_, AppState>) -> CmdResult<Vec<OperationSummary>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.machine_history()).await
+}
+
 /// Applies a plan computed earlier in this session. The UI passes only the id.
 #[tauri::command]
 pub async fn apply_plan(

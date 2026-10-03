@@ -43,6 +43,7 @@ export function UseSkillDialog({
   const available = (projects.data ?? []).filter((p) => p.exists);
   const [projectId, setProjectId] = useState("");
   const [reviewing, setReviewing] = useState(false);
+  const [onMachine, setOnMachine] = useState(false);
   const errors = skill.diagnostics.filter((d) => d.level === "error");
   const brings = materialsOf(skill.files, skill.document.body);
   const preview = useQuery({
@@ -62,6 +63,20 @@ export function UseSkillDialog({
       return rank(a) - rank(b);
     });
   const chosen = projectId || rows[0]?.project.id || "";
+
+  if (onMachine) {
+    return (
+      <ReviewDialog
+        projectId={null}
+        request={{
+          kind: "install",
+          items: [{ sourceId: "local", itemId: skill.summary.name }],
+          title: skill.summary.title,
+        }}
+        onClose={onClose}
+      />
+    );
+  }
 
   if (reviewing && chosen) {
     return (
@@ -89,6 +104,9 @@ export function UseSkillDialog({
         <>
           <Button variant="quiet" onClick={onClose}>
             Cancel
+          </Button>
+          <Button disabled={errors.length > 0} onClick={() => setOnMachine(true)}>
+            On this machine…
           </Button>
           <Button
             variant="primary"

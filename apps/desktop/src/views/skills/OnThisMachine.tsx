@@ -13,6 +13,7 @@ import type { ImportFrom } from "../../bindings/ImportFrom";
 import type { LocalSkill } from "../../bindings/LocalSkill";
 import type { MachineSkill } from "../../bindings/MachineSkill";
 import { Dialog } from "../../components/Dialog";
+import { Menu } from "../../components/Menu";
 import { Button, ErrorNotice, Status } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
@@ -21,7 +22,16 @@ import { copyState, homeMention, precedenceNote } from "../../lib/machine";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useMachineSkills } from "../../lib/queries";
 import { purpose } from "../../lib/skills";
+import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { UseSkillDialog } from "./UseSkillDialog";
+
+/** What Habi says about a skill it installed here, beyond where it came from. */
+const managedState: Record<string, string> = {
+  updateAvailable: "update available",
+  locallyModified: "edited here",
+  conflict: "edited here, and the library changed",
+  sourceUnavailable: "library not connected",
+};
 
 function Row({
   skill: s,
@@ -29,12 +39,14 @@ function Row({
   onAdd,
   onOpen,
   onUse,
+  onReview,
 }: {
   skill: MachineSkill;
   busy: boolean;
   onAdd: () => void;
   onOpen: (id: string) => void;
   onUse: () => void;
+  onReview: (request: ReviewRequest) => void;
 }) {
   const copies = s.inProjects;
   const mention = homeMention(s);
@@ -54,6 +66,12 @@ function Row({
           <span className="mono">{s.location}</span>
           <span>read by {clientsPhrase(s.readers)}</span>
           {s.importedAs ? <span>a copy is in My skills</span> : null}
+          {s.managed ? (
+            <span>
+              installed by Habi from {s.managed.library}
+              {managedState[s.managed.state] ? ` · ${managedState[s.managed.state]}` : ""}
+            </span>
+          ) : null}
         </span>
         {copies.map((c) => (
           <span key={`${c.projectId}:${c.path}`} className="mach-note">
@@ -95,6 +113,24 @@ function Row({
         >
           Use in a project…
         </Button>
+        {s.managed ? (
+          <Menu
+            label={`More for ${s.name}`}
+            items={[
+              {
+                label: "Update…",
+                hint: "Reviewed like any install",
+                onSelect: () => onReview({ kind: "update", keys: [s.managed?.key ?? ""], title: s.name }),
+              },
+              {
+                label: "Remove from this machine…",
+                hint: "Only the files Habi installed",
+                danger: true,
+                onSelect: () => onReview({ kind: "remove", keys: [s.managed?.key ?? ""], title: s.name }),
+              },
+            ]}
+          />
+        ) : null}
       </span>
     </li>
   );
@@ -108,6 +144,7 @@ export function OnThisMachine() {
   const [using, setUsing] = useState<LocalSkill | null>(null);
   const [warning, setWarning] = useState<MachineSkill | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [review, setReview] = useState<ReviewRequest | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   // A folder Habi cannot read is not worth a broken page: show nothing.
@@ -165,6 +202,7 @@ export function OnThisMachine() {
             onAdd={() => addSkills({ source: "machine", id: s.id })}
             onOpen={(id) => navigate({ name: "skills", skillId: id })}
             onUse={() => (homeMention(s) ? setWarning(s) : void bringToProject(s))}
+            onReview={setReview}
           />
         ))}
       </ul>
@@ -199,6 +237,7 @@ export function OnThisMachine() {
           </p>
         </Dialog>
       ) : null}
+      {review ? <ReviewDialog projectId={null} request={review} onClose={() => setReview(null)} /> : null}
       {using ? (
         <UseSkillDialog
           skill={using}
