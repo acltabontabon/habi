@@ -85,10 +85,21 @@ pub struct FolderListing {
 #[ts(export)]
 pub struct ProjectPlaces {
     pub home: Crumb,
-    /// The usual code folders that exist here (`~/Workspace`, `~/code`…).
-    pub roots: Vec<Crumb>,
-    /// Repositories in those folders, most recently changed first.
+    /// Folders in the home folder that hold projects, the fullest first.
+    pub roots: Vec<CodePlace>,
+    /// The projects in them (and any right in the home folder), latest work first.
     pub found: Vec<FolderEntry>,
+    /// How many there are, though only the latest are in `found`.
+    pub total: u32,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct CodePlace {
+    pub name: String,
+    pub path: String,
+    pub projects: u32,
 }
 
 /// Build files and the stack each one names.
@@ -112,26 +123,6 @@ const STACKS: &[(&str, &str)] = &[
     ("pubspec.yaml", "Dart"),
     ("mix.exs", "Elixir"),
     ("build.xml", "Ant"),
-];
-
-/// Where developers keep code, under the home directory.
-const ROOTS: &[&str] = &[
-    "Workspace",
-    "workspace",
-    "Developer",
-    "dev",
-    "Dev",
-    "code",
-    "Code",
-    "Projects",
-    "projects",
-    "src",
-    "repos",
-    "Repos",
-    "git",
-    "GitHub",
-    "github",
-    "Sites",
 ];
 
 /// Home folders macOS guards with a privacy prompt. They are listed, but
@@ -163,7 +154,7 @@ const AGENT_FILES: &[&str] = &[
 
 const WEEKS: usize = 12;
 const MAX_ENTRIES: usize = 300;
-const MAX_FOUND: usize = 40;
+const MAX_FOUND: usize = 60;
 
 pub fn home() -> Result<PathBuf> {
     directories::BaseDirs::new()
@@ -181,47 +172,95 @@ pub fn browsable(home: &Path, path: &Path) -> bool {
     })
 }
 
+/// Finds where the code is rather than guessing folder names: every home
+/// subfolder with repositories in it (one or two levels down) is a place.
 pub fn places(home: &Path) -> ProjectPlaces {
-    let mut roots: Vec<PathBuf> = Vec::new();
-    for name in ROOTS {
-        // Case-insensitive file systems answer to both spellings: keep one.
-        if let Ok(dir) = crate::paths::canonical(home.join(name))
-            && dir.is_dir()
-            && !roots.contains(&dir)
-        {
-            roots.push(dir);
+    let mut candidates: Vec<(Option<usize>, PathBuf)> = Vec::new();
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    for dir in subfolders(home) {
+        let name = name_of(&dir);
+        if NOT_CODE.contains(&name.as_str()) || GUARDED.contains(&name.as_str()) {
+            continue;
         }
-    }
-    let mut found: Vec<FolderEntry> = Vec::new();
-    for root in &roots {
-        for child in subfolders(root) {
-            let entry = describe(&child);
-            if entry.kind == FolderKind::Project {
-                found.push(entry);
-            } else if entry.kind == FolderKind::Folder {
-                // One level more: `~/code/work/app`.
-                found.extend(
-                    subfolders(&child)
-                        .into_iter()
-                        .take(MAX_ENTRIES)
-                        .map(|p| describe(&p))
-                        .filter(|e| e.kind == FolderKind::Project),
-                );
+        if looks_like_repo(&dir) {
+            // A project right in the home folder.
+            candidates.push((None, dir));
+        } else {
+            let inside = repos_in(&dir);
+            if !inside.is_empty() {
+                candidates.extend(inside.into_iter().map(|p| (Some(dirs.len()), p)));
+                dirs.push(dir);
             }
         }
     }
+    let mut counts = vec![0u32; dirs.len()];
+    let mut found: Vec<FolderEntry> = Vec::new();
+    for (root, path) in candidates {
+        let entry = describe(&path);
+        if entry.kind != FolderKind::Project {
+            continue;
+        }
+        if let Some(count) = root.and_then(|i| counts.get_mut(i)) {
+            *count += 1;
+        }
+        found.push(entry);
+    }
+    let mut roots: Vec<CodePlace> = dirs
+        .iter()
+        .zip(counts)
+        .filter(|(_, n)| *n > 0)
+        .map(|(dir, projects)| CodePlace {
+            name: name_of(dir),
+            path: dir.to_string_lossy().into_owned(),
+            projects,
+        })
+        .collect();
+    roots.sort_by(|a, b| {
+        b.projects
+            .cmp(&a.projects)
+            .then_with(|| a.name.cmp(&b.name))
+    });
     found.sort_by(|a, b| {
         b.modified
             .cmp(&a.modified)
             .then_with(|| a.name.cmp(&b.name))
     });
-    found.dedup_by(|a, b| a.path == b.path);
+    let total = found.len() as u32;
     found.truncate(MAX_FOUND);
     ProjectPlaces {
         home: crumb(home),
-        roots: roots.iter().map(|r| crumb(r)).collect(),
+        roots,
         found,
+        total,
     }
+}
+
+/// A Git checkout. Build files alone are not enough to be found: SDKs and
+/// tool installs are full of them. Browsing still shows those projects.
+fn looks_like_repo(dir: &Path) -> bool {
+    dir.join(".git").exists()
+}
+
+/// Projects in `dir` and one level further (`~/code/work/app`), a few hundred folders at most.
+fn repos_in(dir: &Path) -> Vec<PathBuf> {
+    let mut budget = MAX_ENTRIES;
+    let mut out = Vec::new();
+    for child in subfolders(dir).into_iter().take(MAX_ENTRIES) {
+        if looks_like_repo(&child) {
+            out.push(child);
+            continue;
+        }
+        for grandchild in subfolders(&child).into_iter().take(budget) {
+            budget -= 1;
+            if looks_like_repo(&grandchild) {
+                out.push(grandchild);
+            }
+        }
+        if budget == 0 {
+            break;
+        }
+    }
+    out
 }
 
 pub fn list(home: &Path, path: &Path) -> Result<FolderListing> {
@@ -411,7 +450,7 @@ fn tidy_remote(url: &str) -> String {
         .to_string()
 }
 
-/// Commits per week from the log's last 64 KiB, and the time of its last entry.
+/// Commits per week from the log's last 256 KiB, and the time of its last entry.
 fn activity(log: &Path) -> (Vec<u32>, Option<i64>) {
     use std::io::{Read, Seek, SeekFrom};
     let mut weeks = vec![0; WEEKS];
@@ -419,7 +458,7 @@ fn activity(log: &Path) -> (Vec<u32>, Option<i64>) {
         return (weeks, None);
     };
     let len = file.metadata().map(|m| m.len()).unwrap_or(0);
-    let _ = file.seek(SeekFrom::Start(len.saturating_sub(64 * 1024)));
+    let _ = file.seek(SeekFrom::Start(len.saturating_sub(256 * 1024)));
     let mut text = String::new();
     if file.read_to_string(&mut text).is_err() {
         return (weeks, None);
@@ -531,12 +570,26 @@ mod tests {
         fs::create_dir_all(home.join("Workspace/app/src")).unwrap();
         fs::write(home.join("Workspace/app/package.json"), "{}").unwrap();
         fs::write(home.join("Workspace/app/Cargo.toml"), "").unwrap();
+        fs::create_dir_all(home.join("Workspace/app/.git")).unwrap();
         fs::create_dir_all(home.join("Workspace/work/api/.git")).unwrap();
         fs::create_dir_all(home.join("Workspace/agent-skills/review")).unwrap();
         fs::write(home.join("Workspace/agent-skills/review/SKILL.md"), "").unwrap();
         fs::create_dir_all(home.join("Workspace/.hidden/x/.git")).unwrap();
 
+        fs::create_dir_all(home.join("dev/notes")).unwrap();
+        fs::create_dir_all(home.join("IdeaProjects/shop/.git")).unwrap();
+        fs::write(home.join("IdeaProjects/shop/pom.xml"), "").unwrap();
+        // An SDK full of build files is not a place.
+        fs::create_dir_all(home.join("sdk/tools")).unwrap();
+        fs::write(home.join("sdk/tools/package.json"), "{}").unwrap();
         let places = places(&home);
+        let roots: Vec<(&str, u32)> = places
+            .roots
+            .iter()
+            .map(|r| (r.name.as_str(), r.projects))
+            .collect();
+        // Found, not guessed: no `dev` (nothing in it), and `IdeaProjects` by its contents.
+        assert_eq!(roots, vec![("Workspace", 2), ("IdeaProjects", 1)]);
         let names: Vec<&str> = places.found.iter().map(|e| e.name.as_str()).collect();
         assert!(
             names.contains(&"app") && names.contains(&"api"),
@@ -580,9 +633,9 @@ mod tests {
         fs::write(home.join("Documents/package.json"), "{}").unwrap();
         let at_home = list(&home, &home).unwrap();
         let names: Vec<&str> = at_home.entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, vec!["Documents", "Workspace"]);
+        assert_eq!(names, vec!["dev", "Documents", "IdeaProjects", "sdk", "Workspace"]);
         // Guarded by macOS: named, not looked inside, until opened.
-        assert_eq!(at_home.entries[0].kind, FolderKind::Folder);
+        assert_eq!(at_home.entries[1].kind, FolderKind::Folder);
         assert_eq!(
             list(&home, &home.join("Documents")).unwrap().folder.kind,
             FolderKind::Project

@@ -113,7 +113,7 @@ export function ProjectChooser({
     ev.preventDefault();
   };
 
-  const rail: { key: string; name: string; place: Place }[] = places.data
+  const rail: { key: string; name: string; place: Place; count?: number }[] = places.data
     ? [
         ...(places.data.found.length > 0
           ? [{ key: "found", name: "Recent", place: { kind: "found" } as Place }]
@@ -121,14 +121,19 @@ export function ProjectChooser({
         ...places.data.roots.map((r) => ({
           key: r.path,
           name: r.name,
+          count: r.projects,
           place: { kind: "folder", path: r.path } as Place,
         })),
-        { key: places.data.home.path, name: "Home", place: { kind: "folder", path: places.data.home.path } },
       ]
     : [];
   const railKey = found ? "found" : folderPath;
   const crumbs = listing.data?.crumbs ?? [];
   const roots = (places.data?.roots ?? []).map((r) => `~/${r.name}`).join("  ");
+  const repos = places.data?.found ?? [];
+  const active = repos.filter((e) => (e.git?.weeks ?? []).slice(-4).some((n) => n > 0)).length;
+  const woven = entries.some((e) => e.git);
+  // Stitch lengths compare across the list: the busiest week shown is the longest.
+  const busiest = Math.max(1, ...entries.flatMap((e) => e.git?.weeks ?? []));
 
   return (
     <RadixDialog.Root
@@ -151,7 +156,10 @@ export function ProjectChooser({
             <RadixDialog.Title className="chooser-title">Open a project</RadixDialog.Title>
             <nav className="chooser-crumbs" aria-label="Folder">
               {found ? (
-                <span className="chooser-crumb">{roots}</span>
+                <span className="chooser-crumb" data-tip={`Found in ${roots}`}>
+                  {plural(places.data?.total ?? repos.length, "repo")}
+                  {active > 0 ? ` · ${active} active this month` : ""}
+                </span>
               ) : (
                 crumbs.map((c, i) => (
                   <span key={c.path} className="chooser-crumb-wrap">
@@ -176,7 +184,7 @@ export function ProjectChooser({
             </RadixDialog.Close>
           </header>
 
-          <div className="chooser-body">
+          <div className={`chooser-body${rail.length === 0 ? " is-bare" : ""}`}>
             <ul className="chooser-rail" aria-label="Places">
               {rail.map((r) => (
                 <li key={r.key}>
@@ -188,6 +196,7 @@ export function ProjectChooser({
                   >
                     <span className="chooser-place-knot" aria-hidden="true" />
                     <span className="chooser-place-name">{r.name}</span>
+                    {r.count ? <span className="chooser-place-count">{r.count}</span> : null}
                   </button>
                 </li>
               ))}
@@ -233,20 +242,31 @@ export function ProjectChooser({
                     {words.length > 0 ? "no match" : "nothing here"}
                   </p>
                 ) : (
-                  entries.map((e, i) => (
-                    <Row
-                      key={e.path}
-                      entry={e}
-                      index={i}
-                      found={found}
-                      opened={opened.has(e.display)}
-                      selected={e.path === selected}
-                      onSelect={() => setPicked(e.path)}
-                      onEnter={() => (e.kind === "folder" ? enter(e) : act(e))}
-                      onInto={() => enter(e)}
-                    />
-                  ))
+                  woven && (
+                    <div className="chooser-scale" aria-hidden="true">
+                      <span className="chooser-scale-weeks">
+                        <span>12 weeks ago</span>
+                        <span>now</span>
+                      </span>
+                    </div>
+                  )
                 )}
+                {error || loading || entries.length === 0
+                  ? null
+                  : entries.map((e, i) => (
+                      <Row
+                        key={e.path}
+                        entry={e}
+                        index={i}
+                        found={found}
+                        opened={opened.has(e.display)}
+                        selected={e.path === selected}
+                        busiest={busiest}
+                        onSelect={() => setPicked(e.path)}
+                        onEnter={() => (e.kind === "folder" ? enter(e) : act(e))}
+                        onInto={() => enter(e)}
+                      />
+                    ))}
                 {listing.data?.truncated && !found ? (
                   <p className="chooser-more">first {all.length} folders</p>
                 ) : null}
@@ -297,6 +317,7 @@ function Row({
   found,
   opened,
   selected,
+  busiest,
   onSelect,
   onEnter,
   onInto,
@@ -307,6 +328,8 @@ function Row({
   /** Already one of Habi's projects. */
   opened: boolean;
   selected: boolean;
+  /** The busiest week in the list, to scale stitches by. */
+  busiest: number;
   onSelect: () => void;
   /** Double click: open a project, look inside a folder. */
   onEnter: () => void;
@@ -314,6 +337,7 @@ function Row({
 }) {
   const parent = entry.display.slice(0, Math.max(0, entry.display.length - entry.name.length - 1));
   const detail = [entry.git?.branch, entry.git?.remote ?? (found ? parent : null)].filter(Boolean);
+  const dormant = entry.git?.weeks.every((n) => n === 0);
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: the filter field handles the keys for the list.
     <div
@@ -322,8 +346,8 @@ function Row({
       role="option"
       aria-selected={selected}
       tabIndex={-1}
-      className={`chooser-row is-${entry.kind}${selected ? " is-selected" : ""}`}
-      style={{ "--i": Math.min(index, 16) } as CSSProperties}
+      className={`chooser-row is-${entry.kind}${dormant ? " is-dormant" : ""}${selected ? " is-selected" : ""}`}
+      style={{ "--i": Math.min(index, 16), "--dye": dyeOf(entry) } as CSSProperties}
       onClick={onSelect}
       onDoubleClick={onEnter}
     >
@@ -343,10 +367,10 @@ function Row({
           {entry.agents ? (
             <span
               className="chooser-agents"
+              role="img"
+              aria-label="has agent instructions"
               data-tip="Agent instructions — AGENTS.md, CLAUDE.md or an agent folder is already here"
-            >
-              agents
-            </span>
+            />
           ) : null}
           {opened ? <span className="chooser-opened">in Habi</span> : null}
         </span>
@@ -357,7 +381,11 @@ function Row({
           </span>
         ) : null}
       </span>
-      {entry.git ? <Stitches weeks={entry.git.weeks} /> : <span />}
+      {entry.git ? (
+        <Stitches weeks={entry.git.weeks} busiest={busiest} />
+      ) : (
+        <span className="chooser-weave-empty" />
+      )}
       <span className="chooser-when">{entry.modified ? relativeTime(entry.modified) : ""}</span>
       <button
         type="button"
@@ -396,30 +424,70 @@ function Thread({ kind }: { kind: FolderEntry["kind"] }) {
 
 /**
  * Twelve weeks of commits made on this machine, oldest on the left: each
- * week a stitch through the thread, longer for a busier week.
+ * week a stitch through the thread, as long as the week was busy compared
+ * with the busiest week in the list. Pointing at a week says how many; at
+ * the rest of the strip, how many in all.
  */
-function Stitches({ weeks }: { weeks: number[] }) {
+function Stitches({ weeks, busiest }: { weeks: number[]; busiest: number }) {
+  const width = weeks.length * WEEK;
   const total = weeks.reduce((a, b) => a + b, 0);
-  const width = weeks.length * 6;
   return (
     <svg
-      className={`chooser-stitches${total === 0 ? " is-quiet" : ""}`}
+      className="chooser-stitches"
       width={width}
-      height="18"
-      viewBox={`0 0 ${width} 18`}
-      role="img"
-      aria-label={`${plural(total, "commit")} here in the last 12 weeks`}
+      height="22"
+      viewBox={`0 0 ${width} 22`}
+      aria-hidden="true"
       data-tip={`${plural(total, "commit")} — on this machine, last 12 weeks`}
     >
-      <line x1="0" y1="9" x2={width} y2="9" className="chooser-stitches-weft" />
+      <line x1="0" y1="11" x2={width} y2="11" className="chooser-stitches-weft" />
       {weeks.map((n, i) => {
         if (n === 0) return null;
-        const h = Math.min(16, 3 + 3.2 * Math.log2(1 + n));
-        const x = 3 + i * 6;
-        return <line key={i} x1={x} x2={x} y1={9 - h / 2} y2={9 + h / 2} className="chooser-stitches-week" />;
+        const h = 4 + 16 * Math.sqrt(n / busiest);
+        const x = WEEK / 2 + i * WEEK;
+        return (
+          <g key={i} data-tip={`${plural(n, "commit")} — ${weekOf(weeks.length - 1 - i)}`}>
+            <rect x={x - WEEK / 2} y="0" width={WEEK} height="22" className="chooser-stitches-hit" />
+            <line x1={x} x2={x} y1={11 - h / 2} y2={11 + h / 2} className="chooser-stitches-week" />
+          </g>
+        );
       })}
     </svg>
   );
+}
+
+/** "this week", "last week", "week of Sep 14". */
+function weekOf(weeksAgo: number): string {
+  if (weeksAgo === 0) return "this week";
+  if (weeksAgo === 1) return "last week";
+  const start = new Date(Date.now() - (weeksAgo * 7 + 6) * 86_400_000);
+  return `week of ${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+}
+
+const WEEK = 16;
+
+/** A project's thread takes the dye of its main stack; a bare checkout stays ink. */
+const STACK_DYE: Record<string, string> = {
+  Rust: "var(--dye-1)",
+  Swift: "var(--dye-1)",
+  Node: "var(--dye-2)",
+  Deno: "var(--dye-2)",
+  Maven: "var(--dye-0)",
+  Gradle: "var(--dye-0)",
+  Ant: "var(--dye-0)",
+  Go: "var(--dye-4)",
+  Dart: "var(--dye-4)",
+  Python: "var(--dye-6)",
+  Ruby: "var(--dye-3)",
+  Scala: "var(--dye-3)",
+  PHP: "var(--dye-7)",
+  Elixir: "var(--dye-7)",
+};
+
+function dyeOf(e: FolderEntry): string {
+  if (e.kind === "project") return STACK_DYE[e.stacks[0] ?? ""] ?? "var(--ink-muted)";
+  if (e.kind === "skills") return "var(--ink-muted)";
+  return "var(--hairline-strong)";
 }
 
 /** A folder of skills chosen with the native picker, where a project was expected. */

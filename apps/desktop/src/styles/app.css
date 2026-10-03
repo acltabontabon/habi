@@ -7101,6 +7101,15 @@ button.chooser-crumb:focus-visible {
   border-top: 1px solid var(--hairline);
 }
 
+/* With no repositories found there are no places: the folders take the room. */
+.chooser-body.is-bare {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.chooser-body.is-bare .chooser-rail {
+  display: none;
+}
+
 /* Places hang on one warp; where you are is the saffron knot. */
 .chooser-rail {
   position: relative;
@@ -7165,6 +7174,13 @@ button.chooser-crumb:focus-visible {
   border-color: var(--thread);
 }
 
+.chooser-place-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
 .chooser-place.is-here {
   color: var(--ink);
   font-weight: 540;
@@ -7203,6 +7219,20 @@ button.chooser-crumb:focus-visible {
   background: var(--paper-raised);
 }
 
+/* The field's frame is the focus mark; the input itself draws nothing. */
+.chooser-filter input,
+.chooser-filter input:focus,
+.chooser-filter input:focus-visible {
+  appearance: none;
+  outline: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.chooser-filter:focus-within {
+  border-color: color-mix(in srgb, var(--thread) 55%, var(--hairline-strong));
+}
+
 .chooser-filter input {
   flex: 1;
   min-width: 0;
@@ -7228,11 +7258,11 @@ button.chooser-crumb:focus-visible {
 .chooser-row {
   position: relative;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto 76px 26px;
-  align-items: center;
+  grid-template-columns: 24px minmax(0, 1fr) 192px 76px 26px;
+  /* Everything sits on the first line, so the thread stays straight when the row opens. */
+  align-items: start;
   column-gap: 14px;
-  min-height: 42px;
-  padding: 5px 4px 5px 10px;
+  padding: 9px 4px 9px 10px;
   border-radius: var(--radius);
   color: var(--ink-muted);
   font-size: var(--text-md);
@@ -7261,6 +7291,7 @@ button.chooser-crumb:focus-visible {
 
 .chooser-thread {
   overflow: visible;
+  margin-top: 4px;
 }
 
 .chooser-weft {
@@ -7269,7 +7300,18 @@ button.chooser-crumb:focus-visible {
 }
 
 .chooser-knot {
-  fill: var(--ink-soft);
+  fill: var(--dye);
+}
+
+/* Nothing committed in twelve weeks: the knot is hollow, the thread faded. */
+.chooser-row.is-dormant .chooser-knot {
+  fill: var(--paper);
+  stroke: var(--dye);
+  stroke-width: 1.5;
+}
+
+.chooser-row.is-dormant .chooser-name {
+  color: var(--ink-soft);
 }
 
 .chooser-hollow {
@@ -7279,7 +7321,7 @@ button.chooser-crumb:focus-visible {
 }
 
 .chooser-stitch {
-  stroke: var(--dye-4);
+  stroke: var(--ink-muted);
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-dasharray: 2.4 2.4;
@@ -7287,10 +7329,6 @@ button.chooser-crumb:focus-visible {
 
 .chooser-row.is-selected .chooser-weft {
   stroke: var(--thread);
-}
-
-.chooser-row.is-selected .chooser-knot {
-  fill: var(--thread);
 }
 
 .chooser-row.is-selected .chooser-hollow {
@@ -7304,9 +7342,59 @@ button.chooser-crumb:focus-visible {
 
 .chooser-line {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
+  height: 24px;
   min-width: 0;
+}
+
+/* Each row's weft runs on from its name to the stitches, in the row's dye. */
+.chooser-line::after,
+.chooser-weave-empty {
+  content: "";
+  flex: 1 1 0;
+  min-width: 12px;
+  height: 1.5px;
+  align-self: center;
+  margin-right: -14px;
+  background: color-mix(in srgb, var(--dye) 40%, transparent);
+}
+
+.chooser-weave-empty {
+  margin-right: 0;
+  margin-top: 11px;
+}
+
+.chooser-row.is-dormant .chooser-line::after,
+.chooser-row.is-dormant .chooser-weave-empty {
+  background: color-mix(in srgb, var(--dye) 16%, transparent);
+}
+
+.chooser-row.is-folder .chooser-line::after,
+.chooser-row.is-folder .chooser-weave-empty {
+  background: color-mix(in srgb, var(--hairline) 70%, transparent);
+}
+
+.chooser-row.is-skills .chooser-line::after,
+.chooser-row.is-skills .chooser-weave-empty {
+  background: repeating-linear-gradient(90deg, var(--ink-faint) 0 3px, transparent 3px 6px);
+  opacity: 0.6;
+}
+
+/* Twelve weeks over the stitches column, so the weeks line up as warp. */
+.chooser-scale {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 192px 76px 26px;
+  column-gap: 14px;
+  margin-bottom: 2px;
+  padding: 2px 4px 4px 10px;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
 }
 
 .chooser-name {
@@ -7361,10 +7449,10 @@ button.chooser-crumb:focus-visible {
 
 .chooser-agents::before {
   content: "";
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border: 1.5px solid var(--thread);
-  transform: rotate(45deg);
+  transform: rotate(45deg) translateY(-1px);
 }
 
 .chooser-opened::before {
@@ -7405,28 +7493,43 @@ button.chooser-crumb:focus-visible {
   opacity: 1;
 }
 
+.chooser-scale-weeks {
+  grid-column: 3;
+  display: flex;
+  justify-content: space-between;
+}
+
+.chooser-stitches-hit {
+  fill: transparent;
+}
+
+.chooser-stitches g:hover .chooser-stitches-week {
+  stroke-width: 3.6;
+}
+
 /* Twelve weeks of commits, stitched through a thread. */
 .chooser-stitches {
   display: block;
+  margin-top: 1px;
 }
 
 .chooser-stitches-weft {
-  stroke: var(--hairline);
-  stroke-width: 1;
+  stroke: color-mix(in srgb, var(--dye) 40%, transparent);
+  stroke-width: 1.5;
+}
+
+.chooser-row.is-dormant .chooser-stitches-weft {
+  stroke: color-mix(in srgb, var(--dye) 16%, transparent);
 }
 
 .chooser-stitches-week {
-  stroke: var(--ink-faint);
-  stroke-width: 2;
+  stroke: var(--dye);
+  stroke-width: 2.6;
   stroke-linecap: round;
 }
 
-.chooser-row.is-selected .chooser-stitches-week,
-.chooser-row:hover .chooser-stitches-week {
-  stroke: var(--thread);
-}
-
 .chooser-when {
+  line-height: 24px;
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--ink-faint);
@@ -7435,6 +7538,7 @@ button.chooser-crumb:focus-visible {
 }
 
 .chooser-into {
+  height: 24px;
   opacity: 0;
   transition: opacity var(--duration) var(--ease);
 }
