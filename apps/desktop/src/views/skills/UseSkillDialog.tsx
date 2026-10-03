@@ -9,10 +9,12 @@ import { useState } from "react";
 import type { Applicability } from "../../bindings/Applicability";
 import type { LocalSkill } from "../../bindings/LocalSkill";
 import { Dialog } from "../../components/Dialog";
+import { Icon } from "../../components/Icon";
 import { Button, Status } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api, newJobId } from "../../lib/api";
 import { applicabilityTone, NO_RULES_PHRASE } from "../../lib/format";
+import { materialsOf } from "../../lib/materials";
 import { useRecentProjects } from "../../lib/queries";
 import type { NavTarget } from "../../lib/studioNav";
 import { ReviewDialog } from "../review/ReviewDialog";
@@ -42,6 +44,7 @@ export function UseSkillDialog({
   const [projectId, setProjectId] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const errors = skill.diagnostics.filter((d) => d.level === "error");
+  const brings = materialsOf(skill.files, skill.document.body);
   const preview = useQuery({
     queryKey: ["usePreview", skill.summary.id, skill.summary.contentDigest, available.map((p) => p.id)],
     queryFn: () =>
@@ -80,8 +83,8 @@ export function UseSkillDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={`Use “${skill.summary.title}” in a project`}
-      description="Habi copies the skill into the folders your agents read. Installing does not run it."
+      title={`Use ${skill.summary.title || "this skill"}`}
+      description="Habi puts it where your agents read skills. Nothing is run."
       footer={
         <>
           <Button variant="quiet" onClick={onClose}>
@@ -107,41 +110,56 @@ export function UseSkillDialog({
           </Button>
         </div>
       ) : (
-        <fieldset className="field">
-          <legend className="field-label">Project</legend>
-          <div className="choice-rows">
-            {rows.map(({ project, result }) => (
-              <label key={project.id} className={`choice-row${chosen === project.id ? " is-on" : ""}`}>
-                <input
-                  type="radio"
-                  name="use-project"
-                  checked={chosen === project.id}
-                  onChange={() => setProjectId(project.id)}
-                />
-                <span className="choice-body">
-                  <span className="choice-head">
-                    <span className="choice-title">{project.name}</span>
-                    {result ? (
-                      <Status tone={applicabilityTone[result.applicability]}>
-                        {verdict[result.applicability]}
-                      </Status>
-                    ) : null}
+        <>
+          <fieldset className="field">
+            <legend className="field-label">In project</legend>
+            <div className="choice-rows">
+              {rows.map(({ project, result }) => (
+                <label key={project.id} className={`choice-row${chosen === project.id ? " is-on" : ""}`}>
+                  <input
+                    type="radio"
+                    name="use-project"
+                    checked={chosen === project.id}
+                    onChange={() => setProjectId(project.id)}
+                  />
+                  <span className="choice-body">
+                    <span className="choice-head">
+                      <span className="choice-title">{project.name}</span>
+                      {result ? (
+                        <Status tone={applicabilityTone[result.applicability]}>
+                          {verdict[result.applicability]}
+                        </Status>
+                      ) : null}
+                    </span>
+                    <span className="choice-detail">
+                      {result && result.applicability !== "undeclared" ? result.reason : project.path}
+                    </span>
                   </span>
-                  <span className="choice-detail mono">{project.path}</span>
-                </span>
-              </label>
-            ))}
+                </label>
+              ))}
+            </div>
+            <span className="field-hint">
+              Next you choose Claude Code, Cursor or Codex and see every file that would be written.
+            </span>
+            <Button size="sm" variant="quiet" icon="folder" onClick={() => void openProject({ stay: true })}>
+              Open another project…
+            </Button>
+          </fieldset>
+          <div className="field use-brings">
+            <p className="field-label">Habi will bring</p>
+            <ul>
+              <li>
+                <Icon name="check" size={13} /> Instructions
+              </li>
+              {brings.slice(0, 6).map((f) => (
+                <li key={f.path}>
+                  <Icon name="check" size={13} /> <span className="mono">{f.name}</span>
+                </li>
+              ))}
+              {brings.length > 6 ? <li className="muted">and {brings.length - 6} more</li> : null}
+            </ul>
           </div>
-          <span className="field-hint">
-            {skill.summary.hasApplicability
-              ? "The skill's own rules, evaluated for each project. You can install it anywhere deliberately."
-              : "This skill has no rules for when it applies, so installing it is your call."}{" "}
-            Next you choose Claude Code, Cursor or Codex and see every file that would be written.
-          </span>
-          <Button size="sm" variant="quiet" icon="folder" onClick={() => void openProject({ stay: true })}>
-            Open another project…
-          </Button>
-        </fieldset>
+        </>
       )}
     </Dialog>
   );

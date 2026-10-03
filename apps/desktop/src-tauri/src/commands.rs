@@ -1103,7 +1103,10 @@ pub async fn add_skill_files(
     id: String,
     folder: String,
 ) -> CmdResult<Option<LocalSkill>> {
-    if !matches!(folder.as_str(), "" | "references" | "scripts" | "assets") {
+    if !matches!(
+        folder.as_str(),
+        "" | "references" | "scripts" | "assets" | "auto"
+    ) {
         return Err(HabiError::invalid("choose references, scripts or assets").to_info());
     }
     let habi = state.habi()?;
@@ -1137,7 +1140,10 @@ pub async fn add_dropped_skill_files(
     folder: String,
     paths: Vec<String>,
 ) -> CmdResult<LocalSkill> {
-    if !matches!(folder.as_str(), "" | "references" | "scripts" | "assets") {
+    if !matches!(
+        folder.as_str(),
+        "" | "references" | "scripts" | "assets" | "auto"
+    ) {
         return Err(HabiError::invalid("choose references, scripts or assets").to_info());
     }
     let wanted: Vec<std::path::PathBuf> = paths.iter().map(std::path::PathBuf::from).collect();

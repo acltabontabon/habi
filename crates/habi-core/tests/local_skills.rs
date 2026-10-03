@@ -1357,6 +1357,27 @@ fn package_files_can_be_renamed_moved_replaced_and_previewed() {
     skills
         .add_files(&id, "assets", &[picked.path().join("logo.png")])
         .unwrap();
+    // Brought in without saying where: each file goes where it belongs.
+    std::fs::write(picked.path().join("check.py"), "print('ok')\n").unwrap();
+    std::fs::write(picked.path().join("guide.md"), "# Guide\n").unwrap();
+    std::fs::write(picked.path().join("LICENSE.txt"), "MIT\n").unwrap();
+    let placed = skills
+        .add_files(
+            &id,
+            "auto",
+            &[
+                picked.path().join("check.py"),
+                picked.path().join("guide.md"),
+                picked.path().join("LICENSE.txt"),
+            ],
+        )
+        .unwrap();
+    for path in ["scripts/check.py", "references/guide.md", "LICENSE.txt"] {
+        assert!(
+            placed.files.iter().any(|f| f.path == path),
+            "{path} not placed"
+        );
+    }
     let shown = skills.read_file(&id, "assets/logo.png").unwrap();
     assert!(shown.binary);
     assert!(

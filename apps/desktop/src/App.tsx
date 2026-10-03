@@ -9,7 +9,7 @@ import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
 import { lastProject, NavProvider, type Route, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
-import { keys, useAppInfo } from "./lib/queries";
+import { invalidateSkills, keys, useAppInfo } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
 import { CommandPalette } from "./views/CommandPalette";
 import { ContributionsView } from "./views/contributions/ContributionsView";
@@ -17,7 +17,6 @@ import { ProjectView } from "./views/project/ProjectView";
 import { SettingsView } from "./views/SettingsView";
 import { Sidebar } from "./views/Sidebar";
 import { AddSkillsDialog, type AddSkillsStart } from "./views/skills/AddSkillsDialog";
-import { NewSkillDialog } from "./views/skills/NewSkillDialog";
 import { SkillsView } from "./views/skills/SkillsView";
 import { SourcesView } from "./views/sources/SourcesView";
 import { Welcome } from "./views/Welcome";
@@ -111,7 +110,6 @@ function Shell() {
   const client = useQueryClient();
   const toast = useToast();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [creating, setCreating] = useState<NewSkillContext | null>(null);
   const [adding, setAdding] = useState<AddSkillsStart | null>(null);
   useScheduledRefresh();
 
@@ -129,13 +127,29 @@ function Shell() {
     },
     [client, navigate, toast],
   );
+  // A new skill is a page to write on, at once: no form, nothing to decide first.
+  const newSkill = useCallback(
+    async (context?: NewSkillContext) => {
+      try {
+        const skill = await api.createSkill(
+          { title: context?.title ?? "", description: "", template: context?.template ?? "blank" },
+          context?.projectId ?? null,
+        );
+        invalidateSkills(client);
+        navigate({ name: "skills", skillId: skill.summary.id });
+      } catch (e) {
+        toast.show(e instanceof Error ? e.message : String(e), "danger");
+      }
+    },
+    [client, navigate, toast],
+  );
   const actions = useMemo<Actions>(
     () => ({
       openProject,
-      newSkill: (context) => setCreating(context ?? {}),
+      newSkill: (context) => void newSkill(context),
       addSkills: (start) => setAdding(start ?? { source: "choose" }),
     }),
-    [openProject],
+    [openProject, newSkill],
   );
 
   // Each screen starts at its top; the scroll position of the last one is not carried over.
@@ -216,17 +230,17 @@ function Shell() {
       } else if (mod && e.key === ",") {
         e.preventDefault();
         navigate({ name: "settings" });
-      } else if (mod && e.key.toLowerCase() === "o") {
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "o") {
         e.preventDefault();
         void openProject();
-      } else if (mod && e.key.toLowerCase() === "n") {
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "n") {
         e.preventDefault();
-        setCreating({});
+        void newSkill();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate, back, openProject]);
+  }, [navigate, back, openProject, newSkill]);
 
   return (
     <ActionsContext.Provider value={actions}>
@@ -262,15 +276,6 @@ function Shell() {
           </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        {creating ? (
-          <NewSkillDialog
-            projectId={creating.projectId}
-            projectName={creating.projectName}
-            initialTitle={creating.title}
-            initialTemplate={creating.template}
-            onClose={() => setCreating(null)}
-          />
-        ) : null}
         {adding ? <AddSkillsDialog start={adding} onClose={() => setAdding(null)} /> : null}
       </div>
     </ActionsContext.Provider>

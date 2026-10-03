@@ -113,7 +113,7 @@ const stem = (name: string) =>
     .replace(/\.[^.]+$/, "")
     .replace(/[-_]+/g, " ");
 
-/** What "New file" can start: scripts with a useful header, a reference, a blank file. */
+/** What "New file" can start: scripts with a useful header, a reference, an example, a blank file. */
 export const NEW_FILE_SHAPES: NewFileShape[] = [
   {
     id: "python",
@@ -162,6 +162,15 @@ export const NEW_FILE_SHAPES: NewFileShape[] = [
     ext: ".md",
     executable: false,
     body: (name) => `# ${stem(name).replace(/^\w/, (c) => c.toUpperCase())}\n\n`,
+  },
+  {
+    id: "example",
+    label: "Example",
+    hint: "examples/ · a worked example the instructions point to",
+    folder: "examples",
+    ext: ".py",
+    executable: false,
+    body: (name) => `# Example: ${stem(name)} — what it shows, in one line.\n\n`,
   },
   {
     id: "blank",

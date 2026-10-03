@@ -20,46 +20,77 @@ scanned; bring skills in from them with **Add skills → From a folder**.
 
 ## Creating a skill
 
-*Create a skill* (welcome screen, sidebar, ⌘N, or *Create a skill for this project*) needs
-only a title. It works offline and without a project, library, account or model.
+*New skill* (welcome screen, My skills, ⌘N, or *Create a skill for this project*) opens an
+empty page with the caret in it — no form, nothing to decide first. It works offline and
+without a project, library, account or model.
 
-A skill opens in the **Skill Studio**, one document with three modes and a panel beside it:
+While the skill is a fresh draft of yours, Habi names it from what you write: the first
+heading becomes the title (until you type one), and the title becomes the identifier (the
+Agent Skills `name`) until you change it, install the skill, or it came from elsewhere. When
+there is no purpose yet, *Use the opening line* takes the first sentence of the instructions.
 
-- **The head** — where it came from, the title, the **purpose** (the `description` agents read
-  to decide when to load the skill) as the lede, the identifier (the Agent Skills `name`:
-  lowercase letters, digits, hyphens; changed deliberately with *Change*), and whether it is
-  ready. *Package* shows the format and where the folder is stored.
-- **Instructions** (⌘1) — Markdown written as a document, with a preview (⌘⇧P). ⌘B/⌘I/⌘E
-  format, ⌘⇧8/⌘⇧7 make lists, ⌘⇧L a link; package paths complete after `](` or inside
-  backticks. While it is empty, optional starters are offered: Workflow, Troubleshooting,
-  Code review, Tool-assisted. The panel shows the outline, problems by line, and the
-  package's files to link.
-- **When it applies** (⌘2) — sentences: *Suggest this skill when* (technology, dependency,
-  file pattern; all or any), *Unless*, *It needs* (tools), *Checked across* (each module or
-  the whole repository). They write the same `habi.yaml` conditions the matcher evaluates. A
-  YAML view edits the file directly, saves it exactly as typed (including keys Habi does not
-  know) and shows what Habi reads from it; rules the sentences cannot express are read out and
-  kept as written.
-- **Files** (⌘3) — the package as real files: `SKILL.md`, optional `habi.yaml`,
-  `references/`, `scripts/`, `assets/`, with a file list, one *New* action (scripts with
-  useful headers, references, blank files, imports), search across names and text, and
-  dropping files onto the window. Scripts are stored and shown, never run.
+## The Skill Studio
 
-The side panel docks beside the document when there is room and comes in as a sheet when
-there is not (⌘\\ shows or hides it). *Use & share* opens the checks, the projects the skill
-is installed in, and the ways to use, share or export it.
+A skill opens inside its knowledge: the title, the **purpose** (the `description` agents read
+to decide when to load it), where it came from, and the instructions. Everything else is a
+layer of the same skill, named in one line each under the purpose:
 
-While adding a condition, Habi offers facts observed in the project being checked (with the
-file they came from). Each is added only when you click it.
+- **Instructions** (⌘1) — Markdown, written as the document it is. Away from the caret the
+  markup steps aside: headings read as headings, code blocks are highlighted in their
+  language, and links or backticked paths to the package's own files read as references
+  (⌘-click opens one). The line being edited shows its markup in full. ⌘B/⌘I/⌘E format,
+  ⌘⇧8/⌘⇧7 make lists, ⌘⇧L a link; package paths complete after `](` or inside backticks.
+  An empty skill offers starters: Workflow, Troubleshooting, Code review, Tool-assisted. The
+  outline is a spine of ticks in the margin that opens into the headings when pointed at, or
+  with ⌘⇧O.
+- **When to use** (⌘2) — signals, said as facts about a project: *Playwright is used*,
+  *Depends on `@playwright/test`*, *Has files matching `playwright.config.*`*. *Add signal*
+  takes a few words and proposes what Habi could look for (a technology it detects, a
+  dependency, a file pattern), plus what it actually saw in the project chosen under *Try it*,
+  with the file it came from. Then *Avoid when* (exceptions), *Check within* (each module or
+  the whole repository), and *Needs* (tools, looked up on PATH, never run). These write the
+  same `habi.yaml` conditions the matcher evaluates. *View as habi.yaml* edits the file
+  directly, saves it exactly as typed and shows what Habi reads from it; rules the sentences
+  cannot express are read out and kept as written.
+- **Materials** (⌘3) — what the skill brings with it, by kind: scripts, examples, references,
+  assets, other. Each says what it is for in the instructions' own words (the line that
+  mentions it), else from its first comment. A material the instructions never mention says so
+  once, with *Reference it*, which adds a line for it at the end of the instructions. *Add*
+  brings in files and places each by what it is (code in `scripts/`, writing in
+  `references/`, the rest in `assets/`), or starts a new script, reference or example; pasted
+  code is offered as a script or an example; files dropped on the window are placed the same
+  way and can be undone. Opening a material turns the layer into an editor, with the other
+  materials beside it when there is room. Scripts are stored and shown, never run.
 
-A skill without rules has **no rules for when it applies**: it stays available for deliberate
-use everywhere and is never recommended. Habi does not infer rules from a title.
+**Test** (in *When to use*, the ••• menu, or the palette) slides in a sheet: whether Habi
+would suggest the skill in a chosen project, and because of what — each signal with the file
+it was decided on. Nothing runs until asked, and the sheet leaves when you are done.
+
+**Where it came from** opens from the thread under the purpose (*Anthropic ──● changed
+here*): the original, when it was imported, your version and what you changed here (as parts
+of the skill: *Instructions*, *When to use*, a file), a newer version in the library if there
+is one, the projects it is installed in, and the ways to pass it on — *Contribute
+improvement* and *Share your version* for an imported skill, *Share to a library* for one
+written here, *Export as a folder*.
+
+The bar above the skill holds only where you are, **Ready** or **Draft**, **Use** and •••.
+*Ready* opens what readiness is made of: what still needs doing (each with the way to it),
+what is done — including the identifier, changed deliberately with *Change* — and what is
+optional. *Use* chooses a project (each with why the skill fits it, or not), says what Habi
+will bring, and continues to the reviewed install plan. *View source* and *View package
+source* (in ••• and the palette) show the package as files — `SKILL.md` with its frontmatter,
+`habi.yaml`, every folder — opened and edited as written.
+
+A skill without signals is **used by hand**: it stays available for deliberate use
+everywhere and is never recommended. Habi never adds a signal on its own: when the
+instructions keep naming a technology, it offers *Suggest it there*, and adds it only when
+clicked (with *Undo*).
 
 ### Saving
 
 Drafts save as you type (and on ⌘S, when the window loses focus, and when you leave the
-screen). The indicator says *Saved* only after the write succeeded; a failed write says *Not
-saved* and keeps your text on screen.
+screen). Saving is silent while it succeeds: the bar says *Saving…* during a write and
+*Couldn’t save* with *Retry* when one failed, and keeps your text on screen.
 
 Every save names the version of the file it started from. If the file changed outside Habi in
 the meantime, saving pauses and you choose: **Show the other version** or **Keep mine**.

@@ -13,10 +13,16 @@ import { autocompletion, type CompletionSource, completionKeymap } from "@codemi
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { python } from "@codemirror/lang-python";
 import { yaml } from "@codemirror/lang-yaml";
-import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
+import {
+  HighlightStyle,
+  LanguageDescription,
+  LanguageSupport,
+  StreamLanguage,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import {
@@ -38,11 +44,34 @@ import {
 import { tags } from "@lezer/highlight";
 import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
 import type { SourceLanguage } from "../lib/languages";
+import { type LivePreviewOptions, livePreview } from "./livePreview";
 
-function languageExtension(language: SourceLanguage): Extension[] {
+/** Code inside the instructions, highlighted in its own language. */
+const fencedLanguages = [
+  LanguageDescription.of({ name: "python", alias: ["py"], support: python() }),
+  LanguageDescription.of({
+    name: "javascript",
+    alias: ["js", "jsx", "mjs", "node"],
+    support: javascript({ jsx: true }),
+  }),
+  LanguageDescription.of({
+    name: "typescript",
+    alias: ["ts", "tsx"],
+    support: javascript({ typescript: true, jsx: true }),
+  }),
+  LanguageDescription.of({ name: "json", support: json() }),
+  LanguageDescription.of({ name: "yaml", alias: ["yml"], support: yaml() }),
+  LanguageDescription.of({
+    name: "shell",
+    alias: ["sh", "bash", "zsh", "console"],
+    load: async () => new LanguageSupport(StreamLanguage.define(shell)),
+  }),
+];
+
+function languageExtension(language: SourceLanguage, rich = false): Extension[] {
   switch (language) {
     case "markdown":
-      return [markdown()];
+      return [rich ? markdown({ base: markdownLanguage, codeLanguages: fencedLanguages }) : markdown()];
     case "yaml":
       return [yaml()];
     case "json":
@@ -105,8 +134,8 @@ const proseHighlight = HighlightStyle.define([
 /** Lets a parent insert text where the caret is, or take the reader to a line. */
 export type SourceEditorHandle = {
   insert: (text: string) => void;
-  /** Scrolls to a 1-based line, puts the caret there and marks it briefly. */
-  revealLine: (line: number) => void;
+  /** Scrolls to a 1-based line, puts the caret there (at its end when asked) and marks it briefly. */
+  revealLine: (line: number, atEnd?: boolean) => void;
   focus: () => void;
 };
 
@@ -291,6 +320,7 @@ export function SourceEditor({
   completions,
   marks,
   onCursorLine,
+  live,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -306,6 +336,8 @@ export function SourceEditor({
   marks?: LineMark[];
   /** The 1-based line the caret is on, as it moves. */
   onCursorLine?: (line: number) => void;
+  /** Markdown that steps aside away from the caret (prose only). */
+  live?: LivePreviewOptions;
 }) {
   const prose = language === "markdown";
   const host = useRef<HTMLDivElement>(null);
@@ -319,6 +351,9 @@ export function SourceEditor({
   const marksRef = useRef(marks);
   marksRef.current = marks;
   const hasCompletions = Boolean(completions);
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  const isLive = Boolean(live) && variant === "prose";
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the editor is created once; value changes are applied below.
   useEffect(() => {
@@ -363,7 +398,15 @@ export function SourceEditor({
         }),
       );
     }
-    extensions.push(...languageExtension(language), syntaxHighlighting(highlight));
+    extensions.push(...languageExtension(language, variant === "prose"), syntaxHighlighting(highlight));
+    if (isLive) {
+      extensions.push(
+        livePreview({
+          paths: () => liveRef.current?.paths() ?? [],
+          onOpen: (path) => liveRef.current?.onOpen?.(path),
+        }),
+      );
+    }
     if (placeholder) extensions.push(placeholderExtension(placeholder));
     const created = new EditorView({
       parent: host.current,
@@ -375,7 +418,7 @@ export function SourceEditor({
       created.destroy();
       view.current = null;
     };
-  }, [label, placeholder, readOnly, language, variant, hasCompletions]);
+  }, [label, placeholder, readOnly, language, variant, hasCompletions, isLive]);
 
   useImperativeHandle(
     handle,
@@ -389,11 +432,11 @@ export function SourceEditor({
         });
         current.focus();
       },
-      revealLine: (line: number) => {
+      revealLine: (line: number, atEnd?: boolean) => {
         const current = view.current;
         if (!current) return;
         const target = Math.min(Math.max(1, line), current.state.doc.lines);
-        const at = current.state.doc.line(target).from;
+        const at = atEnd ? current.state.doc.line(target).to : current.state.doc.line(target).from;
         current.dispatch({
           selection: EditorSelection.cursor(at),
           effects: [EditorView.scrollIntoView(at, { y: "center" }), flashLine.of(target)],
@@ -420,5 +463,10 @@ export function SourceEditor({
     view.current?.dispatch({ effects: setMarks.of(marks ?? []) });
   }, [marks]);
 
-  return <div className={`source-editor${variant === "prose" ? " is-prose" : ""}`} ref={host} />;
+  return (
+    <div
+      className={`source-editor${variant === "prose" ? " is-prose" : ""}${isLive ? " is-live" : ""}`}
+      ref={host}
+    />
+  );
 }

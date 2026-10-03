@@ -372,6 +372,28 @@ fn image_type(path: &str) -> Option<&'static str> {
     })
 }
 
+/// Where a file brought into a package belongs, from what it is: code an
+/// agent runs goes in `scripts/`, writing an agent reads in `references/`,
+/// a licence or notice at the root, and everything else (images, templates,
+/// data) in `assets/`. Deterministic, so the author can predict it.
+pub fn material_folder(name: &str, bytes: &[u8], executable: bool) -> &'static str {
+    let lower = name.to_ascii_lowercase();
+    let stem = lower.split('.').next().unwrap_or_default();
+    if matches!(stem, "license" | "licence" | "notice" | "copying") {
+        return "";
+    }
+    if executable || bytes.starts_with(b"#!") {
+        return "scripts";
+    }
+    let ext = lower.rsplit_once('.').map(|(_, e)| e).unwrap_or_default();
+    match ext {
+        "py" | "sh" | "bash" | "zsh" | "js" | "mjs" | "cjs" | "ts" | "rb" | "pl" | "ps1" | "go"
+        | "java" | "kt" | "groovy" | "gradle" | "sql" => "scripts",
+        "md" | "markdown" | "txt" | "rst" | "adoc" | "pdf" | "html" | "htm" => "references",
+        _ => "assets",
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -1438,6 +1460,7 @@ impl<'a> Skills<'a> {
 
     /// Copies files chosen by the user into `folder` of the package
     /// (`references`, `scripts`, `assets`, or empty for the package root).
+    /// `auto` places each file by what it is (see [`material_folder`]).
     /// Existing files are never replaced.
     pub fn add_files(&self, id: &str, folder: &str, sources: &[PathBuf]) -> Result<LocalSkill> {
         let _lock = self.lock(id)?;
@@ -1462,17 +1485,6 @@ impl<'a> Skills<'a> {
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            let rel = if folder.trim().is_empty() {
-                RelPath::new(&name)?
-            } else {
-                RelPath::new(folder)?.join(&name)?
-            };
-            let target = resolve_for_write(&dir, &rel)?;
-            if target.exists() {
-                return Err(HabiError::Conflict(format!(
-                    "`{rel}` already exists in this skill; rename or remove it first"
-                )));
-            }
             let bytes = match read_bounded(source, MAX_FILE_BYTES)? {
                 Bounded::Content(b) => b,
                 Bounded::TooLarge(n) => {
@@ -1481,7 +1493,24 @@ impl<'a> Skills<'a> {
                     )));
                 }
             };
-            planned.push((target, bytes, crate::fsutil::is_executable(source)));
+            let executable = crate::fsutil::is_executable(source);
+            let into = if folder == "auto" {
+                material_folder(&name, &bytes, executable)
+            } else {
+                folder.trim()
+            };
+            let rel = if into.is_empty() {
+                RelPath::new(&name)?
+            } else {
+                RelPath::new(into)?.join(&name)?
+            };
+            let target = resolve_for_write(&dir, &rel)?;
+            if target.exists() || planned.iter().any(|(t, _, _)| t == &target) {
+                return Err(HabiError::Conflict(format!(
+                    "`{rel}` already exists in this skill; rename or remove it first"
+                )));
+            }
+            planned.push((target, bytes, executable));
         }
         for (target, bytes, executable) in planned {
             atomic_write_mode(&target, &bytes, Some(executable))?;

@@ -109,19 +109,38 @@ function skill(over: Partial<LocalSkill["document"]> = {}): LocalSkill {
   };
 }
 
+const billing = {
+  id: "p1",
+  name: "billing",
+  path: "~/work/billing",
+  exists: true,
+  lastOpenedAt: "2026-10-02T00:00:00Z",
+  exclusions: [],
+  sample: false,
+  summary: null,
+};
+
+const formOf = (calls: unknown[][]) =>
+  (calls[calls.length - 1]?.[0] as { form: Record<string, unknown> } | undefined)?.form;
+
 describe("the Skill Studio", () => {
-  it("puts identity in the head and the instructions in front, with nothing to fill in first", async () => {
+  it("lands inside the knowledge, with one action and nothing to fill in first", async () => {
     handlers.get_skill = () => skill();
     const { container } = wrap(<SkillStudio id="k" />);
     expect(await screen.findByLabelText("Skill title")).toHaveValue("Review");
-    expect(screen.getByLabelText("Purpose (description)")).toHaveValue("Reviews changes before merge.");
-    expect(screen.getByText("review")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Instructions/, selected: true })).toBeInTheDocument();
-    expect(screen.getByText("Ready to use")).toBeInTheDocument();
-    // One primary action in the head; the rest behind a menu.
-    expect(screen.getByRole("button", { name: "Use & share" })).toBeInTheDocument();
+    expect(screen.getByLabelText("What it is for")).toHaveValue("Reviews changes before merge.");
+    // One coherent state, one primary action; the rest behind a menu.
+    expect(screen.getByRole("button", { name: /^Ready/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
-    expect(await screen.findByText("Start writing — or begin from a shape")).toBeInTheDocument();
+    // No tabs: the other layers are named, in a line each, at the head of the skill.
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /When to use\s*When you choose it/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Comes with\s*1 script/ })).toBeInTheDocument();
+    // The package format stays out of sight.
+    expect(screen.queryByText("habi.yaml")).not.toBeInTheDocument();
+    expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
+    expect(await screen.findByText("Or begin from")).toBeInTheDocument();
     const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
@@ -134,36 +153,66 @@ describe("the Skill Studio", () => {
     }));
     handlers.save_skill_document = saved;
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /Workflow/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Workflow" }));
     await waitFor(() => expect(saved).toHaveBeenCalled(), { timeout: 2000 });
     expect((saved.mock.calls[0]?.[0].document as { body: string } | undefined)?.body).toBe(
       templates[1]?.body,
     );
   });
 
-  it("moves between modes with ⌘1–3 and keeps visited modes mounted", async () => {
-    handlers.get_skill = () => skill({ body: "## Steps\n\nDo it.\n" });
-    handlers.preview_skill = () => ({
-      appliesWhen: null,
-      excludes: null,
-      scope: "module",
-      problem: null,
-      projects: [],
+  it("names a fresh draft from what is written, and offers the rest without asking", async () => {
+    const body =
+      "# Liquibase Changeset Review\n\nBefore approving a Liquibase changeset, check that every change can be rolled back.\n\n1. Read the Liquibase changelog.\n";
+    handlers.get_skill = () => ({
+      ...skill({ name: "", description: "", body }),
+      summary: { ...skill().summary, title: "", description: "" },
     });
+    const saved = vi.fn((args: Record<string, unknown>) => ({
+      ...skill(args.document as Partial<LocalSkill["document"]>),
+      documentDigest: "doc2",
+    }));
+    handlers.save_skill_document = saved;
+    const rules = vi.fn(() => ({ ...skill(), metadataDigest: "m2" }));
+    handlers.save_skill_applicability = rules;
     wrap(<SkillStudio id="k" />);
-    await screen.findByLabelText("Skill title");
-    fireEvent.keyDown(window, { key: "2", metaKey: true });
-    expect(screen.getByRole("tab", { name: /When it applies/, selected: true })).toBeInTheDocument();
-    // The instructions are hidden, not gone: undo history and pending saves survive.
-    const instructions = document.getElementById("studio-mode-instructions");
-    expect(instructions).not.toBeNull();
-    expect(instructions?.hidden).toBe(true);
-    fireEvent.keyDown(window, { key: "1", metaKey: true });
-    expect(document.getElementById("studio-mode-instructions")).toBe(instructions);
-    expect(instructions?.hidden).toBe(false);
+    // The first heading is its title, and the title its identifier.
+    expect(await screen.findByLabelText("Skill title")).toHaveValue("Liquibase Changeset Review");
+    await userEvent.click(screen.getByRole("button", { name: "Use the opening line" }));
+    expect(screen.getByLabelText("What it is for")).toHaveValue(
+      "Before approving a Liquibase changeset, check that every change can be rolled back.",
+    );
+    await waitFor(() => expect(saved).toHaveBeenCalled(), { timeout: 2000 });
+    const last = saved.mock.calls[saved.mock.calls.length - 1]?.[0] as {
+      title: string;
+      document: { name: string };
+    };
+    expect(last.title).toBe("Liquibase Changeset Review");
+    expect(last.document.name).toBe("liquibase-changeset-review");
+    // The instructions keep naming Liquibase: one click makes it a signal, said in words.
+    expect(screen.getByText(/Looks related to Liquibase projects/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Suggest it there" }));
+    await waitFor(() => expect(formOf(rules.mock.calls)).toMatchObject({ appliesTags: ["db:liquibase"] }), {
+      timeout: 2000,
+    });
   });
 
-  it("changes the identifier deliberately, and warns where it is installed under the old one", async () => {
+  it("moves between layers with ⌘1–3 and keeps the instructions mounted", async () => {
+    handlers.get_skill = () => skill({ body: "## Steps\n\nDo it.\n" });
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    const instructions = screen.getByRole("region", { name: "The skill" });
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    expect(screen.getByRole("heading", { name: "When to use" })).toBeInTheDocument();
+    // Hidden, not gone: undo history and pending saves survive.
+    expect(instructions.hidden).toBe(true);
+    fireEvent.keyDown(window, { key: "3", metaKey: true });
+    expect(screen.getByRole("heading", { name: "Materials" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "1", metaKey: true });
+    expect(screen.getByRole("region", { name: "The skill" })).toBe(instructions);
+    expect(instructions.hidden).toBe(false);
+  });
+
+  it("changes the identifier deliberately, from readiness, and warns where it is installed", async () => {
     handlers.get_skill = () => skill();
     const standing: SkillStanding[] = [
       {
@@ -179,23 +228,26 @@ describe("the Skill Studio", () => {
     }));
     handlers.save_skill_document = saved;
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: "Change" }));
-    const field = screen.getByLabelText("name");
+    await userEvent.click(await screen.findByRole("button", { name: /^Ready/ }));
+    const ready = screen.getByRole("dialog", { name: "Ready to use" });
+    expect(within(ready).getByText("review")).toBeInTheDocument();
+    await userEvent.click(within(ready).getByRole("button", { name: "Change" }));
+    const field = within(ready).getByLabelText("name");
     await userEvent.clear(field);
     await userEvent.type(field, "Bad Name");
-    expect(screen.getByText("Use lowercase letters, digits and hyphens only.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
+    expect(within(ready).getByText("Use lowercase letters, digits and hyphens only.")).toBeInTheDocument();
+    expect(within(ready).getByRole("button", { name: "Apply" })).toBeDisabled();
     await userEvent.clear(field);
     await userEvent.type(field, "merge-review");
-    expect(await screen.findByText(/Installed in billing as/)).toBeInTheDocument();
+    expect(await within(ready).findByText(/Installed in billing as/)).toBeInTheDocument();
     // Typing alone saves nothing.
     expect(saved).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await userEvent.click(within(ready).getByRole("button", { name: "Apply" }));
     await waitFor(() => expect(saved).toHaveBeenCalled(), { timeout: 2000 });
     expect((saved.mock.calls[0]?.[0].document as { name: string } | undefined)?.name).toBe("merge-review");
   });
 
-  it("says what is unfinished and takes the author to the fix", async () => {
+  it("says in one place what is unfinished, and takes the author to the fix", async () => {
     handlers.get_skill = () => ({
       ...skill({ description: "" }),
       summary: { ...skill().summary, errors: 1 },
@@ -209,11 +261,24 @@ describe("the Skill Studio", () => {
       ],
     });
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /1 thing to finish/ }));
-    const panel = screen.getByRole("complementary", { name: "Use & share" });
-    expect(within(panel).getByText(/Agents decide whether to load a skill/)).toBeInTheDocument();
-    await userEvent.click(within(panel).getByRole("button", { name: "Edit the purpose" }));
-    await waitFor(() => expect(screen.getByLabelText("Purpose (description)")).toHaveFocus());
+    await userEvent.click(await screen.findByRole("button", { name: /Draft\s*· 1 thing to finish/ }));
+    const left = screen.getByRole("dialog", { name: "What is left to do" });
+    expect(within(left).getByText(/Agents decide whether to load a skill/)).toBeInTheDocument();
+    await userEvent.click(within(left).getByRole("button", { name: "Edit the purpose" }));
+    await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
+  });
+
+  it("is silent about saving until something goes wrong", async () => {
+    handlers.get_skill = () => skill();
+    handlers.save_skill_document = () => {
+      throw { code: "io", message: "disk full" };
+    };
+    const { container } = wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    expect(container.querySelector(".save-ambient")?.textContent).not.toMatch(/Saved/);
+    await userEvent.type(screen.getByLabelText("Skill title"), "!");
+    expect(await screen.findByText("Couldn’t save", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("writes pending edits before leaving the screen", async () => {
@@ -244,7 +309,7 @@ describe("the Skill Studio", () => {
     expect(saved).toHaveBeenCalled();
   });
 
-  it("shows where a copy came from and what changed since", async () => {
+  it("shows where a copy came from, what changed here, and where it can go next", async () => {
     handlers.get_skill = () => ({
       ...skill(),
       summary: {
@@ -268,10 +333,71 @@ describe("the Skill Studio", () => {
       ],
     });
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /Copied from review/ }));
-    const panel = screen.getByRole("complementary", { name: "Where it comes from" });
-    expect(await within(panel).findByText("1 file changed · 1 as copied")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Prepare a contribution…" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /From review, changed here/ }));
+    const sheet = screen.getByRole("complementary", { name: "Where it came from" });
+    expect(within(sheet).getByText("From review")).toBeInTheDocument();
+    // Changes are said as parts of the skill, not as files.
+    expect(await within(sheet).findByText("Instructions")).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: /Share to a library/ })).toBeInTheDocument();
+  });
+
+  it("turns a few words into signals, said as facts about a project", async () => {
+    handlers.get_skill = () => skill({ body: "Steps." });
+    const rules = vi.fn(() => ({ ...skill(), metadataDigest: "m2" }));
+    handlers.save_skill_applicability = rules;
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    const when = screen.getByRole("region", { name: "Suggest when" });
+    expect(within(when).getByText("Nothing yet.")).toBeInTheDocument();
+    await userEvent.click(within(when).getByRole("button", { name: "Add signal" }));
+    const ask = within(when).getByLabelText("What should Habi look for?");
+    await userEvent.type(ask, "Spring Boot{Enter}");
+    expect(within(when).getByText("Spring Boot is used")).toBeInTheDocument();
+    await userEvent.type(ask, "org.liquibase:liquibase-core{Enter}");
+    expect(within(when).getByText("org.liquibase:liquibase-core")).toBeInTheDocument();
+    // Vague words propose nothing, and nothing is guessed.
+    await userEvent.type(ask, "something vague{Enter}");
+    expect(within(when).queryByRole("option")).not.toBeInTheDocument();
+    // With two signals, how they combine is a choice of words.
+    await userEvent.click(within(when).getByRole("button", { name: "any of these" }));
+    await waitFor(() => expect(rules).toHaveBeenCalled(), { timeout: 2000 });
+    await waitFor(() =>
+      expect(formOf(rules.mock.calls)).toMatchObject({
+        appliesTags: ["framework:spring-boot"],
+        appliesDependencies: ["org.liquibase:liquibase-core"],
+        matchMode: "any",
+      }),
+    );
+    await userEvent.click(within(when).getByRole("button", { name: "Remove: Spring Boot is used" }));
+    await waitFor(() => expect(formOf(rules.mock.calls)).toMatchObject({ appliesTags: [] }), {
+      timeout: 2000,
+    });
+  });
+
+  it("says tools apart from signals, looked up and never run", async () => {
+    handlers.get_skill = () => skill({ body: "Steps." });
+    const rules = vi.fn(() => ({ ...skill(), metadataDigest: "m2" }));
+    handlers.save_skill_applicability = rules;
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    const needs = screen.getByRole("region", { name: "Needs" });
+    expect(within(needs).getByText(/Looked up on PATH, never run/)).toBeInTheDocument();
+    await userEvent.click(within(needs).getByRole("button", { name: "Add tool" }));
+    await userEvent.type(within(needs).getByLabelText("Tool name"), "Maven");
+    await userEvent.type(
+      within(needs).getByLabelText("Commands, any one of which satisfies the requirement"),
+      "./mvnw, mvn{Enter}",
+    );
+    expect(within(needs).getByText("./mvnw or mvn")).toBeInTheDocument();
+    await waitFor(
+      () =>
+        expect(formOf(rules.mock.calls)).toMatchObject({
+          tools: [{ name: "Maven", commands: ["./mvnw", "mvn"] }],
+        }),
+      { timeout: 2000 },
+    );
   });
 
   it("keeps rules the sentences cannot edit as written, and reads them out", async () => {
@@ -300,39 +426,22 @@ describe("the Skill Studio", () => {
     });
     handlers.save_skill_applicability = save;
     handlers.save_skill_metadata = save;
-    handlers.preview_skill = () => ({
-      appliesWhen: null,
-      excludes: null,
-      scope: "module",
-      problem: null,
-      projects: [],
-    });
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
+    expect(screen.getByRole("button", { name: /When to use\s*Written as YAML/ })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "2", metaKey: true });
-    const rules = document.getElementById("studio-mode-rules") as HTMLElement;
-    expect(within(rules).getByText("it contains Java code")).toBeInTheDocument();
-    expect(within(rules).getByText("**/pom.xml")).toBeInTheDocument();
-    expect(within(rules).getByText("not when")).toBeInTheDocument();
-    expect(within(rules).getByText(/kept exactly as written/)).toBeInTheDocument();
+    const layer = screen.getByRole("region", { name: "When to use" });
+    expect(within(layer).getByText("it contains Java code")).toBeInTheDocument();
+    expect(within(layer).getByText("**/pom.xml")).toBeInTheDocument();
+    expect(within(layer).getByText("not when")).toBeInTheDocument();
+    expect(within(layer).getByText(/kept exactly as written/)).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 900));
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("says in one project whether Habi would suggest it, and what it needs, without running anything", async () => {
+  it("tests against a project only when asked, and says why", async () => {
     handlers.get_skill = () => skill({ body: "Steps." });
-    handlers.recent_projects = () => [
-      {
-        id: "p1",
-        name: "billing",
-        path: "~/work/billing",
-        exists: true,
-        lastOpenedAt: "2026-10-02T00:00:00Z",
-        exclusions: [],
-        sample: false,
-        summary: null,
-      },
-    ];
+    handlers.recent_projects = () => [billing];
     const preview = vi.fn((args: Record<string, unknown>) => ({
       appliesWhen: { op: "tag", tag: "lang:java" },
       excludes: null,
@@ -340,16 +449,7 @@ describe("the Skill Studio", () => {
       problem: null,
       projects: [
         {
-          project: {
-            id: "p1",
-            name: "billing",
-            path: "~/work/billing",
-            exists: true,
-            lastOpenedAt: "2026-10-02T00:00:00Z",
-            exclusions: [],
-            sample: false,
-            summary: null,
-          },
+          project: billing,
           result: {
             applicability: "applies",
             scope: "module",
@@ -378,19 +478,24 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
-    const panel = await screen.findByRole("complementary", { name: "Would Habi suggest it?" });
+    await new Promise((r) => setTimeout(r, 400));
+    // Editing the rules does not run diagnostics.
+    expect(preview).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Test" }));
+    const sheet = await screen.findByRole("complementary", { name: "Test against a project" });
     expect(
-      await within(panel).findByText("Habi would suggest it here", {}, { timeout: 2000 }),
+      await within(sheet).findByText("Habi would suggest this skill", {}, { timeout: 2000 }),
     ).toBeInTheDocument();
-    expect(within(panel).getByText(/Maven/)).toBeInTheDocument();
-    expect(within(panel).getByText(/nothing was run/)).toBeInTheDocument();
-    expect(within(panel).getByText(/not whether an agent loads or runs it/)).toBeInTheDocument();
-    // Only the chosen project was evaluated.
+    expect(within(sheet).getByText(/Maven/)).toBeInTheDocument();
+    expect(within(sheet).getByText(/Looked up, never run/)).toBeInTheDocument();
+    expect(within(sheet).getByText(/from build files and file names only/)).toBeInTheDocument();
     const request = preview.mock.calls[0]?.[0].request as { projectId?: string } | undefined;
     expect(request?.projectId).toBe("p1");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("complementary", { name: "Test against a project" })).not.toBeInTheDocument();
   });
 
-  it("keeps the package as a small workspace where scripts are shown, never run", async () => {
+  it("keeps materials human, files placed by Habi, and the package source one step away", async () => {
     handlers.get_skill = () => skill({ body: "Run `scripts/check.py`." });
     handlers.read_skill_file = (args) => ({
       path: args.path,
@@ -421,27 +526,34 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "3", metaKey: true });
-    const files = document.getElementById("studio-mode-files") as HTMLElement;
-    // SKILL.md is written where it belongs.
-    expect(within(files).getByText("instructions →")).toBeInTheDocument();
-    await userEvent.click(within(files).getByTitle("scripts/check.py"));
-    expect(await within(files).findByText("python3 scripts/check.py")).toBeInTheDocument();
-    expect(within(files).getByText(/Habi never runs scripts/)).toBeInTheDocument();
+    const layer = screen.getByRole("region", { name: "Materials" });
+    // Kinds, not folders.
+    expect(within(layer).getByRole("heading", { name: "script" })).toBeInTheDocument();
+    expect(within(layer).queryByText("scripts/")).not.toBeInTheDocument();
+    await userEvent.click(within(layer).getByRole("button", { name: /check\.py/ }));
+    expect(await within(layer).findByText("python3 scripts/check.py")).toBeInTheDocument();
+    expect(within(layer).getByText(/Habi never runs it/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Run/ })).not.toBeInTheDocument();
-
-    await userEvent.click(within(files).getByRole("button", { name: "New" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: /Shell script/ }));
-    await userEvent.type(within(files).getByLabelText("File name"), "verify{Enter}");
+    // The crumb leads back; the editor chrome goes with the file.
+    await userEvent.click(screen.getByRole("button", { name: "Materials" }));
+    await userEvent.click(within(layer).getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /New shell script/ }));
+    await userEvent.type(within(layer).getByLabelText("New shell script"), "verify{Enter}");
     await waitFor(() => expect(written).toContain("scripts/verify.sh"));
+    // Power users get the literal tree.
+    fireEvent.keyDown(window, { key: "3", metaKey: true });
+    await userEvent.click(within(layer).getByRole("button", { name: "View package source →" }));
+    const source = screen.getByRole("region", { name: "Package source" });
+    expect(within(source).getByRole("button", { name: "SKILL.md" })).toBeInTheDocument();
+    expect(within(source).getByRole("button", { name: "scripts/" })).toBeInTheDocument();
   });
 
   it("refuses to add dropped files the window did not receive", async () => {
-    // Without the desktop shell there are no drops to take: the hint stays, nothing listens.
+    // Without the desktop shell there are no drops to take: nothing listens.
     handlers.get_skill = () => skill({ body: "Steps." });
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "3", metaKey: true });
-    expect(screen.getByText("Drop files onto the window to add them.")).toBeInTheDocument();
     expect(invoke.mock.calls.some((c) => c[0] === "add_dropped_skill_files")).toBe(false);
   });
 });
@@ -485,14 +597,16 @@ describe("My skills", () => {
     expect(within(list).getAllByRole("button")).toHaveLength(3);
     // The purpose is the first sentence, not the trigger text.
     expect(within(list).getByText("Does thing 1.")).toBeInTheDocument();
-    expect(await within(list).findByText("Update available")).toBeInTheDocument();
-    expect(within(list).getByText("Changed here")).toBeInTheDocument();
-    expect(within(list).getByText("In billing")).toBeInTheDocument();
-    expect(within(list).getByText("2 things to finish")).toBeInTheDocument();
+    // Each skill's thread: where it came from, and what happened here.
+    expect(await within(list).findByText("· newer version")).toBeInTheDocument();
+    expect(within(list).getByText("changed here")).toBeInTheDocument();
+    expect(within(list).getByText("in billing")).toBeInTheDocument();
+    expect(within(list).getAllByText("Ready")).toHaveLength(2);
+    expect(within(list).getByText("Draft · 2 things to finish")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /^Updates/ }));
     expect(within(list).getAllByRole("button")).toHaveLength(1);
-    await userEvent.click(screen.getByRole("button", { name: /^Unfinished/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Drafts/ }));
     expect(within(list).getByText("Skill 003")).toBeInTheDocument();
     // Facets nothing matches are not offered.
     expect(screen.queryByRole("button", { name: /^Imported 0/ })).not.toBeInTheDocument();
