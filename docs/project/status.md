@@ -13,7 +13,9 @@ By design, or not solved yet:
 
 - **What an agent does** with installed content is invisible to Habi, and Habi does not claim
   to know.
-- **Running a check** executes code with your privileges. There is no sandbox.
+- **Running a check** executes code with your privileges. There is no sandbox. The preview
+  lists what a pattern reading of the command and its script finds (credential files,
+  download-and-run, broad deletes); that is a warning, and it misses anything obfuscated.
 - **The secret scan** before sharing is pattern-based. It reduces the risk of sharing a
   secret; it does not remove it.
 - **Another process running as you** could race between path validation and directory
