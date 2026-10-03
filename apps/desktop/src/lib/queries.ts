@@ -1,7 +1,7 @@
 /** Data fetching with TanStack Query: caching, loading and error states. */
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { api, newJobId } from "./api";
+import { api, HabiError, newJobId } from "./api";
 
 export const keys = {
   appInfo: ["appInfo"] as const,
@@ -117,11 +117,19 @@ export function useOverview(projectId: string | undefined) {
   const client = useQueryClient();
   const jobRef = useRef<string | null>(null);
   const rescanRef = useRef(false);
+  // Only a Cancel the person pressed shows as cancelled.
+  const stoppedRef = useRef(false);
   const query = useQuery({
     queryKey: keys.overview(projectId ?? ""),
     enabled: Boolean(projectId),
     staleTime: 60_000,
+    // An inspection stopped by anything else (a remount racing its own cancel)
+    // is simply started again, once.
+    retry: (failures, error) =>
+      failures < 1 && !stoppedRef.current && error instanceof HabiError && error.code === "cancelled",
+    retryDelay: 0,
     queryFn: async () => {
+      stoppedRef.current = false;
       const job = newJobId();
       jobRef.current = job;
       const rescan = rescanRef.current;
@@ -138,9 +146,14 @@ export function useOverview(projectId: string | undefined) {
   });
   useEffect(() => {
     return () => {
-      if (jobRef.current) void api.cancelJob(jobRef.current);
+      if (!jobRef.current) return;
+      // Leaving stops the inspection, and the query goes back to not loaded
+      // rather than failed: coming back (or StrictMode's remount, which can
+      // race this cancel) inspects again instead of showing "cancelled".
+      void client.cancelQueries({ queryKey: keys.overview(projectId ?? "") });
+      void api.cancelJob(jobRef.current);
     };
-  }, []);
+  }, [client, projectId]);
   const rescan = () => {
     // The inspection already running is superseded; stop it rather than let it finish unseen.
     if (jobRef.current) void api.cancelJob(jobRef.current);
@@ -148,6 +161,7 @@ export function useOverview(projectId: string | undefined) {
     return query.refetch();
   };
   const cancel = () => {
+    stoppedRef.current = true;
     if (jobRef.current) void api.cancelJob(jobRef.current);
   };
   return { ...query, rescan, cancel };

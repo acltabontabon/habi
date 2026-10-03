@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import type { LocalSkill } from "../bindings/LocalSkill";
@@ -15,6 +15,7 @@ import { type Actions, ActionsContext } from "../lib/actions";
 import { HabiError } from "../lib/api";
 import { guardWindowClose } from "../lib/closing";
 import { NavProvider, type Route, useNav } from "../lib/nav";
+import { useOverview } from "../lib/queries";
 import { initTheme, useTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
 import { CommandPalette } from "../views/CommandPalette";
@@ -890,5 +891,63 @@ describe("toasts and dialogs", () => {
     expect(screen.getByRole("dialog", { name: "Remove" })).toHaveAccessibleDescription(
       "Nothing is deleted from disk.",
     );
+  });
+});
+
+describe("opening a project", () => {
+  function overviewOf(client: QueryClient) {
+    return renderHook(() => useOverview(billing.project.id), {
+      wrapper: ({ children }) => (
+        <StrictMode>
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        </StrictMode>
+      ),
+    });
+  }
+  // Each inspection can be cancelled by its job id until it finishes.
+  function inspections(fail: (call: number) => boolean = () => false) {
+    const running = new Map<string, (error: unknown) => void>();
+    let calls = 0;
+    handlers.project_overview = ({ jobId }) => {
+      calls += 1;
+      const call = calls;
+      return new Promise((resolve, reject) => {
+        running.set(String(jobId), reject);
+        if (fail(call))
+          setTimeout(() => reject({ code: "cancelled", message: "the operation was cancelled" }));
+        else setTimeout(() => resolve(billing), 30);
+      });
+    };
+    handlers.cancel_job = ({ jobId }) => {
+      running.get(String(jobId))?.({ code: "cancelled", message: "the operation was cancelled" });
+      return true;
+    };
+    return () => calls;
+  }
+
+  it("inspects again after leaving mid-inspection and coming back, not 'cancelled'", async () => {
+    const calls = inspections();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const first = overviewOf(client);
+    await waitFor(() => expect(calls()).toBe(1));
+    first.unmount();
+    const { result } = overviewOf(client);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+
+  it("starts again once when stopped by anything but the person, and stays stopped when they cancel", async () => {
+    const calls = inspections((call) => call === 1);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = overviewOf(client);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls()).toBe(2);
+
+    const cancelled = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    inspections();
+    const mine = overviewOf(cancelled);
+    await waitFor(() => expect(mine.result.current.isFetching).toBe(true));
+    act(() => mine.result.current.cancel());
+    await waitFor(() => expect(mine.result.current.isError).toBe(true));
+    expect((mine.result.current.error as HabiError).code).toBe("cancelled");
   });
 });
