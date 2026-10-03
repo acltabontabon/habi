@@ -97,8 +97,8 @@ Open:
   check currently finds nothing.
 - **Client smoke tests** have not been run against installed Claude Code, Cursor, Codex,
   Gemini CLI, GitHub Copilot, OpenCode and Junie.
-- **Manual Windows smoke test.** The Windows installers are built in CI but have not been
-  installed and used by hand.
+- **Manual Windows smoke test.** The Windows installers are built by the release workflow but
+  have not been installed and used by hand.
 - **Live Git hosts.** Pull/merge request creation, status and revisions are tested against
   stand-in `gh`/`glab` programs, not live GitHub or GitLab.
 

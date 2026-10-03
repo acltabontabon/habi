@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Runs the checks CI runs, on this machine. CI also runs them on macOS, Windows and Linux,
-# and builds the desktop installers. Usage: scripts/check.sh
+# Runs the checks CI runs, on this machine. CI runs the Rust checks on macOS and Windows and
+# the others on Linux, each only when a change touches what it checks; installers are built
+# only by the release workflow, from a tag. Usage: scripts/check.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
