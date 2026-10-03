@@ -1,4 +1,7 @@
-# Repository inspection: supported signals
+# Detectors
+
+This page lists what inspection recognizes in a repository, so you know which conditions in
+`habi.yaml` Habi can establish, and where it says *unknown* instead.
 
 Inspection is **read-only**. Habi lists file names (respecting `.gitignore`, `.ignore`,
 `.habiignore` and per-project exclusions), reads build manifests and a few recognized files,
@@ -124,10 +127,10 @@ its colors in Habi fall back to the language of its build files; `lang:` conditi
 | OpenAPI specification | YAML/JSON whose first 4 KiB contains a top-level `openapi: 3.x` / `swagger: "2.0"` |
 | Liquibase changelog | `<databaseChangeLog`, `databaseChangeLog:` or `--liquibase formatted sql` |
 | Flyway migration | `**/db/migration/V*__*.sql` |
-| Agent instructions | `AGENTS.md`, `CLAUDE.md`, `.claude/rules/**`, `.cursor/rules/*.mdc`, `.cursorrules`, `.github/copilot-instructions.md` |
-| Agent skills | `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.cursor/skills/*/SKILL.md` |
-| MCP config | `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml` |
-| Tooling | `tsconfig.json`, Jest/Vitest/Playwright/Cypress configs, GitHub Actions, GitLab CI, Dockerfile, `mvnw`/`gradlew` |
+| Agent instructions | `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`, `.claude/rules/**`, `.cursor/rules/**/*.mdc`, `.cursorrules`, `.github/copilot-instructions.md` |
+| Agent skills | `SKILL.md` one folder deep in `.claude/skills`, `.agents/skills`, `.cursor/skills`, `.gemini/skills`, `.github/skills`, `.opencode/skills` and `.junie/skills` |
+| MCP config | `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.gemini/settings.json`, `opencode.json`, `.junie/mcp/mcp.json` |
+| Tooling | `tsconfig.json`, Jest/Vitest/Playwright/Cypress configs, GitHub Actions, GitLab CI, Dockerfile, `mvnw`/`gradlew`, `dbt_project.yml` |
 
 ## Derived tags
 

@@ -46,7 +46,7 @@ Habi is not a marketplace, agent launcher, chat application or configuration das
 
 | Principle | How Habi keeps it |
 |---|---|
-| Repository first | The project is the home screen; recommendations come from inspection (`inspect`), not from browsing a catalog. With nothing to recommend, the project shows the skills and instructions already in it. |
+| Repository first | Opening a project is the primary action; recommendations come from inspection (`inspect`), not from browsing a catalog. With nothing to recommend, the project shows the skills and instructions already in it. |
 | Explain relevance | Every result carries an evaluation tree with fact ids, files and lines (`matching::eval::EvalNode`). Unknown is a first-class outcome; there are no confidence percentages. |
 | Create where the work is | `skills`: local drafts and imported copies as plain Agent Skills folders; a condition builder over the matching schema; an applicability preview across registered projects. No model, account or library required. |
 | Pay it forward | `contribute`: refinements go back to the library they came from (or any connected library) with an explicit file selection, a preview of exactly what leaves the machine, and a reviewed branch, request or patch. A prepared branch, a pushed branch and an opened request are reported as different things. Copies keep their origin (`SkillOrigin`), and library updates to a copy are reviewed three ways (`skills::upstream`). |
@@ -94,11 +94,12 @@ reworking the core:
   maintainers, never an automatic merge.
 - **Repeated corrections.** Surface skills that are frequently edited locally in the same way
   (lock-file drift across projects a team chooses to share), as candidates for upstream fixes.
-- **Rehearsal.** Evaluate a new skill's conditions against a set of representative
-  repositories before publishing, showing where it would and would not apply.
+- **Rehearsal at scale.** Evaluate a new skill's conditions against a set of representative
+  repositories before publishing. Today a contribution can summarize where its rules apply
+  among the projects you opened.
 - **Centralized evaluations and adoption reporting** — only with explicit, opt-in team
   infrastructure; never background collection from developers' machines.
-- **More detectors** (Python, Go, .NET, Terraform) using the same coverage discipline.
-- **User-scope installation** (`~/.claude/skills`, `~/.agents/skills`) behind an explicit
-  scope choice, with the same plan/journal guarantees.
+- **More detectors** (.NET, Terraform) using the same coverage discipline.
+- **Instructions and MCP servers on this machine.** Installing on this machine covers skills
+  only.
 - **Cursor `.mdc` rules** for glob-scoped instructions where AGENTS.md is too coarse.

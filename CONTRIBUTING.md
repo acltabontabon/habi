@@ -42,7 +42,8 @@ type check, tests and build, third-party notices, documentation links and the we
 CI also runs these on macOS and Windows, and builds the desktop installers.
 
 [Architecture](docs/dev/architecture.md) explains the repository layout and modules, and how
-to work on the UI in a browser against the real core or against fixture data.
+to work on the UI in a browser against the real core or against fixture data. The
+[documentation index](docs/README.md) lists the other pages for working on Habi.
 
 ## Making a change
 
@@ -57,7 +58,9 @@ to work on the UI in a browser against the real core or against fixture data.
    Apache-2.0, BSD, ISC, Zlib, Unicode) — see `deny.toml`.
 5. Fixtures must stay fictitious: no real company names, people, tokens or internal hosts.
    Use `example.com` / `example.invalid`.
-6. Add a line to `CHANGELOG.md` under "Unreleased" for anything a user would notice.
+6. Add a line to `CHANGELOG.md` under "Unreleased" for anything a user would notice, written
+   for the person using Habi ([how](docs/dev/release.md#release-checklist)). Update the
+   guides in `docs/` when you change what a user sees or does.
 7. Run `scripts/check.sh` before opening the pull request.
 
 ## Commit and review

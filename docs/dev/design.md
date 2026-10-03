@@ -1,4 +1,4 @@
-# Design direction — Loom
+# Design direction: Loom
 
 Habi is an instrument for developers. *Habi* is Tagalog for "weave": individual know-how,
 woven into the projects where it helps. The interface is precise and quiet, and the weave is
@@ -36,10 +36,20 @@ its one signature — used only where it carries meaning.
 
 ## Key screens
 
-- **Home: the loom** — the principle as a headline ("What one developer learns, every
-  project keeps."), a three-line lifecycle block (sources · refining · shared, each a link),
-  and the loom: warp threads are knowledge sources, weft rows are your projects, and a
-  source's thread surfaces as a float where its knowledge applies to that project. A saffron
+- **Welcome** — opens on start until turned off. A headline chosen each time
+  (`lib/headlines.ts`: the brand line, or a dry, true observation about the problem, never a
+  number), a line under it that answers the headline with what Habi does, the three threads
+  (find, improve, share), and a *Works with* card: Git, the one requirement, checked on this
+  machine with how to install it when missing; the project stacks inspection reads (each
+  chip's tooltip names the files); the seven agent tools. The optional GitHub and GitLab CLIs
+  are not asked for here; Settings → This machine lists them with how to add each.
+- **Home: the loom** — the brand headline ("What one developer learns, every project
+  keeps."), the tagline under it ("Find what applies. Improve what works. Share what you
+  learn."), and the loom: warp threads are knowledge sources, weft rows are your projects, and a
+  source's thread surfaces as a float where its knowledge applies to that project: solid where
+  something from it is installed there (woven in), washed out where its skills fit but none is
+  installed yet (a loose thread). Pointing at a crossing lights its row and column and says
+  what it holds: what is installed, and how many fit. A saffron
   knot marks where a refinement from a project went back into a library. The last row is
   unwoven and holds the one primary action, *Open a project…* (read-only). Rows and source
   names are controls; pointing at one brings what it connects to forward. It scales (ten
@@ -47,8 +57,8 @@ its one signature — used only where it carries meaning.
   cloth's texture, and a first run shows undyed threads with a faint twill. Creating and
   adding skills live in the sidebar, palette and project views; their shortcuts sit at the
   foot with the labeled sample workspace on a first run.
-- **In this project** — skills and instruction files already in the repository, read-only,
-  with real next actions (read, copy to My skills, turn part into a skill). Shown in place of
+- **Already here** — skills and instruction files already in the repository, read-only,
+  with real next actions (read, edit a copy, turn part into a skill). Shown in place of
   recommendations when there is nothing to recommend yet.
 - **My skills** — an index, not a wall of cards: a hanging letter (A–Z) or a time landmark
   (recent) above each run of rows; each row is a title, the purpose's first sentence, the
@@ -88,6 +98,13 @@ its one signature — used only where it carries meaning.
   list-and-detail workbench grouped by *Team requirements → Fits this project → Needs
   information → Available → Does not apply*. *Available* (no applicability rules) and *Does
   not apply* are collapsed, never hidden; installed items always stay listed.
+- **Item header** — kicker, title and every action on one line: the actions sit at the top
+  right, the primary one last, rarer ones (*Remove from this project…*) behind "⋯". Once
+  installed, an *Installed for* strip shows the agent tools (all seven, the chosen ones lit)
+  and where the files are, instead of a sentence.
+- **Agent tools at a glance** — `components/AgentReach.tsx`: every tool Habi knows as a small
+  chip, lit when it applies (installed for it, or it reads that folder). Used by the item
+  header, *On this machine* (one row per skill, however many folders hold it) and the welcome.
 - **Why this fits** — the four facets, a specific next action, the evaluation tree with
   threads to file:line chips that open an excerpt of the exact file, exclusions,
   prerequisites, evidence and scope/limits.
@@ -166,7 +183,9 @@ Strand, Swatch, Selvedge). Layout and view styles: `src/styles/app.css` and
 - **Tooltips** — one layer (`components/Tooltips.tsx`) draws every `title` in the app's
   surface: a raised card with a hairline edge and a point toward its element, a trailing
   "(⌘K)" as a key, "A — B" as a line and a quieter line. `tip({ title, mark, lines, note })`
-  makes a structured card (the sidebar's libraries). The native tooltip never shows; what a
+  makes a structured card (the sidebar's libraries: what it is, how many skills, stars and last
+  push for a catalog library — asked of GitHub only on hover, then kept for a day — and how
+  many fit the project being worked on). The native tooltip never shows; what a
   title said for screen readers is kept as a label or description.
 
 ## Accessibility

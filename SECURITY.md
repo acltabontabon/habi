@@ -32,6 +32,7 @@ For example:
   selected project, following symbolic links, or overwriting files without a preview.
 - Library content or a Git host causing commands to run (hooks, filters, `gh`/`glab`
   arguments, verification checks) without the user's explicit action.
+- An update being installed that is not signed with Habi's updater key.
 - Secrets leaking into installed files, MCP configuration, contribution branches, patches,
   logs or the diagnostic report.
 - Text from a Git host (review comments, titles) being rendered as HTML or followed as
@@ -42,6 +43,7 @@ The intended boundaries are described in the [security model](docs/project/secur
 
 ## Out of scope
 
-- Behavior of the agents themselves (Claude Code, Cursor, Codex) after they load a skill.
+- Behavior of the agent tools themselves (Claude Code, Cursor, Codex, Gemini CLI, GitHub
+  Copilot, OpenCode, Junie) after they load a skill.
 - Issues requiring an attacker who can already write to your user account or your Git
   configuration.

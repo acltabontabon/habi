@@ -45,12 +45,12 @@ body:
     id: clients
     attributes:
       label: Agent tools involved (if any)
-      placeholder: "Claude Code 2.x, Cursor 2.x, Codex …"
+      placeholder: "Claude Code 2.x, Cursor 2.x, Gemini CLI …"
   - type: textarea
     id: diagnostics
     attributes:
       label: Diagnostic report (optional)
       description: >
-        Settings → Save diagnostic report (or `habi diagnostics`). It is redacted, but please
-        read it before pasting.
+        Settings → Diagnostics → Preview report (or `habi diagnostics`). It is redacted, but
+        please read it before pasting.
       render: text

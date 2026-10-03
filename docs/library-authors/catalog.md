@@ -1,6 +1,7 @@
-# The library catalog
+# Library catalog
 
-Habi suggests a short list of public skill libraries. The list is data, in
+Habi suggests a short list of public skill libraries on its Libraries page and in
+`habi catalog list`. To propose a library, open a pull request that adds an entry. The list is data, in
 `crates/habi-core/catalog/sources.yaml`, embedded in the app and validated when it loads
 (`cargo test -p habi-core catalog`). Nothing is fetched until a person opens a preview.
 

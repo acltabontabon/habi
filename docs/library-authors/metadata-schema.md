@@ -20,8 +20,29 @@ nearest license file in the skill's folder or one of its parents (`LICENSE`, `LI
 review and a warning before sharing. A library narrowed to a subfolder only sees license files
 inside it.
 
-Examples that the test suite validates: [`schema/examples/valid`](../../schema/examples/valid)
-and [`schema/examples/invalid`](../../schema/examples/invalid).
+A library is a Git repository (or a folder in one) containing skill folders with `SKILL.md`.
+To make a skill match projects, add a `habi.yaml` next to it:
+
+```yaml
+habi: 1
+title: Liquibase migration review
+applies_when:
+  all:
+    - tag: framework:spring-boot
+    - dependency: org.liquibase:liquibase-core
+excludes:
+  tag: db:jooq
+requires:
+  tools:
+    - name: Maven
+      commands: [./mvnw, mvn]
+```
+
+Run `habi validate path/to/library` before publishing. The
+[example library](../../fixtures/libraries/example-team-library) uses every feature on this
+page, and the test suite validates the examples in
+[`schema/examples/valid`](../../schema/examples/valid) and
+[`schema/examples/invalid`](../../schema/examples/invalid).
 
 ## Skill sidecar fields
 
@@ -37,11 +58,11 @@ and [`schema/examples/invalid`](../../schema/examples/invalid).
 | `applies_when`, `excludes` | Conditions (below). |
 | `requires.tools` | `{name, commands[], purpose?, install_hint?}`. Any command satisfies it. Bare names are looked up on `PATH`, `./name` in the project. **Nothing is executed** to check. |
 | `requires.mcp` | `{name, purpose?, server?}`. `server` is a suggested configuration: `{command, args[], env{VAR: "${VAR}"}}` or `{url, bearer_token_env}`. Literal secrets are rejected by the schema. |
-| `requires.clients` | Clients the content is known to work with (`claude-code`, `cursor`, `codex`). |
+| `requires.clients` | Agent tools the content is known to work with. Omit it when the content is not restricted. Accepted: `claude-code`, `cursor`, `codex`, `gemini-cli`, `copilot`, `opencode`, `junie`. |
 | `workflow.steps[]` | `{title, detail?, references[]?, expected?}` — guidance shown in order, not enforced. |
 | `workflow.artifacts[]` | What following the workflow produces. |
-| `bindings[]` | Repository-specific values checks need: `{name, kind: file|module, glob?}`. Habi offers discovered candidates; the user chooses. |
-| `checks[]` | `{id, title, run[], cwd: module|repository, timeout_seconds}`. `run` is an argument array; items may be `{binding: name}`. Never a shell string. |
+| `bindings[]` | Repository-specific values checks need: `{name, kind: file\|module, glob?}`. Habi offers discovered candidates; the user chooses. |
+| `checks[]` | `{id, title, description?, run[], cwd: module\|repository, timeout_seconds}`. `run` is an argument array; items may be `{binding: name}`. Never a shell string. |
 | `evidence[]` | Author-declared records `{date, result, environment?, summary?, by?}`. Shown as declared, not verified. |
 | `examples[]` | `{title, description?, path?}`. |
 
@@ -153,3 +174,4 @@ whether the guidance is right or the scripts are safe.
   cover Maven, Gradle and npm declarations at once.
 - Use `excludes` for "does not fit if …" rules; they are reported separately.
 - Run `habi validate path/to/library` before publishing.
+- To have a public library suggested in Habi, see the [library catalog](catalog.md).

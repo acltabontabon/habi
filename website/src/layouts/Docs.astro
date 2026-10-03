@@ -1,0 +1,141 @@
+---
+/**
+ * A page of the documentation: the site's header, the docs listed on the left as the index lists
+ * them, the page, and what is on it on the right. On a narrow screen the list folds into a
+ * <details>, so the pages need no script.
+ */
+import "../styles/docs.css";
+import Header from "../components/Header.astro";
+import Icon from "../components/Icon.astro";
+import Mark from "../components/Mark.astro";
+import { type DocGroup, type DocPage, REPOSITORY, sourceUrl } from "../lib/docs";
+import Base from "./Base.astro";
+import { version } from "../../package.json";
+
+interface Props {
+  page: DocPage;
+  groups: DocGroup[];
+}
+
+const { page, groups } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const href = (slug: string) => `${base}docs/${slug ? `${slug}/` : ""}`;
+const order = groups.flatMap((g) => g.items);
+const at = order.findIndex((item) => item.slug === page.slug);
+const previous = at > 0 ? order[at - 1] : null;
+const next = page.slug === "" ? order[0] : at >= 0 && at < order.length - 1 ? order[at + 1] : null;
+const current = order.find((item) => item.slug === page.slug);
+const contents = page.headings.filter((h) => h.depth === 2);
+const title = page.slug ? `${page.title} — Habi docs` : "Habi docs — find what applies, improve what works";
+---
+
+<Base title={title} description={page.description} path={`docs/${page.slug ? `${page.slug}/` : ""}`} type="article">
+  <Header current="docs" />
+  <div class="docs-shell">
+    <nav class="docs-nav" aria-label="Documentation">
+      <a class="docs-nav-home" href={href("")} aria-current={page.slug === "" ? "page" : undefined}>Overview</a>
+      {
+        groups.map((group) => (
+          <>
+            <p class="docs-nav-heading">{group.heading}</p>
+            <ul>
+              {group.items.map((item) => (
+                <li>
+                  <a href={href(item.slug)} aria-current={item.slug === page.slug ? "page" : undefined}>
+                    {item.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        ))
+      }
+    </nav>
+
+    <details class="docs-nav-compact">
+      <summary>
+        <span class="docs-nav-current">{current?.title ?? (page.slug ? page.title : "Overview")}</span>
+        <span class="docs-nav-toggle">All docs</span>
+      </summary>
+      <nav aria-label="Documentation">
+        <a class="docs-nav-home" href={href("")} aria-current={page.slug === "" ? "page" : undefined}>Overview</a>
+        {
+          groups.map((group) => (
+            <>
+              <p class="docs-nav-heading">{group.heading}</p>
+              <ul>
+                {group.items.map((item) => (
+                  <li>
+                    <a href={href(item.slug)} aria-current={item.slug === page.slug ? "page" : undefined}>
+                      {item.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ))
+        }
+      </nav>
+    </details>
+
+    <main id="main" class="doc">
+      <article class="doc-body">
+        <slot />
+      </article>
+      <footer class="doc-footer">
+        {
+          previous || next ? (
+            <nav class="doc-pager" aria-label="Next and previous">
+              {previous ? (
+                <a class="doc-prev" href={href(previous.slug)}>
+                  <small>Previous</small>
+                  {previous.title}
+                </a>
+              ) : (
+                <span />
+              )}
+              {next ? (
+                <a class="doc-next" href={href(next.slug)}>
+                  <small>Next</small>
+                  {next.title}
+                </a>
+              ) : null}
+            </nav>
+          ) : null
+        }
+        <p class="doc-edit">
+          <a href={sourceUrl(page)}>Edit this page on GitHub <Icon name="external" size={12} /></a>
+        </p>
+      </footer>
+    </main>
+
+    {
+      contents.length > 2 ? (
+        <nav class="doc-contents" aria-label="On this page">
+          <p class="docs-nav-heading">On this page</p>
+          <ul>
+            {contents.map((h) => (
+              <li>
+                <a href={`#${h.id}`}>{h.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null
+    }
+  </div>
+
+  <footer class="docs-foot">
+    <p class="docs-foot-brand">
+      <Mark size={20} />
+      <span><strong>Habi</strong> {version} · Apache-2.0</span>
+    </p>
+    <nav class="docs-foot-links" aria-label="Elsewhere">
+      <a href={base}>Home</a>
+      <a href={REPOSITORY}>Source</a>
+      <a href={`${REPOSITORY}/blob/main/CHANGELOG.md`}>Changelog</a>
+      <a href={`${REPOSITORY}/releases`}>Releases</a>
+      <a href={`${REPOSITORY}/issues`}>Issues</a>
+    </nav>
+  </footer>
+</Base>

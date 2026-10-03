@@ -97,6 +97,10 @@ Sources:
 
 ## 3. What Habi writes per client (recommendation)
 
+This was the recommendation at research time. Habi follows it with one change: where both
+skill folders are needed, it writes two ordinary copies rather than a symbolic link, because it
+never creates links. What it writes today is in [Agent tools](../guide/agent-tools.md).
+
 **Skills: install one canonical copy, with as few mirrors as possible.**
 - `.agents/skills/<name>/` is read by **both Codex and Cursor**. It is the canonical location.
 - `.claude/skills/<name>/` is needed only for **Claude Code**. Cursor also reads it.
@@ -163,8 +167,10 @@ Sources:
 
 These are **discovery tests**. They are separate from **file-format tests** (schema or frontmatter
 validation, JSON/TOML parsing, name/dir-match checks, which Habi runs offline in CI). For each
-client, install a fixture skill `habi-smoke-test` whose description is "Use when the user says
-'habi ping'. Reply with HABI-PONG", plus a one-line AGENTS.md marker and a no-op MCP server. Then:
+client, install with Habi a skill named `habi-smoke-test` whose description is "Use when the
+user says 'habi ping'. Reply with HABI-PONG", plus a one-line AGENTS.md marker and a no-op MCP
+server. (The repository has no ready-made library for this yet; a scratch library with that
+one skill and instruction file is enough.) Then:
 
 **Claude Code** (v2.1.277+ recommended)
 1. Start `claude` in the project root and accept the workspace trust dialog.
@@ -185,6 +191,26 @@ client, install a fixture skill `habi-smoke-test` whose description is "Use when
 3. Run `codex --ask-for-approval never "Summarize the current instructions."` The output should quote the AGENTS.md marker.
 4. Run `/mcp` in the TUI, or `codex mcp list`. The project server should be listed.
 5. Mark the project untrusted and repeat step 4. The server should now be absent, which confirms the trust gating.
+
+**Gemini CLI, GitHub Copilot, OpenCode and Junie**
+
+Repeat the same steps with the `habi-smoke-test` fixture: list the skills, say "habi ping" and
+expect HABI-PONG, check that the `AGENTS.md` marker (or, for Gemini CLI, the `GEMINI.md`
+import) is in effect, and check that the no-op MCP server is listed.
+
+### Smoke-test results
+
+Record each run here before a release.
+
+| Agent tool | Version | Date | Skill found | Instructions read | MCP server listed |
+|---|---|---|---|---|---|
+| Claude Code | | | not run | not run | not run |
+| Cursor | | | not run | not run | not run |
+| Codex | | | not run | not run | not run |
+| Gemini CLI | | | not run | not run | not run |
+| GitHub Copilot | | | not run | not run | not run |
+| OpenCode | | | not run | not run | not run |
+| Junie | | | not run | not run | not run |
 
 ## 7. Tauri (Habi's own desktop shell)
 
@@ -249,9 +275,3 @@ Notes:
 - Junie: environment-variable syntax in `mcp.json`, and whether `AGENTS.md` is read in every surface. The `www.jetbrains.com/help/junie/` pages returned no content; the `junie.jetbrains.com/docs` pages were used instead.
 - How any of Gemini CLI, Copilot, OpenCode and Junie handles the same skill `name` found in two folders.
 - Windsurf: a project-level MCP file for the current Devin agent. The CLI configuration page returned 404, and the `mcp_config.json` on the Cascade page is global and applies to the legacy agent only.
-
-### Smoke tests to add
-
-For each of Gemini CLI, Copilot, OpenCode and Junie, repeat the §6 procedure with the `habi-smoke-test`
-fixture: list skills, say "habi ping" and expect HABI-PONG, check that the `AGENTS.md` marker (or
-`GEMINI.md` import) is in effect, and check that the no-op MCP server is listed.
