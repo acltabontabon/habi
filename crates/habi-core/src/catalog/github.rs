@@ -81,6 +81,10 @@ pub fn fetch_repo(owner: &str, repo: &str, cancel: &CancelToken) -> Option<Strin
     let mut spec = Spec::new(
         curl,
         vec![
+            // Not the person's `~/.curlrc`: it could add headers (a token for
+            // another site), a proxy or an output file to this request. Curl
+            // only honours this as the very first argument.
+            "-q".into(),
             "--silent".into(),
             "--fail".into(),
             "--location".into(),

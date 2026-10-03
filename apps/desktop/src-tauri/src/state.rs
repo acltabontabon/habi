@@ -16,7 +16,11 @@ pub struct AppState {
     pub habi: Option<Arc<Habi>>,
     /// Why the core could not start (shown by the UI instead of crashing).
     pub startup_error: Option<ErrorInfo>,
-    jobs: Mutex<HashMap<String, CancelToken>>,
+    /// Running jobs by the id the UI gave them. The UI could reuse an id while
+    /// an earlier job with it still runs, so each id holds every such job's
+    /// token: cancelling the id cancels them all, and each job's guard removes
+    /// only its own.
+    jobs: Mutex<HashMap<String, Vec<CancelToken>>>,
     /// Local library folders chosen with the native picker. `add_source`
     /// accepts local paths only from this set, so a compromised webview
     /// cannot make Habi ingest arbitrary folders.
@@ -28,7 +32,7 @@ pub struct AppState {
     /// accepts only paths the person dropped in the last few minutes, for
     /// the same reason as `picked_folders`.
     dropped: Mutex<HashMap<PathBuf, Instant>>,
-    pub watcher: Mutex<Option<crate::watch::ProjectWatcher>>,
+    pub watcher: Mutex<crate::watch::WatchSlot>,
     /// A newer Habi found by the last update check, waiting to be installed.
     pub update: Mutex<crate::updates::UpdateSlot>,
     _log_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
@@ -47,7 +51,7 @@ impl AppState {
             picked_folders: Mutex::new(HashSet::new()),
             browsed_folders: Mutex::new(HashSet::new()),
             dropped: Mutex::new(HashMap::new()),
-            watcher: Mutex::new(None),
+            watcher: Mutex::new(crate::watch::WatchSlot::default()),
             update: Mutex::new(crate::updates::UpdateSlot::default()),
             _log_guard: guard,
         }
@@ -95,9 +99,18 @@ impl AppState {
             self.jobs
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
-                .insert(id.clone(), token.clone());
+                .entry(id.clone())
+                .or_default()
+                .push(token.clone());
         }
-        (token, JobGuard { state: self, id })
+        (
+            token.clone(),
+            JobGuard {
+                state: self,
+                id,
+                token,
+            },
+        )
     }
 
     pub fn cancel(&self, id: &str) -> bool {
@@ -107,8 +120,8 @@ impl AppState {
             .unwrap_or_else(PoisonError::into_inner)
             .get(id)
         {
-            Some(t) => {
-                t.cancel();
+            Some(tokens) => {
+                tokens.iter().for_each(CancelToken::cancel);
                 true
             }
             None => false,
@@ -121,6 +134,7 @@ impl AppState {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .values()
+            .flatten()
         {
             token.cancel();
         }
@@ -130,16 +144,42 @@ impl AppState {
 pub struct JobGuard<'a> {
     state: &'a AppState,
     id: Option<String>,
+    token: CancelToken,
 }
 
 impl Drop for JobGuard<'_> {
     fn drop(&mut self) {
-        if let Some(id) = &self.id {
-            self.state
-                .jobs
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .remove(id);
+        let Some(id) = &self.id else { return };
+        let mut jobs = self
+            .state
+            .jobs
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        // Only this job's token: another job may have registered the same id.
+        if let Some(tokens) = jobs.get_mut(id) {
+            tokens.retain(|t| !t.same_as(&self.token));
+            if tokens.is_empty() {
+                jobs.remove(id);
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reused_job_id_keeps_both_jobs_cancellable() {
+        let state = AppState::new(None, None, None);
+        let (first, first_guard) = state.job(Some("refresh".into()));
+        let (second, second_guard) = state.job(Some("refresh".into()));
+        // The first job ending must not unregister the second.
+        drop(first_guard);
+        assert!(state.cancel("refresh"));
+        assert!(second.is_cancelled());
+        assert!(!first.is_cancelled());
+        drop(second_guard);
+        assert!(!state.cancel("refresh"));
     }
 }

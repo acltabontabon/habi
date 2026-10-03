@@ -14,7 +14,7 @@ use crate::error::{HabiError, Result};
 use crate::install::status::InstallState;
 use crate::library::SKILL_FILE;
 use crate::library::model::Diagnostic;
-use crate::paths::{RelPath, resolve_for_read};
+use crate::paths::{RelPath, resolve_for_read, windows_alias};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -115,8 +115,18 @@ pub(crate) struct ProjectRef<'a> {
     pub root: &'a Path,
 }
 
+/// A skill folder's own name: one visible path component. Ids arrive from the
+/// webview, so this is what keeps them inside the scanned folders. Names
+/// Windows reads differently are refused as `RelPath` refuses them: on
+/// Windows `Path::join` with a drive (`C:x`, `D:`) replaces the whole path,
+/// and `a.` or `con` name another file or a device. Scanning lists only names
+/// that pass, so every skill listed can be imported.
 fn is_folder_name(name: &str) -> bool {
-    !name.is_empty() && !name.starts_with('.') && !name.contains(['/', '\\'])
+    !name.is_empty()
+        && !name.starts_with('.')
+        && !name.contains(['/', '\\'])
+        && !name.chars().any(char::is_control)
+        && windows_alias(name).is_none()
 }
 
 fn is_link(path: &Path) -> bool {
@@ -375,18 +385,63 @@ mod tests {
         }
     }
 
+    fn home_with(names: &[&str]) -> tempfile::TempDir {
+        let home = tempfile::tempdir().unwrap();
+        for name in names {
+            let dir = home.path().join(".claude/skills").join(name);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join(SKILL_FILE), "---\nname: x\n---\n").unwrap();
+        }
+        home
+    }
+
     #[test]
     fn ids_cannot_leave_the_skill_folders() {
-        let home = Path::new("/nonexistent-home");
+        let home = home_with(&["pdf"]);
+        let home = home.path();
+        assert!(locate(home, "claude/pdf").is_ok());
+        for id in ["nope/x", "claude", "claude/missing"] {
+            assert!(
+                matches!(locate(home, id), Err(HabiError::NotFound(_))),
+                "{id}"
+            );
+        }
+        // Refused for the name alone, whatever is on disk. On Windows a drive
+        // in it (`C:x`, `D:`) would make the join leave `home` for any folder
+        // on any drive, and the others name another file or a device.
         for id in [
             "claude/../x",
             "claude/a/b",
+            "claude/a\\b",
             "claude/",
-            "nope/x",
-            "claude",
+            "claude//etc",
             "claude/.hidden",
+            "claude/C:x",
+            "claude/D:",
+            "claude/d:..",
+            "claude/C:\\Windows",
+            "claude/pdf:stream",
+            "claude/\\\\host\\share",
+            "claude/pdf.",
+            "claude/pdf ",
+            "claude/con",
+            "claude/NUL.md",
+            "claude/a\tb",
         ] {
-            assert!(locate(home, id).is_err(), "{id}");
+            assert!(
+                matches!(locate(home, id), Err(HabiError::InvalidInput(_))),
+                "{id}"
+            );
         }
+    }
+
+    /// Where such names are ordinary folders (macOS, Linux), they are not
+    /// listed either: the list offers only what can be imported.
+    #[cfg(unix)]
+    #[test]
+    fn folders_named_like_drives_or_devices_are_not_listed() {
+        let home = home_with(&["pdf", "C:x", "D:", "con"]);
+        let ids: Vec<String> = scan(home.path()).into_iter().map(|s| s.id).collect();
+        assert_eq!(ids, ["claude/pdf"]);
     }
 }

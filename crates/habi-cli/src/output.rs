@@ -232,7 +232,7 @@ pub fn module(m: &str) -> String {
 /// Replaces wording that only makes sense in the desktop app.
 pub fn cli_wording(text: &str) -> String {
     text.replace(
-        "Restore them from the project's history (or `habi restore`).",
+        "Restore them from the project's history, or with habi restore.",
         "Run `habi history` and `habi restore <operation>` to restore them.",
     )
 }

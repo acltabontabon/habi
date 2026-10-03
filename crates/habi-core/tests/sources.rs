@@ -298,6 +298,66 @@ fn plain_directory_sources_and_removal() {
 }
 
 #[test]
+fn library_indexes_are_built_once_but_never_kept_incomplete() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    copy_tree(&fixture("libraries/example-team-library"), lib.path());
+    let sources = services(home.path());
+    let source = sources
+        .add(&NewSource {
+            name: "Folder".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    let snapshot = sources
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap()
+        .current;
+    let first = sources.index_at(&source.id, &snapshot).unwrap();
+    let unreadable = |index: &habi_core::library::model::LibraryIndex| {
+        index
+            .items
+            .iter()
+            .flat_map(|i| &i.diagnostics)
+            .chain(&index.diagnostics)
+            .any(|d| d.message.contains("cached content"))
+    };
+    assert!(!unreadable(&first));
+
+    // A blob lost after the index was built: the built index stands.
+    let file = sources
+        .snapshot_files(&source.id, &snapshot)
+        .unwrap()
+        .into_iter()
+        .find(|f| f.path.ends_with("SKILL.md"))
+        .unwrap();
+    let hex = file.digest.strip_prefix("sha256:").unwrap();
+    let blob = home
+        .path()
+        .join("blobs/sha256")
+        .join(hex.get(..2).unwrap())
+        .join(hex.get(2..).unwrap());
+    let bytes = std::fs::read(&blob).unwrap();
+    std::fs::remove_file(&blob).unwrap();
+    assert_eq!(
+        sources.index_at(&source.id, &snapshot).unwrap().items.len(),
+        first.items.len()
+    );
+
+    // Built without it, the index says so, and is built again once it is back.
+    let fresh = services(home.path());
+    assert!(unreadable(&fresh.index_at(&source.id, &snapshot).unwrap()));
+    fresh.blobs().put_cached(&bytes).unwrap();
+    assert!(!unreadable(&fresh.index_at(&source.id, &snapshot).unwrap()));
+
+    // A snapshot that is gone is not found, however recently it was indexed.
+    sources.remove(&source.id).unwrap();
+    assert!(sources.index_at(&source.id, &snapshot).is_err());
+}
+
+#[test]
 fn credential_urls_are_rejected() {
     let home = tempfile::tempdir().unwrap();
     let sources = services(home.path());

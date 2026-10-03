@@ -20,6 +20,12 @@ impl CancelToken {
         self.0.load(Ordering::SeqCst)
     }
 
+    /// True if `other` is a clone of this very token (not merely in the same
+    /// state), e.g. to unregister one job without touching another's token.
+    pub fn same_as(&self, other: &CancelToken) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+
     /// Returns `Err(Cancelled)` once cancellation was requested. Call this at
     /// loop boundaries in long-running work.
     pub fn check(&self) -> Result<()> {

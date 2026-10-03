@@ -26,7 +26,7 @@ requires:
         args: ["-y", "@modelcontextprotocol/server-github"]
         env:
           GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-  clients: [claude-code, cursor, codex]
+  clients: [claude-code, cursor, codex, gemini-cli]
 workflow:
   steps:
     - title: Diff the specification

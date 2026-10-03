@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may call Habi's own commands and the core event/window APIs, and destroy itself once pending edits are saved on close. File dialogs and opening links run in Rust, so no dialog, opener, filesystem or shell permission is granted to the webview.",
+  "description": "The main window may call Habi's own commands, listen for the events Habi sends it (project changes, update progress, the close request, files dragged onto the window), and destroy itself once pending edits are saved on close. Nothing else of the core API is granted: no window, menu, tray, image, path or resource calls. The devtools toggle exists only in development builds, for the inspector shortcut. File dialogs and opening links run in Rust, so no dialog, opener, filesystem or shell permission is granted to the webview.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-destroy"]
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-destroy",
+    "core:webview:allow-internal-toggle-devtools"
+  ]
 }

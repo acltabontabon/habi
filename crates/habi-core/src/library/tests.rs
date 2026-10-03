@@ -234,6 +234,45 @@ fn nested_skills_are_merged_with_a_warning() {
 }
 
 #[test]
+fn nesting_is_found_past_siblings_that_sort_in_between() {
+    let skill = |name: &str| format!("---\nname: {name}\ndescription: d\n---\n");
+    let (a, a_b, a_x, deep, ab) = (
+        skill("a"),
+        skill("b"),
+        skill("x"),
+        skill("deep"),
+        skill("a-b"),
+    );
+    // `a-b` sorts between `a` and `a/...`; `a/x/deep` is two levels down.
+    let idx = index(&[
+        ("a/SKILL.md", &a),
+        ("a-b/SKILL.md", &ab),
+        ("a/b/SKILL.md", &a_b),
+        ("a/x/deep/SKILL.md", &deep),
+        ("a/x/SKILL.md", &a_x),
+    ]);
+    let mut paths: Vec<&str> = idx.items.iter().map(|i| i.path.as_str()).collect();
+    paths.sort();
+    assert_eq!(paths, ["a", "a-b"]);
+    let nested: Vec<&str> = idx
+        .diagnostics
+        .iter()
+        .filter(|d| d.message.contains("nested inside the skill `a`"))
+        .filter_map(|d| d.path.as_deref())
+        .collect();
+    assert_eq!(nested.len(), 3, "{nested:?}");
+
+    // A skill at the library root encloses every other.
+    let root = index(&[("SKILL.md", &skill("skill")), ("a/b/SKILL.md", &a_b)]);
+    assert_eq!(root.items.len(), 1);
+    assert!(
+        root.diagnostics
+            .iter()
+            .any(|d| d.message.contains("nested inside the skill ``"))
+    );
+}
+
+#[test]
 fn documented_schema_examples_validate_as_described() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schema/examples");
     for entry in std::fs::read_dir(root.join("valid")).unwrap() {
@@ -552,6 +591,30 @@ fn markdown_reference_scanner_handles_nesting_and_titles() {
     assert_eq!(resolve_link("references", "../../x.md"), Some(Err(())));
     assert_eq!(resolve_link("", "x/../y.md"), Some(Ok("y.md".into())));
     assert_eq!(resolve_link("", "HTTP://EXAMPLE.COM"), None);
+}
+
+#[test]
+fn code_spans_close_on_a_run_of_the_same_length() {
+    let code = |text: &str| -> Vec<String> {
+        markdown_references(text)
+            .into_iter()
+            .filter_map(|r| match r {
+                MarkdownRef::Code(c) => Some(c),
+                MarkdownRef::Link(_) => None,
+            })
+            .collect()
+    };
+    assert_eq!(
+        code("run `a.sh` then ``b ` c`` and `d`\n"),
+        ["a.sh", "b ` c", "d"]
+    );
+    // An opener with no closer is plain text; later spans still count.
+    assert_eq!(code("a ``` `x` ``\n"), ["x"]);
+    // Escaped backticks open nothing.
+    assert_eq!(code("\\`not code\\` but `this`\n"), ["this"]);
+    // Many runs of different lengths, none closed: still quick.
+    let hostile: String = (1..400).map(|n| "`".repeat(n) + " ").collect();
+    assert!(code(&format!("{hostile}\n")).is_empty());
 }
 
 #[test]

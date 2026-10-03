@@ -4,6 +4,7 @@ use crate::error::{HabiError, Result};
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 use std::path::Path;
+use std::time::Duration;
 
 /// Hex SHA-256 of `bytes`, prefixed so digests are self-describing.
 pub fn sha256(bytes: &[u8]) -> String {
@@ -113,13 +114,37 @@ pub fn read_prefix(path: &Path, limit: usize) -> std::io::Result<Vec<u8>> {
 /// directory is written, flushed to disk and renamed over the target. Readers
 /// see either the old or the new content, never a torn write. An existing
 /// file keeps its permissions; a new file gets ordinary (0644) permissions.
+///
+/// When this returns the content is durable: the file and its directory entry
+/// have been flushed, so it survives a crash or power loss. That costs a disk
+/// flush or two per file (a full drive-cache flush on macOS); see
+/// `atomic_write_unsynced` for content that can be rebuilt.
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
-    atomic_write_mode(path, bytes, None)
+    write_replacing(path, bytes, None, true)
 }
 
 /// Like `atomic_write`, optionally setting (`Some(true)`) or clearing
 /// (`Some(false)`) the executable bits, e.g. for skill scripts.
 pub fn atomic_write_mode(path: &Path, bytes: &[u8], executable: Option<bool>) -> Result<()> {
+    write_replacing(path, bytes, executable, true)
+}
+
+/// Like `atomic_write`, but leaves flushing to the operating system: readers
+/// still never see a torn write, but after a crash the file may be missing,
+/// empty or zero-filled. Only for caches that can be rebuilt and are verified
+/// when read, never for anything that may be the only copy of some content.
+pub fn atomic_write_unsynced(path: &Path, bytes: &[u8]) -> Result<()> {
+    write_replacing(path, bytes, None, false)
+}
+
+/// The atomic write behind `atomic_write*`; `durable` flushes the file and its
+/// directory to disk.
+fn write_replacing(
+    path: &Path,
+    bytes: &[u8],
+    executable: Option<bool>,
+    durable: bool,
+) -> Result<()> {
     let dir = path
         .parent()
         .ok_or_else(|| HabiError::invalid(format!("{} has no parent", path.display())))?;
@@ -130,7 +155,13 @@ pub fn atomic_write_mode(path: &Path, bytes: &[u8], executable: Option<bool>) ->
         .tempfile_in(dir)
         .map_err(|e| HabiError::io(format!("writing in {}", dir.display()), e))?;
     tmp.write_all(bytes)
-        .and_then(|_| tmp.as_file().sync_all())
+        .and_then(|_| {
+            if durable {
+                tmp.as_file().sync_all()
+            } else {
+                Ok(())
+            }
+        })
         .map_err(|e| HabiError::io(format!("writing {}", path.display()), e))?;
     #[cfg(unix)]
     {
@@ -151,10 +182,57 @@ pub fn atomic_write_mode(path: &Path, bytes: &[u8], executable: Option<bool>) ->
     }
     #[cfg(not(unix))]
     let _ = executable;
-    tmp.persist(path)
-        .map_err(|e| HabiError::io(format!("replacing {}", path.display()), e.error))?;
-    sync_dir(dir);
+    persist(tmp, path).map_err(|e| HabiError::io(format!("replacing {}", path.display()), e))?;
+    if durable {
+        sync_dir(dir);
+    }
     Ok(())
+}
+
+/// How long `persist` keeps retrying a rename the system refused for now.
+const RENAME_PATIENCE: Duration = Duration::from_secs(1);
+
+/// Renames the temporary file over `path`, retrying briefly while the system
+/// reports the target as busy (see `rename_may_succeed_later`). A rename that
+/// failed has changed nothing, so retrying it is safe.
+fn persist(mut tmp: tempfile::NamedTempFile, path: &Path) -> std::io::Result<()> {
+    let mut waited = Duration::ZERO;
+    let mut pause = Duration::from_millis(10);
+    loop {
+        match tmp.persist(path) {
+            Ok(_) => return Ok(()),
+            Err(e) if rename_may_succeed_later(&e.error) && waited < RENAME_PATIENCE => {
+                tmp = e.file;
+                std::thread::sleep(pause);
+                waited += pause;
+                pause = (pause * 2).min(Duration::from_millis(250));
+            }
+            Err(e) => return Err(e.error),
+        }
+    }
+}
+
+/// On Windows a file cannot be replaced while another process has it open
+/// without sharing deletion, and virus scanners and the search indexer open
+/// files moments after they are written. The rename then fails with "access
+/// denied" or a sharing or lock violation that clears within moments; without
+/// a retry, one such scan would roll back a whole install.
+#[cfg(windows)]
+fn rename_may_succeed_later(e: &std::io::Error) -> bool {
+    const ERROR_ACCESS_DENIED: i32 = 5;
+    const ERROR_SHARING_VIOLATION: i32 = 32;
+    const ERROR_LOCK_VIOLATION: i32 = 33;
+    matches!(
+        e.raw_os_error(),
+        Some(ERROR_ACCESS_DENIED | ERROR_SHARING_VIOLATION | ERROR_LOCK_VIOLATION)
+    )
+}
+
+/// Elsewhere a rename replaces the target even while it is open, so a failure
+/// is final.
+#[cfg(not(windows))]
+fn rename_may_succeed_later(_: &std::io::Error) -> bool {
+    false
 }
 
 /// Sets (`true`) or clears (`false`) the executable bits of a regular file,

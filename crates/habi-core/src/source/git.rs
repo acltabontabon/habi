@@ -23,6 +23,7 @@ use crate::cancel::CancelToken;
 use crate::error::{GitFailure, HabiError, Result};
 use crate::process::{self, Output, Spec};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 const CLEARED_ENV: &[&str] = &[
@@ -149,18 +150,46 @@ pub struct TreeEntry {
     pub path: String,
 }
 
+/// The most `git ls-remote --tags` output `list_tags` reads: room for tens of
+/// thousands of tags.
+const LIST_TAGS_LIMIT: usize = 8 * 1024 * 1024;
+
+/// Where Git is, and whether Habi may run SSH in batch mode (see
+/// `ssh_command_is_set`), found by the first `Git::locate` that succeeds.
+///
+/// Every Git operation starts with `locate`, and finding these takes a search
+/// of PATH and a `git config` run: a refresh or a contribution runs Git many
+/// times. Both depend only on the environment and the person's global Git
+/// configuration, which do not change under a running Habi in practice; such a
+/// change (Git moved, `core.sshCommand` set) takes effect at the next start. A
+/// failed search is not remembered, so Git installed while Habi runs is found.
+static LOCATED: OnceLock<(PathBuf, bool)> = OnceLock::new();
+
 impl Git {
     pub fn locate(hooks_dir: &Path) -> Result<Git> {
-        let program = which::which("git").map_err(|_| HabiError::Git {
-            failure: GitFailure::GitMissing,
-            message:
-                "Git is not installed or not on PATH. Install Git to use Git-hosted libraries."
-                    .into(),
-        })?;
+        let found = LOCATED.get().cloned();
+        let program = match &found {
+            Some((program, _)) => program.clone(),
+            None => which::which("git").map_err(|_| HabiError::Git {
+                failure: GitFailure::GitMissing,
+                message:
+                    "Git is not installed or not on PATH. Install Git to use Git-hosted libraries."
+                        .into(),
+            })?,
+        };
         std::fs::create_dir_all(hooks_dir)
             .map_err(|e| HabiError::io("creating the empty hooks directory", e))?;
+        let (program, batch_ssh) = match found {
+            Some(found) => found,
+            // The hooks directory is empty, so `git config` there reads only
+            // the person's global and system settings.
+            None => {
+                let batch_ssh = !ssh_command_is_set(&program, hooks_dir);
+                LOCATED.get_or_init(|| (program, batch_ssh)).clone()
+            }
+        };
         Ok(Git {
-            batch_ssh: !ssh_command_is_set(&program, hooks_dir),
+            batch_ssh,
             program,
             hooks_dir: hooks_dir.to_path_buf(),
         })
@@ -391,11 +420,16 @@ impl Git {
     }
 
     /// The names of the tags a remote has, without downloading anything.
+    ///
+    /// Each tag is a line of about a hundred bytes, so a long-lived repository
+    /// with thousands of release tags prints far more than `run`'s default
+    /// limit; `LIST_TAGS_LIMIT` still bounds a remote that answers without end.
     pub fn list_tags(&self, url: &str, cancel: &CancelToken) -> Result<Vec<String>> {
-        let out = self.run(
+        let out = self.run_limited(
             None,
             &["ls-remote", "--tags", "--refs", "--", url],
             Duration::from_secs(60),
+            LIST_TAGS_LIMIT,
             cancel,
         )?;
         Ok(out
@@ -761,6 +795,59 @@ mod tests {
             )
             .unwrap();
         assert_eq!(out.stdout, big);
+    }
+
+    #[test]
+    fn a_remote_with_thousands_of_tags_lists_them_all() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::locate(&tmp.path().join("hooks")).unwrap();
+        let repo = tmp.path().join("repo.git");
+        let cancel = CancelToken::new();
+        git.init_bare(&repo, &cancel).unwrap();
+        let tree = git
+            .run_with_input(Some(&repo), &["mktree"], Vec::new(), 4096, &cancel)
+            .unwrap()
+            .stdout_text()
+            .trim()
+            .to_string();
+        let identity = [
+            ("GIT_AUTHOR_NAME", "Habi"),
+            ("GIT_AUTHOR_EMAIL", "habi@example.invalid"),
+            ("GIT_COMMITTER_NAME", "Habi"),
+            ("GIT_COMMITTER_EMAIL", "habi@example.invalid"),
+        ];
+        let commit = git
+            .run_env_with_input(
+                Some(&repo),
+                &["commit-tree", &tree, "-F", "-"],
+                &identity,
+                b"tags".to_vec(),
+                &cancel,
+            )
+            .unwrap()
+            .stdout_text()
+            .trim()
+            .to_string();
+        // Enough tags that `ls-remote` prints well past the 64 KiB default.
+        let count = 2000;
+        let refs: String = (0..count)
+            .map(|i| {
+                format!(
+                    "create refs/tags/release-candidate-of-a-long-lived-project-{i:05} {commit}\n"
+                )
+            })
+            .collect();
+        git.run_with_input(
+            Some(&repo),
+            &["update-ref", "--stdin"],
+            refs.into_bytes(),
+            4096,
+            &cancel,
+        )
+        .unwrap();
+        let tags = git.list_tags(&repo.to_string_lossy(), &cancel).unwrap();
+        assert_eq!(tags.len(), count);
+        assert!(tags.contains(&"release-candidate-of-a-long-lived-project-01999".to_string()));
     }
 
     #[test]

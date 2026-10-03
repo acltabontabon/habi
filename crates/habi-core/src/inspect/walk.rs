@@ -469,7 +469,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn folder_shape_tells_a_skills_folder_from_a_project() {
         let dir = tempfile::tempdir().unwrap();
@@ -495,6 +494,7 @@ mod tests {
         assert_eq!(folder_shape(project.path()).skills, 0);
     }
 
+    #[cfg(unix)]
     #[test]
     fn unreadable_directories_are_counted() {
         use std::os::unix::fs::PermissionsExt;

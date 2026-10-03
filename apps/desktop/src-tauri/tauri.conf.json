@@ -16,8 +16,8 @@
         "title": "Habi",
         "width": 1320,
         "height": 860,
-        "minWidth": 1320,
-        "minHeight": 860,
+        "minWidth": 1024,
+        "minHeight": 700,
         "center": true
       }
     ],
@@ -47,7 +47,7 @@
     "license": "Apache-2.0",
     "licenseFile": "../../../LICENSE",
     "shortDescription": "Find what applies. Improve what works. Share what you learn.",
-    "longDescription": "Find what applies. Improve what works. Share what you learn. Habi shows which skills and instructions fit the repository you are working in, from My skills, team libraries and community libraries, and explains why. It installs them for Claude Code, Cursor and Codex with a preview of every file, and shares what you improve back to the library it came from as a reviewed change.",
+    "longDescription": "Find what applies. Improve what works. Share what you learn. Habi shows which skills and instructions fit the repository you are working in, from My skills, team libraries and community libraries, and explains why. It installs them for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie with a preview of every file, and shares what you improve back to the library it came from as a reviewed change.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

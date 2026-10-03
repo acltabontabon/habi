@@ -90,8 +90,10 @@ Examples:
         #[command(flatten)]
         project: ProjectArg,
         /// Agent tools to install for (comma-separated): claude-code, cursor, codex, gemini-cli, copilot, opencode, junie.
-        /// Default: the tools this project already uses (.claude/ or CLAUDE.md,
-        /// .cursor/, .codex/, .gemini/ or GEMINI.md, .opencode/ or opencode.json, .junie/).
+        /// Default: the tools this project already uses, judged by its root: .claude/ or CLAUDE.md,
+        /// .cursor/ or .cursorrules, .codex/, .gemini/ or GEMINI.md,
+        /// .github/copilot-instructions.md or .github/skills/, .opencode/, opencode.json or
+        /// opencode.jsonc, .junie/.
         #[arg(long, value_delimiter = ',')]
         client: Vec<String>,
         /// Also add suggested MCP server configuration.
@@ -1823,7 +1825,7 @@ fn contribute_inner(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
             })
         }
         ContributeCmd::CancelRevision { id } => {
-            let c = habi.cancel_contribution_revision(&id)?;
+            let c = habi.cancel_contribution_revision_with(&id, cancel)?;
             emit(ctx, &c, || {
                 println!("Back to the version you sent. Nothing was pushed.")
             })

@@ -1850,7 +1850,8 @@ impl<'a> Planner<'a> {
             conflicts: self.conflicts,
             notes: dedup(self.notes),
             recovery: match self.scope {
-                Scope::Project => "Replaced or deleted files are kept. Restore them from the project's history (or `habi restore`).".into(),
+                // Plain text: the desktop shows it as is, so no Markdown backticks.
+                Scope::Project => "Replaced or deleted files are kept. Restore them from the project's history, or with habi restore.".into(),
                 Scope::Machine => "Replaced or deleted files are kept, and can be restored.".into(),
             },
             root: root.to_path_buf(),
