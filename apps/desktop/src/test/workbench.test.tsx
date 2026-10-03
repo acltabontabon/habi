@@ -203,12 +203,12 @@ describe("review dialog", () => {
       "p",
     );
     expect(await screen.findByText(/1 decision needed/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: plan.title })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Install" })).toBeNull();
     await user.click(screen.getByRole("radio", { name: "Use the team version" }));
-    const apply = await screen.findByRole("button", { name: plan.title });
+    const apply = await screen.findByRole("button", { name: "Install" });
     expect(apply).toBeEnabled();
     expect(screen.getByText(/1 file will change/)).toBeInTheDocument();
-    // Scope is stated plainly.
-    expect(screen.getByText(/this project only/)).toBeInTheDocument();
+    // The button states the scope, so there is no separate Scope section.
+    expect(apply).toHaveAttribute("title", plan.title);
   });
 });

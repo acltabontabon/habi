@@ -2145,6 +2145,20 @@ select.input {
   width: min(960px, 94vw);
 }
 
+/* The install review hangs from a fixed top edge: when its preview changes height, only the bottom moves. */
+.dialog-steady {
+  top: max(24px, 9vh);
+  transform: translateX(-50%);
+  min-height: min(440px, 88vh);
+  max-height: calc(100vh - max(24px, 9vh) - 24px);
+}
+
+.dialog-steady .dialog-body {
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
 .dialog-head {
   display: flex;
   justify-content: space-between;
@@ -2152,6 +2166,17 @@ select.input {
   gap: var(--s4);
   padding: var(--s4) var(--s5) var(--s3);
   border-bottom: 1px solid var(--hairline);
+}
+
+.dialog-mark {
+  flex: none;
+  align-self: center;
+  line-height: 0;
+}
+
+.dialog-heading {
+  flex: 1;
+  min-width: 0;
 }
 
 .dialog-title {
@@ -2176,6 +2201,7 @@ select.input {
 .dialog-foot {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: var(--s2);
   padding: var(--s3) var(--s5);
   border-top: 1px solid var(--hairline);
@@ -2183,30 +2209,213 @@ select.input {
 
 /* ---------- Review ---------- */
 
-.clients {
-  border: 0;
-  padding: 0 0 var(--s3);
-  margin: 0;
-  border-bottom: 1px solid var(--hairline);
+/* The choices on the left, what they will do on the right; stacked when narrow. */
+.review-frame {
+  container-type: inline-size;
 }
 
-.scope-note {
+.review-layout {
+  display: grid;
+  gap: var(--s5);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 700px) {
+  .review-layout.has-setup {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+    align-items: start;
+  }
+  .review-setup {
+    position: sticky;
+    top: 0;
+  }
+}
+
+.dialog-body:has(.review-frame) {
+  padding-block: var(--s5);
+}
+
+/* A new preview being prepared dims the old one in place; nothing is inserted or removed, so nothing shifts. */
+.review-main {
+  transition: opacity 0.15s;
+}
+
+.review-main.is-updating {
+  opacity: 0.5;
+  transition-delay: 0.15s;
+}
+
+.review-setup,
+.review-main {
+  display: grid;
+  gap: var(--s5);
+  align-content: start;
+  min-width: 0;
+}
+
+.review-main > .notice {
+  margin: 0;
+}
+
+.clients {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.review-setup .review-heading,
+.review .review-heading {
+  margin: 0 0 10px;
+}
+
+.clients .review-heading {
+  margin: 0;
+  padding: 0;
+}
+
+/* The agents are one list, not three boxes; a picked row has the thread through its edge. */
+.agent-list {
+  display: grid;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  overflow: hidden;
+}
+
+.agent-pick {
+  position: relative;
+  display: block;
+}
+
+.agent-pick + .agent-pick {
+  border-top: 1px solid var(--hairline);
+}
+
+.agent-pick input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.agent-face {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  padding: 8px 12px;
+  transition: background 0.12s;
+}
+
+.agent-pick:hover .agent-face {
+  background: var(--paper-sunken);
+}
+
+.agent-pick input:checked + .agent-face {
+  background: var(--paper-selected);
+  box-shadow: inset 3px 0 0 var(--thread);
+}
+
+.agent-pick input:disabled {
+  cursor: default;
+}
+
+.agent-pick input:focus-visible + .agent-face {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.agent-tick {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--hairline-strong);
+  color: transparent;
+}
+
+.agent-pick input:checked + .agent-face .agent-tick {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--button-ink-text);
+}
+
+.agent-text {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.agent-reads {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.agent-reads code {
+  font-size: 11px;
+}
+
+/* An option under the list: the box lines up with the first line, the hint sits under the name. */
+.mcp-option {
+  align-items: flex-start;
+  margin-top: 2px;
+  padding: 0;
   font-size: var(--text-sm);
-  padding-top: var(--s2);
+}
+
+.mcp-option input {
+  margin: 3px 0 0;
+}
+
+/* Not the team's own, so stitched rather than solid. */
+.audit-warning {
+  display: flex;
+  gap: var(--s2);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--warn-ink);
+  border-radius: var(--radius);
+  background: var(--warn-wash);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.audit-warning > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warn-ink);
+}
+
+.audit-warning strong {
+  color: var(--ink);
 }
 
 .review {
   display: grid;
-  gap: var(--s4);
+  gap: var(--s5);
 }
 
 .review-items {
+  display: grid;
+  gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.review-items li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
 }
 
 .review-heading {
@@ -2315,6 +2524,143 @@ details > summary.change-head::-webkit-details-marker {
 .recovery svg {
   flex: none;
   margin-top: 3px;
+}
+
+/* The files as a thread with a knot at each: its color says created, changed or removed. */
+.change-tree {
+  display: grid;
+  gap: var(--s5);
+}
+
+.change-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.change-group-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.change-group-dir {
+  font-size: 12px;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.change-group-why {
+  margin: 4px 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* The thread runs from the first knot to the last; the knots start at the heading's edge. */
+.change-tree .changes {
+  position: relative;
+  margin: 6px 0 0 9px;
+  padding-left: var(--s4);
+  border-top: 0;
+}
+
+.change-tree .changes::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 13px;
+  bottom: 13px;
+  width: 2px;
+  background: var(--hairline-strong);
+}
+
+.change-tree .change {
+  position: relative;
+  border-bottom: 0;
+}
+
+.change-tree .change-head {
+  padding: 3px 8px;
+  margin-left: -8px;
+  width: calc(100% + 8px);
+  border-radius: var(--radius);
+  color: inherit;
+}
+
+.change-tree .change-head:hover {
+  background: var(--paper-sunken);
+}
+
+.change-tree .change-head > svg {
+  flex: none;
+  color: var(--ink-faint);
+}
+
+/* The knot: it sits on the thread and carries the glyph, so the op is never color alone. */
+.change-tree .change-op {
+  position: absolute;
+  left: calc(-1 * var(--s4) - 9px);
+  top: 4px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  margin: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.change-more-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: -8px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.change-more-btn > svg {
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  width: 14px;
+  margin-top: -7px;
+  background: var(--paper);
+}
+
+.change-more-btn:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+/* A subfolder is named once, above its files, which sit a step in. */
+.change-dir {
+  padding: 6px 0 1px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.change-tree .is-nested .change-path {
+  padding-left: var(--s3);
+}
+
+.change-tree .change-why {
+  margin: -2px 0 6px 0;
+}
+
+.change-tree .diff {
+  margin-left: 0;
 }
 
 /* ---------- Diff ---------- */

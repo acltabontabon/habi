@@ -1754,15 +1754,6 @@
   overflow-wrap: anywhere;
 }
 
-.review-project {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  overflow-wrap: anywhere;
-}
-
 .field > .btn {
   justify-self: start;
 }

@@ -1,10 +1,11 @@
 /**
- * Review before any change: selected clients and scope, every file that will
+ * Review before any change: selected clients, every file that will
  * be created, modified or deleted (with diffs), conflicts that need a
  * decision, and how to undo. The final button names the exact action.
  */
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import type { ChangeKind } from "../../bindings/ChangeKind";
 import type { ChangeOp } from "../../bindings/ChangeOp";
 import type { ClientId } from "../../bindings/ClientId";
 import type { FileChange } from "../../bindings/FileChange";
@@ -17,11 +18,13 @@ import { DiffStat, DiffView } from "../../components/DiffView";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
+import { initialsOf, Strand, Swatch } from "../../components/Weave";
 import { api, type Decisions, HabiError } from "../../lib/api";
+import { useDyes } from "../../lib/dye";
 import { ALL_CLIENTS, clientLabel, plural } from "../../lib/format";
 import { copyState, precedenceNote } from "../../lib/machine";
 import { beginOwnChange, endOwnChange, staleKey } from "../../lib/ownChanges";
-import { invalidateProjectData, invalidateSkills, useSettings } from "../../lib/queries";
+import { invalidateProjectData, invalidateSkills, keys, useSettings, useSources } from "../../lib/queries";
 
 export type ReviewRequest =
   | {
@@ -29,89 +32,280 @@ export type ReviewRequest =
       items: ItemRef[];
       title: string;
       includeMcp?: boolean;
-      /** The library is not the team's own: installing on this machine needs a tick. */
+      /** The library is not the team's own: installing on this machine carries a warning. */
       unaudited?: boolean;
     }
   | { kind: "update"; keys: string[]; title: string }
   | { kind: "remove"; keys: string[]; title: string }
   | { kind: "restore"; operationId: string; title: string };
 
-const clientWhere: Record<ClientId, string> = {
-  "claude-code": "reads .claude/skills and CLAUDE.md",
-  cursor: "reads .agents/skills (or .claude/skills) and AGENTS.md",
-  codex: "reads .agents/skills and AGENTS.md",
+/** What each agent reads in a project, and (skills only) in the person's own folders. */
+const clientReads: Record<ClientId, string[]> = {
+  "claude-code": [".claude/skills", "CLAUDE.md"],
+  cursor: [".agents/skills", ".claude/skills", "AGENTS.md"],
+  codex: [".agents/skills", "AGENTS.md"],
 };
-
-/** On this machine only skills are written, so only the skill folders are named. */
-const clientWhereOnMachine: Record<ClientId, string> = {
-  "claude-code": "reads ~/.claude/skills",
-  cursor: "reads ~/.agents/skills (or ~/.claude/skills)",
-  codex: "reads ~/.agents/skills",
+const clientReadsOnMachine: Record<ClientId, string[]> = {
+  "claude-code": ["~/.claude/skills"],
+  cursor: ["~/.agents/skills", "~/.claude/skills"],
+  codex: ["~/.agents/skills"],
 };
 
 const opLabel: Record<ChangeOp, string> = { create: "Create", modify: "Modify", delete: "Delete" };
+const opGlyph: Record<ChangeOp, string> = { create: "+", modify: "~", delete: "−" };
 
-function ChangeRow({ change }: { change: FileChange }) {
+const kindTitle: Record<ChangeKind, string> = {
+  skillFile: "Skill files",
+  instructionsSection: "Instructions",
+  claudeBridge: "Claude Code bridge",
+  mcpConfig: "MCP configuration",
+  lockFile: "Habi's record",
+  restore: "Restored files",
+};
+
+type ChangeGroup = {
+  key: string;
+  title: string;
+  /** The folder every file in the group shares. */
+  dir: string;
+  /** Said once, when every file in the group has the same reason. */
+  why: string | null;
+  /** Whether the reason is worth reading: skill files and Habi's own record explain themselves. */
+  explain: boolean;
+  rows: { change: FileChange; name: string }[];
+};
+
+function dirOf(path: string): string[] {
+  return path.split("/").slice(0, -1);
+}
+
+/** Files that share a reason sit under one folder heading, so the folder and the reason are said once. */
+export function groupChanges(changes: FileChange[]): ChangeGroup[] {
+  const groups = new Map<string, FileChange[]>();
+  for (const c of changes) {
+    const key = `${c.kind}|${c.clients.join(",")}`;
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  return [...groups.entries()].map(([key, list]) => {
+    const [first, ...rest] = list.map((c) => dirOf(c.path)) as [string[], ...string[][]];
+    let common = first;
+    for (const d of rest) {
+      let n = 0;
+      while (n < common.length && n < d.length && common[n] === d[n]) n++;
+      common = common.slice(0, n);
+    }
+    const head = list[0] as FileChange;
+    const whys = new Set(list.map((c) => c.explanation).filter(Boolean));
+    const rows = list
+      .map((change) => ({ change, name: change.path.split("/").slice(common.length).join("/") }))
+      // The skill's own file first, then whatever sits beside it.
+      .sort((a, b) => Number(b.name === "SKILL.md") - Number(a.name === "SKILL.md"));
+    return {
+      key,
+      title:
+        head.kind === "skillFile" && head.clients.length > 0
+          ? head.clients.map((c) => clientLabel[c]).join(", ")
+          : kindTitle[head.kind],
+      dir: common.length > 0 ? `${common.join("/")}/` : "",
+      why: whys.size === 1 ? ([...whys][0] ?? null) : null,
+      explain: head.kind !== "skillFile" && head.kind !== "lockFile",
+      rows,
+    };
+  });
+}
+
+/** What a part of a skill is for, said for the tooltip; `null` when there is nothing useful to add. */
+function folderPurpose(dir: string): string | null {
+  const first = dir.replace(/\/$/, "").split("/")[0];
+  switch (first) {
+    case "references":
+      return "Extra notes the skill loads only when it needs them.";
+    case "agents":
+      return "Settings for particular agents, shipped with the skill.";
+    case "scripts":
+      return "Helpers that ship with the skill. Habi copies them; it does not run them.";
+    case "assets":
+      return "Files the skill uses, such as templates.";
+    default:
+      return null;
+  }
+}
+
+function filePurpose(change: FileChange, name: string): string | null {
+  if (change.kind !== "skillFile") return change.explanation || null;
+  if (name === "SKILL.md") return "The skill itself: what the agent reads and follows.";
+  if (name === "habi.yaml") return "Habi's notes on the skill: when it applies and what it needs.";
+  const inFolder = change.path.split("/").slice(-2, -1)[0];
+  return (inFolder ? folderPurpose(inFolder) : null) ?? change.explanation ?? null;
+}
+
+function ChangeRow({
+  change,
+  name,
+  why,
+  nested = false,
+}: {
+  change: FileChange;
+  name: string;
+  why: boolean;
+  nested?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
-    <li className={`change change-${change.op}`}>
-      <button type="button" className="change-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <Icon name={open ? "chevronDown" : "chevronRight"} />
-        <span className={`change-op op-${change.op}`}>{opLabel[change.op]}</span>
-        <span className="change-path mono">{change.path}</span>
+    <li className={`change change-${change.op}${nested ? " is-nested" : ""}`}>
+      <button
+        type="button"
+        className="change-head"
+        aria-expanded={open}
+        title={filePurpose(change, name) ? `${name} — ${filePurpose(change, name)}` : undefined}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className={`change-op op-${change.op}`} title={opLabel[change.op]}>
+          <span aria-hidden="true">{opGlyph[change.op]}</span>
+          <span className="visually-hidden">{opLabel[change.op]}</span>
+        </span>
+        <span className="change-path mono">{name}</span>
         <DiffStat diff={change.diff} />
+        <Icon name={open ? "chevronDown" : "chevronRight"} size={14} />
       </button>
-      {change.explanation ? <p className="change-why">{change.explanation}</p> : null}
+      {why && change.explanation ? <p className="change-why">{change.explanation}</p> : null}
       {open ? <DiffView diff={change.diff} label={`Changes to ${change.path}`} /> : null}
     </li>
   );
 }
 
+/** A group longer than this shows only its first few files until asked for the rest. */
+const COLLAPSE_OVER = 8;
+const COLLAPSED_SHOWS = 5;
+
+function folderTip(dir: string): string | undefined {
+  const purpose = folderPurpose(dir);
+  return purpose ? `${dir} — ${purpose}` : undefined;
+}
+
+type TreeEntry =
+  | { kind: "dir"; dir: string }
+  | { kind: "file"; change: FileChange; name: string; nested: boolean };
+
 /**
- * What a global install changes that a project install does not: it is read in
- * every project, it can outrank a project's own copy, and a library that is not
- * the team's own needs an explicit tick.
+ * The group's files in reading order: those beside the group's folder first,
+ * then each subfolder named once above its files, so "references/" is not
+ * repeated on every row.
  */
-function MachineWarnings({
-  shadows,
-  unaudited,
-  understood,
-  onUnderstood,
-}: {
-  shadows: InstallShadow[];
-  unaudited: boolean;
-  understood: boolean;
-  onUnderstood: (understood: boolean) => void;
-}) {
-  const copies = shadows.flatMap((s) => s.copies.map((c) => ({ skill: s, copy: c })));
+function treeEntries(rows: ChangeGroup["rows"]): TreeEntry[] {
+  const split = rows.map((r) => {
+    const parts = r.name.split("/");
+    return { change: r.change, file: parts.pop() ?? r.name, dir: parts.join("/") };
+  });
+  const dirs = [...new Set(split.map((r) => r.dir).filter(Boolean))];
+  return [
+    ...split
+      .filter((r) => !r.dir)
+      .map((r): TreeEntry => ({ kind: "file", change: r.change, name: r.file, nested: false })),
+    ...dirs.flatMap((dir): TreeEntry[] => [
+      { kind: "dir", dir: `${dir}/` },
+      ...split
+        .filter((r) => r.dir === dir)
+        .map((r): TreeEntry => ({ kind: "file", change: r.change, name: r.file, nested: true })),
+    ]),
+  ];
+}
+
+function ChangeGroupView({ group: g }: { group: ChangeGroup }) {
+  const [all, setAll] = useState(false);
+  const long = g.rows.length > COLLAPSE_OVER;
+  const entries = treeEntries(g.rows);
+  // Collapsed, count files only; a folder name stays only above a file that is still shown.
+  let shown = 0;
+  const visible =
+    long && !all
+      ? entries.filter((e, i) => {
+          if (e.kind === "file") return ++shown <= COLLAPSED_SHOWS;
+          return shown < COLLAPSED_SHOWS && entries[i + 1]?.kind === "file";
+        })
+      : entries;
   return (
-    <div className="machine-warnings">
-      {copies.length > 0 ? (
-        <Notice tone="warn" title="Projects that already have this skill">
-          <ul className="review-notes">
-            {copies.map(({ skill, copy }) => (
-              <li key={`${skill.name}:${copy.projectId}:${copy.path}`}>
-                <strong>{copy.projectName}</strong> <span className="mono">{copy.path}</span> ·{" "}
-                {copyState(copy)}.{" "}
-                {precedenceNote(copy) ?? "No agent reads both, so neither hides the other."}
-              </li>
-            ))}
-          </ul>
-        </Notice>
-      ) : null}
-      {unaudited ? (
-        <label className="check machine-tick">
-          <input type="checkbox" checked={understood} onChange={(e) => onUnderstood(e.target.checked)} />
-          <span>
-            <strong>This library is not audited.</strong>{" "}
-            <span className="muted">
-              I understand the skill will be read by my agents in every project, and that I have not reviewed
-              it.
-            </span>
-          </span>
-        </label>
-      ) : null}
+    <section className="change-group" aria-label={g.title}>
+      <header className="change-group-head" title={g.why ? `${g.title} — ${g.why}` : undefined}>
+        <h4 className="change-group-title">{g.title}</h4>
+        {g.dir ? <span className="change-group-dir mono">{g.dir}</span> : null}
+      </header>
+      {g.why && g.explain ? <p className="change-group-why">{g.why}</p> : null}
+      <ul className="changes">
+        {visible.map((e) =>
+          e.kind === "dir" ? (
+            <li key={`dir:${e.dir}`} className="change-dir mono" title={folderTip(e.dir)}>
+              {e.dir}
+            </li>
+          ) : (
+            <ChangeRow
+              key={e.change.path}
+              change={e.change}
+              name={e.name}
+              nested={e.nested}
+              why={g.why === null}
+            />
+          ),
+        )}
+        {long ? (
+          <li className="change change-more">
+            <button
+              type="button"
+              className="change-more-btn"
+              aria-expanded={all}
+              onClick={() => setAll(!all)}
+            >
+              <Icon name={all ? "chevronDown" : "chevronRight"} size={14} />
+              {all ? "Show fewer" : `Show ${g.rows.length - COLLAPSED_SHOWS} more files`}
+            </button>
+          </li>
+        ) : null}
+      </ul>
+    </section>
+  );
+}
+
+export function ChangeTree({ changes }: { changes: FileChange[] }) {
+  return (
+    <div className="change-tree">
+      {groupChanges(changes).map((g) => (
+        <ChangeGroupView key={g.key} group={g} />
+      ))}
     </div>
+  );
+}
+
+/** Projects that already hold the skill, and which copy each agent would use. */
+function ShadowNotice({ shadows }: { shadows: InstallShadow[] }) {
+  const copies = shadows.flatMap((s) => s.copies.map((c) => ({ skill: s, copy: c })));
+  if (copies.length === 0) return null;
+  return (
+    <Notice tone="warn" title="Projects that already have this skill">
+      <ul className="review-notes">
+        {copies.map(({ skill, copy }) => (
+          <li key={`${skill.name}:${copy.projectId}:${copy.path}`}>
+            <strong>{copy.projectName}</strong> <span className="mono">{copy.path}</span> · {copyState(copy)}.{" "}
+            {precedenceNote(copy) ?? "No agent reads both, so neither hides the other."}
+          </li>
+        ))}
+      </ul>
+    </Notice>
+  );
+}
+
+/**
+ * A library that is not the team's own is stitched, not solid. On this machine
+ * its skill is read in every project, so it says so; it does not stop the install,
+ * because the files it would write are on screen to be read.
+ */
+function AuditWarning() {
+  return (
+    <p className="audit-warning">
+      <Icon name="warning" size={16} />
+      <span>
+        <strong>Not audited.</strong> Every project's agents will read it.
+      </span>
+    </p>
   );
 }
 
@@ -127,6 +321,8 @@ export function ReviewDialog({
 }) {
   const machine = projectId === null;
   const settings = useSettings();
+  const sources = useSources();
+  const dyeOf = useDyes();
   const client = useQueryClient();
   const toast = useToast();
   const [clients, setClients] = useState<ClientId[] | null>(null);
@@ -136,9 +332,10 @@ export function ReviewDialog({
   const [decisions, setDecisions] = useState<Decisions>({});
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
-  const [understood, setUnderstood] = useState(false);
-  const chosen = clients ?? settings.data?.defaultClients ?? ["claude-code"];
-  const needsTick = machine && request.kind === "install" && request.unaudited === true;
+  // At least one agent is always picked: the last one cannot be unticked, so there is never an empty preview.
+  const defaults = settings.data?.defaultClients;
+  const chosen = clients ?? (defaults && defaults.length > 0 ? defaults : ["claude-code"]);
+  const unaudited = machine && request.kind === "install" && request.unaudited === true;
 
   // What a machine install would sit next to: projects that already hold the skill.
   const shadows = useQuery({
@@ -147,6 +344,22 @@ export function ReviewDialog({
     retry: false,
     queryFn: () => api.machineInstallPreview(request.kind === "install" ? request.items : [], chosen),
   });
+
+  // The MCP option only does something for a skill that names a server it needs.
+  const wanted = request.kind === "install" && !machine ? request.items : [];
+  const libraries = useQueries({
+    queries: [...new Set(wanted.map((r) => r.sourceId))].map((sourceId) => ({
+      queryKey: keys.library(sourceId),
+      queryFn: () => api.library(sourceId),
+    })),
+  });
+  const asksMcp = wanted.some((ref) =>
+    libraries.some(
+      (l) =>
+        l.data?.sourceId === ref.sourceId &&
+        l.data.items.some((i) => i.id === ref.itemId && i.mcp.length > 0),
+    ),
+  );
 
   const plan = useQuery<Plan>({
     queryKey: ["plan", projectId, request, chosen, includeMcp, decisions],
@@ -233,12 +446,82 @@ export function ReviewDialog({
           ? "Use the version from My skills"
           : "Use the team version";
 
+  // The agents are ticked beside the button and the project is the page it came from, so an install
+  // says only what is not obvious; the full wording stays as the hover title.
+  const confirmLabel = (plan: Plan) =>
+    request.kind === "install" ? (machine ? "Install on this machine" : "Install") : plan.title;
+
   const titles: Record<ReviewRequest["kind"], string> = {
     install: `Install ${request.title}`,
     update: `Update ${request.title}`,
     remove: `Remove ${request.title}`,
     restore: `Restore: ${request.title}`,
   };
+
+  const installing = request.kind === "install";
+  const only = p && p.items.length === 1 ? p.items[0] : undefined;
+  // The skill's own cloth, known before the preview arrives: its library's dye, its initials.
+  const mark =
+    installing && request.items.length === 1 ? (
+      <Swatch
+        dyes={[dyeOf((request.items[0] as ItemRef).sourceId)]}
+        seed={(request.items[0] as ItemRef).itemId}
+        size={44}
+        initials={initialsOf(request.title)}
+      />
+    ) : undefined;
+  const sourceDye = (name: string) => {
+    const source = sources.data?.find((x) => x.name === name);
+    return dyeOf(source?.id ?? "local");
+  };
+
+  const setup = installing ? (
+    <aside className="review-setup">
+      <fieldset className="clients">
+        <legend className="review-heading">Install for</legend>
+        <div className="agent-list">
+          {ALL_CLIENTS.map((c) => (
+            <label key={c} className="agent-pick">
+              <input
+                type="checkbox"
+                checked={chosen.includes(c)}
+                disabled={chosen.length === 1 && chosen.includes(c)}
+                title={chosen.length === 1 && chosen.includes(c) ? "At least one agent" : undefined}
+                onChange={() => toggleClient(c)}
+              />
+              <span className="agent-face">
+                <span className="agent-tick" aria-hidden="true">
+                  <Icon name="check" size={12} />
+                </span>
+                <span className="agent-text">
+                  <strong>{clientLabel[c]}</strong>
+                  <span className="agent-reads">
+                    reads{" "}
+                    {(machine ? clientReadsOnMachine : clientReads)[c].map((path, i) => (
+                      <span key={path}>
+                        {i > 0 ? ", " : ""}
+                        <code className="mono">{path}</code>
+                      </span>
+                    ))}
+                  </span>
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {asksMcp ? (
+          <label className="check mcp-option" title="Only servers the item needs; no secrets are written.">
+            <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />
+            <span>
+              <strong>Add suggested MCP configuration</strong>
+            </span>
+          </label>
+        ) : null}
+      </fieldset>
+
+      {unaudited ? <AuditWarning /> : null}
+    </aside>
+  ) : null;
 
   return (
     <Dialog
@@ -248,8 +531,16 @@ export function ReviewDialog({
         if (!o && !applying) onClose();
       }}
       title={titles[request.kind]}
-      description="Nothing changes until you confirm below."
+      mark={mark}
+      description={
+        only ? (
+          <>
+            from {only.source} · <span className="mono">{only.version}</span>
+          </>
+        ) : undefined
+      }
       wide
+      steady={installing}
       footer={
         <>
           <Button variant="quiet" onClick={onClose} disabled={applying}>
@@ -258,179 +549,143 @@ export function ReviewDialog({
           {p && p.changes.length > 0 ? (
             <Button
               variant={request.kind === "remove" ? "danger" : "primary"}
+              title={p.title}
               busy={applying}
-              disabled={
-                unresolved > 0 ||
-                p.conflicts.some((c) => c.options.length === 0) ||
-                plan.isFetching ||
-                (needsTick && !understood)
-              }
-              onClick={() => void apply(p)}
+              disabled={unresolved > 0 || p.conflicts.some((c) => c.options.length === 0)}
+              // The button keeps its look while a new preview loads (no flicker), but a plan for
+              // other choices is never applied: that click waits for the matching preview.
+              onClick={() => {
+                if (!plan.isPlaceholderData) void apply(p);
+              }}
             >
-              {p.title}
+              {confirmLabel(p)}
             </Button>
           ) : null}
         </>
       }
     >
-      {request.kind === "install" ? (
-        <fieldset className="clients">
-          <legend className="field-label">Install for</legend>
-          {ALL_CLIENTS.map((c) => (
-            <label key={c} className="check">
-              <input type="checkbox" checked={chosen.includes(c)} onChange={() => toggleClient(c)} />
-              <span>
-                <strong>{clientLabel[c]}</strong>{" "}
-                <span className="muted">— {(machine ? clientWhereOnMachine : clientWhere)[c]}</span>
-              </span>
-            </label>
-          ))}
-          {machine ? null : (
-            <label className="check">
-              <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />
-              <span>
-                <strong>Add suggested MCP configuration</strong>{" "}
-                <span className="muted">
-                  — only for servers the item requires and your project lacks; no secrets are written
-                </span>
-              </span>
-            </label>
-          )}
-          <p className="muted scope-note">
-            <Icon name="folder" size={14} />{" "}
-            {machine
-              ? "Scope: every project on this machine. The skill goes in your own agent folders, and Habi changes no agent settings."
-              : "Scope: this project only. Habi does not change your global agent settings."}
-          </p>
-        </fieldset>
-      ) : null}
+      <div className="review-frame">
+        <div className={`review-layout${setup ? " has-setup" : ""}`}>
+          {setup}
+          <div className={`review-main${plan.isFetching && !plan.isPending ? " is-updating" : ""}`}>
+            {machine && installing ? <ShadowNotice shadows={shadows.data ?? []} /> : null}
 
-      {machine && request.kind === "install" ? (
-        <MachineWarnings
-          shadows={shadows.data ?? []}
-          unaudited={needsTick}
-          understood={understood}
-          onUnderstood={setUnderstood}
-        />
-      ) : null}
+            {plan.isPending ? <Working>Preparing the preview…</Working> : null}
+            {plan.isError ? (
+              <ErrorNotice error={plan.error} title="Habi could not prepare this change" />
+            ) : null}
+            {applyError ? (
+              <ErrorNotice
+                error={applyError}
+                title={
+                  applyError instanceof HabiError && applyError.code === "stalePlan"
+                    ? machine
+                      ? "Your skill folders changed"
+                      : "The project changed"
+                    : "Not applied"
+                }
+              />
+            ) : null}
 
-      {plan.isPending && chosen.length > 0 ? <Working>Preparing the preview…</Working> : null}
-      {plan.isPlaceholderData && plan.isFetching ? <Working>Updating the preview…</Working> : null}
-      {request.kind === "install" && chosen.length === 0 ? (
-        <Notice tone="unknown">Choose at least one client.</Notice>
-      ) : null}
-      {plan.isError ? <ErrorNotice error={plan.error} title="Habi could not prepare this change" /> : null}
-      {applyError ? (
-        <ErrorNotice
-          error={applyError}
-          title={
-            applyError instanceof HabiError && applyError.code === "stalePlan"
-              ? machine
-                ? "Your skill folders changed"
-                : "The project changed"
-              : "Not applied"
-          }
-        />
-      ) : null}
+            {p ? (
+              <div className="review">
+                {p.items.length > 1 ? (
+                  <ul className="review-items">
+                    {p.items.map((i) => (
+                      <li key={i.key}>
+                        <Strand dye={sourceDye(i.source)} size={14} />
+                        <strong>{i.title}</strong>
+                        <span className="muted">
+                          from {i.source} · <span className="mono">{i.version}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
 
-      {p ? (
-        <div className="review">
-          <p className="review-project">
-            <Icon name="folder" size={14} /> {machine ? <span>This machine · </span> : null}
-            <span className="mono">{p.project}</span>
-          </p>
-          {p.items.length > 0 ? (
-            <ul className="review-items">
-              {p.items.map((i) => (
-                <li key={i.key}>
-                  <strong>{i.title}</strong>{" "}
-                  <span className="muted">
-                    from {i.source} · {i.version}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+                {p.conflicts.length > 0 ? (
+                  <section className="review-conflicts" aria-labelledby="conflicts-title">
+                    <h3 id="conflicts-title" className="review-heading">
+                      {plural(p.conflicts.length, "decision")} needed
+                    </h3>
+                    {p.conflicts.map((c) => (
+                      <div key={`${c.path}-${c.kind}`} className="conflict">
+                        <p>
+                          <span className="mono">{c.path}</span> — {c.message}
+                        </p>
+                        {c.options.length > 0 ? (
+                          <div
+                            className="conflict-options"
+                            role="radiogroup"
+                            aria-label={`Decision for ${c.path}`}
+                          >
+                            {c.options.map((o) => (
+                              <label key={o} className="radio">
+                                <input
+                                  type="radio"
+                                  name={`conflict-${c.path}`}
+                                  checked={decisions[c.path] === o}
+                                  onChange={() => decide(c.path, o)}
+                                />
+                                {o === "keep" ? keepLabel : overwriteLabel}
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="muted">Fix this by hand, then reopen this preview.</p>
+                        )}
+                        {c.diff ? (
+                          <details>
+                            <summary>Compare with what is on disk</summary>
+                            <DiffView diff={c.diff} label={`Difference for ${c.path}`} />
+                          </details>
+                        ) : null}
+                      </div>
+                    ))}
+                  </section>
+                ) : null}
 
-          {p.conflicts.length > 0 ? (
-            <section className="review-conflicts" aria-labelledby="conflicts-title">
-              <h3 id="conflicts-title" className="review-heading">
-                {plural(p.conflicts.length, "decision")} needed
-              </h3>
-              {p.conflicts.map((c) => (
-                <div key={`${c.path}-${c.kind}`} className="conflict">
-                  <p>
-                    <span className="mono">{c.path}</span> — {c.message}
-                  </p>
-                  {c.options.length > 0 ? (
-                    <div className="conflict-options" role="radiogroup" aria-label={`Decision for ${c.path}`}>
-                      {c.options.map((o) => (
-                        <label key={o} className="radio">
-                          <input
-                            type="radio"
-                            name={`conflict-${c.path}`}
-                            checked={decisions[c.path] === o}
-                            onChange={() => decide(c.path, o)}
-                          />
-                          {o === "keep" ? keepLabel : overwriteLabel}
-                        </label>
+                {p.changes.length === 0 && p.conflicts.length === 0 ? (
+                  <Notice tone="ok" title="Nothing to change">
+                    {machine
+                      ? "Your skill folders already match. Installing again would not modify any file."
+                      : "The project already matches. Installing again would not modify any file."}
+                  </Notice>
+                ) : null}
+
+                {p.changes.length > 0 ? (
+                  <section aria-labelledby="changes-title">
+                    <h3 id="changes-title" className="review-heading">
+                      {plural(p.changes.length, "file")} will change
+                    </h3>
+                    <ChangeTree changes={p.changes} />
+                  </section>
+                ) : null}
+
+                {p.notes.length > 0 ? (
+                  <section aria-labelledby="notes-title">
+                    <h3 id="notes-title" className="review-heading">
+                      Notes
+                    </h3>
+                    <ul className="review-notes">
+                      {p.notes.map((n) => (
+                        <li key={n}>{n}</li>
                       ))}
-                    </div>
-                  ) : (
-                    <p className="muted">Fix this by hand, then reopen this preview.</p>
-                  )}
-                  {c.diff ? (
-                    <details>
-                      <summary>Compare with what is on disk</summary>
-                      <DiffView diff={c.diff} label={`Difference for ${c.path}`} />
-                    </details>
-                  ) : null}
-                </div>
-              ))}
-            </section>
-          ) : null}
+                    </ul>
+                  </section>
+                ) : null}
 
-          {p.changes.length === 0 && p.conflicts.length === 0 ? (
-            <Notice tone="ok" title="Nothing to change">
-              {machine
-                ? "Your skill folders already match. Installing again would not modify any file."
-                : "The project already matches. Installing again would not modify any file."}
-            </Notice>
-          ) : null}
-
-          {p.changes.length > 0 ? (
-            <section aria-labelledby="changes-title">
-              <h3 id="changes-title" className="review-heading">
-                {plural(p.changes.length, "file")} will change
-              </h3>
-              <ul className="changes">
-                {p.changes.map((c) => (
-                  <ChangeRow key={c.path} change={c} />
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {p.notes.length > 0 ? (
-            <section aria-labelledby="notes-title">
-              <h3 id="notes-title" className="review-heading">
-                Notes
-              </h3>
-              <ul className="review-notes">
-                {p.notes.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {p.changes.length > 0 ? (
-            <p className="recovery">
-              <Icon name="history" size={14} /> {p.recovery}
-            </p>
-          ) : null}
+                {/* Only when something is replaced or deleted: a plain install has nothing to get back. */}
+                {p.changes.some((c) => c.op !== "create") ? (
+                  <p className="recovery">
+                    <Icon name="history" size={14} /> {p.recovery}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
-      ) : null}
+      </div>
     </Dialog>
   );
 }

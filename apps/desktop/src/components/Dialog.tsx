@@ -8,29 +8,36 @@ export function Dialog({
   onOpenChange,
   title,
   description,
+  mark,
   children,
   footer,
   wide,
+  steady,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description?: string;
+  description?: ReactNode;
+  /** A small identity (a woven swatch) shown before the title. */
+  mark?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  /** Hangs from a fixed top edge, so a change in height moves only the bottom and never shifts the top. */
+  steady?: boolean;
 }) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="dialog-scrim" />
         <RadixDialog.Content
-          className={`dialog${wide ? " dialog-wide" : ""}`}
+          className={`dialog${wide ? " dialog-wide" : ""}${steady ? " dialog-steady" : ""}`}
           // Without a description there is nothing to point to (and Radix would warn).
           {...(description ? {} : { "aria-describedby": undefined })}
         >
           <header className="dialog-head">
-            <div>
+            {mark ? <div className="dialog-mark">{mark}</div> : null}
+            <div className="dialog-heading">
               <RadixDialog.Title className="dialog-title">{title}</RadixDialog.Title>
               {description ? (
                 <RadixDialog.Description className="dialog-description">
