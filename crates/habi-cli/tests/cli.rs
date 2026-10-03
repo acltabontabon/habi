@@ -590,7 +590,7 @@ fn the_catalog_lists_every_library_without_touching_the_network() {
     let (out, v) = env.json(env.work.path(), &["catalog", "list"]);
     assert!(out.status.success(), "{v}");
     let entries = v.as_array().expect("a list");
-    assert_eq!(entries.len(), 11);
+    assert_eq!(entries.len(), 12);
     // Nothing is known that was not read: no counts, no review, nothing fetched.
     for e in entries {
         assert_eq!(e["availability"], "notFetched", "{e}");
