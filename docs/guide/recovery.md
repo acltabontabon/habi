@@ -1,64 +1,55 @@
 # Recovery
 
-Every change Habi makes to a project can be undone, and an interrupted change is rolled
-back. Changes to your own skill folders (installs on this machine) are journaled the same
-way, but restoring one is not offered in the app yet. This page explains how, and what happens when something
-fails. `<data>` is Habi's data folder (Settings → This machine → Data folder).
+Every change to projects is journaled and can be undone. Interrupted changes rollback
+automatically. Personal skill installs (`~/.claude/skills`, `~/.agents/skills`) are journaled
+the same way, but app restore isn't available yet.
 
-## Applying changes
+(`<data>` = Habi's data folder; see Settings → This machine → Data folder)
 
-A change to several files cannot be a single file-system transaction, so Habi keeps a
-write-ahead journal for each operation (`<data>/journal/<id>/<operation-id>.json`, one folder
-per project, and one for this machine):
+## How changes are applied
 
-1. Take the project lock (shared by desktop and CLI).
-2. Roll back any operation a crash left in `applying` state.
-3. Re-check every precondition digest. Any difference → `stalePlan`; nothing is written.
-4. Store the current content of every file that will change in the blob store, then save
-   the journal (`applying`).
-5. Apply each change atomically, marking progress in the journal.
-6. Mark the journal `committed`.
+Habi uses a write-ahead journal (`<data>/journal/`) for safety:
 
-| Situation | What happens |
+1. Lock the project
+2. Rollback any crashed operations
+3. Verify preconditions (if changed → `stalePlan`, abort)
+4. Backup files in blob store, journal state = `applying`
+5. Apply changes atomically
+6. Journal state = `committed`
+
+**Failure scenarios:**
+
+| What goes wrong | What happens |
 |---|---|
-| A step fails (permission, disk full) | Completed steps are undone; journal → `rolledBack`. |
-| The process dies mid-apply | The next operation on the project undoes it, or *Check for interrupted operations* in the project's history (`habi recover`). |
-| A file changed after Habi wrote it, before undo | It is left as is and reported; journal → `needsAttention`. Its earlier version stays in the blob store. |
-| You restore a completed operation | Built as a normal plan; files edited since the operation become conflicts. |
-| A step changed only a file's executable bit | Rolling back or restoring puts the bit back (the journal records each file's mode). |
+| Step fails (permissions, disk full) | Completed steps undone; journal → `rolledBack` |
+| Process crashes mid-apply | Next operation undoes it, or use *Check for interrupted operations* |
+| File changes after Habi writes it (before undo) | Left as-is, reported; journal → `needsAttention` |
+| You restore a completed operation | Built as new plan; conflicts appear if files changed |
+| Only file's executable bit changed | Restore puts the bit back (tracked in journal) |
 
-The lock file is always the last step, so an interrupted apply never records files that were
-not written.
+Lock file written last → interrupted applies never record unwritten files.
 
-### Restoring and the lock file
+## Restoring & the lock file
 
-Restore does not put `.habi/lock.json` back as a file, because later operations may have
-changed it too. Habi recomputes it instead:
+Restore recomputes `.habi/lock.json` (doesn't restore it as-is) to handle overlapping changes:
 
-- Items the restored operation did not change keep their current entries.
-- Items a later operation changed again stay as they are now (the preview says so).
-- The other items go back to their entries from before the operation.
-- In every case, only what the restore leaves on disk is recorded. A file the restore
-  deletes is no longer listed, and a file you chose to keep stays listed with the content
-  it has.
+- Items unchanged by restore → keep current entries
+- Items changed again later → stay current (preview shows this)
+- All others → go back to pre-operation entries
+- Only files actually on disk are recorded; deleted files are unlisted
 
-### Known limitations
+## Known limitations
 
-- **Case-only renames.** Restoring an operation that only changed the letter case of a file
-  name (`checklist.md` → `Checklist.md`) restores nothing on a case-insensitive file system
-  (macOS and Windows by default). The content is identical, and the lock records the old
-  name, which still finds the file there, but the file keeps the new letter case. Rename it
-  by hand if the old case matters.
-- **Lock files from pre-release builds.** Lock files written by development builds before
-  0.1.0 do not record whether Habi created `AGENTS.md`, `CLAUDE.md` or an MCP configuration file. For those
-  entries Habi deletes such a file only if nothing at all is left in it (instructions), or
-  not at all (MCP). An older lock may also record one MCP server for only one of the items
-  that need it, or one `AGENTS.md` section for two items. Habi leaves a section another item
-  still records in place; reinstalling an affected item records the server for it too.
-- **New MCP servers in an update.** An update adopts changed definitions of servers Habi
-  added, and removes servers the item no longer needs. It does not add a server the item
-  newly suggests; the preview says so, and installing the item again with *Add suggested
-  MCP configuration* adds it.
+**Case-only renames** — On case-insensitive filesystems (macOS, Windows default), restoring
+`checklist.md` → `Checklist.md` keeps the new case (content same; lock finds the file).
+Rename by hand if the old case matters.
+
+**Pre-release lock files** — Builds before 0.1.0 don't record file creation. Habi deletes
+`AGENTS.md`/`CLAUDE.md` only if empty; skips MCP file deletion. Shared sections/servers handled
+conservatively. Reinstall affected items to update the record.
+
+**MCP updates** — Updates adopt changed server definitions and remove unneeded ones. Don't
+auto-add newly suggested servers; reinstall with *Add suggested MCP configuration* to add them.
 
 ## Libraries
 

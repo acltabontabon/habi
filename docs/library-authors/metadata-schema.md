@@ -1,27 +1,28 @@
-# Habi metadata (schema version 1)
+# Habi metadata
 
-Habi reads standard Agent Skills (`SKILL.md`) as they are. It adds only what that format
-does not express — where a skill applies, what it needs, how a workflow proceeds, and what
-evidence exists — in **optional** files that are easy to author in Git. This is Habi
-metadata, not a new industry standard.
+Habi reads `SKILL.md` as-is. Optional metadata files layer on **where it applies, what it needs,
+workflows, and evidence**—in standard YAML, easy to version in Git.
 
-- `habi.yaml` — sidecar next to a `SKILL.md`. Schema: [`schema/habi-skill.schema.json`](../../schema/habi-skill.schema.json)
-- `habi-library.yaml` — at the library root (or configured subfolder). Schema: [`schema/habi-library.schema.json`](../../schema/habi-library.schema.json)
+**Two files:**
+- `habi.yaml` — sidecar next to `SKILL.md`
+- `habi-library.yaml` — at library root
 
-Skills without `habi.yaml` remain listed, searchable and installable. Their applicability is
-shown as *not matched*: Habi never infers rules from a title or prose. Because they are not
-recommendations, a project's list collapses them into a count per library (installed ones stay
-listed); `habi recommend --all` and *Show* list them. This keeps a large community library from
-burying what actually fits.
+## Skills without metadata
 
-Licenses are reported, not interpreted: Habi shows the SKILL.md `license` as written and the
-nearest license file in the skill's folder or one of its parents (`LICENSE`, `LICENSE.txt`,
-`COPYING`, `LICENSE-MIT`, …). A `license` that says *proprietary* adds a note to the install
-review and a warning before sharing. A library narrowed to a subfolder only sees license files
-inside it.
+Skills stay listed and installable—shown as *not matched* (Habi doesn't guess from titles).
+Large community libraries won't bury applicable skills; `habi recommend --all` and *Show*
+reveal them.
 
-A library is a Git repository (or a folder in one) containing skill folders with `SKILL.md`.
-To make a skill match projects, add a `habi.yaml` next to it:
+## Licenses
+
+Reported as-is: `SKILL.md` license field + nearest license file in the skill's folder or parents
+(`LICENSE`, `LICENSE.txt`, `COPYING`, `LICENSE-MIT`, etc.). "Proprietary" triggers a note on
+install and warning on share. Subfolders only see licenses inside them.
+
+## Quick start
+
+A library is a Git repo (or a folder in one) with `SKILL.md` files. Add `habi.yaml` to make
+skills match projects:
 
 ```yaml
 habi: 1
@@ -38,70 +39,69 @@ requires:
       commands: [./mvnw, mvn]
 ```
 
-Run `habi validate path/to/library` before publishing. The
-[example library](../../fixtures/libraries/example-team-library) uses every feature on this
-page, and the test suite validates the examples in
-[`schema/examples/valid`](../../schema/examples/valid) and
-[`schema/examples/invalid`](../../schema/examples/invalid).
+**Validate before sharing:** `habi validate path/to/library`
 
-## Skill sidecar fields
+See [example library](../../fixtures/libraries/example-team-library) (uses all features) and
+[valid](../../schema/examples/valid) / [invalid](../../schema/examples/invalid) examples.
 
-| Field | Meaning |
-|---|---|
+## Skill metadata fields
+
+| Field | What it does |
+|-------|---|
 | `habi` | **Required.** Schema version (`1`). |
-| `id` | Stable identifier within the library. Defaults to the SKILL.md `name`. |
-| `title`, `owner` | Display title and maintainer (attribution only — not access control). |
-| `kind` | `skill` or `workflow` (a skill that also describes an ordered procedure). |
-| `requirement` | `recommended` (default) or `required` — a team designation. Required items are always listed and never filtered out. Habi does not claim to enforce Markdown guidance. |
-| `priority` | −100…100. Explicit team ordering among relevant items. |
-| `scope` | `module` (default: evaluate per module) or `repository`. |
-| `applies_when`, `excludes` | Conditions (below). |
-| `requires.tools` | `{name, commands[], purpose?, install_hint?}`. Any command satisfies it. Bare names are looked up on `PATH`, `./name` in the project. **Nothing is executed** to check. |
-| `requires.mcp` | `{name, purpose?, server?}`. `server` is a suggested configuration: `{command, args[], env{VAR: "${VAR}"}}` or `{url, bearer_token_env}`. Literal secrets are rejected by the schema. |
-| `requires.clients` | Agent tools the content is known to work with. Omit it when the content is not restricted. Accepted: `claude-code`, `cursor`, `codex`, `gemini-cli`, `copilot`, `opencode`, `junie`. |
-| `workflow.steps[]` | `{title, detail?, references[]?, expected?}` — guidance shown in order, not enforced. |
-| `workflow.artifacts[]` | What following the workflow produces. |
-| `bindings[]` | Repository-specific values checks need: `{name, kind: file\|module, glob?}`. Habi offers discovered candidates; the user chooses. |
-| `checks[]` | `{id, title, description?, run[], cwd: module\|repository, timeout_seconds}`. `run` is an argument array; items may be `{binding: name}`. Never a shell string. |
-| `evidence[]` | Author-declared records `{date, result, environment?, summary?, by?}`. Shown as declared, not verified. |
+| `id` | Stable ID in the library (defaults to SKILL.md `name`). |
+| `title`, `owner` | Display name & maintainer (attribution only, not access control). |
+| `kind` | `skill` (default) or `workflow` (ordered procedure). |
+| `requirement` | `recommended` (default) or `required` (team-level; always shown, never filtered). |
+| `priority` | −100…100 (explicit team ordering). |
+| `scope` | `module` (default) or `repository` (evaluate-once flag). |
+| `applies_when`, `excludes` | Matching conditions ([below](#conditions)). |
+| `requires.tools` | Tools needed: `{name, commands[], purpose?, install_hint?}`. Commands looked up on PATH or as `./name`. Not executed. |
+| `requires.mcp` | MCP server: `{name, purpose?, server?}` where server is config (`{command, args[], env}` or `{url, bearer_token_env}`). No literal secrets. |
+| `requires.clients` | Agent tools this works with: `claude-code`, `cursor`, `codex`, `gemini-cli`, `copilot`, `opencode`, `junie`. Omit if unrestricted. |
+| `workflow.steps[]` | Guidance: `{title, detail?, references[]?, expected?}` (shown in order, not enforced). |
+| `workflow.artifacts[]` | What the workflow produces. |
+| `bindings[]` | User inputs: `{name, kind: file|module, glob?}` (Habi offers candidates). |
+| `checks[]` | QA checks: `{id, title, description?, run[], cwd: module|repository, timeout_seconds}` (arg arrays, no shell strings). |
+| `evidence[]` | Author records: `{date, result, environment?, summary?, by?}` (shown as-is, not verified). |
 | `examples[]` | `{title, description?, path?}`. |
 
-Unknown top-level keys are allowed and preserved (prefix custom keys with `x-`).
+**Custom fields** allowed; prefix with `x-` to preserve them.
 
 ## Conditions
 
-Each condition object has exactly one key:
+Each condition object has one key. Example:
 
 ```yaml
 applies_when:
-  all:                                   # every item must hold
-    - tag: framework:spring-boot         # a derived characteristic (see docs/library-authors/detectors.md)
-    - any:                               # at least one item must hold
+  all:                               # all must hold
+    - tag: framework:spring-boot
+    - any:                           # or at least one
         - dependency: org.liquibase:liquibase-core
-        - file: "**/db/changelog/**"     # glob relative to the module (or repository)
+        - file: "**/db/changelog/**"
 excludes:
-  not:                                   # negation
+  not:                               # negation
     dependency:
-      name: "org.jooq:*"                 # `*` wildcards, at most three
-      ecosystem: jvm                     # maven | gradle | npm | go | cargo | pypi | composer | jvm
-      version: ">=3.18, <4"              # semver requirement
+      name: "org.jooq:*"             # wildcards (≤3)
+      ecosystem: jvm                 # maven|gradle|npm|go|cargo|pypi|composer|jvm
+      version: ">=3.18, <4"          # semver requirement
 ```
 
-Evaluation is three-valued — **true, false, unknown**:
+**Three-valued logic** (true / false / unknown):
+- Found → *true* (with evidence)
+- Absence (complete evidence) → *false*; otherwise *unknown*
+- `all`: false anywhere → false; unknown → unknown
+- `any`: true anywhere → true; unknown → unknown
+- `not`: flips true/false, keeps unknown
 
-- A dependency/tag/file that is found is *true* (with its evidence).
-- Absence is *false* only when the relevant evidence is complete (e.g. every Maven POM in the
-  module was read and its parent chain is local). Otherwise it is *unknown*.
-- `all`: any false → false; else any unknown → unknown. `any`: any true → true; else any
-  unknown → unknown. `not` flips true/false and keeps unknown.
-- A confirmed exclusion → *does not apply*. An unknown exclusion or requirement →
-  *needs information*. The user can answer with a reversible declaration.
-- Ranking (requirement, priority, specificity, readiness) never changes eligibility.
+**Results:**
+- Confirmed exclusion → *does not apply*
+- Unknown exclusion/requirement → *needs information* (user can answer)
+- Ranking (requirement, priority, specificity) never changes eligibility
 
-Limits: depth 8, 64 nodes, globs ≤ 256 characters. There is no scripting and no regular
-expressions from content.
+**Limits:** depth 8, max 64 nodes, globs ≤256 chars. No scripting or regexes.
 
-## Library manifest
+## Library manifest (`habi-library.yaml`)
 
 ```yaml
 habi: 1
@@ -109,8 +109,8 @@ name: Platform team know-how
 owner: Developer Experience
 description: …
 contact: "#platform (chat channel)"
-skills_root: skills            # optional: only look for skills here
-instructions:                  # Markdown installed as managed sections of AGENTS.md
+skills_root: skills             # optional; default: find SKILL.md anywhere
+instructions:                   # Markdown → managed sections in AGENTS.md
   - id: java-conventions
     title: Java conventions
     path: instructions/java.md
@@ -118,6 +118,12 @@ instructions:                  # Markdown installed as managed sections of AGENT
     scope: repository
     applies_when: { tag: lang:java }
 ```
+
+**Fields:**
+- `habi`: schema version (required)
+- `name`, `owner`, `description`, `contact`: metadata
+- `skills_root`: subfolder to search (optional; default searches everywhere)
+- `instructions[]`: shared instructions, each with condition (same format as skills)
 
 ## Lineage
 

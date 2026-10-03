@@ -14,16 +14,10 @@ the improvement back to your team's library as a pull request.
 
 ## What it does
 
-- **Find.** Habi reads a repository's build files and structure (nothing is built or run) and
-  sorts every skill from your libraries into *fits this project*, *needs information* and
-  *does not apply*, each with its evidence.
-- **Apply.** Install for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and
-  Junie, in a project or on this machine. You see every file before anything is written, and
-  every change to a project can be restored.
-- **Refine.** Edit a copy as a complete package: instructions, scripts, references, assets.
-  The copy remembers where it came from, so library updates arrive as a three-way review.
-- **Share.** Send your improvement to a team library as a branch, a pull or merge request, or a
-  patch. Read the review in Habi and revise on the same request.
+- **Find** skills that fit your repo (no building, no execution)
+- **Install** for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode, Junie
+- **Edit** a copy locally—full package with instructions, scripts, references, assets
+- **Share** improvements back to libraries as a pull/merge request
 
 Skills are ordinary [Agent Skills](https://agentskills.io) folders and shared instructions go
 into `AGENTS.md`, so everything keeps working without Habi. There is no account, telemetry,

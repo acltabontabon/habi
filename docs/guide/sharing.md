@@ -1,122 +1,91 @@
 # Sharing
 
-Sharing sends a skill you wrote or improved to your team's library as a pull request (or merge
-request), so the people who keep the library can review it. Habi prepares the change and shows
-you every file before anything leaves your machine. The Git host, not Habi, decides what gets
-merged.
+Send your skills or improvements to your library as a pull/merge request for review. Habi
+prepares the change, shows every file before it leaves your machine, and hosts decide what
+gets merged.
 
-Sharing is one of three separate actions, never mixed:
+## Before you start
 
-| Action | What it does | What it changes |
-|---|---|---|
-| **Refresh a library** | Fetches what the library holds now | Nothing in a project |
-| **Update an installed item** | Applies a library change to a project, through a preview | The project, after you confirm |
-| **Contribute** (this page) | Prepares a change for the library's maintainers | Nothing until you send it |
+✓ A Git library (remote or local clone)  
+✓ Git configured with name & email (`git config --global user.name` / `user.email`)  
+✓ Optional: [`gh`](https://cli.github.com) (GitHub) or `glab` (GitLab) for opening PRs from Habi
 
-**You need** a library that is a Git repository (a remote, or a clone on this machine), and Git
-to know your name and email (`git config --global user.name` and `user.email`). To open the
-pull request from Habi, install and sign in to [`gh`](https://cli.github.com) for GitHub or
-`glab` for GitLab. Without them Habi still pushes the branch, and you open the request
-yourself.
+Without the CLI tools, Habi still pushes the branch—you open the PR manually on the host.
 
-The steps below follow one skill from your draft to a merged review. The screenshots are from a
-GitHub repository; GitLab reads the same.
+## The sharing flow
 
-## Share a skill
+**Three separate actions** (never mixed):
+- **Refresh a library** — fetch updates (no project changes)
+- **Update an installed item** — apply library changes to your project
+- **Contribute** — this page; prepare & send your changes for review
 
-### 1. Connect your team's library
+## Step 1: Connect your library
 
-Once per library. In **Connect a library**, choose *Connect a Git repository* and paste its
-address. Habi reads the host and repository from it, follows the default branch unless you pick
-another, and lists it as your team's library. Habi uses the Git credentials already set up on
-this machine.
+**Once per library.** Go to Connect a library → Connect a Git repository and paste its address.
+Habi reads the host, repository, and default branch. It uses your existing Git credentials.
 
 ![Connect a Git repository: an SSH address read as acltabontabon/team-skills on github.com, following the default branch, to be listed as a team library named team-skills.](../media/share-connect.jpg)
 
-You can also do this from the share dialog in the next step.
+You can also connect from the share dialog in Step 2.
 
-### 2. Share the skill
+## Step 2: Share the skill
 
-Open the skill in **My skills** and choose **Share**. Pick the library; if the skill came from a
-library, that one is offered first.
+Open the skill in **My skills** → **Share** and pick the library. 
 
-![The share dialog for Review a pull request: a Team library menu showing team-skills, options to connect another library or export as a zip, and a Review what will be shared button.](../media/share-dialog.jpg)
+No data leaves yet. If you have no Git library, use **Export as zip…** to send the skill manually.
 
-Nothing is sent from here. If you have no Git library, **Export as zip…** writes the skill as a
-standard package you can send or commit anywhere. Exporting is not sharing: nobody has received
-it yet.
+**Continuing a contribution?** If this skill already has a pending PR/MR, choose **Continue
+sharing** to update it with your latest edits.
 
-If the skill already has a contribution still going to this library, the dialog offers
-**Continue sharing** (which sends your latest edits as a revision of the same request) beside
-*Start a new contribution*.
+## Step 3: Review & validate
 
-### 3. Review what will leave your machine
-
-The contribution page opens with **every file compared with the library**: each is *added*,
-*modified*, *renamed*, *removed* or *unchanged*. Changed files come first, beside the diff of
-the one you select.
+The contribution page shows every file compared to the library: *added*, *modified*, *renamed*,
+*removed*, or *unchanged*. Changed files appear first with diffs.
 
 ![The contribution page for Share Review a pull request, a draft in three steps: Review, Prepare branch, Create pull request. SKILL.md is listed as added with 23 lines, its diff beside it, and validation reads nothing to fix.](../media/share-review.jpg)
 
-- **Leave a file out.** Untick a changed file and it keeps the library's version: a left-out
-  addition is not added, a left-out removal stays. A new skill cannot leave out its `SKILL.md`.
-- **Validation** covers exactly what would be sent: package format, Habi metadata, file
-  references and a scan for secrets. An error stops you from preparing the branch; a warning
-  does not. Passing validation does not test what the skill does.
+**Exclude a file?** Untick it to keep the library's version. (New skills can't omit `SKILL.md`.)
 
-### 4. Tell the reviewer why
+**Validation** checks the package format, metadata, file refs, and scans for secrets. Errors
+block you; warnings do not. Passing validation doesn't test what the skill *does*—only its
+structure.
 
-Under **Send**, the page shows where the change is going: the library, repository, host, target
-branch and the contribution branch Habi will create. *Visibility* reads "Unknown — not checked"
-until the host has reported it, because Habi does not ask the network just to show the page.
+## Step 4: Prepare the branch
 
-Give the contribution a title and say why you are sharing it. This becomes the description of
-the request.
+**Title & description.** Explain what you're sharing and why—this becomes the PR description.
+
+**Add where it applies** (optional). Auto-adds which of your open projects this skill fits.
 
 ![The Send section: library, repository, host, target branch, contribution branch and visibility on the left; a contribution title and a Why this change field filled in on the right, with a Prepare branch button.](../media/share-send.jpg)
 
-**Add where it applies…** adds a short summary to your message: which of the projects you
-opened in Habi the skill applies to, by name only (never paths), and how many it does not apply
-to. Sample projects are not counted. It is ordinary text: edit or remove it before you
-continue.
+Habi commits to `habi/contrib/<name>-<id>` in its own copy of the library. Your branches stay
+untouched. Nothing is pushed yet.
 
-### 5. Prepare the branch
+## Step 5: Send it
 
-**Prepare branch** commits the files you included to `habi/contrib/<name>-<id>`, inside Habi's
-own copy of the library. Your checkouts and branches are not touched, and no hooks or filters
-run. Preparing again returns the same commit on the same branch. Nothing has been sent yet.
-
-![After preparing: the reviewer's message in place of the form, and two buttons, Create pull request and Export patch.](../media/share-prepared.jpg)
-
-- **Create pull request…** (GitHub), **Create merge request…** (GitLab) or **Push branch…**
-  when the matching tool is not installed. The button says what will happen.
-- **Export patch…** writes a `git format-patch` file with every commit of the contribution
-  since the library snapshot it started from, so it applies with `git am`. Use it when you
-  have no push access, as with most community libraries.
-
-### 6. Send it
-
-The confirmation lists the library, repository, host, target branch, contribution branch and
-the files that will be sent. Nothing is pushed until you confirm.
+A confirmation shows destination (library, host, branch) and files to send. Habi pushes using
+your Git credentials.
 
 ![The Create pull request confirmation: it sends the files below to GitHub with your Git credentials, listing the library, repository, host, target branch, contribution branch and the file skills/review-a-pull-request/SKILL.md added.](../media/share-confirm.jpg)
 
-Habi pushes the contribution branch with your Git credentials. If `gh` or `glab` is installed
-and signed in, it then opens the request against the target branch. A request opened by hand on
-the host is found too, by its source branch. For a library that is a repository on this
-machine, Habi creates the branch there with a hook-free `git fetch` instead of a push.
+**Options:**
+- **Create pull/merge request** — if `gh` or `glab` is installed & signed in
+- **Push branch** — without the CLI tools  
+- **Export patch** — for no-push libraries; creates a `git am`-compatible file
+
+For a local library, Habi creates the branch via `git fetch` (no push).
+
+## Step 6: Follow the review
+
+Habi doesn't auto-poll. Click **Check status** anytime to see:
+- State (open, draft, changes requested, approved, merged, closed)
+- Who approved
+- Comments with timestamps
+- Last checked time
 
 ![The contribution after sending: an Open PR state, the message that the branch was pushed and GitHub opened the pull request with its link, and a Review section with Open on GitHub, Check status and Revise buttons.](../media/share-sent.jpg)
 
-If anything fails, the contribution says **Needs attention** with the message. Retrying is
-safe: the branch name is fixed per contribution, a push never overwrites commits, and a request
-is opened only when the host does not already show one.
-
-### 7. Follow the review
-
-Habi does not poll. Choose **Check status** when you want to know. It reads the request
-through `gh api` or `glab api` and shows its state (open, draft, changes requested, approved,
-merged or closed), who approved, and the comments, with the time it last checked.
+**Failed to send?** The contribution shows **Needs attention** with the error. Retrying is safe—branch names are fixed, pushes won't overwrite, and PRs open only when the host doesn't already show one.
 
 ![The Review section after checking: GitHub pull request, checked just now, with a reviewer's general comment, and below the file's diff a comment on line 16 of SKILL.md.](../media/share-review-status.jpg)
 
