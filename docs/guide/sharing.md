@@ -97,7 +97,7 @@ Habi doesn't auto-poll. Click **Check status** anytime to see:
 - **Approved** means a reviewer approved. Merging is still up to the maintainers and the
   host's rules.
 
-### 8. Revise after review
+## Step 7: Revise after review
 
 Edit the skill in **My skills**, then return to the contribution and choose **Revise…**. Habi
 copies the skill again, you **Prepare the revision**, and **Push revision…** adds a new commit

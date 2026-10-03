@@ -92,7 +92,7 @@ Same folder rules apply. Instructions & MCP servers aren't installed this way.
 
 **Copies, not links.** Two ordinary copies when both folders needed (more reliable on Windows,
 independently editable, tracked separately). Existing links are detected—[see
-Symbolic links](#symbolic-links-in-the-project).
+Symbolic links](#symbolic-links).
 
 **Skill files as-is.** `SKILL.md` and `habi.yaml` are copied unchanged; frontmatter fields,
 licensing, and unknown keys are preserved. Agent tools ignore unknown files.
