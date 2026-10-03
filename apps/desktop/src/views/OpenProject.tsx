@@ -19,6 +19,7 @@ import { WaitingLoom } from "../components/Weaving";
 import { api } from "../lib/api";
 import { plural, relativeTime } from "../lib/format";
 import { useRecentProjects } from "../lib/queries";
+import { stackDye } from "../lib/stackDye";
 
 type Place = { kind: "found" } | { kind: "folder"; path: string };
 
@@ -467,25 +468,8 @@ function weekOf(weeksAgo: number): string {
 const WEEK = 16;
 
 /** A project's thread takes the dye of its main stack; a bare checkout stays ink. */
-const STACK_DYE: Record<string, string> = {
-  Rust: "var(--dye-1)",
-  Swift: "var(--dye-1)",
-  Node: "var(--dye-2)",
-  Deno: "var(--dye-2)",
-  Maven: "var(--dye-0)",
-  Gradle: "var(--dye-0)",
-  Ant: "var(--dye-0)",
-  Go: "var(--dye-4)",
-  Dart: "var(--dye-4)",
-  Python: "var(--dye-6)",
-  Ruby: "var(--dye-3)",
-  Scala: "var(--dye-3)",
-  PHP: "var(--dye-7)",
-  Elixir: "var(--dye-7)",
-};
-
 function dyeOf(e: FolderEntry): string {
-  if (e.kind === "project") return STACK_DYE[e.stacks[0] ?? ""] ?? "var(--ink-muted)";
+  if (e.kind === "project") return stackDye(e.stacks[0] ?? "") ?? "var(--ink-muted)";
   if (e.kind === "skills") return "var(--ink-muted)";
   return "var(--hairline-strong)";
 }

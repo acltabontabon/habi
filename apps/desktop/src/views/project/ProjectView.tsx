@@ -4,23 +4,23 @@ import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
-import { Strand, Swatch } from "../../components/Weave";
+import { initialsOf, Strand, Swatch } from "../../components/Weave";
 import { api } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
 import { plural } from "../../lib/format";
-import { type ProjectTab, useNav } from "../../lib/nav";
+import type { ProjectTab } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
 import { useSafeInvoke } from "../../lib/safeInvoke";
-import { tabKeyHandler } from "../../lib/tabs";
 import { tagLabel } from "../../lib/tags";
 
 export { tagLabel };
 
 import { useOverview } from "../../lib/queries";
+import { stackDye, stackDyes } from "../../lib/stackDye";
 import { SampleBanner } from "../SampleWorkspace";
-import { EvidenceView } from "./EvidenceView";
-import { FoundView } from "./FoundView";
-import { InstalledView } from "./InstalledView";
+import { NothingFits } from "./AlreadyHere";
+import { History } from "./History";
+import { ProjectSettings } from "./ProjectSettings";
 import { fitsProject, Workbench } from "./Workbench";
 
 export function understanding(overview: ProjectOverview): string[] {
@@ -38,6 +38,17 @@ export function understanding(overview: ProjectOverview): string[] {
   return [...new Set(labels)].slice(0, 9);
 }
 
+/** The project's languages, the most used first. */
+export function languages(overview: ProjectOverview): string[] {
+  const counts = new Map<string, number>();
+  for (const f of overview.inspection.facts) {
+    if (f.subject.type === "tag" && f.subject.tag.startsWith("lang:")) {
+      counts.set(f.subject.tag, (counts.get(f.subject.tag) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([tag]) => tagLabel(tag));
+}
+
 export function ProjectView({
   projectId,
   tab,
@@ -47,7 +58,6 @@ export function ProjectView({
   tab: ProjectTab;
   itemKey?: string;
 }) {
-  const { navigate } = useNav();
   const overview = useOverview(projectId);
   const client = useQueryClient();
   const safely = useSafeInvoke();
@@ -60,6 +70,11 @@ export function ProjectView({
 
   // Watch this project for changes while it is open.
   const [watchError, setWatchError] = useState<unknown>(null);
+  // Nothing fits, and the person asked to see the skills to use by hand.
+  const [browsing, setBrowsing] = useState(false);
+  const [settings, setSettings] = useState(false);
+  // "history" opens the project with its history showing.
+  const [history, setHistory] = useState(tab === "history");
   useEffect(() => {
     let live = true;
     setWatchError(null);
@@ -78,7 +93,12 @@ export function ProjectView({
   };
 
   const data = overview.data;
+  const byHand = (data?.recommendations ?? []).filter(
+    (r) => r.group === "available" && r.installState === "notInstalled",
+  ).length;
   const facts = useMemo(() => (data ? understanding(data) : []), [data]);
+  // The project's own colors: its languages' dyes, woven into its swatch.
+  const cloth = useMemo(() => (data ? stackDyes(languages(data)) : []), [data]);
   const dyes = useDyes();
   // The libraries this project is woven from: those with items that fit it
   // (or that the team requires), in order of how much they contribute.
@@ -122,28 +142,15 @@ export function ProjectView({
 
   const { project, inspection } = data;
   const modules = inspection.modules.filter((m) => m.ecosystems.length > 0);
-  const tabs: { id: ProjectTab; label: string }[] = [
-    { id: "recommendations", label: "Recommendations" },
-    { id: "found", label: "In this project" },
-    { id: "evidence", label: "Project facts" },
-    { id: "installed", label: "Installed & history" },
-  ];
-  const installedCount = data.recommendations.filter((r) => r.installation).length + data.orphaned.length;
-  const selectTab = (id: ProjectTab) => navigate({ name: "project", projectId, tab: id, itemKey });
-  const onTabKey = tabKeyHandler(
-    tabs.map((t) => t.id),
-    tab,
-    selectTab,
-    (id) => `tab-${id}`,
-  );
-
   return (
     <div className="project">
       <header className="project-head project-head-woven">
         <Swatch
           dyes={weave.map((w) => w.dye)}
           seed={project.id}
-          size={72}
+          size={80}
+          weft={cloth}
+          initials={initialsOf(project.name)}
           label={
             weave.length > 0
               ? `Skills from ${weave.map((w) => w.name).join(", ")}`
@@ -169,11 +176,18 @@ export function ProjectView({
           </p>
           <ul className="stack-tokens" aria-label="What Habi recognized">
             {facts.length > 0 ? (
-              facts.map((f) => (
-                <li key={f} className="stack-token">
-                  {f}
-                </li>
-              ))
+              facts.map((f) => {
+                const dye = stackDye(f);
+                return (
+                  <li
+                    key={f}
+                    className={`stack-token${dye ? " is-dyed" : ""}`}
+                    style={dye ? ({ "--dye": dye } as CSSProperties) : undefined}
+                  >
+                    {f}
+                  </li>
+                );
+              })
             ) : (
               <li className="stack-token stack-token-quiet">no recognized frameworks or languages</li>
             )}
@@ -190,6 +204,24 @@ export function ProjectView({
           >
             Rescan
           </Button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="History"
+            data-tip="History — every change Habi made here, with restore"
+            onClick={() => setHistory(true)}
+          >
+            <Icon name="history" />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Project settings"
+            data-tip="Project settings — paths to leave out, your corrections, removing it from Habi"
+            onClick={() => setSettings(true)}
+          >
+            <Icon name="settings" />
+          </button>
           <Button
             size="sm"
             icon="external"
@@ -202,6 +234,8 @@ export function ProjectView({
         </div>
       </header>
 
+      {settings ? <ProjectSettings overview={data} onClose={() => setSettings(false)} /> : null}
+      {history ? <History overview={data} onClose={() => setHistory(false)} /> : null}
       {project.sample ? <SampleBanner /> : null}
 
       {weave.length > 0 ? (
@@ -256,41 +290,18 @@ export function ProjectView({
         </Notice>
       ) : null}
 
-      <div className="tabs" role="tablist" aria-label="Project views">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`tab-${t.id}`}
-            aria-selected={tab === t.id}
-            aria-controls={`panel-${t.id}`}
-            tabIndex={tab === t.id ? 0 : -1}
-            className={`tab${tab === t.id ? " is-active" : ""}`}
-            onClick={() => selectTab(t.id)}
-            onKeyDown={onTabKey}
-          >
-            {t.label}
-            {t.id === "installed" && installedCount > 0 ? (
-              <span className="tab-count">{installedCount}</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      <div className="project-body" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "recommendations" && !itemKey && !data.recommendations.some(fitsProject) ? (
-          // Nothing to recommend is not a dead end: show what is already here
-          // and what can be done with only this project.
-          <FoundView project={project} lead />
-        ) : tab === "found" ? (
-          <FoundView project={project} />
-        ) : tab === "recommendations" ? (
-          <Workbench overview={data} itemKey={itemKey} />
-        ) : tab === "evidence" ? (
-          <EvidenceView overview={data} />
+      <div className="project-body">
+        {!itemKey && !browsing && !data.recommendations.some(fitsProject) ? (
+          // Nothing fits: say so, offer what can be done with only this
+          // project and what is already here, and the skills to use by hand.
+          <NothingFits
+            project={project}
+            byHand={byHand}
+            ruled={data.recommendations.filter((r) => r.group === "notApplicable").length}
+            onBrowse={() => setBrowsing(true)}
+          />
         ) : (
-          <InstalledView overview={data} />
+          <Workbench overview={data} itemKey={itemKey} openAvailable={browsing} />
         )}
       </div>
     </div>

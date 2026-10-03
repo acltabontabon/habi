@@ -932,29 +932,40 @@
   box-shadow: 0 0 0 1px var(--hairline);
 }
 
+/* What Habi recognized, as words on a line: languages carry a knot in their dye. */
 .stack-tokens {
   list-style: none;
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 4px 16px;
 }
 
 .stack-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  padding: 1px 8px;
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  background: var(--paper-raised);
+  color: var(--ink-muted);
+}
+
+.stack-token.is-dyed {
   color: var(--ink-soft);
 }
 
+.stack-token.is-dyed::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--dye);
+}
+
 .stack-token-quiet {
-  border-style: dashed;
-  background: transparent;
-  color: var(--ink-muted);
+  color: var(--ink-faint);
 }
 
 /* What fits, by library: the composition bar. */
@@ -1636,8 +1647,6 @@ button.chip:hover {
 .history,
 .validation,
 .review-notes,
-.declarations,
-.facts,
 .publish-files {
   list-style: none;
   margin: 0;
@@ -2347,62 +2356,6 @@ details > summary.change-head::-webkit-details-marker {
 
 .diffstat-del {
   color: var(--danger-ink);
-}
-
-/* ---------- Evidence page ---------- */
-
-.evidence-page .section {
-  max-width: 980px;
-}
-
-.tag-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s4);
-}
-
-.facts-details summary {
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  padding: 4px 0;
-}
-
-.fact {
-  display: grid;
-  gap: 6px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.fact-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px var(--s3);
-}
-
-.fact-title {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  font-weight: 500;
-}
-
-.fact-detail,
-.fact-note {
-  font-size: var(--text-sm);
-}
-
-.fact-origin {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
-.declarations li {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  flex-wrap: wrap;
 }
 
 /* ---------- Installed ---------- */
@@ -7668,4 +7621,49 @@ button.chooser-crumb:focus-visible {
   .chooser-keys {
     display: none;
   }
+}
+
+/* ---------- Scan settings ---------- */
+
+.scan-section {
+  display: grid;
+  gap: var(--s2);
+}
+
+.scan-corrections {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+}
+
+.scan-corrections li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+}
+
+.settings-leave {
+  display: grid;
+  gap: var(--s2);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+}
+
+.settings-leave-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  font-size: var(--text-sm);
+}
+
+.settings-leave-actions {
+  display: flex;
+  flex: none;
+  gap: var(--s2);
 }

@@ -20,4 +20,8 @@ sources: Array<string>,
 /**
  * Items installed in the project by Habi.
  */
-installed: number, at: string, };
+installed: number, 
+/**
+ * Language tags (`lang:rust`), the most used first: the project's colors in lists.
+ */
+languages: Array<string>, at: string, };

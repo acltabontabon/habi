@@ -129,6 +129,9 @@ pub struct ProjectSummary {
     pub sources: Vec<String>,
     /// Items installed in the project by Habi.
     pub installed: u32,
+    /// Language tags (`lang:rust`), the most used first: the project's colors in lists.
+    #[serde(default)]
+    pub languages: Vec<String>,
     pub at: String,
 }
 
@@ -1166,6 +1169,20 @@ impl Habi {
                     .iter()
                     .filter(|r| r.installation.is_some())
                     .count() as u32,
+                languages: {
+                    let mut counts: Vec<(String, u32)> = Vec::new();
+                    for tag in inspection.facts.iter().filter_map(|f| f.tag()) {
+                        if !tag.starts_with("lang:") {
+                            continue;
+                        }
+                        match counts.iter_mut().find(|(t, _)| t == tag) {
+                            Some((_, n)) => *n += 1,
+                            None => counts.push((tag.to_string(), 1)),
+                        }
+                    }
+                    counts.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+                    counts.into_iter().map(|(t, _)| t).collect()
+                },
                 at: crate::time::now(),
             }
         };

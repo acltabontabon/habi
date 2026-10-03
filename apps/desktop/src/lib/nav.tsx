@@ -4,7 +4,8 @@ import { Dialog } from "../components/Dialog";
 import { Button } from "../components/ui";
 import { flushAutosaves, hasPendingEdits, hasUnsavedEdits } from "./useAutosave";
 
-export type ProjectTab = "recommendations" | "found" | "evidence" | "installed";
+/** How a project opens: its recommendations, or with its history showing. */
+export type ProjectTab = "recommendations" | "history";
 
 export type Route =
   | { name: "welcome" }

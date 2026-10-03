@@ -41,6 +41,32 @@
   opacity: 0.55;
 }
 
+/* A project's own threads: its languages' dyes, softer than the warp floats. */
+.swatch .swatch-weft.is-dyed {
+  opacity: 0.45;
+}
+
+/* A project's avatar: its initials cut from its own cloth. The tile keeps a
+   whisper of the weave; the letters carry it at full strength. */
+.swatch-initials {
+  font-family: var(--font-ui);
+  font-size: 50px;
+  font-weight: 760;
+  letter-spacing: -3px;
+}
+
+.swatch-ground {
+  opacity: 0.16;
+}
+
+.swatch-letters .swatch-weft {
+  opacity: 1;
+}
+
+.swatch-letters .swatch-weft:not(.is-dyed) {
+  fill: var(--ink-soft);
+}
+
 /* ---------- Provenance chip: library name with its thread ---------- */
 
 .provenance {
@@ -354,4 +380,27 @@
   .loom-source.is-tilted {
     transform: rotate(-60deg);
   }
+}
+
+/* ---------- Project mark: initials on the project's dye (sidebar) ---------- */
+
+.project-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--dye) 20%, var(--paper-raised));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dye) 45%, transparent);
+  color: color-mix(in srgb, var(--dye) 65%, var(--ink));
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-item.is-active .project-mark {
+  background: color-mix(in srgb, var(--dye) 32%, var(--paper-raised));
 }
