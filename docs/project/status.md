@@ -22,8 +22,8 @@ supported, and CI does not test it.
 | Library catalog (previews, connect, update checks you act on, catalog facts) | Done | `tests/catalog.rs`, `src/test/libraries.test.tsx` |
 | Recommendations (four dimensions, grouping, ordering, next action) | Done | Fixture and acceptance tests |
 | Verification checks (preview, bindings, run, record, staleness) | Done | `tests/checks.rs` (runs a harmless `git hash-object`) |
-| Contributions (staging, form, preview, secret scan, plumbing commit, patch, push, `gh`/`glab`) | Done; not run against a live host | `tests/contribution.rs` (push to local remote); `tests/review_flow.rs` (GitHub-shaped remote via `insteadOf`, stand-in `gh`); `tests/review_requests.rs` (stand-in `glab`, host detection) |
-| Review lifecycle (status, approvals, plain-text comments, revise on the same branch, refuse to overwrite others' commits, where-it-applies summary) | Done; not run against a live host | `tests/review_flow.rs`, `tests/review_requests.rs`, `review.rs` unit tests, `tests/contribution.rs` |
+| Contributions (staging, form, preview, secret scan, plumbing commit, patch, push, `gh`/`glab`) | Done; GitHub run live once (2026-10-04), GitLab not | `tests/contribution.rs` (push to local remote); `tests/review_flow.rs` (GitHub-shaped remote via `insteadOf`, stand-in `gh`); `tests/review_requests.rs` (stand-in `glab`, host detection) |
+| Review lifecycle (status, approvals, plain-text comments, revise on the same branch, refuse to overwrite others' commits, where-it-applies summary) | Done; GitHub run live once (2026-10-04), GitLab not | `tests/review_flow.rs`, `tests/review_requests.rs`, `review.rs` unit tests, `tests/contribution.rs` |
 | Local skills (create, save with conflict detection, files, trash, export, validity) | Done | `tests/local_skills.rs`; `ipc_tests.rs` |
 | Project discovery (skills, instruction files) and instructions → draft | Done | `tests/local_skills.rs` (agent-ready-service fixture) |
 | Import (project, folder, library; duplicates, collisions, incomplete packages) | Done | `tests/local_skills.rs` |
@@ -49,9 +49,12 @@ Not verified yet:
   [smoke tests](../dev/compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it),
   which have not been run for this release. Habi does not claim that an agent follows the
   instructions.
-- **Live Git hosts.** Opening pull/merge requests, reading status and comments, and updating
-  a request with a revision are tested against programs that answer like the GitHub and GitLab
-  REST APIs, not against live hosts. GitLab is the less exercised of the two.
+- **Live Git hosts.** On 2026-10-04 the GitHub path was run once against a private repository
+  (`scripts/docs-screenshots-sharing.mjs`): opening a pull request, reading its status and
+  its line and general comments, and pushing a revision to the open request. Approvals,
+  changes requested, merged and closed requests, and self-hosted hosts are tested only against
+  programs that answer like the GitHub REST API. GitLab has only been tested that way, and is
+  the less exercised of the two.
 - **Windows.** CI builds and tests on Windows, but Habi has mainly been used on macOS.
 - **Native window.** Most screens were exercised through the development bridge in a browser;
   native file dialogs and window behavior have had less use.
@@ -99,8 +102,8 @@ Open:
   Gemini CLI, GitHub Copilot, OpenCode and Junie.
 - **Manual Windows smoke test.** The Windows installers are built by the release workflow but
   have not been installed and used by hand.
-- **Live Git hosts.** Pull/merge request creation, status and revisions are tested against
-  stand-in `gh`/`glab` programs, not live GitHub or GitLab.
+- **Live Git hosts.** GitHub was run live once for the basic path (see above); the rest of
+  GitHub's review states and all of GitLab are tested against stand-in `gh`/`glab` programs.
 
 Resolved:
 
@@ -115,7 +118,7 @@ Resolved:
 
 1. Run the client smoke tests and record versions in
    [compatibility research](../dev/compatibility-research.md).
-2. Exercise sharing against live GitHub and GitLab repositories.
+2. Exercise sharing's remaining review states on GitHub, and all of it on GitLab, against live repositories.
 3. Restore for installs on this machine, and installing on this machine from the command line.
 4. Cursor `.mdc` rules (see [future direction](product.md#future-direction)).
 5. `habi skill …` commands for My skills (list, export, import); the core supports them.
