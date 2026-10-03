@@ -336,6 +336,7 @@ impl Bridge {
                 out(h.import_skills(&arg(a, "from")?, &arg::<Vec<_>>(a, "selections")?, cancel)?)
             }
             "skills_overview" => out(h.skills_overview()?),
+            "machine_skills" => out(h.machine_skills()?),
             "search_skill_files" => out(h.search_skill_files(&s("id")?, &s("query")?)?),
             "skill_local_changes" => out(h.skill_local_changes(&s("id")?)?),
             "skill_templates" => out(h.skill_templates()),
@@ -416,6 +417,11 @@ fn handle(bridge: &Bridge, mut stream: TcpStream) {
 fn main() {
     let port = std::env::var("HABI_BRIDGE_PORT").unwrap_or_else(|_| "1430".into());
     let habi = Habi::from_env().expect("could not open Habi's data directory");
+    // HABI_USER_HOME stands in for the home folder whose skill folders are read.
+    let habi = match std::env::var_os("HABI_USER_HOME") {
+        Some(home) => habi.with_user_home(home.into()),
+        None => habi,
+    };
     let samples = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
     println!(
         "Habi development bridge on http://127.0.0.1:{port} — data in {}",

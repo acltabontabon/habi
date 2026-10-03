@@ -1508,6 +1508,16 @@ pub async fn skills_overview(
     blocking(habi, move |h| h.skills_overview()).await
 }
 
+/// Skills in the person's own folders (`~/.claude/skills` and the like), and
+/// how each relates to My skills and to the projects Habi knows. Reads only.
+#[tauri::command]
+pub async fn machine_skills(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<habi_core::skills::machine::MachineSkill>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.machine_skills()).await
+}
+
 #[tauri::command]
 pub async fn skill_local_changes(
     state: State<'_, AppState>,

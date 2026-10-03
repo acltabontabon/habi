@@ -341,7 +341,7 @@ pub fn discover(
     }
 }
 
-fn already_imported(
+pub(crate) fn already_imported(
     digest: &str,
     local: &[LocalSkillSummary],
     origin_digests: &[(String, Option<String>)],

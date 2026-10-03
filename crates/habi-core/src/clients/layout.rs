@@ -7,9 +7,68 @@
 //! - Claude Code reads `.claude/skills` (not `.agents/skills`).
 
 use super::ClientId;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 pub const AGENTS_SKILLS: &str = ".agents/skills";
 pub const CLAUDE_SKILLS: &str = ".claude/skills";
+pub const CURSOR_SKILLS: &str = ".cursor/skills";
+
+/// Every project folder a client reads skills from.
+pub const PROJECT_SKILL_DIRS: [&str; 3] = [CLAUDE_SKILLS, AGENTS_SKILLS, CURSOR_SKILLS];
+
+/// A skills directory in the person's home folder, and the clients that read
+/// it. Habi only reads these; it never writes to one.
+#[derive(Debug, Clone, Copy)]
+pub struct UserSkillDir {
+    /// Names the directory in a skill's id ("claude", "agents", "cursor").
+    pub key: &'static str,
+    /// Relative to the home folder.
+    pub base: &'static str,
+    pub readers: &'static [ClientId],
+}
+
+/// From `docs/dev/compatibility-research.md`: Cursor also reads
+/// `~/.claude/skills` as a compatibility path. `~/.codex/skills` is left out
+/// because Codex's own documentation does not list it.
+pub const USER_SKILL_DIRS: [UserSkillDir; 3] = [
+    UserSkillDir {
+        key: "claude",
+        base: ".claude/skills",
+        readers: &[ClientId::ClaudeCode, ClientId::Cursor],
+    },
+    UserSkillDir {
+        key: "agents",
+        base: ".agents/skills",
+        readers: &[ClientId::Codex, ClientId::Cursor],
+    },
+    UserSkillDir {
+        key: "cursor",
+        base: ".cursor/skills",
+        readers: &[ClientId::Cursor],
+    },
+];
+
+/// Which copy a client uses when the same skill name exists for the person
+/// and in a project.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Precedence {
+    /// The personal copy wins.
+    PersonalWins,
+    /// The client's documentation does not say.
+    NotDocumented,
+}
+
+/// Claude Code ranks skills enterprise > personal > project. Cursor and Codex
+/// do not document an order (research doc §4).
+pub fn precedence(client: ClientId) -> Precedence {
+    match client {
+        ClientId::ClaudeCode => Precedence::PersonalWins,
+        ClientId::Cursor | ClientId::Codex => Precedence::NotDocumented,
+    }
+}
 
 /// A directory Habi writes a skill into, and the clients it serves.
 #[derive(Debug, Clone, PartialEq, Eq)]

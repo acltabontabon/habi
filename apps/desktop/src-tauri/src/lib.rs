@@ -250,6 +250,7 @@ pub fn run() {
             commands::inspect_import,
             commands::import_skills,
             commands::skills_overview,
+            commands::machine_skills,
             commands::open_git_copy,
             commands::forget_git_copy,
             commands::search_skill_files,

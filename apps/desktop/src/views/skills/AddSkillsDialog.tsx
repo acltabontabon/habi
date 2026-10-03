@@ -31,6 +31,7 @@ export type AddSkillsStart =
   | { source: "project"; projectId: string; preselect?: string }
   | { source: "folder" }
   | { source: "git" }
+  | { source: "machine"; id: string }
   | { source: "library"; sourceId: string; preselect?: string };
 
 type Step =
@@ -254,6 +255,8 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
     begun.current = true;
     if (start.source === "project") {
       void inspect({ type: "project", projectId: start.projectId }, "the project", start.preselect);
+    } else if (start.source === "machine") {
+      void inspect({ type: "machine", id: start.id }, "your own skills");
     } else if (start.source === "folder") {
       void fromFolder();
     } else if (start.source === "library") {
@@ -334,7 +337,9 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
               ? `Edit a copy of ${focused.title}`
               : fromLibrary || fromGit
                 ? `Copy from ${review.inspection.origin}`
-                : `Skills found in ${shortOrigin(review.inspection.origin)}`
+                : review.from.type === "machine"
+                  ? `Copy ${review.inspection.candidates[0]?.title ?? "a skill"} to My skills`
+                  : `Skills found in ${shortOrigin(review.inspection.origin)}`
             : "Add skills"
       }
       description={
@@ -536,7 +541,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
 
       {review ? (
         <>
-          {review.from.type === "folder" ? (
+          {review.from.type === "folder" || review.from.type === "machine" ? (
             <p className="candidate-origin mono">{review.inspection.origin}</p>
           ) : null}
           {review.inspection.notes.map((n) => (

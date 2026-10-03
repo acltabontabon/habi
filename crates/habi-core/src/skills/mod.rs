@@ -18,6 +18,7 @@
 mod archive;
 pub mod intake;
 pub mod lineage;
+pub mod machine;
 pub mod upstream;
 
 use crate::contribute::{ShareForm, apply_form, form_from, slug};

@@ -504,3 +504,73 @@ fn only_files_dropped_on_the_window_can_be_added_by_dropping() {
     assert_eq!(found[0]["path"], "references/checklist.md");
     assert_eq!(found[0]["line"], 1);
 }
+
+/// The person's own skill folders over IPC: listing them, importing one by id
+/// (the webview names no path), and the refusal of ids that leave the folders.
+#[test]
+fn machine_skills_are_listed_and_imported_by_id_only() {
+    let data = tempfile::tempdir().unwrap();
+    let person = tempfile::tempdir().unwrap();
+    let skill = person.path().join(".claude/skills/alpha");
+    std::fs::create_dir_all(&skill).unwrap();
+    std::fs::write(
+        skill.join("SKILL.md"),
+        "---\nname: alpha\ndescription: Reviews migrations. Use when a change touches them.\n---\n\n# alpha\n",
+    )
+    .unwrap();
+    let habi = Habi::open(AppPaths::at(data.path().to_path_buf()))
+        .unwrap()
+        .with_user_home(person.path().to_path_buf());
+
+    let app = mock_builder()
+        .invoke_handler(tauri::generate_handler![
+            commands::machine_skills,
+            commands::inspect_import,
+            commands::import_skills,
+            commands::list_skills,
+        ])
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    app.manage(AppState::new(Some(habi), None, None));
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+
+    let listed = call(&webview, "machine_skills", json!({})).unwrap();
+    assert_eq!(listed[0]["id"], "claude/alpha");
+    assert_eq!(listed[0]["location"], "~/.claude/skills/alpha");
+    assert_eq!(listed[0]["readers"], json!(["claude-code", "cursor"]));
+    assert_eq!(listed[0]["isLink"], false);
+
+    // A path, or an id that climbs out of the skill folders, is refused.
+    for id in ["../../etc", "claude/../../x", &*skill.to_string_lossy()] {
+        let from = json!({ "type": "machine", "id": id });
+        assert!(
+            call(
+                &webview,
+                "inspect_import",
+                json!({ "from": from, "jobId": null })
+            )
+            .is_err(),
+            "{id}"
+        );
+    }
+
+    let from = json!({ "type": "machine", "id": "claude/alpha" });
+    let inspected = call(
+        &webview,
+        "inspect_import",
+        json!({ "from": from, "jobId": null }),
+    )
+    .unwrap();
+    assert_eq!(inspected["candidates"][0]["name"], "alpha");
+    let done = call(
+        &webview,
+        "import_skills",
+        json!({ "from": from, "selections": [{ "path": "", "rename": null }], "jobId": null }),
+    )
+    .unwrap();
+    assert_eq!(done["imported"][0]["name"], "alpha");
+    let relisted = call(&webview, "machine_skills", json!({})).unwrap();
+    assert_eq!(relisted[0]["importedAs"], done["imported"][0]["id"]);
+}
