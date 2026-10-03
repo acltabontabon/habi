@@ -16,8 +16,8 @@
         "title": "Habi",
         "width": 1320,
         "height": 860,
-        "minWidth": 880,
-        "minHeight": 600,
+        "minWidth": 1320,
+        "minHeight": 860,
         "center": true
       }
     ],
