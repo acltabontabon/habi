@@ -310,7 +310,7 @@ describe("the skill editor", () => {
 describe("global shortcuts", () => {
   it("leaves ⌘[ to text fields and the code editor, and goes back elsewhere", async () => {
     handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
-    handlers.get_settings = () => ({ autoRefreshHours: 12, defaultClients: ["claude-code"] });
+    handlers.get_settings = () => ({ autoRefreshHours: 12 });
     Element.prototype.scrollTo = () => {};
     render(<App />);
     await screen.findByRole("button", { name: "Open a project…" });
@@ -336,6 +336,19 @@ describe("global shortcuts", () => {
     field.remove();
     editor.remove();
     handled.remove();
+  });
+});
+
+describe("starting up", () => {
+  it("lands on the home page even when a project was open last time", async () => {
+    handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
+    handlers.get_settings = () => ({ autoRefreshHours: 12 });
+    localStorage.setItem("habi.lastProject", "p1");
+    Element.prototype.scrollTo = () => {};
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Open a project…" })).toBeInTheDocument();
+    expect(screen.queryByText(/Inspecting the project/)).toBeNull();
+    localStorage.removeItem("habi.lastProject");
   });
 });
 
@@ -568,7 +581,7 @@ describe("project history", () => {
 describe("free up space", () => {
   it("says what was removed and how much space it freed", async () => {
     handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
-    handlers.get_settings = () => ({ autoRefreshHours: 12, defaultClients: ["claude-code"] });
+    handlers.get_settings = () => ({ autoRefreshHours: 12 });
     handlers.free_up_space = vi.fn(() => ({
       operationsRemoved: 0,
       snapshotsRemoved: 2,

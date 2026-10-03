@@ -10,7 +10,7 @@ import { ErrorNotice, Working } from "./components/ui";
 import { type Actions, ActionsContext, type NewSkillContext } from "./lib/actions";
 import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
-import { lastProject, NavProvider, type Route, useNav } from "./lib/nav";
+import { NavProvider, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
 import { invalidateSkills, keys, useAppInfo } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
@@ -48,28 +48,9 @@ export function App() {
   );
 }
 
-/** Decides the first screen: the last open project if it still exists, else the welcome. */
+/** Waits for Habi's data to open, then starts on the home page. */
 function Startup() {
   const info = useAppInfo();
-  const [initial, setInitial] = useState<Route | null>(null);
-
-  useEffect(() => {
-    if (!info.data || info.data.startupError) return;
-    const remembered = lastProject();
-    if (!remembered) {
-      setInitial({ name: "welcome" });
-      return;
-    }
-    api
-      .recentProjects()
-      .then((recent) => {
-        const found = recent.find((p) => p.id === remembered && p.exists);
-        setInitial(
-          found ? { name: "project", projectId: found.id, tab: "recommendations" } : { name: "welcome" },
-        );
-      })
-      .catch(() => setInitial({ name: "welcome" }));
-  }, [info.data]);
 
   if (info.isError) {
     return (
@@ -91,7 +72,7 @@ function Startup() {
       </div>
     );
   }
-  if (!initial) {
+  if (!info.data) {
     return (
       <div className="startup">
         <Working>Opening Habi…</Working>
@@ -99,7 +80,7 @@ function Startup() {
     );
   }
   return (
-    <NavProvider initial={initial}>
+    <NavProvider initial={{ name: "welcome" }}>
       <Shell />
     </NavProvider>
   );
