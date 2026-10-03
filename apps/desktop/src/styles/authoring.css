@@ -1204,13 +1204,14 @@
 .found {
   max-width: 980px;
   display: grid;
-  gap: var(--s4);
+  gap: var(--s7);
   align-content: start;
+  padding-top: var(--s7);
 }
 
 .found-lead {
   display: grid;
-  gap: var(--s2);
+  gap: var(--s3);
 }
 
 .found-headline {
@@ -1223,17 +1224,51 @@
   margin-bottom: 0;
 }
 
+/* What to do and what is here, side by side when there is room. */
+.found.is-nothing {
+  max-width: none;
+  container-type: inline-size;
+}
+
+.found-columns {
+  display: grid;
+  gap: var(--s7);
+  align-items: start;
+}
+
+/* By the page's own width, not the window's: the sidebar takes its share. */
+@container (min-width: 880px) {
+  .found-columns {
+    /* What to do takes what its buttons need; what is here takes the rest. */
+    grid-template-columns: fit-content(520px) minmax(0, 1fr);
+    gap: clamp(var(--s6), 5cqi, var(--s8));
+  }
+
+  .found-columns .found-lead-actions {
+    flex-wrap: nowrap;
+  }
+}
+
 .found-lead-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s2);
-  margin-top: var(--s2);
+  gap: var(--s3);
+  margin-top: var(--s3);
 }
 
 .found-section {
   display: grid;
-  gap: var(--s2);
+  gap: var(--s3);
+  container-type: inline-size;
+}
+
+/* A narrow list: the actions go under the text, so the text keeps the width. */
+@container (max-width: 600px) {
+  .found-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+  }
 }
 
 .found-list {
@@ -1248,13 +1283,13 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--s4);
   align-items: start;
-  padding: 11px var(--s2) 12px;
+  padding: var(--s4) var(--s3);
   border-bottom: 1px solid var(--hairline);
 }
 
 .found-main {
   display: grid;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -1282,26 +1317,188 @@
   overflow-wrap: anywhere;
 }
 
+/* The name opens the text: a quiet chevron, no separate Read button. */
+.found-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+
+.found-toggle svg {
+  color: var(--ink-faint);
+  transition: color var(--duration) var(--ease);
+}
+
+.found-toggle:hover svg,
+.found-toggle[aria-expanded="true"] svg {
+  color: var(--thread);
+}
+
+.found-toggle.mono span {
+  font-family: var(--font-mono);
+}
+
+.found-warn {
+  font-size: var(--text-xs);
+  color: var(--warn-ink);
+}
+
+/* What a row opens to: the full width of the row, under its name and actions. */
+.found-expand {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* An instruction file's outline: headings as knots on one thread, each with
+   a bar as long as its section. */
+.file-outline {
+  position: relative;
+  margin: 0;
+  padding: 2px 0 2px 2px;
+  list-style: none;
+}
+
+.file-outline::before {
+  content: "";
+  position: absolute;
+  left: 5.25px;
+  top: 14px;
+  bottom: 14px;
+  width: 1.5px;
+  background: var(--hairline-strong);
+}
+
+.file-outline-section {
+  position: relative;
+}
+
+.file-outline-head {
+  display: grid;
+  grid-template-columns: 9px minmax(0, max-content) minmax(40px, 1fr) auto;
+  align-items: center;
+  column-gap: var(--s3);
+  min-height: 32px;
+}
+
+.file-outline-knot {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: 1.5px solid var(--hairline-strong);
+  background: var(--paper);
+  box-sizing: border-box;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.file-outline-section:hover .file-outline-knot {
+  border-color: var(--thread);
+}
+
+.file-outline-section.is-open .file-outline-knot {
+  border-color: var(--thread);
+  background: var(--thread);
+}
+
+.file-outline-title {
+  padding: 0 0 0 calc(var(--depth) * 16px);
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-outline-section.is-sub .file-outline-title {
+  color: var(--ink-muted);
+}
+
+.file-outline-section.is-open .file-outline-title,
+.file-outline-title:hover {
+  color: var(--ink);
+}
+
+/* How long the section is, against the longest one. */
+.file-outline-length {
+  justify-self: start;
+  width: calc(var(--share) * 100%);
+  height: 4px;
+  border-radius: 999px;
+  background: var(--hairline-strong);
+  transition: background var(--duration) var(--ease);
+}
+
+.file-outline-section:hover .file-outline-length,
+.file-outline-section.is-open .file-outline-length {
+  background: color-mix(in srgb, var(--thread) 55%, transparent);
+}
+
+.file-outline-make {
+  opacity: 0;
+  font-size: var(--text-xs);
+  transition: opacity var(--duration) var(--ease);
+}
+
+.file-outline-section:hover .file-outline-make,
+.file-outline-section.is-open .file-outline-make,
+.file-outline-make:focus-visible {
+  opacity: 1;
+}
+
+.file-outline-text {
+  margin: 2px 0 var(--s3) 21px;
+  padding: var(--s2) 0;
+  max-height: 320px;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--paper-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.found-meta-part {
+  white-space: nowrap;
+}
+
 .found-actions {
   display: flex;
   gap: var(--s2);
 }
 
-.found-note {
-  font-size: var(--text-sm);
-  max-width: 76ch;
-}
-
-.found-foot {
+.found-heading {
   display: flex;
-  gap: 6px;
-  font-size: var(--text-xs);
-  max-width: 82ch;
+  align-items: center;
+  gap: var(--s2);
 }
 
-.found-foot svg {
-  flex: none;
-  margin-top: 2px;
+.found-scope {
+  display: inline-flex;
+  color: var(--ink-faint);
+  cursor: help;
+}
+
+.found-scope:hover {
+  color: var(--ink-muted);
+}
+
+.detail-kicker .found-scope {
+  margin-left: 6px;
+  vertical-align: -2px;
 }
 
 .picker {

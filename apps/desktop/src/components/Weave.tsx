@@ -6,7 +6,10 @@
  *
  * All of these are decorative: the library's name is always next to them.
  */
+import { type CSSProperties, useId } from "react";
 import type { Dye } from "../lib/dye";
+import { stackDye } from "../lib/stackDye";
+import { tagLabel } from "../lib/tags";
 
 /** A short length of one library's thread, crossing a weft. */
 export function Strand({ dye, size = 16 }: { dye: Dye; size?: number }) {
@@ -64,19 +67,26 @@ const STRUCTURES: ((col: number, row: number) => boolean)[] = [
 /**
  * A small woven swatch. Warp threads carry the dyes given (the libraries
  * that contribute to a project); the weave structure comes from `seed`, so
- * each project keeps its own cloth. Without threads, it is an empty loom.
+ * each project keeps its own cloth. Weft threads carry `weft` colors (the
+ * project's own stack) when given; without either, it is an empty loom.
  */
 export function Swatch({
   dyes,
   seed,
   size = 56,
   label,
+  weft = [],
+  initials,
 }: {
   dyes: Dye[];
   seed: string;
   size?: number;
   label?: string;
+  weft?: string[];
+  /** Letters cut from the cloth: the tile is the faint weave, the letters the full one. */
+  initials?: string;
 }) {
+  const clip = useId();
   const n = 8;
   const cell = 10;
   const h = hash(seed);
@@ -92,7 +102,8 @@ export function Swatch({
         width={n * cell}
         height={cell - 4}
         rx="3"
-        className="swatch-weft"
+        className={weft.length > 0 ? "swatch-weft is-dyed" : "swatch-weft"}
+        style={weft.length > 0 ? { fill: weft[(r + h) % weft.length] } : undefined}
       />,
     );
   }
@@ -126,7 +137,54 @@ export function Swatch({
       aria-hidden={label ? undefined : "true"}
       focusable="false"
     >
-      {cells}
+      {initials ? (
+        <>
+          <defs>
+            <clipPath id={clip}>
+              <text
+                x={(n * cell) / 2}
+                y={(n * cell) / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="swatch-initials"
+              >
+                {initials}
+              </text>
+            </clipPath>
+          </defs>
+          <g className="swatch-ground">{cells}</g>
+          <g className="swatch-letters" clipPath={`url(#${clip})`}>
+            {cells}
+          </g>
+        </>
+      ) : (
+        cells
+      )}
     </svg>
+  );
+}
+
+/** "draft-canvas" → "DC", "habi" → "HA", "myProject" → "MP". */
+export function initialsOf(name: string): string {
+  const words = name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean);
+  const letters =
+    words.length >= 2 ? `${words[0]?.[0] ?? ""}${words[1]?.[0] ?? ""}` : (words[0] ?? name).slice(0, 2);
+  return letters.toUpperCase();
+}
+
+/**
+ * A project's mark where its woven avatar would be too small to read (the
+ * sidebar): its initials on a tile in its main language's dye.
+ */
+export function ProjectMark({ name, languages }: { name: string; languages: string[] }) {
+  const lead = languages[0];
+  const dye = (lead ? stackDye(tagLabel(lead)) : undefined) ?? "var(--ink-muted)";
+  return (
+    <span className="project-mark" style={{ "--dye": dye } as CSSProperties} aria-hidden="true">
+      {initialsOf(name)}
+    </span>
   );
 }

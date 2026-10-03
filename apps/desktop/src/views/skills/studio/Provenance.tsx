@@ -293,7 +293,9 @@ export function ProvenanceSheet({
                     <button
                       type="button"
                       className="link-quiet"
-                      onClick={() => navigate({ name: "project", projectId: p.projectId, tab: "installed" })}
+                      onClick={() =>
+                        navigate({ name: "project", projectId: p.projectId, tab: "recommendations" })
+                      }
                     >
                       {p.projectName}
                     </button>

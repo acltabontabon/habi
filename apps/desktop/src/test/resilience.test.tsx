@@ -19,7 +19,8 @@ import { useOverview } from "../lib/queries";
 import { initTheme, useTheme } from "../lib/theme";
 import { useAutosave } from "../lib/useAutosave";
 import { CommandPalette } from "../views/CommandPalette";
-import { InstalledView } from "../views/project/InstalledView";
+import { History } from "../views/project/History";
+import { ProjectSettings } from "../views/project/ProjectSettings";
 import { ProjectView } from "../views/project/ProjectView";
 import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
@@ -466,37 +467,44 @@ describe("the start screen", () => {
 });
 
 describe("the project list", () => {
-  it("removes any project from the list, without touching its folder, and leaves it if open", async () => {
-    let listed = [project, { ...project, id: "p2", name: "web-app", path: "~/code/web-app" }];
+  it("offers removal in the list only for a missing folder, without touching anything on disk", async () => {
+    let listed = [project, { ...project, id: "p2", name: "web-app", path: "~/code/web-app", exists: false }];
     handlers.recent_projects = () => listed;
     handlers.forget_project = vi.fn(({ projectId }) => {
       listed = listed.filter((p) => p.id !== projectId);
       return null;
     });
+    wrap(<Sidebar onOpenPalette={() => {}} />, { name: "welcome" });
+    // A project that opens is removed from its settings, not from the list.
+    expect(await screen.findByText("billing-service")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove billing-service from the list" })).toBeNull();
+    const remove = screen.getByRole("button", { name: "Remove web-app from the list" });
+    expect(remove).toHaveAttribute("title", "Remove from list — nothing on disk is deleted");
+    await userEvent.click(remove);
+    expect(handlers.forget_project).toHaveBeenCalledWith({ projectId: "p2" });
+    expect(await screen.findByText(/web-app removed from the list. Nothing on disk/)).toBeInTheDocument();
+  });
+
+  it("removes a project from its settings after a confirmation, and leaves it", async () => {
+    handlers.forget_project = vi.fn(() => null);
     function Where() {
       const { route } = useNav();
       return <p>on {route.name}</p>;
     }
     wrap(
       <>
-        <Sidebar onOpenPalette={() => {}} />
+        <ProjectSettings overview={billing as unknown as ProjectOverview} onClose={() => {}} />
         <Where />
       </>,
-      { name: "project", projectId: "p1", tab: "recommendations" },
+      { name: "project", projectId: billing.project.id, tab: "recommendations" },
     );
-    // Every project can be removed, not only one whose folder is missing.
-    expect(await screen.findByRole("button", { name: "Remove web-app from the list" })).toBeInTheDocument();
-    const remove = screen.getByRole("button", { name: "Remove billing-service from the list" });
-    expect(remove).toHaveAttribute("title", "Remove from list — nothing on disk is deleted");
-    await userEvent.click(remove);
-    expect(handlers.forget_project).toHaveBeenCalledWith({ projectId: "p1" });
-    expect(
-      await screen.findByText(/billing-service removed from the list. Nothing on disk/),
-    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove…" }));
+    expect(handlers.forget_project).not.toHaveBeenCalled();
+    expect(screen.getByText(/Its folder and files stay exactly as they are/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(handlers.forget_project).toHaveBeenCalledWith({ projectId: billing.project.id });
+    expect(await screen.findByText(/removed from Habi. Nothing on disk/)).toBeInTheDocument();
     expect(screen.getByText("on welcome")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Remove billing-service from the list" })).toBeNull(),
-    );
   });
 });
 
@@ -514,10 +522,10 @@ describe("the sample workspace", () => {
     handlers.remove_sample_workspace = vi.fn(() => null);
     wrap(
       <>
-        <ProjectView projectId={sampleProject.id} tab="evidence" />
+        <ProjectView projectId={sampleProject.id} tab="recommendations" />
         <Where />
       </>,
-      { name: "project", projectId: sampleProject.id, tab: "evidence" },
+      { name: "project", projectId: sampleProject.id, tab: "recommendations" },
     );
     expect(await screen.findByText("You're looking at sample data.")).toBeInTheDocument();
 
@@ -564,10 +572,10 @@ describe("project history", () => {
         problems: ["Habi could not read the record of this operation (EOF while parsing)."],
       },
     ];
-    wrap(<InstalledView overview={billing as unknown as ProjectOverview} />, {
+    wrap(<History overview={billing as unknown as ProjectOverview} onClose={() => {}} />, {
       name: "project",
       projectId: billing.project.id,
-      tab: "installed",
+      tab: "history",
     });
     expect(await screen.findByText("Unreadable operation record")).toBeInTheDocument();
     expect(screen.getByText("needs attention")).toBeInTheDocument();

@@ -244,18 +244,10 @@ export function CommandPalette({
                   </Command.Item>
                   {projectId ? (
                     <Command.Item
-                      value="project facts evidence declarations"
-                      onSelect={() => run(() => navigate({ name: "project", projectId, tab: "evidence" }))}
-                    >
-                      <Icon name="file" /> <span>Show project facts</span>
-                    </Command.Item>
-                  ) : null}
-                  {projectId ? (
-                    <Command.Item
                       value="history installed restore"
-                      onSelect={() => run(() => navigate({ name: "project", projectId, tab: "installed" }))}
+                      onSelect={() => run(() => navigate({ name: "project", projectId, tab: "history" }))}
                     >
-                      <Icon name="history" /> <span>Installed items and history</span>
+                      <Icon name="history" /> <span>Project history</span>
                     </Command.Item>
                   ) : null}
                   <Command.Item

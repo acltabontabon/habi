@@ -5,7 +5,7 @@ import { Icon, Mark } from "../components/Icon";
 import { useToast } from "../components/Toasts";
 import { tip } from "../components/Tooltips";
 import { Kbd } from "../components/ui";
-import { Strand } from "../components/Weave";
+import { ProjectMark, Strand } from "../components/Weave";
 import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
 import { type Dye, useDyes } from "../lib/dye";
@@ -105,20 +105,24 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                     title={p.exists ? p.path : `${p.path} — the folder is missing`}
                     onClick={() => navigate({ name: "project", projectId: p.id, tab: "recommendations" })}
                   >
-                    <Icon name="folder" />
+                    <ProjectMark name={p.name} languages={p.summary?.languages ?? []} />
                     <span className="sidebar-item-text">{p.name}</span>
                     {p.sample ? <span className="sidebar-tag">sample</span> : null}
                     {!p.exists ? <span className="sidebar-tag">missing</span> : null}
                   </button>
-                  <button
-                    type="button"
-                    className="icon-btn sidebar-row-action"
-                    aria-label={`Remove ${p.name} from the list`}
-                    title="Remove from list — nothing on disk is deleted"
-                    onClick={() => void forget(p.id, p.name)}
-                  >
-                    <Icon name="close" />
-                  </button>
+                  {/* A missing folder cannot be opened, so its row is the only place to let it go;
+                      other projects are removed from their settings. */}
+                  {!p.exists ? (
+                    <button
+                      type="button"
+                      className="icon-btn sidebar-row-action"
+                      aria-label={`Remove ${p.name} from the list`}
+                      title="Remove from list — nothing on disk is deleted"
+                      onClick={() => void forget(p.id, p.name)}
+                    >
+                      <Icon name="close" />
+                    </button>
+                  ) : null}
                 </li>
               );
             })}
