@@ -215,7 +215,7 @@ fn crlf_checkouts_are_not_local_edits() {
         .bytes
         .extend_from_slice(b"\n7. One more step.\n");
     newer.item.content_digest = "sha256:newer".into();
-    let update = plan::plan_update(&w.root, &[newer], &none()).unwrap();
+    let update = plan::plan_update(&w.root, &[newer], false, &none()).unwrap();
     assert!(update.conflicts.is_empty(), "{:?}", update.conflicts);
     w.apply(&update);
 
@@ -483,7 +483,7 @@ fn updates_adopt_changed_mcp_definitions() {
     {
         args[1] = "@modelcontextprotocol/server-github@2".into();
     }
-    let u = plan::plan_update(&w.root, &[newer], &none()).unwrap();
+    let u = plan::plan_update(&w.root, &[newer], false, &none()).unwrap();
     assert!(u.conflicts.is_empty(), "{:?}", u.conflicts);
     w.apply(&u);
     assert!(w.read(".cursor/mcp.json").contains("server-github@2"));
@@ -505,7 +505,7 @@ fn updates_adopt_changed_mcp_definitions() {
     {
         args[1] = "@modelcontextprotocol/server-github@3".into();
     }
-    let u = plan::plan_update(&w.root, &[newer], &none()).unwrap();
+    let u = plan::plan_update(&w.root, &[newer], false, &none()).unwrap();
     assert!(
         u.notes.iter().any(|n| n.contains("update it by hand")),
         "{:?}",
@@ -513,6 +513,65 @@ fn updates_adopt_changed_mcp_definitions() {
     );
     w.apply(&u);
     assert_eq!(w.read(".cursor/mcp.json"), edited);
+}
+
+#[test]
+fn updates_offer_newly_suggested_mcp_servers_and_add_them_only_when_asked() {
+    let w = world(None);
+    let team = team_lib(&w.tmp);
+    let (a, _) = github_pair(&team);
+    let clients = [ClientId::Cursor];
+    w.apply(&install(&w, std::slice::from_ref(&a), &clients, true));
+
+    let mut newer = a.clone();
+    newer.item.content_digest = "sha256:newer".into();
+    let mut extra = newer.item.mcp[0].clone();
+    extra.name = "linear".into();
+    newer.item.mcp.push(extra);
+
+    // Not added on its own, but reported so the screen can offer it.
+    let plain = plan::plan_update(&w.root, std::slice::from_ref(&newer), false, &none()).unwrap();
+    assert_eq!(
+        plain.mcp_suggestions.len(),
+        1,
+        "{:?}",
+        plain.mcp_suggestions
+    );
+    assert_eq!(plain.mcp_suggestions[0].server, "linear");
+    assert!(!plain.mcp_suggestions[0].added);
+    w.apply(&plain);
+    assert!(mcp_servers(&w, ".cursor/mcp.json").get("linear").is_none());
+
+    // The same suggestion is still offered, and now added.
+    let adding = plan::plan_update(&w.root, std::slice::from_ref(&newer), true, &none()).unwrap();
+    assert!(adding.mcp_suggestions[0].added);
+    assert!(adding.conflicts.is_empty(), "{:?}", adding.conflicts);
+    w.apply(&adding);
+    assert!(mcp_servers(&w, ".cursor/mcp.json").get("linear").is_some());
+    assert!(mcp_servers(&w, ".cursor/mcp.json").get("github").is_some());
+    let servers: Vec<String> = w
+        .lock()
+        .find(&a.key())
+        .unwrap()
+        .mcp
+        .iter()
+        .map(|m| m.server.clone())
+        .collect();
+    assert_eq!(servers.len(), 2, "{servers:?}");
+
+    // Once recorded, nothing is suggested again.
+    let again = plan::plan_update(&w.root, &[newer], true, &none()).unwrap();
+    assert!(again.mcp_suggestions.is_empty());
+
+    // An item installed without MCP configuration is never offered any.
+    w.apply(&plan::plan_remove(&w.root, &[a.key()], &none()).unwrap());
+    w.apply(&install(&w, std::slice::from_ref(&a), &clients, false));
+    let mut newest = a.clone();
+    newest.item.content_digest = "sha256:newest".into();
+    let extra = newest.item.mcp[0].clone();
+    newest.item.mcp.push(extra);
+    let plan = plan::plan_update(&w.root, &[newest], true, &none()).unwrap();
+    assert!(plan.mcp_suggestions.is_empty());
 }
 
 fn lock_ids(w: &World) -> Vec<String> {
@@ -575,7 +634,7 @@ fn restoring_past_a_later_update_keeps_what_the_user_kept() {
     let mut newer = payload(&team, "jpa-entity-review");
     newer.files[0].bytes.extend_from_slice(b"\nA newer rule.\n");
     newer.item.content_digest = "sha256:newer".into();
-    w.apply(&plan::plan_update(&w.root, &[newer], &none()).unwrap());
+    w.apply(&plan::plan_update(&w.root, &[newer], false, &none()).unwrap());
 
     // The update changed the files the first install wrote: restoring needs
     // decisions, and keeping them keeps the newer version tracked.

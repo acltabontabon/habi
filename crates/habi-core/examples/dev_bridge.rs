@@ -197,6 +197,7 @@ impl Bridge {
             "plan_update" => out(h.plan_update(
                 &s("projectId")?,
                 &arg::<Vec<String>>(a, "keys")?,
+                arg(a, "addMcp")?,
                 &arg(a, "decisions")?,
             )?),
             "plan_remove" => out(h.plan_remove(

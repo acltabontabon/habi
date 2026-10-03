@@ -187,10 +187,25 @@ pub struct Plan {
     /// Must be resolved (re-plan with decisions) before applying.
     pub conflicts: Vec<Conflict>,
     pub notes: Vec<String>,
+    /// MCP servers an update found that an item newly suggests. They are
+    /// added only when the update was planned to add them (`added`).
+    pub mcp_suggestions: Vec<McpSuggestion>,
     pub recovery: String,
     #[serde(skip)]
     #[ts(skip)]
     pub root: PathBuf,
+}
+
+/// An MCP server an installed item suggests since it was installed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct McpSuggestion {
+    /// Title of the item that suggests it.
+    pub item: String,
+    pub server: String,
+    /// Whether this plan adds it.
+    pub added: bool,
 }
 
 impl Plan {
@@ -306,6 +321,35 @@ impl<'a> Workspace<'a> {
         RelPath::new(path)
             .map(|r| crate::fsutil::is_executable(&r.to_path(self.root)))
             .unwrap_or(false)
+    }
+
+    /// The path as the file system spells it, when it differs from `path`
+    /// only in the letter case of the file name. `None` if the spelling
+    /// matches, the file is absent, or an exact match exists beside it.
+    fn spelled_differently(&self, path: &str) -> Option<String> {
+        let (dir, name) = path.rsplit_once('/').unwrap_or(("", path));
+        let folder = RelPath::new(path)
+            .ok()?
+            .to_path(self.root)
+            .parent()?
+            .to_path_buf();
+        let mut found = None;
+        for entry in std::fs::read_dir(folder).ok()?.flatten() {
+            let actual = entry.file_name().into_string().ok()?;
+            if actual == name {
+                return None;
+            }
+            if actual.to_lowercase() == name.to_lowercase() {
+                found = Some(actual);
+            }
+        }
+        found.map(|actual| {
+            if dir.is_empty() {
+                actual
+            } else {
+                format!("{dir}/{actual}")
+            }
+        })
     }
 
     fn original(&mut self, path: &str) -> Result<Option<Vec<u8>>> {
@@ -448,6 +492,7 @@ struct Planner<'a> {
     decisions: &'a Decisions,
     conflicts: Vec<Conflict>,
     notes: Vec<String>,
+    mcp_suggestions: Vec<McpSuggestion>,
     items: Vec<PlanItem>,
 }
 
@@ -480,6 +525,7 @@ impl<'a> Planner<'a> {
             decisions,
             conflicts: Vec::new(),
             notes: Vec::new(),
+            mcp_suggestions: Vec::new(),
             items: Vec::new(),
         })
     }
@@ -1244,8 +1290,12 @@ impl<'a> Planner<'a> {
         p: &Payload,
         clients: &[ClientId],
         locked: &mut LockedItem,
+        only: Option<&BTreeSet<String>>,
     ) -> Result<()> {
         for requirement in &p.item.mcp {
+            if only.is_some_and(|names| !names.contains(&requirement.name)) {
+                continue;
+            }
             let Some(spec) = &requirement.server else {
                 self.notes.push(format!(
                     "`{}` needs the MCP server `{}`, but the library does not suggest a configuration; set it up in your client.",
@@ -1321,12 +1371,17 @@ impl<'a> Planner<'a> {
                                 client.label()
                             ));
                         } else {
+                            let way_out = if only.is_some() {
+                                "turn off adding the newly suggested MCP configuration"
+                            } else {
+                                "turn off “Add suggested MCP configuration”"
+                            };
                             self.conflicts.push(conflict(
                                 file,
                                 ConflictKind::InvalidConfig,
                                 &p.item.title,
                                 format!(
-                                    "{e}. Fix the file and preview again, choose to leave it unchanged (the `{}` server is then not added for {}), or turn off “Add suggested MCP configuration”.",
+                                    "{e}. Fix the file and preview again, choose to leave it unchanged (the `{}` server is then not added for {}), or {way_out}.",
                                     requirement.name,
                                     client.label()
                                 ),
@@ -1461,8 +1516,9 @@ impl<'a> Planner<'a> {
 
     /// Brings the MCP servers Habi added for an item in line with an update:
     /// a changed definition replaces the entry Habi wrote (if nobody edited
-    /// it), and a server the item no longer needs is removed.
-    fn update_mcp(&mut self, p: &Payload, locked: &mut LockedItem) -> Result<()> {
+    /// it), and a server the item no longer needs is removed. A server the
+    /// item newly suggests is reported, and added only if `add_new`.
+    fn update_mcp(&mut self, p: &Payload, locked: &mut LockedItem, add_new: bool) -> Result<()> {
         // Installed with "Add suggested MCP configuration".
         let opted_in = !locked.mcp.is_empty();
         let mut kept = Vec::new();
@@ -1539,16 +1595,25 @@ impl<'a> Planner<'a> {
             }
         }
         locked.mcp = kept;
-        for requirement in &p.item.mcp {
-            if opted_in
-                && requirement.server.is_some()
-                && !locked.mcp.iter().any(|m| m.server == requirement.name)
-            {
-                self.notes.push(format!(
-                    "`{}` now suggests the `{}` MCP server. Install it again with “Add suggested MCP configuration” to add it.",
-                    p.item.title, requirement.name
-                ));
-            }
+        let newly: BTreeSet<String> = p
+            .item
+            .mcp
+            .iter()
+            .filter(|r| {
+                opted_in && r.server.is_some() && !locked.mcp.iter().any(|m| m.server == r.name)
+            })
+            .map(|r| r.name.clone())
+            .collect();
+        for server in &newly {
+            self.mcp_suggestions.push(McpSuggestion {
+                item: p.item.title.clone(),
+                server: server.clone(),
+                added: add_new,
+            });
+        }
+        if add_new && !newly.is_empty() {
+            let clients = locked.clients.clone();
+            self.add_mcp(p, &clients, locked, Some(&newly))?;
         }
         Ok(())
     }
@@ -1849,6 +1914,7 @@ impl<'a> Planner<'a> {
             changes,
             conflicts: self.conflicts,
             notes: dedup(self.notes),
+            mcp_suggestions: self.mcp_suggestions,
             recovery: match self.scope {
                 // Plain text: the desktop shows it as is, so no Markdown backticks.
                 Scope::Project => "Replaced or deleted files are kept. Restore them from the project's history, or with habi restore.".into(),
@@ -1989,7 +2055,7 @@ fn install_in(
             _ => planner.install_skill(p, &wanted, existing.as_ref())?,
         };
         if include_mcp {
-            planner.add_mcp(p, &wanted, &mut locked)?;
+            planner.add_mcp(p, &wanted, &mut locked, None)?;
         }
         // Keep the original install time when nothing about the item changed.
         if let Some(e) = &existing
@@ -2019,8 +2085,13 @@ fn install_in(
 }
 
 /// Plans updating installed items to the given payloads (same clients).
-pub fn plan_update(root: &Path, payloads: &[Payload], decisions: &Decisions) -> Result<Plan> {
-    update_in(root, payloads, decisions, Scope::Project)
+pub fn plan_update(
+    root: &Path,
+    payloads: &[Payload],
+    add_mcp: bool,
+    decisions: &Decisions,
+) -> Result<Plan> {
+    update_in(root, payloads, add_mcp, decisions, Scope::Project)
 }
 
 /// `plan_update` for skills installed on this machine.
@@ -2029,12 +2100,13 @@ pub fn plan_update_on_machine(
     payloads: &[Payload],
     decisions: &Decisions,
 ) -> Result<Plan> {
-    update_in(home, payloads, decisions, Scope::Machine)
+    update_in(home, payloads, false, decisions, Scope::Machine)
 }
 
 fn update_in(
     root: &Path,
     payloads: &[Payload],
+    add_mcp: bool,
     decisions: &Decisions,
     scope: Scope,
 ) -> Result<Plan> {
@@ -2052,7 +2124,7 @@ fn update_in(
             ItemKind::Instructions => planner.install_instructions(p, &clients, Some(&existing))?,
             _ => planner.install_skill(p, &clients, Some(&existing))?,
         };
-        planner.update_mcp(p, &mut locked)?;
+        planner.update_mcp(p, &mut locked, add_mcp)?;
         planner.items.push(PlanItem {
             key: p.key(),
             title: p.item.title.clone(),
@@ -2202,6 +2274,32 @@ fn restore_in(
             _ => false,
         };
         if unchanged {
+            // A case-only rename leaves the content as before but the file
+            // under the new name, which a case-insensitive file system reads
+            // as the old one too. Rename it back, if the operation wrote the
+            // name it has now.
+            if let (Some(content), Some(actual)) =
+                (&step.content, planner.ws.spelled_differently(&step.path))
+                && steps.iter().any(|s| s.path == actual)
+            {
+                let why = "Restores the file name's letter case from before the operation.";
+                planner
+                    .ws
+                    .write(&actual, None, ChangeKind::Restore, label, &[], why)?;
+                if let Some(executable) = step.executable {
+                    planner.ws.modes.insert(step.path.clone(), executable);
+                }
+                planner.ws.forced.insert(step.path.clone());
+                planner.ws.write(
+                    &step.path,
+                    Some(content.clone()),
+                    ChangeKind::Restore,
+                    label,
+                    &[],
+                    why,
+                )?;
+                continue;
+            }
             // Content is as before; put back an executable bit the
             // operation changed.
             if let (Some(executable), Some(content)) = (step.executable, &step.content)

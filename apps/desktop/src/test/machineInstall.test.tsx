@@ -73,6 +73,7 @@ function plan(over: Partial<Plan> = {}): Plan {
     ],
     conflicts: [],
     notes: [],
+    mcpSuggestions: [],
     recovery: "Replaced or deleted files are kept, and can be restored.",
     ...over,
   };
