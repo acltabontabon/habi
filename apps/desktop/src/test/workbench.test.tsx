@@ -100,6 +100,76 @@ describe("workbench", () => {
     expect(screen.getAllByRole("button", { name: /pom\.xml:\d+/ }).length).toBeGreaterThan(0);
   });
 
+  it("puts every action at the top right and shows where an installed item lives, once", async () => {
+    const installed: ProjectOverview = {
+      ...billingOverview,
+      recommendations: billingOverview.recommendations.map((r) =>
+        r.item.id === "liquibase-migration-review"
+          ? {
+              ...r,
+              installState: "current",
+              nextAction: "none",
+              installation: {
+                key: "k-liquibase",
+                id: r.item.id,
+                title: r.item.title,
+                sourceName: r.item.sourceName,
+                snapshot: r.item.snapshot,
+                installedAt: "2026-10-04T00:00:00Z",
+                clients: ["claude-code", "codex"],
+                state: "current",
+                files: [
+                  {
+                    path: ".claude/skills/liquibase-migration-review/SKILL.md",
+                    state: "unchanged",
+                    upstreamChanged: false,
+                  },
+                  {
+                    path: ".claude/skills/liquibase-migration-review/scripts/check.sh",
+                    state: "unchanged",
+                    upstreamChanged: false,
+                  },
+                  {
+                    path: ".agents/skills/liquibase-migration-review/SKILL.md",
+                    state: "unchanged",
+                    upstreamChanged: false,
+                  },
+                  { path: ".habi/lock.json", state: "unchanged", upstreamChanged: false },
+                ],
+                upstreamSnapshot: null,
+              },
+            }
+          : r,
+      ),
+    };
+    const user = userEvent.setup();
+    wrap(<RoutedWorkbench overview={installed} />, installed.project.id);
+    // What is installed has its own section; the groups list only what could still be added.
+    const installedGroup = screen
+      .getByRole("heading", { name: "Installed" })
+      .closest("section") as HTMLElement;
+    expect(within(installedGroup).getByText("Liquibase migration review")).toBeInTheDocument();
+    const fits = screen.getByRole("heading", { name: /Fits this project/ }).closest("section") as HTMLElement;
+    expect(within(fits).queryByText("Liquibase migration review")).not.toBeInTheDocument();
+    await user.click(row("Liquibase migration review"));
+    const strip = screen.getByRole("img", { name: "Installed for Claude Code and Codex" });
+    // Only the tools it is installed for; where the files are is in each one's tooltip,
+    // as skill folders rather than every file, and without Habi's own record.
+    expect(strip.children).toHaveLength(2);
+    const tipOf = within(strip).getByText("Claude Code").getAttribute("data-tip") ?? "";
+    expect(tipOf).toContain(".claude/skills/liquibase-migration-review");
+    expect(tipOf).toContain(".agents/skills/liquibase-migration-review");
+    expect(tipOf).not.toContain("lock.json");
+    // Removing is behind "⋯", beside the title, and still reviewed first.
+    const header = screen
+      .getByRole("heading", { name: "Liquibase migration review", level: 2 })
+      .closest("header");
+    await user.click(
+      within(header as HTMLElement).getByRole("button", { name: "More for Liquibase migration review" }),
+    );
+    expect(screen.getByRole("menuitem", { name: /Remove from this project/ })).toBeInTheDocument();
+  });
+
   it("separates readiness from applicability", async () => {
     const user = userEvent.setup();
     wrap(<RoutedWorkbench overview={monoOverview} />, monoOverview.project.id);

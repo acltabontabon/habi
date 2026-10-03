@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Dialog } from "../../components/Dialog";
 import { useToast } from "../../components/Toasts";
-import { Button, Notice } from "../../components/ui";
+import { Button, ErrorNotice, Notice } from "../../components/ui";
 import { api } from "../../lib/api";
 import { plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
@@ -22,6 +22,10 @@ export function ProjectSettings({ overview, onClose }: { overview: ProjectOvervi
   const [exclusions, setExclusions] = useState(project.exclusions.join("\n"));
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  /** "remove", or the correction being undone. */
+  const [busy, setBusy] = useState<string | null>(null);
+  // A toast would sit behind this dialog, out of reach: failures show here instead.
+  const [failure, setFailure] = useState<{ title: string; error: unknown } | null>(null);
   const { navigate } = useNav();
   const list = exclusions
     .split("\n")
@@ -33,37 +37,48 @@ export function ProjectSettings({ overview, onClose }: { overview: ProjectOvervi
 
   const save = async () => {
     setSaving(true);
+    setFailure(null);
     try {
       await api.setExclusions(project.id, list);
       invalidateProjectData(client, project.id);
       toast.show("Saved. The project will be scanned again.");
       onClose();
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      setFailure({ title: "Not saved", error: e });
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async () => {
+    if (busy) return;
+    setBusy("remove");
+    setFailure(null);
     try {
       await api.forgetProject(project.id);
-      void client.invalidateQueries({ queryKey: keys.recent });
-      onClose();
-      navigate({ name: "welcome" });
-      toast.show(`${project.name} removed from Habi. Nothing on disk was changed.`);
     } catch (e) {
-      toast.show(`Could not remove ${project.name}: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      setFailure({ title: `Could not remove ${project.name}`, error: e });
+      setBusy(null);
+      return;
     }
+    void client.invalidateQueries({ queryKey: keys.recent });
+    onClose();
+    navigate({ name: "welcome" });
+    toast.show(`${project.name} removed from Habi. Nothing on disk was changed.`);
   };
 
   const retract = async (id: string) => {
+    if (busy) return;
+    setBusy(id);
+    setFailure(null);
     try {
       await api.retract(project.id, id);
       invalidateProjectData(client, project.id);
       toast.show("Correction removed. Recommendations use what Habi found again.");
     } catch (e) {
-      toast.show(`Could not remove the correction: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      setFailure({ title: "Could not remove the correction", error: e });
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -117,7 +132,7 @@ export function ProjectSettings({ overview, onClose }: { overview: ProjectOvervi
                   <span className="muted"> · {d.module === "*" ? "whole repository" : d.module}</span>
                   {d.note ? <span className="muted"> — “{d.note}”</span> : null}
                 </span>
-                <Button size="sm" variant="quiet" onClick={() => void retract(d.id)}>
+                <Button size="sm" variant="quiet" busy={busy === d.id} onClick={() => void retract(d.id)}>
                   Undo
                 </Button>
               </li>
@@ -154,7 +169,7 @@ export function ProjectSettings({ overview, onClose }: { overview: ProjectOvervi
               <Button size="sm" variant="quiet" onClick={() => setRemoving(false)}>
                 Keep it
               </Button>
-              <Button size="sm" variant="danger" onClick={() => void remove()}>
+              <Button size="sm" variant="danger" busy={busy === "remove"} onClick={() => void remove()}>
                 Remove
               </Button>
             </div>
@@ -170,6 +185,7 @@ export function ProjectSettings({ overview, onClose }: { overview: ProjectOvervi
           </div>
         )}
       </section>
+      {failure ? <ErrorNotice error={failure.error} title={failure.title} /> : null}
     </Dialog>
   );
 }

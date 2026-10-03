@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectPick } from "./bindings/ProjectPick";
 import type { ProjectRecord } from "./bindings/ProjectRecord";
 import type { Settings } from "./bindings/Settings";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Loading } from "./components/lazy";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { Tooltips } from "./components/Tooltips";
 import { ErrorNotice, Working } from "./components/ui";
@@ -16,19 +17,28 @@ import { isOwnChange, staleKey } from "./lib/ownChanges";
 import { invalidateSkills, keys, useAppInfo, useSettings } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
 import { UpdatesProvider } from "./lib/updates";
-import { AboutView } from "./views/AboutView";
 import { CommandPalette } from "./views/CommandPalette";
-import { ContributionsView } from "./views/contributions/ContributionsView";
 import { ProjectChooser, SkillsFolderCaught } from "./views/OpenProject";
-import { PrivacyView } from "./views/PrivacyView";
 import { ProjectView } from "./views/project/ProjectView";
-import { SettingsView } from "./views/SettingsView";
 import { Sidebar } from "./views/Sidebar";
-import { AddSkillsDialog, type AddSkillsStart } from "./views/skills/AddSkillsDialog";
+import type { AddSkillsStart } from "./views/skills/AddSkillsDialog";
 import { SkillsView } from "./views/skills/SkillsView";
-import { SourcesView } from "./views/sources/SourcesView";
 import { Welcome } from "./views/Welcome";
 import { WelcomeOverlay } from "./views/WelcomeOverlay";
+
+// Screens off the launch path arrive when first visited, so the first screen does not wait for them.
+const SourcesView = lazy(() =>
+  import("./views/sources/SourcesView").then((m) => ({ default: m.SourcesView })),
+);
+const ContributionsView = lazy(() =>
+  import("./views/contributions/ContributionsView").then((m) => ({ default: m.ContributionsView })),
+);
+const SettingsView = lazy(() => import("./views/SettingsView").then((m) => ({ default: m.SettingsView })));
+const AboutView = lazy(() => import("./views/AboutView").then((m) => ({ default: m.AboutView })));
+const PrivacyView = lazy(() => import("./views/PrivacyView").then((m) => ({ default: m.PrivacyView })));
+const AddSkillsDialog = lazy(() =>
+  import("./views/skills/AddSkillsDialog").then((m) => ({ default: m.AddSkillsDialog })),
+);
 
 function makeClient() {
   return new QueryClient({
@@ -174,8 +184,12 @@ function Shell() {
     navigate({ name: "sources", view: "folder", location });
   };
   // A new skill is a page to write on, at once: no form, nothing to decide first.
+  // One at a time: a double click or a held ⌘N makes one skill, not several.
+  const creating = useRef(false);
   const newSkill = useCallback(
     async (context?: NewSkillContext) => {
+      if (creating.current) return;
+      creating.current = true;
       try {
         const skill = await api.createSkill(
           { title: context?.title ?? "", description: "", template: context?.template ?? "blank" },
@@ -185,6 +199,8 @@ function Shell() {
         navigate({ name: "skills", skillId: skill.summary.id });
       } catch (e) {
         toast.show(e instanceof Error ? e.message : String(e), "danger");
+      } finally {
+        creating.current = false;
       }
     },
     [client, navigate, toast],
@@ -218,14 +234,25 @@ function Shell() {
   // Re-inspect when files in the open project change.
   useEffect(() => {
     let stop: (() => void) | undefined;
-    void listen<{ projectId: string; paths: string[] }>("project-changed", (event) => {
-      // Files Habi itself just wrote are not outside changes.
-      if (isOwnChange(event.payload.projectId)) return;
-      void client.setQueryData(staleKey(event.payload.projectId), event.payload.paths);
-    }).then((unlisten) => {
-      stop = unlisten;
-    });
-    return () => stop?.();
+    let done = false;
+    try {
+      void listen<{ projectId: string; paths: string[] }>("project-changed", (event) => {
+        // Files Habi itself just wrote are not outside changes.
+        if (isOwnChange(event.payload.projectId)) return;
+        void client.setQueryData(staleKey(event.payload.projectId), event.payload.paths);
+      })
+        .then((unlisten) => {
+          if (done) unlisten();
+          else stop = unlisten;
+        })
+        .catch(() => undefined);
+    } catch {
+      // Not in a Tauri window (the design preview): nothing to listen to.
+    }
+    return () => {
+      done = true;
+      stop?.();
+    };
   }, [client]);
 
   // Closing the window waits for pending edits to be written.
@@ -235,7 +262,7 @@ function Shell() {
     try {
       void guardWindowClose(() =>
         toast.show(
-          "Some edits could not be saved, so Habi stayed open. Close again to quit without them.",
+          "Some edits could not be saved, so Habi stayed open. Close again within a minute to quit without them.",
           "danger",
         ),
       )
@@ -258,6 +285,8 @@ function Shell() {
       const mod = e.metaKey || e.ctrlKey;
       // A focused control (the code editor's ⌘[ outdent) handled it already.
       if (!mod || e.defaultPrevented) return;
+      // A held shortcut acts once, not once per key repeat.
+      if (e.repeat) return;
       // While a dialog is open, global shortcuts would act behind it (and
       // could open a second dialog on top). ⌘K still closes the palette.
       const otherDialog = document.querySelector('[role="dialog"]:not(.palette), [role="alertdialog"]');
@@ -299,34 +328,40 @@ function Shell() {
         <main id="main" className="main" tabIndex={-1}>
           {/* A screen that fails to render is replaced; the sidebar still works, and leaving clears it. */}
           <ErrorBoundary key={screen} area={route.name}>
-            {route.name === "welcome" && <Welcome />}
-            {route.name === "project" && (
-              <ProjectView
-                key={route.projectId}
-                projectId={route.projectId}
-                tab={route.tab}
-                itemKey={route.itemKey}
-              />
-            )}
-            {route.name === "skills" && <SkillsView skillId={route.skillId} />}
-            {route.name === "sources" && (
-              <SourcesView
-                sourceId={route.sourceId}
-                entry={route.entry}
-                view={route.view}
-                location={route.location}
-                itemId={route.itemId}
-                file={route.file}
-              />
-            )}
-            {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
-            {route.name === "settings" && <SettingsView />}
-            {route.name === "about" && <AboutView />}
-            {route.name === "privacy" && <PrivacyView />}
+            <Suspense fallback={<Loading stage />}>
+              {route.name === "welcome" && <Welcome />}
+              {route.name === "project" && (
+                <ProjectView
+                  key={route.projectId}
+                  projectId={route.projectId}
+                  tab={route.tab}
+                  itemKey={route.itemKey}
+                />
+              )}
+              {route.name === "skills" && <SkillsView skillId={route.skillId} />}
+              {route.name === "sources" && (
+                <SourcesView
+                  sourceId={route.sourceId}
+                  entry={route.entry}
+                  view={route.view}
+                  location={route.location}
+                  itemId={route.itemId}
+                  file={route.file}
+                />
+              )}
+              {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
+              {route.name === "settings" && <SettingsView />}
+              {route.name === "about" && <AboutView />}
+              {route.name === "privacy" && <PrivacyView />}
+            </Suspense>
           </ErrorBoundary>
         </main>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        {adding ? <AddSkillsDialog start={adding} onClose={() => setAdding(null)} /> : null}
+        {adding ? (
+          <Suspense fallback={null}>
+            <AddSkillsDialog start={adding} onClose={() => setAdding(null)} />
+          </Suspense>
+        ) : null}
         {welcomeOpen ? <WelcomeOverlay onClose={closeWelcome} /> : null}
         {opening?.step === "chooser" ? (
           <ProjectChooser

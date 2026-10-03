@@ -19,6 +19,8 @@ export type RichTip = {
   mark?: string;
   /** Dashed mark: a community library. */
   stitched?: boolean;
+  /** A word set as a small badge after the title ("community"). */
+  badge?: string;
   lines?: { text: string; mono?: boolean }[];
   note?: { text: string; tone?: "ok" | "warn" | "danger" | "muted" | "unknown" };
 };
@@ -52,31 +54,68 @@ function parse(el: HTMLElement): Parsed | null {
   return { text, keys };
 }
 
+/** What the layer filled in for assistive technology, so it can take back exactly that. */
+const filled = new WeakMap<HTMLElement, { attr: "aria-label" | "aria-description"; value: string }>();
+/** Elements whose `title` the layer holds (emptied, not removed: see `takeTitle`). */
+const adopted = new WeakSet<HTMLElement>();
+
+function fill(el: HTMLElement, attr: "aria-label" | "aria-description", value: string) {
+  el.setAttribute(attr, value);
+  filled.set(el, { attr, value });
+}
+
+/** Removes what the layer filled in, leaving anything the element's owner set since. */
+function unfill(el: HTMLElement) {
+  const f = filled.get(el);
+  if (!f) return;
+  if (el.getAttribute(f.attr) === f.value) el.removeAttribute(f.attr);
+  filled.delete(el);
+}
+
+function richWords(rich: string): string {
+  try {
+    const r = JSON.parse(rich) as RichTip;
+    return [r.badge, ...(r.lines ?? []).map((l) => l.text), r.note?.text].filter(Boolean).join(". ");
+  } catch {
+    return "";
+  }
+}
+
 /** Moves a `title` into the layer's hands, keeping what it said for assistive technology. */
 function adopt(el: HTMLElement) {
   const title = el.getAttribute("title");
-  if (title === null) {
-    // A rich card is described by its lines, for those who do not see it.
-    const rich = el.dataset.tipRich;
-    if (rich && !el.hasAttribute("aria-description")) {
-      try {
-        const r = JSON.parse(rich) as RichTip;
-        const words = [...(r.lines ?? []).map((l) => l.text), r.note?.text].filter(Boolean).join(". ");
-        if (words) el.setAttribute("aria-description", words);
-      } catch {
-        // Nothing to describe.
-      }
-    }
-    return;
-  }
-  el.removeAttribute("title");
+  if (title !== null && !(title === "" && adopted.has(el))) takeTitle(el, title);
+  else if (!adopted.has(el)) describeRich(el);
+}
+
+function takeTitle(el: HTMLElement, title: string) {
+  unfill(el);
+  adopted.add(el);
+  // Emptied rather than removed: an empty title shows no system tooltip, and
+  // when the owner later changes or drops it, the change is there to observe.
+  el.setAttribute("title", "");
   el.dataset.tip = title;
   if (!title.trim()) return;
   const named = el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby");
   const words = (el.textContent ?? "").trim();
-  if (!named && !words) el.setAttribute("aria-label", title);
-  else if (!el.hasAttribute("aria-description") && words !== title)
-    el.setAttribute("aria-description", title);
+  if (!named && !words) fill(el, "aria-label", title);
+  else if (!el.hasAttribute("aria-description") && words !== title) fill(el, "aria-description", title);
+}
+
+/** A rich card is described by its lines, for those who do not see it. */
+function describeRich(el: HTMLElement) {
+  const rich = el.dataset.tipRich;
+  const words = rich ? richWords(rich) : "";
+  if (filled.get(el)?.value === words) return;
+  unfill(el);
+  if (words && !el.hasAttribute("aria-description")) fill(el, "aria-description", words);
+}
+
+/** The owner dropped the title: the tip, and what it said, go with it. */
+function release(el: HTMLElement) {
+  unfill(el);
+  adopted.delete(el);
+  delete el.dataset.tip;
 }
 
 function holder(target: EventTarget | null): HTMLElement | null {
@@ -148,8 +187,28 @@ export function Tooltips() {
       if (e.key === "Escape" && current.current) hide();
     };
 
-    // A tip given to the element under the pointer after it arrived.
     const late = new MutationObserver((records) => {
+      // A title the layer holds was changed or dropped by its owner (React
+      // removes a prop's attribute, and knows nothing of the copies made here).
+      for (const r of records) {
+        const el = r.target;
+        if (!(el instanceof HTMLElement)) continue;
+        if (r.attributeName === "title" && adopted.has(el)) {
+          const title = el.getAttribute("title");
+          if (title === null) {
+            release(el);
+            if (current.current === el) hide();
+          } else if (title !== "") {
+            takeTitle(el, title);
+            // A tip on screen says the new words at once.
+            const content = current.current === el ? parse(el) : null;
+            if (content) setShown((s) => (s ? { ...s, content } : s));
+          }
+        } else if (r.attributeName === "data-tip-rich" && filled.has(el) && !adopted.has(el)) {
+          describeRich(el);
+        }
+      }
+      // A tip given to the element under the pointer after it arrived.
       const target = pointed.current;
       if (!target?.isConnected) return;
       for (const r of records) {
@@ -248,6 +307,7 @@ function Bubble({ shown }: { shown: Shown }) {
               />
             ) : null}
             {c.rich.title}
+            {c.rich.badge ? <span className="tip-badge">{c.rich.badge}</span> : null}
           </p>
           {(c.rich.lines ?? []).map((l, i) => (
             <p key={i} className={`tip-line${l.mono ? " mono" : ""}`}>

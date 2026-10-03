@@ -225,7 +225,10 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
         void api.forgetGitCopy(copy.sourceId);
         return;
       }
+      // Back, then another repository: the one fetched before is no longer needed.
+      const previous = copySource.current;
       copySource.current = copy.sourceId;
+      if (previous && previous !== copy.sourceId) void api.forgetGitCopy(previous).catch(() => {});
       if (jobRef.current === job) jobRef.current = null;
       await inspect({ type: "gitCopy", sourceId: copy.sourceId }, copy.label);
     } catch (e) {

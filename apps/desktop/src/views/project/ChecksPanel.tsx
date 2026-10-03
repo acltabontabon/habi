@@ -3,7 +3,7 @@
  * environment), then an explicit run with timeout and cancel.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CheckPreview } from "../../bindings/CheckPreview";
 import type { CheckRun } from "../../bindings/CheckRun";
 import type { CheckSpec } from "../../bindings/CheckSpec";
@@ -54,28 +54,44 @@ function CheckCard({
   const [error, setError] = useState<unknown>(null);
   const [job, setJob] = useState<string | null>(null);
   const [result, setResult] = useState<CheckRun | null>(null);
+  /** Only the latest preview asked for is shown; an earlier one that answers late is dropped. */
+  const asked = useRef(0);
+  /** The running command, stopped if this card goes away (another tab) rather than left running unseen. */
+  const running = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      asked.current++;
+      const job = running.current;
+      running.current = null;
+      if (job) void api.cancelJob(job).catch(() => undefined);
+    },
+    [],
+  );
 
   const prepare = async (nextBindings = bindings, nextModule = module, keepResult = false) => {
+    const mine = ++asked.current;
     setError(null);
     if (!keepResult) setResult(null);
     try {
-      setPreview(
-        await api.prepareCheck(
-          overview.project.id,
-          recommendation.item.key,
-          check.id,
-          nextModule,
-          nextBindings,
-        ),
+      const next = await api.prepareCheck(
+        overview.project.id,
+        recommendation.item.key,
+        check.id,
+        nextModule,
+        nextBindings,
       );
+      if (mine === asked.current) setPreview(next);
     } catch (e) {
+      if (mine !== asked.current) return;
       setPreview(null);
       setError(e);
     }
   };
 
   const run = async () => {
+    if (running.current) return;
     const id = newJobId();
+    running.current = id;
     setJob(id);
     setError(null);
     try {
@@ -85,10 +101,11 @@ function CheckCard({
       void client.invalidateQueries({ queryKey: ["checkRuns"] });
       // A preview id is single-use; prepare a fresh one for another run, but
       // keep showing the result of the run that just finished.
-      void prepare(bindings, module, true);
+      if (running.current === id) void prepare(bindings, module, true);
     } catch (e) {
       setError(e);
     } finally {
+      if (running.current === id) running.current = null;
       setJob(null);
     }
   };
@@ -104,6 +121,7 @@ function CheckCard({
             className="input"
             value={module}
             onChange={(e) => {
+              asked.current++;
               setModule(e.target.value);
               setPreview(null);
             }}

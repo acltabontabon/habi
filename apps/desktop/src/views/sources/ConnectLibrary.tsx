@@ -194,17 +194,23 @@ function Sentence({
       Habi will read {where}
       {only}
       {how}, and list it as{" "}
-      <input
-        className={`tok tok-input${name.trim() ? "" : " is-open"}`}
-        aria-label="Shown as"
-        title="Click to rename"
-        value={name}
-        size={Math.max(9, name.length + 1)}
-        placeholder="a library"
-        spellCheck={false}
-        disabled={!canRename}
-        onChange={(e) => onRename(e.target.value)}
-      />
+      {/* The one word of the sentence you can write over: it looks like a field, with a pencil to say so. */}
+      <label
+        className={`tok-rename${canRename ? "" : " is-locked"}`}
+        title={canRename ? "Rename it: this is the name Habi lists it under" : undefined}
+      >
+        <input
+          className={`tok tok-input${name.trim() ? "" : " is-open"}`}
+          aria-label="Shown as"
+          value={name}
+          size={Math.max(9, name.length + 1)}
+          placeholder="a library"
+          spellCheck={false}
+          disabled={!canRename}
+          onChange={(e) => onRename(e.target.value)}
+        />
+        {canRename ? <Icon name="pencil" size={14} /> : null}
+      </label>
       , a <Tok known>{role === "team" ? "team" : "community"}</Tok> library.
     </p>
   );

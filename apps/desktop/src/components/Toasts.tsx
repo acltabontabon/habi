@@ -77,3 +77,11 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
 export function useToast() {
   return useContext(ToastContext);
 }
+
+/**
+ * For a modal's `onPointerDownOutside`: toasts sit above every overlay, and
+ * dismissing one should not also close the dialog beneath it.
+ */
+export function keepOpenForToasts(event: { target: EventTarget | null; preventDefault: () => void }) {
+  if (event.target instanceof Element && event.target.closest(".toasts")) event.preventDefault();
+}

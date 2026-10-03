@@ -18,6 +18,7 @@ import { ItemDetailPane } from "./ItemDetailPane";
 const GROUPS: Group[] = ["required", "relevant", "needsInformation", "available", "notApplicable"];
 
 function rowStatus(r: Recommendation) {
+  if (r.installState === "current") return null;
   if (r.installState !== "notInstalled")
     return <Status tone={installTone[r.installState]}>{installLabel[r.installState]}</Status>;
   if (r.applicability.applicability === "needsInformation")
@@ -25,6 +26,21 @@ function rowStatus(r: Recommendation) {
   if (r.readiness.state === "missing" && r.applicability.applicability === "applies")
     return <Status tone="warn">Prerequisite missing</Status>;
   return null;
+}
+
+/**
+ * Why an installed item is here, in its row. It was installed on purpose, so
+ * it is not offered "to use manually"; what the match says still shows.
+ */
+function installedReason(r: Recommendation): string {
+  switch (r.applicability.applicability) {
+    case "undeclared":
+      return "Installed by choice. It has no rules for when it applies.";
+    case "doesNotApply":
+      return "Installed, though its conditions do not hold here.";
+    default:
+      return r.applicability.reason;
+  }
 }
 
 /**
@@ -60,13 +76,23 @@ export function Workbench({
   const toList = () => navigate({ name: "project", projectId, tab: "recommendations" });
   useEffect(() => {
     if (!narrow || !itemKey) return;
+    let later: number | undefined;
     const onKey = (e: globalThis.KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (e.key !== "Escape" || target?.closest("input, textarea, [role=dialog]")) return;
-      navigate({ name: "project", projectId, tab: "recommendations" });
+      if (e.key !== "Escape" || e.defaultPrevented || target?.closest("input, textarea, [role=dialog]"))
+        return;
+      // The reader's own Esc (closing a file, then the package) may run after this listener and
+      // marks the key as used: back to the list only once every listener has had its turn.
+      window.clearTimeout(later);
+      later = window.setTimeout(() => {
+        if (!e.defaultPrevented) navigate({ name: "project", projectId, tab: "recommendations" });
+      }, 0);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(later);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [narrow, itemKey, navigate, projectId]);
 
   const visible = useMemo(() => {
@@ -80,11 +106,16 @@ export function Workbench({
     );
   }, [overview.recommendations, filter]);
 
-  // Items without applicability rules are not recommendations: unless shown,
-  // only installed ones (which may need an update) are listed.
+  // What is installed has a section of its own, whatever Habi's match says;
+  // the groups below it list what could still be added.
+  const installed = visible.filter((r) => r.installState !== "notInstalled");
+  const candidates = visible.filter((r) => r.installState === "notInstalled");
+  // Items without applicability rules are not recommendations: they are listed only when shown.
   const listed = (r: Recommendation) =>
     filter || fitsProject(r) || (r.group === "notApplicable" ? showNotApplicable : showAvailable);
-  const navigable = visible.filter(listed);
+  const membersOf = (group: Group) => candidates.filter((r) => r.group === group && listed(r));
+  // In the order they are drawn: installed first, then each group.
+  const navigable = [...installed, ...GROUPS.flatMap(membersOf)];
   const unmatchedByLibrary = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of overview.recommendations)
@@ -108,7 +139,8 @@ export function Workbench({
   const activeKey = selectedHere?.key ?? selected?.item.key;
   const updatable = overview.recommendations.filter((r) => r.installState === "updateAvailable");
   useEffect(() => {
-    if (!chosen || fitsProject(chosen)) return;
+    // An installed item is in the Installed section, which never folds away.
+    if (chosen?.installState !== "notInstalled" || fitsProject(chosen)) return;
     if (chosen.group === "notApplicable") setShowNotApplicable(true);
     else setShowAvailable(true);
   }, [chosen]);
@@ -133,8 +165,41 @@ export function Workbench({
   };
 
   const counts = Object.fromEntries(
-    GROUPS.map((g) => [g, visible.filter((r) => r.group === g).length]),
+    GROUPS.map((g) => [g, candidates.filter((r) => r.group === g).length]),
   ) as Record<Group, number>;
+
+  const row = (r: Recommendation) => {
+    const active = r.item.key === activeKey;
+    return (
+      <li key={r.item.key}>
+        <button
+          type="button"
+          data-key={r.item.key}
+          className={`rec-row${active ? " is-active" : ""}`}
+          aria-current={active ? "true" : undefined}
+          onClick={() => select(r)}
+          onKeyDown={onKeyDown}
+        >
+          <span className="rec-row-top">
+            <span className="rec-row-title">{r.item.title}</span>
+            {rowStatus(r)}
+          </span>
+          <span className="rec-row-reason">
+            {r.installState === "notInstalled" ? r.applicability.reason : installedReason(r)}
+          </span>
+          <span className="rec-row-meta">
+            <span className="provenance">
+              <Strand dye={dyes(r.item.sourceId)} size={13} />
+              {r.item.sourceName}
+            </span>
+            {/* A plain skill is the default; only the other kinds are worth saying. */}
+            {r.item.kind !== "skill" ? <span>{kindLabel[r.item.kind]}</span> : null}
+            {r.item.requirement === "required" ? <span>required</span> : null}
+          </span>
+        </button>
+      </li>
+    );
+  };
 
   return (
     <div className={`workbench${mode}`}>
@@ -170,83 +235,68 @@ export function Workbench({
             </button>
           </div>
         ) : null}
-        {visible.length === 0 && here.length === 0 ? (
-          <Empty title="Nothing matches that filter." />
-        ) : (
-          GROUPS.filter((g) => counts[g] > 0).map((group) => {
-            const collapsible = (group === "notApplicable" || group === "available") && !filter;
-            const shown = group === "notApplicable" ? showNotApplicable : showAvailable;
-            const setShown = group === "notApplicable" ? setShowNotApplicable : setShowAvailable;
-            const members = visible.filter((r) => r.group === group && listed(r));
-            const collapsed = collapsible && !shown;
-            return (
-              <section key={group} className="rec-group" aria-labelledby={`group-${group}`}>
-                <header className="rec-group-head" data-group={group} title={groupHint[group]}>
-                  <span className="rec-group-mark" aria-hidden="true" />
-                  <h2 id={`group-${group}`} className="rec-group-title">
-                    {groupLabel[group]}
-                  </h2>
-                  <span className="rec-group-count">
-                    {counts[group]}
-                    <span className="visually-hidden"> items</span>
-                  </span>
-                  {collapsible ? (
-                    <button
-                      type="button"
-                      className="link-btn"
-                      aria-expanded={!collapsed}
-                      onClick={() => setShown((s) => !s)}
-                    >
-                      {collapsed ? "Show" : "Hide"}
-                    </button>
+        {visible.length === 0 && here.length === 0 ? <Empty title="Nothing matches that filter." /> : null}
+        {installed.length > 0 ? (
+          <section className="rec-group" aria-labelledby="group-installed">
+            <header
+              className="rec-group-head"
+              data-group="installed"
+              title="Installed in this project, whatever Habi's match says."
+            >
+              <span className="rec-group-mark" aria-hidden="true" />
+              <h2 id="group-installed" className="rec-group-title">
+                Installed
+              </h2>
+              <span className="rec-group-count">
+                {installed.length}
+                <span className="visually-hidden"> items</span>
+              </span>
+            </header>
+            <ul className="rec-list">{installed.map(row)}</ul>
+          </section>
+        ) : null}
+        {visible.length === 0 && here.length === 0
+          ? null
+          : GROUPS.filter((g) => counts[g] > 0).map((group) => {
+              const collapsible = (group === "notApplicable" || group === "available") && !filter;
+              const shown = group === "notApplicable" ? showNotApplicable : showAvailable;
+              const setShown = group === "notApplicable" ? setShowNotApplicable : setShowAvailable;
+              const members = membersOf(group);
+              const collapsed = collapsible && !shown;
+              return (
+                <section key={group} className="rec-group" aria-labelledby={`group-${group}`}>
+                  <header className="rec-group-head" data-group={group} title={groupHint[group]}>
+                    <span className="rec-group-mark" aria-hidden="true" />
+                    <h2 id={`group-${group}`} className="rec-group-title">
+                      {groupLabel[group]}
+                    </h2>
+                    <span className="rec-group-count">
+                      {counts[group]}
+                      <span className="visually-hidden"> items</span>
+                    </span>
+                    {collapsible ? (
+                      <button
+                        type="button"
+                        className="link-btn"
+                        aria-expanded={!collapsed}
+                        onClick={() => setShown((s) => !s)}
+                      >
+                        {collapsed ? "Show" : "Hide"}
+                      </button>
+                    ) : null}
+                  </header>
+                  {collapsed ? (
+                    <p className="rec-group-hint">
+                      {groupHint[group]}
+                      {group === "available" && unmatchedByLibrary.length > 0
+                        ? ` From ${unmatchedByLibrary.map(([name, n]) => `${name} (${n})`).join(", ")}.`
+                        : null}
+                    </p>
                   ) : null}
-                </header>
-                {collapsed ? (
-                  <p className="rec-group-hint">
-                    {groupHint[group]}
-                    {group === "available" && unmatchedByLibrary.length > 0
-                      ? ` From ${unmatchedByLibrary.map(([name, n]) => `${name} (${n})`).join(", ")}.`
-                      : null}
-                  </p>
-                ) : null}
-                {members.length > 0 ? (
-                  <ul className="rec-list">
-                    {members.map((r) => {
-                      const active = r.item.key === activeKey;
-                      return (
-                        <li key={r.item.key}>
-                          <button
-                            type="button"
-                            data-key={r.item.key}
-                            className={`rec-row${active ? " is-active" : ""}`}
-                            aria-current={active ? "true" : undefined}
-                            onClick={() => select(r)}
-                            onKeyDown={onKeyDown}
-                          >
-                            <span className="rec-row-top">
-                              <span className="rec-row-title">{r.item.title}</span>
-                              {rowStatus(r)}
-                            </span>
-                            <span className="rec-row-reason">{r.applicability.reason}</span>
-                            <span className="rec-row-meta">
-                              <span className="provenance">
-                                <Strand dye={dyes(r.item.sourceId)} size={13} />
-                                {r.item.sourceName}
-                              </span>
-                              {/* A plain skill is the default; only the other kinds are worth saying. */}
-                              {r.item.kind !== "skill" ? <span>{kindLabel[r.item.kind]}</span> : null}
-                              {r.item.requirement === "required" ? <span>required</span> : null}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-              </section>
-            );
-          })
-        )}
+                  {members.length > 0 ? <ul className="rec-list">{members.map(row)}</ul> : null}
+                </section>
+              );
+            })}
         {here.length > 0 ? (
           <section className="rec-group" aria-labelledby="group-here">
             <header className="rec-group-head" data-group="here">

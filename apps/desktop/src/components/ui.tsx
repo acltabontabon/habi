@@ -57,7 +57,8 @@ export function Facet({
   label: string;
   value: string;
   tone: Tone;
-  detail?: string;
+  /** A line under the value: a word, or something richer, such as the agent tools it is installed for. */
+  detail?: ReactNode;
 }) {
   return (
     <div className={`facet tone-${tone}`}>

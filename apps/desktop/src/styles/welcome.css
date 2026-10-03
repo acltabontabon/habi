@@ -89,9 +89,9 @@
   color: var(--thread-strong);
 }
 
+/* One line under the headline: every sub-line is short enough to fit the column (lib/headlines.ts). */
 .welcome-lead {
   margin-top: var(--s4);
-  max-width: 48ch;
   text-wrap: balance;
   color: var(--ink-muted);
   font-size: var(--text-lg);
@@ -430,11 +430,6 @@
 .welcome-optout input {
   accent-color: var(--thread);
   align-self: center;
-}
-
-.welcome-optout-hint {
-  color: var(--ink-faint);
-  font-size: var(--text-xs);
 }
 
 /* ---------- Motion: the threads are drawn in, once ---------- */

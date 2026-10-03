@@ -19,11 +19,14 @@ export function History({ overview, onClose }: { overview: ProjectOverview; onCl
   const history = useHistory(projectId);
   const [review, setReview] = useState<ReviewRequest | null>(null);
   const [checking, setChecking] = useState(false);
+  // A toast would sit behind this dialog, out of reach: a failure shows here instead.
+  const [failure, setFailure] = useState<unknown>(null);
   const client = useQueryClient();
   const toast = useToast();
 
   const recover = async () => {
     setChecking(true);
+    setFailure(null);
     try {
       const ops = await api.recover(projectId);
       invalidateProjectData(client, projectId);
@@ -36,7 +39,7 @@ export function History({ overview, onClose }: { overview: ProjectOverview; onCl
             : `Recovered ${plural(ops.length, "interrupted operation")}.`,
       );
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      setFailure(e);
     } finally {
       setChecking(false);
     }
@@ -90,6 +93,7 @@ export function History({ overview, onClose }: { overview: ProjectOverview; onCl
         </section>
       ) : null}
 
+      {failure ? <ErrorNotice error={failure} title="The check did not finish" /> : null}
       {history.isPending ? <Working>Loading history…</Working> : null}
       {history.isError ? <ErrorNotice error={history.error} /> : null}
       {history.data && history.data.length === 0 ? <p className="muted">No changes yet.</p> : null}

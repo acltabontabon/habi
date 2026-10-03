@@ -17,7 +17,12 @@ import { UseSkillDialog } from "../views/skills/UseSkillDialog";
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
 
-const actions: Actions = { openProject: vi.fn(async () => {}), newSkill: vi.fn(), addSkills: vi.fn(), showWelcome: vi.fn() };
+const actions: Actions = {
+  openProject: vi.fn(async () => {}),
+  newSkill: vi.fn(),
+  addSkills: vi.fn(),
+  showWelcome: vi.fn(),
+};
 
 function wrap(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -365,10 +370,11 @@ describe("skills Habi installed on this machine", () => {
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
     wrap(<OnThisMachine />);
-    expect(await screen.findByText(/installed by Habi from Team library · update available/)).toBeTruthy();
+    // The state is a tag by the name; where it came from is in the menu.
+    expect(await screen.findByText("update available")).toBeTruthy();
 
     await userEvent.click(screen.getByRole("button", { name: "More for liquibase" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: /Update…/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /Update….*From Team library/ }));
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith("plan_update_machine", { keys: ["lib#liquibase"], decisions: {} }),
     );
@@ -388,14 +394,18 @@ describe("skills Habi installed on this machine", () => {
     expect(invoke).toHaveBeenCalledWith("plan_remove_machine", { keys: ["lib#liquibase"], decisions: {} });
   });
 
-  it("have no update or remove menu when Habi did not install them", async () => {
+  it("offer no update or remove when Habi did not install them", async () => {
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return [{ ...managedSkill("current"), managed: null }];
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
     wrap(<OnThisMachine />);
     await screen.findByText("liquibase");
-    expect(screen.queryByRole("button", { name: "More for liquibase" })).toBeNull();
+    // The row's menu offers the ways out, and nothing to update or remove.
+    await userEvent.click(screen.getByRole("button", { name: "More for liquibase" }));
+    expect(await screen.findByRole("menuitem", { name: /Use in a project/ })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: /Update…/ })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: /Remove from this machine/ })).toBeNull();
   });
 });
 

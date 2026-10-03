@@ -37,6 +37,9 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
   const { navigate } = useNav();
   const refresh = useRefreshSource();
   const [confirm, setConfirm] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  // A toast would sit behind this dialog, out of reach: failures show here instead.
+  const [failure, setFailure] = useState<{ title: string; error: unknown } | null>(null);
   const web = webUrl(source.location);
 
   const doRefresh = () =>
@@ -50,22 +53,24 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
     });
 
   const setRole = async (role: SourceRole) => {
+    setFailure(null);
     try {
       await api.setSourceRole(source.id, role);
       invalidateProjectData(client);
     } catch (e) {
-      toast.show(`Could not change ${source.name}: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      setFailure({ title: `Could not change ${source.name}`, error: e });
     }
   };
 
   const disconnect = async () => {
+    if (disconnecting) return;
+    setDisconnecting(true);
+    setFailure(null);
     try {
       await api.removeSource(source.id);
     } catch (e) {
-      toast.show(
-        `Could not disconnect ${source.name}: ${e instanceof Error ? e.message : String(e)}`,
-        "danger",
-      );
+      setFailure({ title: `Could not disconnect ${source.name}`, error: e });
+      setDisconnecting(false);
       return;
     }
     invalidateProjectData(client);
@@ -90,7 +95,7 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
             <Button variant="quiet" onClick={() => setConfirm(false)}>
               Keep
             </Button>
-            <Button variant="danger" onClick={() => void disconnect()}>
+            <Button variant="danger" busy={disconnecting} onClick={() => void disconnect()}>
               Disconnect
             </Button>
           </>
@@ -166,6 +171,7 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
       {refresh.isError ? (
         <ErrorNotice error={refresh.error} title="Refresh failed — the cached copy is kept" />
       ) : null}
+      {failure ? <ErrorNotice error={failure.error} title={failure.title} /> : null}
     </Dialog>
   );
 }

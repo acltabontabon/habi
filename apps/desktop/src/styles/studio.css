@@ -2688,9 +2688,13 @@ button.rd-word:hover,
   color: var(--ink-muted);
 }
 
-.menu-item:focus-visible,
 .menu-item:hover {
-  outline: none;
+  background: var(--paper-sunken);
+}
+
+/* The keyboard's place keeps its ring (drawn inside, clear of the menu's edge), hovered or not. */
+.menu-item:focus-visible {
+  outline-offset: -2px;
   box-shadow: none;
   background: var(--paper-sunken);
 }
@@ -3179,6 +3183,14 @@ button.rd-word:hover,
   color: var(--ink-muted);
 }
 
+/* What Habi knows of a skill it installed here, when it is worth saying. */
+.mach-tag.is-state {
+  border-color: color-mix(in srgb, var(--thread) 45%, transparent);
+  color: var(--thread-strong);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .mach-note {
   display: flex;
   flex-wrap: wrap;
@@ -3197,6 +3209,11 @@ button.rd-word:hover,
   display: flex;
   align-items: center;
   gap: var(--s1);
+}
+
+.mach-busy {
+  display: inline-flex;
+  align-items: center;
 }
 
 .mach-files {

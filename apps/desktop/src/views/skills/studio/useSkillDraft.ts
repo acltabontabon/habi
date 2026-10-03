@@ -12,11 +12,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LocalSkill } from "../../../bindings/LocalSkill";
+import type { LocalSkillSummary } from "../../../bindings/LocalSkillSummary";
 import type { PreviewRequest } from "../../../bindings/PreviewRequest";
 import type { ShareForm } from "../../../bindings/ShareForm";
 import type { SkillDocument } from "../../../bindings/SkillDocument";
 import { api } from "../../../lib/api";
-import { invalidateSkills } from "../../../lib/queries";
+import { invalidateSkills, keys } from "../../../lib/queries";
 import { type SaveState, useAutosave } from "../../../lib/useAutosave";
 
 export const NOT_SAVED =
@@ -52,29 +53,76 @@ export function useSkillDraft(initial: LocalSkill) {
   const docValue = useMemo(() => ({ title, document }), [title, document]);
   const formValue = useMemo(() => ({ ...form, title }), [form, title]);
 
+  // Saves land in the cache as they are: this skill, and its row in My skills.
+  // Everything that reads every project (where it is installed, what a project
+  // has) is asked again only when its identifier changes, or once on leaving.
+  const live = useRef(true);
+  const changed = useRef(false);
+  const lastName = useRef(initial.summary.name);
+  const remember = useCallback(
+    (fresh: LocalSkill) => {
+      client.setQueryData<LocalSkill>(keys.skill(id), (old) => (old ? fresh : old));
+      client.setQueryData<LocalSkillSummary[]>(keys.skills, (list) =>
+        list?.map((s) => (s.id === fresh.summary.id ? fresh.summary : s)),
+      );
+      if (fresh.summary.name !== lastName.current || !live.current) {
+        lastName.current = fresh.summary.name;
+        changed.current = false;
+        invalidateSkills(client);
+      } else {
+        changed.current = true;
+      }
+    },
+    [client, id],
+  );
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      if (changed.current) invalidateSkills(client);
+      changed.current = false;
+    };
+  }, [client]);
+
   const saved = useCallback(
     (fresh: LocalSkill) => {
       setSkill(fresh);
-      invalidateSkills(client);
+      remember(fresh);
     },
-    [client],
+    [remember],
   );
+
+  // A save runs only for the mode on screen. Leaving the window or the screen
+  // flushes every autosave, and the rules form must not overwrite the YAML
+  // typed in its place (nor the other way round).
+  const docOn = !trashed && !broken;
+  const formOn = !trashed && !yamlMode;
+  const yamlOn = !trashed && yamlMode;
+  const modes = useRef({ doc: docOn, form: formOn, yaml: yamlOn });
+  modes.current = { doc: docOn, form: formOn, yaml: yamlOn };
+
+  // What SKILL.md last saved as, to tell (as soon as something is typed, not a
+  // pause later) whether the skill on screen is the one the diagnostics are for.
+  const docSavedKey = useRef(docKey({ title: initial.summary.title, document: initial.document }));
 
   const docSave = useAutosave<DocValue>({
     value: docValue,
     keyOf: docKey,
-    enabled: !trashed && !broken,
+    enabled: docOn,
     save: async (v) => {
+      if (!modes.current.doc) return;
       const fresh = await api.saveSkillDocument(id, v.title, v.document, docDigest.current);
       docDigest.current = fresh.documentDigest;
+      docSavedKey.current = docKey(v);
       saved(fresh);
     },
   });
   const formSave = useAutosave<ShareForm>({
     value: formValue,
     keyOf: formKey,
-    enabled: !trashed && !yamlMode,
+    enabled: formOn,
     save: async (v) => {
+      if (!modes.current.form) return;
       const fresh = await api.saveSkillApplicability(id, v, metaDigest.current);
       metaDigest.current = fresh.metadataDigest;
       saved(fresh);
@@ -83,13 +131,16 @@ export function useSkillDraft(initial: LocalSkill) {
   const yamlSave = useAutosave<string>({
     value: yaml,
     keyOf: (v) => v,
-    enabled: !trashed && yamlMode,
+    enabled: yamlOn,
     save: async (v) => {
+      if (!modes.current.yaml) return;
       const fresh = await api.saveSkillMetadata(id, v, metaDigest.current);
       metaDigest.current = fresh.metadataDigest;
       saved(fresh);
     },
   });
+  /** Whether the title, identifier and purpose on screen are the ones last saved (and checked). */
+  const settled = docKey(docValue) === docSavedKey.current && docSave.state !== "saving";
   const saveState = worst(docSave.state, yamlMode ? yamlSave.state : formSave.state);
 
   const titleRef = useRef(title);
@@ -102,11 +153,13 @@ export function useSkillDraft(initial: LocalSkill) {
   const adopt = useCallback(
     (fresh: LocalSkill, parts: { document: boolean; metadata: boolean }) => {
       setSkill(fresh);
+      remember(fresh);
       if (parts.document) {
         docDigest.current = fresh.documentDigest;
         setTitle(fresh.summary.title);
         setDocument(fresh.document);
-        resetDoc(docKey({ title: fresh.summary.title, document: fresh.document }));
+        docSavedKey.current = docKey({ title: fresh.summary.title, document: fresh.document });
+        resetDoc(docSavedKey.current);
       }
       if (parts.metadata) {
         metaDigest.current = fresh.metadataDigest;
@@ -117,7 +170,7 @@ export function useSkillDraft(initial: LocalSkill) {
         resetYaml(fresh.metadataText ?? "");
       }
     },
-    [resetDoc, resetForm, resetYaml],
+    [resetDoc, resetForm, resetYaml, remember],
   );
 
   const flushDoc = docSave.flush;
@@ -126,9 +179,9 @@ export function useSkillDraft(initial: LocalSkill) {
 
   /** Writes pending edits; true when everything on screen is saved. */
   const flushAll = useCallback(async () => {
-    const results = await Promise.all([flushDoc(), flushForm(), flushYaml()]);
+    const results = await Promise.all([flushDoc(), yamlMode ? flushYaml() : flushForm()]);
     return results.every(Boolean);
-  }, [flushDoc, flushForm, flushYaml]);
+  }, [flushDoc, flushForm, flushYaml, yamlMode]);
 
   /** Before acting on what is on disk: stops (and says why) when edits are not saved. */
   const saveFirst = useCallback(async () => {
@@ -161,7 +214,12 @@ export function useSkillDraft(initial: LocalSkill) {
   const switchYaml = async (on: boolean) => {
     setActionError(null);
     try {
-      await (on ? formSave.flush() : yamlSave.flush());
+      // The rules on screen are written first; if they cannot be, the switch
+      // would replace them with the version on disk, so it waits.
+      if (!(await (on ? formSave.flush() : yamlSave.flush()))) {
+        setActionError(new Error(NOT_SAVED));
+        return;
+      }
       const fresh = await api.getSkill(id);
       adopt(fresh, { document: false, metadata: true });
       setYamlMode(on);
@@ -225,6 +283,7 @@ export function useSkillDraft(initial: LocalSkill) {
     trashed,
     broken,
     saveState,
+    settled,
     conflict,
     saveError,
     actionError,

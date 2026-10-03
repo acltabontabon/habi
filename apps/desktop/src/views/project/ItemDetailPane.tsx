@@ -3,7 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Recommendation } from "../../bindings/Recommendation";
+import { AgentReach } from "../../components/AgentReach";
 import { Icon } from "../../components/Icon";
+import { Menu } from "../../components/Menu";
 import { useToast } from "../../components/Toasts";
 import { Button, Facet, Label, Notice, Section, Status } from "../../components/ui";
 import { useActions } from "../../lib/actions";
@@ -11,7 +13,7 @@ import { api } from "../../lib/api";
 import {
   applicabilityLabel,
   applicabilityTone,
-  clientsPhrase,
+  clientLabel,
   evidenceLabel,
   evidenceTone,
   freshnessText,
@@ -37,17 +39,32 @@ import { WorkflowPanel } from "./WorkflowPanel";
 
 type Panel = "why" | "workflow" | "content" | "checks";
 
-/** After installing: how the agent picks it up, in one sentence. */
-function usageHint(r: Recommendation): string {
-  const clients = clientsPhrase(r.installation?.clients ?? []);
-  if (r.item.kind === "instructions") {
-    return `Installed for ${clients}. Agents read it from AGENTS.md (Claude Code through CLAUDE.md) in new sessions.`;
-  }
-  const skillFile = r.installation?.files.find((f) => f.path.endsWith("/SKILL.md"))?.path;
-  const folder = skillFile ? skillFile.replace(/\/SKILL\.md$/, "") : null;
-  return `Installed for ${clients}. Start a new agent session in this project; the agent loads it${
-    folder ? ` from ${folder}` : ""
-  } when a task matches its description.`;
+/**
+ * Where an installation lives, as the person would look for it: skill
+ * folders (".claude/skills/grilling") rather than every file in them, and
+ * other files (AGENTS.md, .mcp.json) by name. Habi's own record is left out.
+ */
+function installedPlaces(files: { path: string }[]): string[] {
+  const places = files
+    .map((f) => f.path)
+    .filter((p) => !p.startsWith(".habi/"))
+    .map((p) => /^(.*?\/skills\/[^/]+)\//.exec(p)?.[1] ?? p);
+  return [...new Set(places)];
+}
+
+/** The agent tools it is installed for, under the Installation facet; each says where the files are. */
+function InstalledFor({ r }: { r: Recommendation }) {
+  const installation = r.installation;
+  if (!installation) return null;
+  const where = installedPlaces(installation.files).join(" and ");
+  return (
+    <AgentReach
+      lit={installation.clients}
+      onlyLit
+      label="Installed for"
+      tip={(c) => (where ? `${clientLabel[c]} · ${where}` : clientLabel[c])}
+    />
+  );
 }
 
 export function ItemDetailPane({
@@ -154,9 +171,11 @@ export function ItemDetailPane({
     r.installation?.files.find((f) => f.state === "modified")?.path ?? r.installation?.files[0]?.path;
   const installedFolder = installedCopy ? installedCopy.split("/").slice(0, 3).join("/") : null;
 
+  const [sharing, setSharing] = useState(false);
   const shareImprovement = async () => {
     const folder = installedFolder;
-    if (!folder) return;
+    if (!folder || sharing) return;
+    setSharing(true);
     try {
       const draft = await api.startContribution(r.item.sourceId, {
         type: "projectSkill",
@@ -167,6 +186,8 @@ export function ItemDetailPane({
       navigate({ name: "contributions", contributionId: draft.id });
     } catch (e) {
       toast.show(e instanceof Error ? e.message : String(e), "danger");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -180,18 +201,13 @@ export function ItemDetailPane({
         );
       case "setUpPrerequisites":
         return (
-          <>
-            <Button
-              variant="primary"
-              icon="download"
-              onClick={() => setReview({ ...installRequest, includeMcp: true })}
-            >
-              Review and install…
-            </Button>
-            <span className="action-note">
-              <Icon name="warning" size={14} /> {missingText}
-            </span>
-          </>
+          <Button
+            variant="primary"
+            icon="download"
+            onClick={() => setReview({ ...installRequest, includeMcp: true })}
+          >
+            Review and install…
+          </Button>
         );
       case "update":
       case "resolveConflict":
@@ -218,14 +234,63 @@ export function ItemDetailPane({
   return (
     <article className="detail" aria-labelledby="detail-title">
       <header className="detail-head">
-        <p className="detail-kicker">
-          {kindLabel[r.item.kind]} · {r.item.sourceName}
-          {r.item.owner ? ` · maintained by ${r.item.owner}` : ""}
-          {r.item.requirement === "required" ? <Label tone="thread">Team requirement</Label> : null}
-        </p>
-        <h2 id="detail-title" className="detail-title">
-          {r.item.title}
-        </h2>
+        <div className="detail-top">
+          <div className="detail-identity">
+            <p className="detail-kicker">
+              {kindLabel[r.item.kind]} · {r.item.sourceName}
+              {r.item.owner ? ` · maintained by ${r.item.owner}` : ""}
+              {r.item.requirement === "required" ? <Label tone="thread">Team requirement</Label> : null}
+            </p>
+            <h2 id="detail-title" className="detail-title">
+              {r.item.title}
+            </h2>
+          </div>
+          <div className="detail-top-actions">
+            {r.installState === "notInstalled" &&
+            r.item.installable &&
+            (!primary || r.nextAction === "provideInformation") ? (
+              <Button icon="download" onClick={() => setReview(installRequest)}>
+                Install anyway…
+              </Button>
+            ) : null}
+            {mine ? (
+              <Button icon="pencil" onClick={() => navigate({ name: "skills", skillId: mine.id })}>
+                Edit in My skills
+              </Button>
+            ) : null}
+            {key && !isLocal && installedFolder && r.item.kind !== "instructions" ? (
+              <Button
+                icon="pencil"
+                title="Copies the installed files, with this project's edits, to My skills. It stays linked to the library."
+                onClick={() =>
+                  addSkills({ source: "project", projectId: overview.project.id, preselect: installedFolder })
+                }
+              >
+                Edit a copy…
+              </Button>
+            ) : null}
+            {key && !isLocal && (r.installState === "locallyModified" || r.installState === "conflict") ? (
+              <Button icon="share" busy={sharing} onClick={() => void shareImprovement()}>
+                Share my edits with {r.item.sourceName}…
+              </Button>
+            ) : null}
+            {primary}
+            {key && r.installState !== "notInstalled" ? (
+              <Menu
+                label={`More for ${r.item.title}`}
+                items={[
+                  {
+                    label: "Remove from this project…",
+                    hint: "Reviewed first; files you edited are kept",
+                    icon: "trash",
+                    danger: true,
+                    onSelect: () => setReview({ kind: "remove", keys: [key], title: r.item.title }),
+                  },
+                ]}
+              />
+            ) : null}
+          </div>
+        </div>
         <p className="detail-desc">{r.item.description}</p>
 
         <dl className="facets" aria-label="Status">
@@ -246,6 +311,7 @@ export function ItemDetailPane({
             label="Installation"
             value={installLabel[r.installState]}
             tone={installTone[r.installState]}
+            detail={r.installState !== "notInstalled" ? <InstalledFor r={r} /> : undefined}
           />
           <Facet
             label="Evidence"
@@ -254,55 +320,15 @@ export function ItemDetailPane({
           />
         </dl>
 
-        <div className="detail-actions">
-          {primary}
-          {r.installState === "notInstalled" &&
-          r.item.installable &&
-          (!primary || r.nextAction === "provideInformation") ? (
-            <Button icon="download" onClick={() => setReview(installRequest)}>
-              Install anyway…
-            </Button>
-          ) : null}
-          {r.installState === "notInstalled" && !r.item.installable ? (
-            <span className="action-note">
-              <Icon name="warning" size={14} /> Cannot be installed: the package is incomplete or its SKILL.md
-              name is not a valid folder name. Details are listed under its problems.
-            </span>
-          ) : null}
-          {mine ? (
-            <Button icon="pencil" onClick={() => navigate({ name: "skills", skillId: mine.id })}>
-              Edit in My skills
-            </Button>
-          ) : null}
-          {key && !isLocal && installedFolder && r.item.kind !== "instructions" ? (
-            <Button
-              icon="pencil"
-              title="Copies the installed files, with this project's edits, to My skills. It stays linked to the library."
-              onClick={() =>
-                addSkills({ source: "project", projectId: overview.project.id, preselect: installedFolder })
-              }
-            >
-              Edit a copy…
-            </Button>
-          ) : null}
-          {key && !isLocal && (r.installState === "locallyModified" || r.installState === "conflict") ? (
-            <Button icon="share" onClick={() => void shareImprovement()}>
-              Share my edits with {r.item.sourceName}…
-            </Button>
-          ) : null}
-          {key && r.installState !== "notInstalled" ? (
-            <Button
-              variant="quiet"
-              icon="trash"
-              onClick={() => setReview({ kind: "remove", keys: [key], title: r.item.title })}
-            >
-              Remove…
-            </Button>
-          ) : null}
-        </div>
-        {r.installation && r.installState === "current" ? (
+        {r.nextAction === "setUpPrerequisites" ? (
           <p className="action-note">
-            <Icon name="check" size={14} /> {usageHint(r)}
+            <Icon name="warning" size={14} /> {missingText}
+          </p>
+        ) : null}
+        {r.installState === "notInstalled" && !r.item.installable ? (
+          <p className="action-note">
+            <Icon name="warning" size={14} /> Cannot be installed: the package is incomplete or its SKILL.md
+            name is not a valid folder name. Details are listed under its problems.
           </p>
         ) : null}
         {r.unmanagedCopies.length > 0 ? (
@@ -321,7 +347,7 @@ export function ItemDetailPane({
             role="tab"
             id={`item-tab-${id}`}
             aria-selected={panel === id}
-            aria-controls={`item-panel-${id}`}
+            aria-controls={panel === id ? `item-panel-${id}` : undefined}
             tabIndex={panel === id ? 0 : -1}
             className={`subtab${panel === id ? " is-active" : ""}`}
             onClick={() => setPanel(id)}

@@ -34,6 +34,11 @@ export function Popover({
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  // Held in a ref: callers pass a fresh onClose each render, and re-running
+  // the effect would pull focus back to the first control while typing.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per opening.
   useEffect(() => {
     if (!open) return;
     requestAnimationFrame(() =>
@@ -41,11 +46,11 @@ export function Popover({
     );
     const away = (e: PointerEvent) => {
       const t = e.target as Node;
-      if (!panel.current?.contains(t) && !anchor.current?.contains(t)) onClose();
+      if (!panel.current?.contains(t) && !anchor.current?.contains(t)) closeRef.current();
     };
     window.addEventListener("pointerdown", away);
     return () => window.removeEventListener("pointerdown", away);
-  }, [open, onClose, anchor]);
+  }, [open]);
   if (!open) return null;
   return (
     <div

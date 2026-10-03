@@ -314,6 +314,8 @@ function Destination({ c, onLineage }: { c: Contribution; onLineage?: (record: b
   );
 }
 
+const TOOLS_HINT = "Checked on PATH or in the project; never executed during matching.";
+
 function ListEditor({
   label,
   hint,
@@ -478,15 +480,36 @@ function MetadataForm({
         />
         <span>Evaluate across the whole repository instead of per module</span>
       </label>
-      <ListEditor
-        label="Prerequisite commands (any one satisfies)"
-        hint="Checked on PATH or in the project; never executed during matching."
-        values={f.tools.flatMap((t) => t.commands)}
-        onChange={(v) =>
-          set({ tools: v.length === 0 ? [] : [{ name: f.tools[0]?.name || "Required tool", commands: v }] })
-        }
-        placeholder="e.g. mvn"
-      />
+      {f.tools.length > 1 ? (
+        // Each tool is required on its own; any one of its commands satisfies it.
+        f.tools.map((t, i) => (
+          <ListEditor
+            key={`${i}:${t.name}`}
+            label={`Prerequisite commands for ${t.name} (any one satisfies)`}
+            hint={i === f.tools.length - 1 ? TOOLS_HINT : undefined}
+            values={t.commands}
+            onChange={(v) =>
+              set({
+                tools:
+                  v.length === 0
+                    ? f.tools.filter((_, j) => j !== i)
+                    : f.tools.map((x, j) => (j === i ? { ...x, commands: v } : x)),
+              })
+            }
+            placeholder="e.g. mvn"
+          />
+        ))
+      ) : (
+        <ListEditor
+          label="Prerequisite commands (any one satisfies)"
+          hint={TOOLS_HINT}
+          values={f.tools[0]?.commands ?? []}
+          onChange={(v) =>
+            set({ tools: v.length === 0 ? [] : [{ name: f.tools[0]?.name || "Required tool", commands: v }] })
+          }
+          placeholder="e.g. mvn"
+        />
+      )}
       <div className="field">
         <span className="field-label">Examples</span>
         {f.examples.map((ex, i) => (

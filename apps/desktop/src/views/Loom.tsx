@@ -7,8 +7,11 @@
  * projects. Where a library's knowledge applies to a project, its thread
  * surfaces over the weft as a float in its dye; elsewhere the weft passes
  * over it. The pattern is the real fit between your team's knowledge and
- * your code. A saffron knot marks a crossing where something learned in that
- * project went back into that library. The last row is unwoven: the next
+ * your code. A float is solid where something from that library is installed
+ * in the project (woven in), and a lighter, loose thread where its skills fit
+ * but none is installed yet; pointing at a crossing says which. A saffron knot
+ * marks a crossing where something learned in that project went back into
+ * that library. The last row is unwoven: the next
  * project you open. There are no empty rows; the start screen says in words
  * what opening a project does.
  *
@@ -18,7 +21,9 @@
  * hangs on below the last row and fades out, so the room is the loom's.
  */
 import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { tip } from "../components/Tooltips";
 import type { Dye } from "../lib/dye";
+import { plural } from "../lib/format";
 
 export type LoomSource = {
   id: string;
@@ -35,9 +40,21 @@ export type LoomProject = {
   sources: string[] | null;
   /** Sources that something learned in this project was shared back to. */
   sharedTo: string[];
+  /**
+   * Per library: how many of its skills fit, and the titles of those installed here. Absent
+   * until the project has been looked at with a version of Habi that keeps it.
+   */
+  tally?: { sourceId: string; fits: number; installed: string[] }[];
   meta: string;
   when: string;
 };
+
+/** "a", "a and b", "a, b and 2 more". */
+function names(list: string[]): string {
+  if (list.length <= 1) return list[0] ?? "";
+  if (list.length <= 3) return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+  return `${list.slice(0, 2).join(", ")} and ${list.length - 2} more`;
+}
 
 const ROW = 52;
 const HEAD = 72;
@@ -116,6 +133,46 @@ export function Loom({
 
   const hot = row ? projects.find((p) => p.id === row) : undefined;
   const fits = (p: LoomProject, id: string) => p.sources?.includes(id) ?? false;
+  const tallyOf = (p: LoomProject, id: string) => p.tally?.find((t) => t.sourceId === id);
+  const installedFrom = (p: LoomProject, id: string) => (tallyOf(p, id)?.installed.length ?? 0) > 0;
+  /** A crossing worth drawing: the library's skills fit the project, or one is installed there. */
+  const crosses = (p: LoomProject, id: string) => fits(p, id) || installedFrom(p, id);
+  /** The float's weight: woven in, a loose thread, or (with no tally yet) just a fit. */
+  const weight = (p: LoomProject, id: string) =>
+    !p.tally ? "" : installedFrom(p, id) ? " is-woven" : " is-loose";
+  /** What a crossing holds, in words, for screen readers. */
+  const crossLabel = (p: LoomProject, s: LoomSource) => {
+    const t = tallyOf(p, s.id);
+    const installed = t?.installed ?? [];
+    const parts = [
+      installed.length > 0 ? `installed: ${names(installed)}` : null,
+      t && t.fits > 0 ? `${plural(t.fits, "skill")} ${t.fits === 1 ? "fits" : "fit"}` : null,
+    ].filter(Boolean);
+    return `${s.name} in ${p.name}${parts.length > 0 ? `: ${parts.join(", ")}` : ""}`;
+  };
+  /** What a crossing holds, for its tooltip. */
+  const crossTip = (p: LoomProject, s: LoomSource) => {
+    const t = tallyOf(p, s.id);
+    const installed = t?.installed ?? [];
+    const fitting = t?.fits ?? 0;
+    return tip({
+      title: s.name,
+      mark: s.dye.color,
+      stitched: s.dye.community,
+      lines: [
+        { text: `in ${p.name}`, mono: true },
+        ...(installed.length > 0 ? [{ text: `Installed: ${names(installed)}` }] : []),
+        ...(fitting > 0
+          ? [{ text: `${plural(fitting, "skill")} ${fitting === 1 ? "fits" : "fit"} this project` }]
+          : []),
+      ],
+      note: !p.tally
+        ? { text: "Its skills fit this project", tone: "muted" }
+        : installed.length > 0
+          ? { text: "Woven in: installed here", tone: "ok" }
+          : { text: "A loose thread: it fits, nothing installed yet", tone: "muted" },
+    });
+  };
   const sourceLit = (id: string | undefined) => !id || (col ? col === id : hot ? fits(hot, id) : true);
   const rowLit = (p: LoomProject) => (row ? row === p.id : col ? fits(p, col) : true);
   const tilted = width / Math.max(columns, 1) < 104;
@@ -147,6 +204,8 @@ export function Loom({
             key={p.id}
             type="button"
             className={`loom-row-label${rowLit(p) ? "" : " is-dim"}`}
+            // The weave says what fits; the counts and when it was opened are a look away.
+            title={`${p.meta} — opened ${p.when}`}
             onClick={() => onOpenProject(p.id)}
             {...point.row(p.id)}
           >
@@ -213,14 +272,14 @@ export function Loom({
                   className={`loom-pick${p.sources ? "" : " is-unmatched"}${row === p.id ? " is-hot" : ""}`}
                 />
                 {strands.map((s, k) =>
-                  s.source && fits(p, s.source.id) ? (
+                  s.source && crosses(p, s.source.id) ? (
                     <line
                       key={`f${k}`}
                       x1={s.x}
                       y1={y(i) - 13}
                       x2={s.x}
                       y2={y(i) + 13}
-                      className={`loom-float${sourceLit(s.source.id) ? "" : " is-dim"}`}
+                      className={`loom-float${weight(p, s.source.id)}${sourceLit(s.source.id) ? "" : " is-dim"}`}
                       style={{ stroke: s.source.dye.color }}
                     />
                   ) : null,
@@ -235,6 +294,35 @@ export function Loom({
             <line x1={0} y1={y(lines)} x2={width} y2={y(lines)} className="loom-pick is-new" />
           </g>
         </svg>
+        {moreProjects > 0 ? (
+          <span className="loom-more-projects" style={{ top: y(lines) }}>
+            +{moreProjects} more in the sidebar
+          </span>
+        ) : null}
+        {/* Each crossing says what it holds when pointed at, and brings its row and column forward. */}
+        {projects.map((p, i) =>
+          sources.map((s, j) =>
+            crosses(p, s.id) ? (
+              <span
+                key={`x${p.id}${s.id}`}
+                className="loom-cross"
+                style={{ left: center(j), top: y(i) }}
+                role="img"
+                aria-label={crossLabel(p, s)}
+                data-tip-side="top"
+                {...crossTip(p, s)}
+                onMouseEnter={() => {
+                  setRow(p.id);
+                  setCol(s.id);
+                }}
+                onMouseLeave={() => {
+                  setRow(null);
+                  setCol(null);
+                }}
+              />
+            ) : null,
+          ),
+        )}
         {/* Where the window is taller than the weave, the warp hangs on and fades out. */}
         <svg className="loom-tail" style={{ top: height - 4 }} aria-hidden="true" focusable="false">
           {strands.map((s, i) => (
@@ -250,19 +338,6 @@ export function Loom({
             />
           ))}
         </svg>
-      </div>
-
-      <div className="loom-meta">
-        <div className="loom-head-cell" />
-        {projects.map((p) => (
-          <div key={p.id} className={`loom-meta-cell${rowLit(p) ? "" : " is-dim"}`}>
-            <span>{p.meta}</span>
-            <span className="loom-when">{p.when}</span>
-          </div>
-        ))}
-        <div className="loom-meta-cell">
-          {moreProjects > 0 ? <span>+{moreProjects} more in the sidebar</span> : null}
-        </div>
       </div>
     </div>
   );

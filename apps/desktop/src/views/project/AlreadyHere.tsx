@@ -595,18 +595,18 @@ export function HereDetail({ project, item }: { project: ProjectRecord; item: He
   return (
     <article className="detail" aria-labelledby="detail-title">
       <header className="detail-head">
-        <p className="detail-kicker">
-          {isSkill ? "Skill" : "Agent instructions"} · already in {project.name}
-          <span className="found-scope" data-tip={SCOPE_TIP}>
-            <Icon name="info" size={12} />
-          </span>
-        </p>
-        <h2 id="detail-title" className={`detail-title${isSkill ? "" : " mono"}`}>
-          {item.title}
-        </h2>
-        {isSkill && item.skill.description ? <p className="detail-desc">{item.skill.description}</p> : null}
-        <Meta parts={meta} />
-        <div className="detail-actions">
+        <div className="detail-top">
+          <div className="detail-identity">
+            <p className="detail-kicker">
+              {isSkill ? "Skill" : "Agent instructions"} · already in {project.name}
+              <span className="found-scope" data-tip={SCOPE_TIP}>
+                <Icon name="info" size={12} />
+              </span>
+            </p>
+            <h2 id="detail-title" className={`detail-title${isSkill ? "" : " mono"}`}>
+              {item.title}
+            </h2>
+          </div>
           {isSkill ? (
             item.skill.importedAs ? (
               <Button
@@ -626,14 +626,17 @@ export function HereDetail({ project, item }: { project: ProjectRecord; item: He
                 Edit a copy…
               </Button>
             )
-          ) : item.file.problem ? (
-            <p className="field-problem">Not shown: {item.file.problem}.</p>
-          ) : (
+          ) : item.file.problem ? null : (
             <Button variant="primary" icon="pencil" onClick={() => setPicking(true)}>
               Turn part into a skill…
             </Button>
           )}
         </div>
+        {isSkill && item.skill.description ? <p className="detail-desc">{item.skill.description}</p> : null}
+        <Meta parts={meta} />
+        {!isSkill && item.file.problem ? (
+          <p className="field-problem">Not shown: {item.file.problem}.</p>
+        ) : null}
       </header>
       <div className="detail-body">
         {item.kind === "instructions" ? (

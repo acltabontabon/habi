@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import type { ShareForm } from "../bindings/ShareForm";
 import type { Source } from "../bindings/Source";
 import { localLinkPath, Markdown } from "../components/Markdown";
 import { ToastProvider } from "../components/Toasts";
+import { Tooltips } from "../components/Tooltips";
 import { Button } from "../components/ui";
 import { NavProvider, type Route } from "../lib/nav";
 import { ContributionsView } from "../views/contributions/ContributionsView";
@@ -192,6 +193,118 @@ describe("checks", () => {
     expect(await screen.findByText("Timed out")).toBeInTheDocument();
     expect(screen.getByText("BUILD OUTPUT TAIL")).toBeInTheDocument();
     expect(screen.queryByText("timedOut")).toBeNull();
+  });
+
+  function checkFixture() {
+    const overview = billing as unknown as ProjectOverview;
+    const recommendation = overview.recommendations.find((r) => r.item.id === "liquibase-migration-review");
+    if (!recommendation) throw new Error("fixture changed");
+    const detail = (details as Record<string, { item: { contentDigest: string } }>)[
+      "liquibase-migration-review"
+    ];
+    const preview = (goal: string | null): CheckPreview => ({
+      previewId: `p-${goal}`,
+      itemKey: recommendation.item.key,
+      itemTitle: recommendation.item.title,
+      itemDigest: detail?.item.contentDigest ?? "",
+      checkId: "changelog-is-wellformed",
+      title: "Changelog is well formed",
+      description: null,
+      module: ".",
+      program: "mvn",
+      resolvedProgram: "/usr/bin/mvn",
+      args: [goal ? `goal-${goal}` : "no-goal"],
+      cwd: ".",
+      environment: "Your environment",
+      timeoutSeconds: 60,
+      warnings: [],
+      bindings: [
+        { name: "goal", kind: "module", description: "Goal", candidates: ["slow", "fast"], selected: goal },
+      ],
+      ready: true,
+    });
+    return { overview, recommendation, detail, preview };
+  }
+
+  it("shows the preview for the latest choice, even when an earlier one answers last", async () => {
+    const { overview, recommendation, detail, preview } = checkFixture();
+    let answerSlow: () => void = () => {};
+    handlers = {
+      item_detail: () => detail,
+      check_runs: () => [],
+      prepare_check: ({ bindings }) => {
+        const goal = (bindings as Record<string, string>).goal ?? null;
+        if (goal !== "slow") return preview(goal);
+        return new Promise((resolve) => {
+          answerSlow = () => resolve(preview("slow"));
+        });
+      },
+    };
+    const user = userEvent.setup();
+    wrap(<ChecksPanel overview={overview} recommendation={recommendation} />);
+    await user.click(await screen.findByRole("button", { name: "Preview the command" }));
+    const goal = await screen.findByRole("combobox", { name: "Goal" });
+    await user.selectOptions(goal, "slow");
+    await user.selectOptions(goal, "fast");
+    expect(await screen.findByText("goal-fast")).toBeInTheDocument();
+    await act(async () => {
+      answerSlow();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByText("goal-fast")).toBeInTheDocument();
+    expect(screen.queryByText("goal-slow")).toBeNull();
+  });
+
+  it("stops a running check when its card goes away, instead of leaving it running unseen", async () => {
+    const { overview, recommendation, detail, preview } = checkFixture();
+    handlers = {
+      item_detail: () => detail,
+      check_runs: () => [],
+      prepare_check: () => preview("fast"),
+      run_check: () => new Promise(() => {}),
+      cancel_job: vi.fn(() => true),
+    };
+    const user = userEvent.setup();
+    const view = wrap(<ChecksPanel overview={overview} recommendation={recommendation} />);
+    await user.click(await screen.findByRole("button", { name: "Preview the command" }));
+    await user.click(await screen.findByRole("button", { name: "Run this command" }));
+    expect(await screen.findByText(/Running mvn/)).toBeInTheDocument();
+    const job = invoke.mock.calls.find(([cmd]) => cmd === "run_check")?.[1] as { jobId: string };
+    view.unmount();
+    expect(handlers.cancel_job).toHaveBeenCalledWith({ jobId: job.jobId });
+  });
+});
+
+describe("tooltips", () => {
+  function Tick({ tip }: { tip?: string }) {
+    return (
+      <>
+        <button type="button" title={tip}>
+          Tick
+        </button>
+        <Tooltips />
+      </>
+    );
+  }
+
+  it("follows a title its owner changes or drops, and says nothing stale", async () => {
+    const view = render(<Tick tip="At least one agent" />);
+    const button = screen.getByRole("button", { name: "Tick" });
+    fireEvent.pointerOver(button);
+    // Taken over: no system tooltip, and the words kept for assistive technology.
+    expect(button).toHaveAttribute("title", "");
+    expect(button).toHaveAttribute("data-tip", "At least one agent");
+    expect(button).toHaveAttribute("aria-description", "At least one agent");
+
+    view.rerender(<Tick tip="Pick one more" />);
+    await waitFor(() => expect(button).toHaveAttribute("data-tip", "Pick one more"));
+    expect(button).toHaveAttribute("aria-description", "Pick one more");
+    expect(button).toHaveAttribute("title", "");
+
+    view.rerender(<Tick />);
+    await waitFor(() => expect(button).not.toHaveAttribute("data-tip"));
+    expect(button).not.toHaveAttribute("aria-description");
+    expect(button).not.toHaveAttribute("title");
   });
 });
 

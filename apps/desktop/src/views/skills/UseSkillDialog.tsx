@@ -157,7 +157,7 @@ export function UseSkillDialog({
               ))}
             </div>
             <span className="field-hint">
-              Next you choose Claude Code, Cursor or Codex and see every file that would be written.
+              Next you choose the agent tools and see every file that would be written.
             </span>
             <Button size="sm" variant="quiet" icon="folder" onClick={() => void openProject({ stay: true })}>
               Open another project…

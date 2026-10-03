@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { Icon, Mark } from "../components/Icon";
 import { Markdown } from "../components/lazy";
 import { Working } from "../components/ui";
-import { AUTHOR, ISSUES, REPOSITORY, SUPPORT } from "../lib/links";
+import { AUTHOR, DOCS, ISSUES, REPOSITORY, SUPPORT } from "../lib/links";
 import { useAppInfo } from "../lib/queries";
 import { RELEASES, type Release, releaseDate } from "../lib/release";
 import { useOpenExternal } from "../lib/safeInvoke";
@@ -98,6 +98,11 @@ export function AboutView() {
             </button>
           </section>
           <ul className="about-links">
+            <li>
+              <button type="button" className="link-quiet" onClick={() => openExternal(DOCS)}>
+                Documentation
+              </button>
+            </li>
             <li>
               <button type="button" className="link-quiet" onClick={() => openExternal(REPOSITORY)}>
                 Source code <span className="muted">· Apache-2.0</span>

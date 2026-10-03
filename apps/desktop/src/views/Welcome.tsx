@@ -10,16 +10,8 @@ import { Button, ErrorNotice, Kbd, Notice, Working } from "../components/ui";
 import { useActions } from "../lib/actions";
 import { useDyes } from "../lib/dye";
 import { plural, relativeTime } from "../lib/format";
-import { countUnshared, homeLead } from "../lib/homeLead";
 import { useNav } from "../lib/nav";
-import {
-  useAppInfo,
-  useContributions,
-  useRecentProjects,
-  useSkills,
-  useSources,
-  useSourceUpdates,
-} from "../lib/queries";
+import { useAppInfo, useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { Loom, type LoomProject, type LoomSource } from "./Loom";
 import { useCreateSample } from "./SampleWorkspace";
 
@@ -34,7 +26,6 @@ export function Welcome() {
   const skills = useSkills();
   const sources = useSources();
   const contributions = useContributions();
-  const updates = useSourceUpdates();
   const dyes = useDyes();
   const sample = useCreateSample();
 
@@ -57,6 +48,7 @@ export function Welcome() {
     id: p.id,
     name: p.name,
     sources: p.summary?.sources ?? null,
+    tally: p.summary?.tally,
     sharedTo: shared
       .filter((c) => c.origin.type === "projectSkill" && c.origin.projectId === p.id)
       .map((c) => c.sourceId),
@@ -65,26 +57,6 @@ export function Welcome() {
       : "not matched yet",
     when: relativeTime(p.lastOpenedAt),
   }));
-
-  // What most deserves saying under the headline, from what is really held. Anything
-  // not yet loaded is unknown, and unknown never produces a claim.
-  const lead = homeLead({
-    projects: projects.map((p) => ({ id: p.id, name: p.name, fits: p.summary ? p.summary.fits : null })),
-    libraries: sources.isSuccess ? sources.data.filter((s) => s.snapshot).length : null,
-    newer:
-      updates.isSuccess && sources.isSuccess
-        ? updates.data
-            .filter((u) => u.available)
-            .flatMap((u) => {
-              const source = sources.data.find((s) => s.id === u.sourceId);
-              return source ? [{ id: source.id, name: source.name }] : [];
-            })
-        : null,
-    unshared:
-      skills.isSuccess && contributions.isSuccess ? countUnshared(skills.data, contributions.data) : null,
-  });
-
-  const leadAction = lead.action;
 
   // Until the projects are known, a returning user must not see the first-run screen.
   if (recent.isPending) {
@@ -116,17 +88,7 @@ export function Welcome() {
         <h1 className="home-title">
           What one developer learns, <em>every project</em> keeps.
         </h1>
-        <p className="home-lead">
-          {lead.text}
-          {leadAction ? (
-            <>
-              {" "}
-              <button type="button" className="link-quiet" onClick={() => navigate(leadAction.to)}>
-                {leadAction.label}
-              </button>
-            </>
-          ) : null}
-        </p>
+        <p className="home-lead">Find what applies. Improve what works. Share what you learn.</p>
         {info.data && !info.data.gitAvailable ? (
           <div className="home-setup">
             <Notice

@@ -84,24 +84,16 @@
 
 /* ---------- The loom: libraries across projects (home) ---------- */
 
+/* Names, then the weave, which runs to the page's right edge: what fits a project is told by its
+   threads, and its counts are in the name's tooltip. */
 .loom {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(120px, 176px);
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
   column-gap: var(--s5);
 }
 
-/* No projects yet, so no meta to carry: the weave runs to the same right edge as the page. */
-.loom.is-unwritten {
-  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
-}
-
-.loom.is-unwritten .loom-meta {
-  display: none;
-}
-
-.loom-labels,
-.loom-meta {
+.loom-labels {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -115,8 +107,7 @@
 }
 
 .loom-row-label,
-.loom-new,
-.loom-meta-cell {
+.loom-new {
   height: var(--loom-row);
   display: flex;
   align-items: center;
@@ -148,18 +139,17 @@
   color: var(--thread-strong);
 }
 
-.loom-meta-cell {
-  justify-content: space-between;
-  gap: var(--s3);
+/* More projects than the weave shows: said once, quietly, where the last row ends. */
+.loom-more-projects {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  padding-left: var(--s2);
+  background: var(--paper);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--ink-muted);
-  white-space: nowrap;
-  transition: opacity 200ms var(--ease);
-}
-
-.loom-when {
   color: var(--ink-faint);
+  white-space: nowrap;
 }
 
 .loom-field {
@@ -300,6 +290,27 @@
   transition: opacity 200ms var(--ease);
 }
 
+/* Something from this library is installed here: the thread is woven in, solid and full. */
+.loom-float.is-woven {
+  stroke-width: 6;
+}
+
+/* It fits, nothing installed yet: a loose thread, as wide as a fit but washed out, not tied in. */
+.loom-float.is-loose {
+  stroke-width: 5;
+  opacity: 0.32;
+}
+
+/* Where a crossing can be pointed at. */
+.loom-cross {
+  position: absolute;
+  width: 26px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  border-radius: 6px;
+  cursor: default;
+}
+
 .loom-knot {
   fill: none;
   stroke: var(--thread);
@@ -311,7 +322,6 @@
 }
 
 .loom-labels .is-dim,
-.loom-meta .is-dim,
 .loom-sources .is-dim {
   opacity: 0.36;
 }
@@ -373,9 +383,6 @@
   .loom {
     grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
     column-gap: var(--s3);
-  }
-  .loom-meta {
-    display: none;
   }
   .loom-source.is-tilted {
     transform: rotate(-60deg);

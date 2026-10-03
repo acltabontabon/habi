@@ -534,10 +534,10 @@ export function ReviewDialog({
             <Button
               variant={request.kind === "remove" ? "danger" : "primary"}
               title={p.title}
-              busy={applying}
+              // While the preview for new choices loads, the shown plan is the old one: the button is
+              // busy until the matching preview arrives, so a click never applies other choices.
+              busy={applying || plan.isPlaceholderData}
               disabled={unresolved > 0 || p.conflicts.some((c) => c.options.length === 0)}
-              // The button keeps its look while a new preview loads (no flicker), but a plan for
-              // other choices is never applied: that click waits for the matching preview.
               onClick={() => {
                 if (!plan.isPlaceholderData) void apply(p);
               }}

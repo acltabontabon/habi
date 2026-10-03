@@ -15,7 +15,9 @@ import {
   type CSSProperties,
   Fragment,
   type KeyboardEvent,
+  memo,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -38,7 +40,7 @@ import { useInspectorOpen } from "../../lib/inspector";
 import { lastProject, type Route, useNav } from "../../lib/nav";
 import {
   useCatalog,
-  useCatalogFits,
+  useCatalogFitsFor,
   useLibrary,
   useRecentProjects,
   useRefreshSource,
@@ -114,18 +116,18 @@ function IndexRow({
         </span>
         <span className="index-title">{item.title}</span>
         <span className="index-marks mono">
-          {item.kind === "instructions" ? <span>instructions</span> : null}
-          {item.kind === "workflow" ? <span>workflow</span> : null}
-          {item.requirement === "required" ? <span>required</span> : null}
-          {item.metadataStatus === "declared" ? <span>rules</span> : null}
-          {changed ? <span className="index-changed">{changed}</span> : null}
-          {fits ? <span className="index-fit">fits</span> : null}
           {flagged ? (
             <span className="index-flag">
               <Icon name="warning" size={11} />
               <span className="visually-hidden">caution signals</span>
             </span>
           ) : null}
+          {changed ? <span className="index-changed">{changed}</span> : null}
+          {fits ? <span className="index-fit">fits</span> : null}
+          {item.requirement === "required" ? <span>required</span> : null}
+          {item.kind === "instructions" ? <span>instructions</span> : null}
+          {item.kind === "workflow" ? <span>workflow</span> : null}
+          {item.metadataStatus === "declared" ? <span>rules</span> : null}
           {code > 0 ? (
             <span className="index-runs">
               <Icon name="terminal" size={11} />
@@ -140,7 +142,8 @@ function IndexRow({
   );
 }
 
-function IndexPanel({
+/** Memoized: it lists every skill, and the reader beside it re-renders as it scrolls. */
+const IndexPanel = memo(function IndexPanel({
   source,
   dye,
   name,
@@ -362,7 +365,7 @@ function IndexPanel({
       {items.length === 0 && query ? <p className="index-empty muted">Nothing matches “{query}”.</p> : null}
     </div>
   );
-}
+});
 
 /* ---------- The skill's head ---------- */
 
@@ -374,8 +377,7 @@ function SkillHead({
   libraryName,
   position,
   details,
-  fit,
-  projectName,
+  fits,
   onDetails,
   onOpenDetails,
   onFocusIndex,
@@ -388,9 +390,8 @@ function SkillHead({
   libraryName: string;
   position: string;
   details: boolean;
-  /** This skill fits the project being worked on, with Habi's reason. */
-  fit: Recommendation | undefined;
-  projectName: string | null;
+  /** The projects this skill fits, the one being worked on first, each with Habi's reason. */
+  fits: { projectName: string | null; fit: Recommendation }[];
   onDetails: () => void;
   onOpenDetails: () => void;
   onFocusIndex: () => void;
@@ -400,6 +401,16 @@ function SkillHead({
   const pkg = usePackage();
   const [adding, setAdding] = useState(false);
   const [onMachine, setOnMachine] = useState(false);
+  const fitReasons = fits
+    .map(
+      ({ projectName, fit }) =>
+        `${projectName ?? "Your project"}: ${fit.applicability.reason}. ${
+          fit.basis === "catalogHint"
+            ? "Suggested by Habi's catalog; the author declared no rules."
+            : "From the author's own rules."
+        }`,
+    )
+    .join("\n");
   const shape = pkg?.shape ?? packageShape(item.files);
   const summary = summarize(item.description);
   const lineage = item.basedOn ? lineageParts(item.basedOn) : null;
@@ -495,8 +506,18 @@ function SkillHead({
           {libraryName}
         </button>
         <span className="skill-coord-trust">
-          {entry?.ownership ? "not audited" : community ? "community · not team-reviewed" : "team library"}
+          {entry?.ownership ? "not audited" : community ? "community" : "team library"}
         </span>
+        {fits.length > 0 ? (
+          // Focusable, so the reasons in its tooltip reach the keyboard too; a screen reader reads them with it.
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a focus stop for the tooltip, which holds the reasons.
+          <span className="skill-rec" tabIndex={0} data-tip={fitReasons}>
+            <Icon name="check" size={11} />
+            <span className="skill-rec-text">Recommended for {fits[0]?.projectName ?? "your project"}</span>
+            {fits.length > 1 ? <span className="skill-rec-more">+{fits.length - 1}</span> : null}
+            <span className="visually-hidden">. {fitReasons}</span>
+          </span>
+        ) : null}
         <span className="skill-coord-pos mono">{position}</span>
       </p>
       <div className="skill-title-row">
@@ -530,19 +551,6 @@ function SkillHead({
         </div>
       </div>
       <p className="skill-purpose">{summary.text}</p>
-      {fit ? (
-        <p className="skill-fit">
-          <Icon name="check" size={12} />
-          <span>
-            Fits {projectName ?? "your project"}: {fit.applicability.reason}.{" "}
-            {fit.basis === "catalogHint" ? (
-              <span className="muted">Suggested by Habi's catalog; the author declared no rules.</span>
-            ) : (
-              <span className="muted">From the author's own rules.</span>
-            )}
-          </span>
-        </p>
-      ) : null}
       <div className="skill-sig">
         <p className="sig mono">{signature}</p>
         <div className="sig-tools">
@@ -657,6 +665,9 @@ function SkillHead({
 
 type Layout = "full" | "spine" | "bar";
 
+/** Recent projects, besides the current one, whose fit with a library is looked up. */
+const OTHER_PROJECTS_CHECKED = 3;
+
 export function LibraryView({ source, itemId, file }: { source: Source; itemId?: string; file?: string }) {
   const { navigate } = useNav();
   const library = useLibrary(source.id, Boolean(source.snapshot));
@@ -666,17 +677,31 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
   const entry = catalog.data?.find((e) => e.sourceId === source.id);
   const skills = useSkills();
   const projects = useRecentProjects();
-  const projectId = lastProject() ?? undefined;
-  const projectName = projects.data?.find((p) => p.id === projectId)?.name ?? null;
-  const fits = useCatalogFits(entry ? projectId : undefined);
-  const fitByItem = useMemo(
+  const currentId = lastProject() ?? undefined;
+  // The project being worked on is checked first, then a few other recent ones: each
+  // check inspects a project, so the rest of a long list is left alone.
+  const projectIds = useMemo(() => {
+    const others = (projects.data ?? [])
+      .map((p) => p.id)
+      .filter((id) => id !== currentId)
+      .slice(0, OTHER_PROJECTS_CHECKED);
+    return entry ? (currentId ? [currentId, ...others] : others) : [];
+  }, [entry, currentId, projects.data]);
+  const fitData = useCatalogFitsFor(projectIds);
+  const entryId = entry?.id;
+  const fitsByProject = useMemo(
     () =>
-      new Map<string, Recommendation>(
-        (fits.data?.find((f) => f.entryId === entry?.id)?.fits ?? []).map((r) => [r.item.id, r]),
-      ),
-    [fits.data, entry?.id],
+      projectIds.map((id, n) => ({
+        projectName: projects.data?.find((p) => p.id === id)?.name ?? null,
+        byItem: new Map<string, Recommendation>(
+          (fitData[n]?.find((f) => f.entryId === entryId)?.fits ?? []).map((r) => [r.item.id, r]),
+        ),
+      })),
+    [projectIds, projects.data, fitData, entryId],
   );
-  const fitIds = useMemo(() => new Set(fitByItem.keys()), [fitByItem]);
+  // The index marks skills that fit the project being worked on; the skill's own page names every project.
+  const currentFits = currentId ? fitsByProject[0]?.byItem : undefined;
+  const fitIds = useMemo(() => new Set(currentFits?.keys() ?? []), [currentFits]);
   const updateReport = useUpdateReport(source.snapshot ? source.id : undefined).data;
   const changes = useMemo(() => changesOf(updateReport), [updateReport]);
   const adopted = entry
@@ -738,11 +763,16 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
     return () => box.removeEventListener("scroll", onScroll);
   }, []);
 
-  const open = (item: LibraryItem) => navigate(route(item.id));
-  const read = () => {
+  const sourceId = source.id;
+  const open = useCallback(
+    (item: LibraryItem) => navigate({ name: "sources", sourceId, itemId: item.id }),
+    [navigate, sourceId],
+  );
+  const read = useCallback(() => {
     setPeek(false);
     requestAnimationFrame(() => document.getElementById("reader-doc")?.focus({ preventScroll: true }));
-  };
+  }, []);
+  const openSheet = useCallback(() => setSheet(true), []);
   const focusIndex = () => {
     if (layout !== "full") setPeek(true);
     requestAnimationFrame(() =>
@@ -764,9 +794,9 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
       name={name}
       all={all}
       selectedId={selected?.id}
-      onOpen={(item) => open(item)}
+      onOpen={open}
       onRead={read}
-      onSheet={() => setSheet(true)}
+      onSheet={openSheet}
       groupSegment={groupSegment}
       fitIds={fitIds}
       changes={changes}
@@ -871,8 +901,10 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
                 libraryName={name}
                 position={position}
                 details={details}
-                fit={fitByItem.get(selected.id)}
-                projectName={projectName}
+                fits={fitsByProject.flatMap((f) => {
+                  const fit = f.byItem.get(selected.id);
+                  return fit ? [{ projectName: f.projectName, fit }] : [];
+                })}
                 onDetails={() => setDetails((d) => !d)}
                 onOpenDetails={() => setDetails(true)}
                 onFocusIndex={focusIndex}

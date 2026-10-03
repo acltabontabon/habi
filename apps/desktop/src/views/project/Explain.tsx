@@ -94,6 +94,7 @@ function Chip({ label, open, onToggle }: { label: string; open: boolean; onToggl
 
 function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOverview }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [undoing, setUndoing] = useState<string | null>(null);
   const client = useQueryClient();
   const toast = useToast();
   const facts = node.facts
@@ -113,12 +114,16 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
 
   if (unique.length === 0 && files.length === 0 && declarations.length === 0) return null;
   const undo = async (id: string) => {
+    if (undoing) return;
+    setUndoing(id);
     try {
       await api.retract(overview.project.id, id);
       invalidateProjectData(client, overview.project.id);
       toast.show("Declaration removed. Recommendations updated.");
     } catch (e) {
       toast.show(e instanceof Error ? e.message : String(e), "danger");
+    } finally {
+      setUndoing(null);
     }
   };
   const openItem = unique.find((x) => x.loc.text === open) ?? null;
@@ -142,7 +147,13 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
             <Icon name="pencil" size={13} />
             You declared this {d.present ? "present" : "absent"}
             {d.note ? ` — “${d.note}”` : ""}
-            <button type="button" className="link-btn" onClick={() => void undo(d.id)}>
+            <button
+              type="button"
+              className="link-btn"
+              disabled={undoing === d.id}
+              aria-busy={undoing === d.id || undefined}
+              onClick={() => void undo(d.id)}
+            >
               Undo
             </button>
           </span>
