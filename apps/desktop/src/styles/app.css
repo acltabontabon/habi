@@ -534,11 +534,123 @@
   color: var(--ink-muted);
 }
 
-.working-thread {
-  width: 24px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--thread);
+/* Held back a moment, so what loads at once never flickers through it. */
+.working {
+  animation: working-in 220ms var(--ease) 160ms both;
+}
+
+/* In place of a page's content: centred where the content will be. */
+.working.is-stage {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s4);
+  min-height: 46vh;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+@keyframes working-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+/* The loader (Loom.tsx): warp threads, and a saffron weft woven over and under, row after row. */
+.loader {
+  flex: none;
+  overflow: visible;
+}
+
+.loader-warp {
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.loader-weft {
+  stroke: var(--thread);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: loader-weave 1.8s var(--ease) infinite;
+  animation-delay: inherit;
+}
+
+/* Where the warp passes over: the weft breaks, the warp crosses it. */
+.loader-gap {
+  stroke: var(--paper);
+  stroke-width: 3;
+}
+
+.loader-cross {
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+}
+
+.loader-over {
+  opacity: 0;
+  animation: loader-over 1.8s var(--ease) infinite;
+  animation-delay: inherit;
+}
+
+@keyframes loader-weave {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 1;
+  }
+  45%,
+  72% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes loader-over {
+  0%,
+  22% {
+    opacity: 0;
+  }
+  45%,
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .working {
+    animation: none;
+  }
+
+  .loader-weft,
+  .loader-over {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* What was loading arrives softly, in place of the loom. */
+@media (prefers-reduced-motion: no-preference) {
+  .library-reader > *,
+  .library-index > *:not(.working) {
+    animation: content-in 200ms var(--ease);
+  }
+}
+
+@keyframes content-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 /* ---------- Pages ---------- */
@@ -6758,4 +6870,175 @@ ul.connect-confirm {
 
 .lp-loom .weaving-cloth {
   width: 100%;
+}
+
+/* ---------- Tooltips: one surface, one type, one motion ---------- */
+
+.tip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 300px;
+  padding: 7px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-dialog);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.tip.is-placed {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tip.is-placed.is-bottom {
+    animation: tip-in-down 120ms var(--ease);
+  }
+
+  .tip.is-placed.is-top {
+    animation: tip-in-up 120ms var(--ease);
+  }
+
+  .tip.is-placed.is-right {
+    animation: tip-in-right 120ms var(--ease);
+  }
+}
+
+@keyframes tip-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes tip-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes tip-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-3px);
+  }
+}
+
+/* A small point toward what it describes, in the tooltip's own surface and edge. */
+.tip::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--hairline-strong);
+  background: var(--paper-raised);
+  transform: rotate(45deg);
+}
+
+.tip.is-bottom::before {
+  top: -5px;
+  left: calc(var(--tip-arrow) - 4px);
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.tip.is-top::before {
+  bottom: -5px;
+  left: calc(var(--tip-arrow) - 4px);
+  border-top: 0;
+  border-left: 0;
+}
+
+.tip.is-right::before {
+  left: -5px;
+  top: calc(var(--tip-arrow) - 4px);
+  border-top: 0;
+  border-right: 0;
+}
+
+.tip-text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.tip-keys {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+
+.tip-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tip-mark {
+  flex: none;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--mark);
+}
+
+.tip-mark.is-stitched {
+  background: repeating-linear-gradient(to bottom, var(--mark) 0 3px, transparent 3px 5px);
+}
+
+.tip-line {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.tip-line.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.tip-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.tip-note-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.tip-note.tone-ok .tip-note-dot {
+  background: var(--ok-ink);
+}
+
+.tip-note.tone-warn .tip-note-dot {
+  background: var(--warn-ink);
+}
+
+.tip-note.tone-danger .tip-note-dot {
+  background: var(--danger-ink);
+}
+
+.tip-note.tone-unknown .tip-note-dot {
+  background: var(--unknown-ink);
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Source } from "../bindings/Source";
 import { Icon, Mark } from "../components/Icon";
 import { useToast } from "../components/Toasts";
+import { tip } from "../components/Tooltips";
 import { Kbd } from "../components/ui";
 import { Strand } from "../components/Weave";
 import { useActions } from "../lib/actions";
@@ -261,7 +262,26 @@ function LibraryItem({
         type="button"
         className={`sidebar-item${active ? " is-active" : ""}`}
         aria-current={active ? "page" : undefined}
-        title={`${source.name} · ${source.role === "community" ? "community" : source.location.startsWith("/") || source.location.startsWith("~") ? "local" : "team"} · ${repositoryLabel(source.location)}${fresh.tone !== "muted" ? ` — ${fresh.text}` : ""}`}
+        {...tip({
+          title: source.name,
+          mark: dye.color,
+          stitched: dye.community,
+          lines: [
+            {
+              text:
+                source.role === "community"
+                  ? "Community library · not reviewed by your team"
+                  : source.location.startsWith("/") || source.location.startsWith("~")
+                    ? "Local folder"
+                    : "Team library",
+            },
+            { text: repositoryLabel(source.location), mono: true },
+          ],
+          note: {
+            text: fresh.text,
+            tone: fresh.tone === "muted" ? "ok" : fresh.tone === "thread" ? "muted" : fresh.tone,
+          },
+        })}
         onClick={() => onOpen(source.id)}
       >
         <Strand dye={dye} />

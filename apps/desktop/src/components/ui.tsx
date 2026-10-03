@@ -3,6 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { HabiError } from "../lib/api";
 import type { Tone } from "../lib/format";
 import { Icon, type IconName } from "./Icon";
+import { Loom } from "./Loom";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "quiet" | "danger";
@@ -184,11 +185,23 @@ export function Section({
   );
 }
 
-/** A quiet "loading" line; no spinners or infinite animation. */
-export function Working({ children, onCancel }: { children: ReactNode; onCancel?: () => void }) {
+/**
+ * Something is being read: the loom and what is being read, in words. It
+ * appears after a short pause, so what loads at once never flickers through
+ * it. `stage` holds the place of a page's content while it comes.
+ */
+export function Working({
+  children,
+  onCancel,
+  stage,
+}: {
+  children: ReactNode;
+  onCancel?: () => void;
+  stage?: boolean;
+}) {
   return (
-    <div className="working" role="status" aria-live="polite">
-      <span className="working-thread" aria-hidden="true" />
+    <div className={`working${stage ? " is-stage" : ""}`} role="status" aria-live="polite">
+      <Loom size={stage ? 2 : 1} />
       <span>{children}</span>
       {onCancel ? (
         <Button variant="quiet" size="sm" onClick={onCancel}>

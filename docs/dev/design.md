@@ -159,6 +159,16 @@ Strand, Swatch, Selvedge). Layout and view styles: `src/styles/app.css` and
 `authoring.css`; the weave's own drawing: `src/styles/weave.css`. Library dyes:
 `src/lib/dye.ts`.
 
+- **Loading** — one mark everywhere: the loom (`components/Loom.tsx`), warp threads and a
+  saffron weft woven over and under, row after row. `Working` shows it beside what is being
+  read, after a short pause so fast loads never flicker; `<Working stage>` holds a page's
+  content place while it loads. Arriving content fades in; nothing pops.
+- **Tooltips** — one layer (`components/Tooltips.tsx`) draws every `title` in the app's
+  surface: a raised card with a hairline edge and a point toward its element, a trailing
+  "(⌘K)" as a key, "A — B" as a line and a quieter line. `tip({ title, mark, lines, note })`
+  makes a structured card (the sidebar's libraries). The native tooltip never shows; what a
+  title said for screen readers is kept as a label or description.
+
 ## Accessibility
 
 WCAG AA contrast targets for text tokens (ratios noted in `tokens.css`), visible focus
