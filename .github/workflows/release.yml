@@ -2,8 +2,8 @@ name: Release
 
 # Pushing a tag vX.Y.Z runs every CI check, confirms the tag matches the version in each
 # manifest and that CHANGELOG.md has an entry for it, builds the installers (signed for Habi's
-# own updater) and the `habi` command-line tool for macOS (one universal build) and Windows, and
-# creates a draft release with the update manifest (latest.json). See docs/dev/release.md.
+# own updater) for macOS (one universal build) and Windows, and creates a draft release with
+# the update manifest (latest.json). See docs/dev/release.md.
 
 on:
   push:
@@ -111,23 +111,6 @@ jobs:
           # builds do not need the key.
           pnpm tauri build "${args[@]}" --config '{"bundle":{"createUpdaterArtifacts":true}}'
         working-directory: apps/desktop
-      - name: Build command-line tool (macOS, universal)
-        if: runner.os == 'macOS'
-        run: |
-          cargo build --release --locked -p habi-cli --target aarch64-apple-darwin
-          cargo build --release --locked -p habi-cli --target x86_64-apple-darwin
-          mkdir -p target/cli
-          lipo -create -output target/cli/habi \
-            target/aarch64-apple-darwin/release/habi target/x86_64-apple-darwin/release/habi
-          echo "CLI_TARGET=universal-apple-darwin" >> "$GITHUB_ENV"
-      - name: Build command-line tool (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          cargo build --release --locked -p habi-cli
-          mkdir -p target/cli
-          cp target/release/habi.exe target/cli/
-          echo "CLI_TARGET=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_ENV"
       - name: Collect artifacts and checksums
         shell: bash
         run: |
@@ -139,8 +122,6 @@ jobs:
           for f in $(find target -type f -path '*/release/bundle/macos/*' -name '*.app.tar.gz*'); do
             cp "$f" "dist/Habi_${GITHUB_REF_NAME#v}_universal.${f##*/Habi.}"
           done
-          # shellcheck disable=SC2035
-          (cd target/cli && tar -czf "../../dist/habi-cli-${GITHUB_REF_NAME}-${CLI_TARGET}.tar.gz" *)
           cd dist
           if command -v sha256sum >/dev/null; then sum="sha256sum"; else sum="shasum -a 256"; fi
           # shellcheck disable=SC2035

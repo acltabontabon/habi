@@ -37,8 +37,6 @@ new empty "Unreleased" above it (docs/dev/release.md, step 1). -->
   libraries are marked as not reviewed by your team, and anything that downloads code or
   touches credentials is pointed out. Habi never runs a skill's scripts. A Privacy and security
   page lists everything that stays on your machine and the few requests that do not.
-- **A `habi` command-line tool** with the same abilities for libraries, projects, installs and
-  contributions, for terminals and scripts.
 - **Updates you choose.** Habi checks for a newer version, shows what changed in *What's new*,
   and installs it only when you press Update. Updates are signed, and the check can be turned
   off in Settings.

@@ -10,8 +10,7 @@ Shortcuts on this page are written for macOS; on Windows, use Ctrl where it says
 
 Download the installer for your system from the
 [Releases page](https://github.com/acltabontabon/habi/releases): the `universal.dmg` for macOS
-(Apple Silicon and Intel), or the `.msi` or `-setup.exe` for Windows. Each release also carries
-the `habi` command-line tool.
+(Apple Silicon and Intel), or the `.msi` or `-setup.exe` for Windows.
 
 The installers are not signed by Apple or Microsoft, so the first launch asks you to confirm:
 
@@ -84,8 +83,7 @@ library, in Settings → Storage, or in the command palette. It removes only the
    ![The project after installing: Liquibase migration review under Installed, its facets reading Applies, Ready, and Installed for Claude Code.](../media/installed.jpg)
 
 From there, [My skills](my-skills.md) covers writing and editing your own skills, and
-[Sharing](sharing.md) covers sending an improvement back for review. Everything here also
-works from the [command line](cli.md).
+[Sharing](sharing.md) covers sending an improvement back for review.
 
 ## What Habi changes, and what it does not
 

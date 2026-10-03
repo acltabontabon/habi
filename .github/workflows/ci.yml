@@ -62,7 +62,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   core:
-    name: Rust core and CLI (${{ matrix.os }})
+    name: Rust core (${{ matrix.os }})
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     timeout-minutes: 60

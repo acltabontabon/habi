@@ -20,8 +20,7 @@ pull request from Habi, install and sign in to [`gh`](https://cli.github.com) fo
 yourself.
 
 The steps below follow one skill from your draft to a merged review. The screenshots are from a
-GitHub repository; GitLab reads the same. Every step is also a
-[`habi contribute` command](cli.md#contributing).
+GitHub repository; GitLab reads the same.
 
 ## Share a skill
 
@@ -176,8 +175,7 @@ listed apart from approved library content.
 
 Discarding a contribution removes its staged files and local branch; it can no longer be
 prepared, exported, sent or checked. A request already open on the host stays open; close it
-there. On the command line, `habi contribute list` shows the underlying states: draft,
-committed, exported, sent for review and discarded.
+there.
 
 ## Reference
 
@@ -273,8 +271,3 @@ in `tests/review_flow.rs`. GitLab is covered only through a stand-in `glab` in
 - The library must be a Git source (remote or local clone). Folder sources cannot receive
   contributions; export the skill as a zip instead.
 - Git must know your name and email.
-
-## Command line
-
-Every step is also a `habi contribute` command; see the
-[command-line guide](cli.md#contributing).

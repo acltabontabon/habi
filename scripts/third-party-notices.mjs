@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const out = join(root, "THIRD_PARTY_NOTICES.md");
-const SHIPPED = new Set(["habi-cli", "habi-desktop"]);
+const SHIPPED = new Set(["habi-desktop"]);
 const LICENSE_FILE = /^(licen[cs]e|copying|notice|unlicense|copyright)([-._].*)?$/i;
 
 function run(cmd, args, cwd) {

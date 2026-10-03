@@ -1,8 +1,12 @@
 # Command line
 
-The `habi` command does what the desktop app does with libraries, projects, installs and
-contributions, for terminals and scripts. Both use the same core and the same data folder, and
-you can run them at the same time.
+The `habi` command is an internal tool, not part of a release: it is not built into the
+installers or offered for download, and its output and exit codes carry no compatibility
+promise. It exists to drive `habi-core` without the desktop app, for the test data
+([test-data.md](test-data.md)), the website snapshot ([website.md](website.md)) and the CLI tests
+in `crates/habi-cli/tests`. It does what the desktop app does with libraries, projects, installs
+and contributions. Both use the same core and the same data folder, and you can run them at the
+same time.
 
 ```sh
 cargo install --path crates/habi-cli    # from a clone of the repository
@@ -76,7 +80,7 @@ habi recover                                   # roll back an interrupted operat
 
 `--client` takes a comma-separated list of `claude-code`, `cursor`, `codex`, `gemini-cli`,
 `copilot`, `opencode` and `junie`. Without it, Habi installs for the agent tools the project
-already uses ([how it tells](agent-tools.md#choosing-agent-tools)); if it finds none, it asks
+already uses ([how it tells](../guide/agent-tools.md#choosing-agent-tools)); if it finds none, it asks
 you to name them. `--mcp` also adds the MCP server configuration an item suggests.
 
 Installing on this machine (into your own skill folders) is available in the desktop app only.
@@ -124,7 +128,7 @@ habi contribute list
 habi contribute discard <id>
 ```
 
-[Sharing](sharing.md) explains each step and what Habi does and does not do on the Git host.
+[Sharing](../guide/sharing.md) explains each step and what Habi does and does not do on the Git host.
 
 ## Maintenance
 
@@ -134,6 +138,6 @@ habi diagnostics --output report.txt # a redacted report for a bug report
 habi gc                              # free disk space
 ```
 
-`habi gc` keeps what can still be restored; [Recovery](recovery.md#freeing-space) says what it
+`habi gc` keeps what can still be restored; [Recovery](../guide/recovery.md#freeing-space) says what it
 removes. Skills in My skills are managed in the desktop app; the command line has no commands for them
 yet.
