@@ -53,10 +53,9 @@ function about() {
 }
 
 describe("About", () => {
-  it("shows the version, the notes of each release, and who made Habi", async () => {
+  it("shows the notes of each release, and who made Habi", async () => {
     about();
-    expect(await screen.findByText("Version 0.1.0")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "What's new" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "What's new" })).toBeInTheDocument();
     // Whatever the changelog holds is listed, newest first.
     for (const release of RELEASES) {
       expect(screen.getByRole("heading", { name: release.version })).toBeInTheDocument();
@@ -80,7 +79,7 @@ describe("updating", () => {
     const user = userEvent.setup();
     about();
     await user.click(await screen.findByRole("button", { name: "Check for updates" }));
-    expect(await screen.findByText("Habi is up to date")).toBeInTheDocument();
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
   });
 
   it("offers a newer version with its notes, installs it, then restarts", async () => {
@@ -90,7 +89,7 @@ describe("updating", () => {
     const user = userEvent.setup();
     about();
     await user.click(await screen.findByRole("button", { name: "Check for updates" }));
-    expect(await screen.findByText("Habi 0.2.0 is available")).toBeInTheDocument();
+    expect(await screen.findByText("0.2.0 is available")).toBeInTheDocument();
     expect(screen.getByText("A new thing.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Update and restart" }));

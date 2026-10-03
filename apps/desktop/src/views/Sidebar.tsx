@@ -25,6 +25,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const { state: update } = useUpdates();
   const version = info.data?.version;
   const unseen = useNewVersionMark(version);
+  const offered = update.phase === "available" || update.phase === "installing" || update.phase === "ready";
   const [allProjects, setAllProjects] = useState(false);
   const client = useQueryClient();
   const toast = useToast();
@@ -58,11 +59,39 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
 
   return (
     <nav className="sidebar" aria-label="Habi">
-      <button type="button" className="sidebar-brand" onClick={() => navigate({ name: "welcome" })}>
-        <Mark size={22} />
-        <span className="sidebar-wordmark">Habi</span>
-        <span className="visually-hidden"> — start screen</span>
-      </button>
+      <div className="sidebar-top">
+        <button type="button" className="sidebar-brand" onClick={() => navigate({ name: "welcome" })}>
+          <Mark size={28} />
+          <span className="sidebar-wordmark">Habi</span>
+          <span className="visually-hidden"> — start screen</span>
+        </button>
+        {version ? (
+          <button
+            type="button"
+            className={`sidebar-version${route.name === "about" ? " is-active" : ""}${offered ? " is-offered" : ""}`}
+            aria-current={route.name === "about" ? "page" : undefined}
+            title={offered ? `${update.info.version} is available — what's new` : "What's new"}
+            onClick={() => navigate({ name: "about" })}
+          >
+            {offered ? (
+              <>
+                <Icon name="arrowUp" size={11} />
+                {update.phase === "ready" ? "Restart" : update.info.version}
+                <span className="visually-hidden"> — an update is available</span>
+              </>
+            ) : (
+              <>
+                v{version}
+                {unseen ? (
+                  <span className="sidebar-dot tone-ok">
+                    <span className="visually-hidden"> New in this version</span>
+                  </span>
+                ) : null}
+              </>
+            )}
+          </button>
+        ) : null}
+      </div>
 
       <button type="button" className="palette-trigger" onClick={onOpenPalette}>
         <Icon name="search" />
@@ -224,6 +253,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
       ) : null}
 
       <div className="sidebar-foot">
+        {/* The version at the top carries the dot; in the icon rail it is hidden, so the dot moves here. */}
         <button
           type="button"
           className={`sidebar-item${route.name === "settings" ? " is-active" : ""}`}
@@ -233,31 +263,16 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
         >
           <Icon name="settings" />
           <span className="sidebar-item-text">Settings</span>
+          {offered ? (
+            <span className="sidebar-dot sidebar-dot-rail tone-warn">
+              <span className="visually-hidden"> An update is available</span>
+            </span>
+          ) : unseen ? (
+            <span className="sidebar-dot sidebar-dot-rail tone-ok">
+              <span className="visually-hidden"> New in this version</span>
+            </span>
+          ) : null}
         </button>
-        {version ? (
-          <button
-            type="button"
-            className={`sidebar-version${route.name === "about" ? " is-active" : ""}`}
-            aria-current={route.name === "about" ? "page" : undefined}
-            title={
-              update.phase === "available" || update.phase === "installing" || update.phase === "ready"
-                ? `Habi ${update.info.version} is available — what's new`
-                : "About Habi and what's new"
-            }
-            onClick={() => navigate({ name: "about" })}
-          >
-            v{version}
-            {update.phase === "available" || update.phase === "installing" || update.phase === "ready" ? (
-              <span className="sidebar-dot tone-warn">
-                <span className="visually-hidden"> An update is available</span>
-              </span>
-            ) : unseen ? (
-              <span className="sidebar-dot tone-ok">
-                <span className="visually-hidden"> New in this version</span>
-              </span>
-            ) : null}
-          </button>
-        ) : null}
       </div>
     </nav>
   );

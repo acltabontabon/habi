@@ -9,3 +9,7 @@ export const RELEASES_PAGE = `${REPOSITORY}/releases`;
 /** The developer, and the one place to support the work (also .github/FUNDING.yml). */
 export const AUTHOR = { name: "Alvin Cris Tabontabon", site: "https://acltabontabon.com" };
 export const SUPPORT = "https://ko-fi.com/aclt_attic";
+
+/** The security policy, and the model of what Habi will and will not do. */
+export const SECURITY = `${REPOSITORY}/blob/main/SECURITY.md`;
+export const SECURITY_MODEL = `${REPOSITORY}/blob/main/docs/project/security-model.md`;

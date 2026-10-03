@@ -38,7 +38,6 @@ export function AboutView() {
           <p className="about-tagline">Find what applies. Improve what works. Share what you learn.</p>
         </div>
         <div className="about-version">
-          <span className="mono">Version {version}</span>
           <UpdateStatus />
         </div>
       </header>

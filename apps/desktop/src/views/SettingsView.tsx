@@ -2,25 +2,35 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import type { DiagnosticBundle } from "../bindings/DiagnosticBundle";
 import type { Settings } from "../bindings/Settings";
+import { Dialog } from "../components/Dialog";
+import { Setting, SettingAction, SettingGroup } from "../components/SettingGroup";
+import { ThreadChoice } from "../components/ThreadChoice";
 import { useToast } from "../components/Toasts";
-import { Button, ErrorNotice, Section, Status, Working } from "../components/ui";
+import { Button, ErrorNotice, Status, Working } from "../components/ui";
 import { api } from "../lib/api";
 import { pruneSummary } from "../lib/format";
-import { REPOSITORY } from "../lib/links";
-import { useNav } from "../lib/nav";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
-import { useOpenExternal } from "../lib/safeInvoke";
 import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
-import { UpdateStatus } from "./UpdateStatus";
+
+const UPDATE_CHOICES = [
+  { value: "manual", label: "Manual", description: "Only when I ask" },
+  { value: "auto", label: "Automatic", description: "Look for updates while the app is open" },
+];
+
+const REFRESH_CHOICES = [
+  { value: 0, label: "Manual", description: "Only when I ask" },
+  { value: 6, label: "6 h", description: "Every 6 hours" },
+  { value: 12, label: "12 h", description: "Every 12 hours" },
+  { value: 24, label: "Daily", description: "Once a day" },
+];
 
 export function SettingsView() {
   const settings = useSettings();
   const info = useAppInfo();
   const client = useQueryClient();
   const toast = useToast();
-  const openExternal = useOpenExternal();
-  const { navigate } = useNav();
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
+  const [building, setBuilding] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const hasSample = useHasSample();
   const [removingSample, setRemovingSample] = useState(false);
@@ -59,146 +69,137 @@ export function SettingsView() {
     }
   };
 
+  const closeReport = () => {
+    setBundle(null);
+    setError(null);
+  };
+
+  const previewReport = async () => {
+    setBuilding(true);
+    setError(null);
+    try {
+      setBundle(await api.diagnosticsPreview());
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  const saveReport = async () => {
+    try {
+      const path = await api.diagnosticsSave();
+      if (path) {
+        toast.show(`Saved to ${path}`);
+        closeReport();
+      }
+    } catch (e) {
+      setError(e);
+    }
+  };
+
+  const tools = [
+    { name: "Git", found: info.data?.gitAvailable, missing: "warn" as const },
+    { name: "GitHub CLI", found: info.data?.ghAvailable, missing: "muted" as const },
+    { name: "GitLab CLI", found: info.data?.glabAvailable, missing: "muted" as const },
+  ];
+
   return (
-    <div className="page narrow">
+    <div className="page settings">
       <h1 className="page-title">Settings</h1>
 
-      <Section title="Library updates" id="refresh">
-        <label className="field">
-          <span className="field-label">Check connected libraries for new versions</span>
-          <select
-            className="input"
-            value={s.autoRefreshHours}
-            onChange={(e) => {
-              const hours = Number(e.target.value);
-              save((current) => ({ ...current, autoRefreshHours: hours }));
-            }}
+      <div className="set-warp">
+        <SettingGroup title="Updates" id="updates">
+          <Setting label="Check libraries" hint="Nothing changes until you press Update.">
+            <ThreadChoice
+              label="Check connected libraries for new versions"
+              value={s.autoRefreshHours}
+              options={REFRESH_CHOICES}
+              onChange={(hours) => save((current) => ({ ...current, autoRefreshHours: hours }))}
+            />
+          </Setting>
+          <Setting
+            label="Check for new releases"
+            hint="One small signed file from GitHub; nothing about you is sent."
           >
-            <option value={0}>Only when I ask</option>
-            <option value={6}>Every 6 hours while Habi is open</option>
-            <option value={12}>Every 12 hours while Habi is open</option>
-            <option value={24}>Once a day while Habi is open</option>
-          </select>
-        </label>
-        <p className="muted">
-          Checking only asks the repository whether it has something newer. Nothing is downloaded and no
-          library changes until you press Update, and an update never changes a project: adopting a skill
-          always goes through a preview. Checks pause while the window is hidden or the network is offline.
-        </p>
-      </Section>
+            <ThreadChoice
+              label="Look for a newer version"
+              value={s.checkForUpdates ? "auto" : "manual"}
+              options={UPDATE_CHOICES}
+              onChange={(mode) => save((current) => ({ ...current, checkForUpdates: mode === "auto" }))}
+            />
+          </Setting>
+        </SettingGroup>
 
-      <Section title="Habi updates" id="updates">
-        <label className="field">
-          <span className="field-label">Look for a newer version of Habi</span>
-          <select
-            className="input"
-            value={s.checkForUpdates ? "auto" : "manual"}
-            onChange={(e) => {
-              const on = e.target.value === "auto";
-              save((current) => ({ ...current, checkForUpdates: on }));
-            }}
+        <SettingGroup title="Storage" id="storage">
+          <Setting
+            label="Old history"
+            hint="Clears history beyond the latest 20 operations per project and 20 snapshots per library. Unfinished work stays."
           >
-            <option value="auto">Automatically while Habi is open</option>
-            <option value="manual">Only when I ask</option>
-          </select>
-        </label>
-        <UpdateStatus />
-        <p className="muted">
-          Checking downloads one small file from this project's GitHub releases; nothing about you or your
-          projects is sent. A new version installs only when you press Update, and is verified against Habi's
-          signing key first.
-        </p>
-      </Section>
+            <SettingAction busy={freeing} onClick={() => void freeUpSpace()}>
+              Free up space
+            </SettingAction>
+          </Setting>
+          {hasSample ? (
+            <Setting label="Sample workspace" hint="Example libraries and projects, labeled “sample”.">
+              <SettingAction onClick={() => setRemovingSample(true)}>Remove sample</SettingAction>
+            </Setting>
+          ) : null}
+        </SettingGroup>
 
-      <Section title="Data and space" id="data">
-        <div className="settings-row">
-          <p className="muted">
-            Habi keeps each project's newest 20 operations, so they can be restored, and each library's newest
-            20 earlier snapshots. Free up space removes anything older, and stored file versions nothing
-            refers to. Unfinished operations and ones that need attention are always kept.
-          </p>
-          <Button busy={freeing} onClick={() => void freeUpSpace()}>
-            Free up space
-          </Button>
-        </div>
-        {hasSample ? (
-          <div className="settings-row">
-            <p className="muted">
-              The sample workspace is here: example libraries and projects, labeled "sample".
-            </p>
-            <Button onClick={() => setRemovingSample(true)}>Remove sample workspace…</Button>
-          </div>
-        ) : null}
-        <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
-      </Section>
+        <SettingGroup title="This machine" id="machine">
+          <Setting label="Command-line tools">
+            <ul className="tool-list">
+              {tools.map((t) => (
+                <li key={t.name} className="tool">
+                  <span className="tool-name">{t.name}</span>
+                  <Status tone={t.found ? "ok" : t.missing}>{t.found ? "found" : "not found"}</Status>
+                </li>
+              ))}
+            </ul>
+          </Setting>
+          <Setting label="Data folder">
+            <code className="data-path">{info.data?.dataDir}</code>
+          </Setting>
+        </SettingGroup>
 
-      <Section title="Diagnostics" id="diagnostics">
-        <p className="muted">
-          A redacted report for troubleshooting: versions, library health and recent log lines. It never
-          includes library content, project files, environment values or credentials. Review it before saving.
-        </p>
-        {error ? <ErrorNotice error={error} /> : null}
-        <div className="form-actions">
-          <Button onClick={() => void api.diagnosticsPreview().then(setBundle).catch(setError)}>
-            Preview report
-          </Button>
-          {bundle ? (
-            <Button
-              variant="primary"
-              onClick={() =>
-                void api
-                  .diagnosticsSave()
-                  .then((path) => path && toast.show(`Saved to ${path}`))
-                  .catch(setError)
-              }
-            >
+        <SettingGroup title="Diagnostics" id="diagnostics">
+          <Setting
+            label="Troubleshooting report"
+            hint="Versions, library health and recent log lines, redacted. Never any content, files or credentials."
+          >
+            {error && !bundle ? <ErrorNotice error={error} /> : null}
+            <SettingAction busy={building} onClick={() => void previewReport()}>
+              Preview report
+            </SettingAction>
+          </Setting>
+        </SettingGroup>
+      </div>
+
+      <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
+
+      <Dialog
+        open={bundle !== null}
+        onOpenChange={(open) => {
+          if (!open) closeReport();
+        }}
+        title="Diagnostic report"
+        description="Read it through before saving. It is only written to disk when you save."
+        wide
+        footer={
+          <>
+            <Button variant="quiet" onClick={closeReport}>
+              Close
+            </Button>
+            <Button variant="primary" onClick={() => void saveReport()}>
               Save report…
             </Button>
-          ) : null}
-        </div>
-        {bundle ? <pre className="code output diagnostics-preview">{bundle.text}</pre> : null}
-      </Section>
-
-      <Section title="About" id="about">
-        <dl className="meta-grid">
-          <dt>Version</dt>
-          <dd>
-            {info.data?.version}{" "}
-            <button type="button" className="link-quiet" onClick={() => navigate({ name: "about" })}>
-              What's new
-            </button>
-          </dd>
-          <dt>Source</dt>
-          <dd>
-            <button type="button" className="link-quiet" onClick={() => openExternal(REPOSITORY)}>
-              {REPOSITORY.replace("https://", "")}
-            </button>{" "}
-            <span className="muted">· open source, Apache-2.0</span>
-          </dd>
-          <dt>Data folder</dt>
-          <dd className="mono">{info.data?.dataDir}</dd>
-          <dt>Git</dt>
-          <dd>
-            <Status tone={info.data?.gitAvailable ? "ok" : "warn"}>
-              {info.data?.gitAvailable ? "found" : "not found"}
-            </Status>
-          </dd>
-          <dt>GitHub CLI</dt>
-          <dd>
-            <Status tone={info.data?.ghAvailable ? "ok" : "muted"}>
-              {info.data?.ghAvailable ? "found" : "not found"}
-            </Status>
-          </dd>
-          <dt>GitLab CLI</dt>
-          <dd>
-            <Status tone={info.data?.glabAvailable ? "ok" : "muted"}>
-              {info.data?.glabAvailable ? "found" : "not found"}
-            </Status>
-          </dd>
-          <dt>Privacy</dt>
-          <dd>No account, no telemetry. Inspection and matching run on this machine.</dd>
-        </dl>
-      </Section>
+          </>
+        }
+      >
+        {error ? <ErrorNotice error={error} /> : null}
+        <pre className="code output diagnostics-preview">{bundle?.text}</pre>
+      </Dialog>
     </div>
   );
 }

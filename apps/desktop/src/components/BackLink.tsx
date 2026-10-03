@@ -23,6 +23,8 @@ function useRouteLabel(route: Route | undefined): string | null {
       return "Settings";
     case "about":
       return "About";
+    case "privacy":
+      return "Privacy & security";
     case "welcome":
       return "Home";
   }

@@ -12,6 +12,7 @@ const paths = {
   plus: "M8 3.5v9M3.5 8h9",
   chevronRight: "M6.5 4l4 4-4 4",
   chevronDown: "M4 6.5l4 4 4-4",
+  arrowUp: "M8 13V3.5M4.5 7L8 3.5 11.5 7",
   arrowLeft: "M12.5 8h-9M7 4.5L3.5 8 7 11.5",
   external: "M9.5 3h3.5v3.5M13 3L8 8M11.5 9.5V13H3V4.5h3.5",
   file: "M4 2.5h5l3 3v8H4zM9 2.5v3h3",

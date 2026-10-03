@@ -28,7 +28,7 @@ export function UpdateStatus() {
     case "current":
       return (
         <div className="update-line">
-          <Status tone="ok">Habi is up to date</Status>
+          <Status tone="ok">Up to date</Status>
           <Button variant="quiet" size="sm" onClick={() => void check()}>
             Check again
           </Button>
@@ -38,7 +38,7 @@ export function UpdateStatus() {
       return (
         <div className="update-line is-offer">
           <div>
-            <strong>Habi {state.info.version} is available</strong>
+            <strong>{state.info.version} is available</strong>
             {state.info.date ? (
               <span className="muted"> · {releaseDate(state.info.date.slice(0, 10))}</span>
             ) : null}
@@ -54,7 +54,7 @@ export function UpdateStatus() {
       return (
         <div className="update-line is-installing" role="status" aria-live="polite">
           <span>
-            Downloading Habi {state.info.version}
+            Downloading {state.info.version}
             <span className="muted">
               {" · "}
               {total ? `${sizeLabel(downloaded)} of ${sizeLabel(total)}` : sizeLabel(downloaded)}
@@ -73,7 +73,7 @@ export function UpdateStatus() {
       return (
         <div className="update-line is-offer">
           <div>
-            <strong>Habi {state.info.version} is installed</strong>
+            <strong>{state.info.version} is installed</strong>
             <span className="muted">
               {state.unsaved
                 ? " · Some edits are not saved yet. Save or discard them, then restart."
