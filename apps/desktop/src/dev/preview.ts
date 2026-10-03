@@ -158,6 +158,20 @@ function answer(cmd: string, args: Args): unknown {
       return { skills: [], instructions: [], limits: [], inspectedAt: new Date().toISOString() };
     case "plan_install":
       return plan;
+    // Skills in the person's own folders: the same plan, rooted at the home folder.
+    case "plan_install_machine":
+      return {
+        ...plan,
+        title: "Install for Claude Code on this machine",
+        project: "~",
+        items: plan.items.slice(0, 1),
+        changes: [
+          ...plan.changes.filter((c) => c.kind === "skillFile" && c.clients.includes("claude-code")),
+          ...plan.changes.filter((c) => c.kind === "lockFile"),
+        ],
+      };
+    case "machine_install_preview":
+      return [];
     case "read_project_excerpt":
       return {
         path: a.path,

@@ -2160,5 +2160,5 @@
   ],
   "conflicts": [],
   "notes": [],
-  "recovery": "Habi keeps every replaced or deleted file in its operation journal. Use Restore in the project's history (or `habi restore`) to put them back; restore also checks for edits made since."
+  "recovery": "Replaced or deleted files are kept. Restore them from the project's history (or `habi restore`)."
 }

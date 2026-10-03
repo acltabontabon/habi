@@ -10,7 +10,7 @@ import type { Plan } from "../bindings/Plan";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider } from "../lib/nav";
-import { ReviewDialog, type ReviewRequest } from "../views/review/ReviewDialog";
+import { ChangeTree, groupChanges, ReviewDialog, type ReviewRequest } from "../views/review/ReviewDialog";
 import { OnThisMachine } from "../views/skills/OnThisMachine";
 import { UseSkillDialog } from "../views/skills/UseSkillDialog";
 
@@ -68,7 +68,7 @@ function plan(over: Partial<Plan> = {}): Plan {
     ],
     conflicts: [],
     notes: [],
-    recovery: "Habi keeps every replaced or deleted file in its operation journal.",
+    recovery: "Replaced or deleted files are kept, and can be restored.",
     ...over,
   };
 }
@@ -137,10 +137,61 @@ beforeEach(() => {
 
 const called = (cmd: string) => invoke.mock.calls.some((c) => c[0] === cmd);
 
+describe("the files of a review", () => {
+  const file = (
+    path: string,
+    kind: Plan["changes"][number]["kind"],
+    clients: Plan["changes"][number]["clients"],
+  ) =>
+    ({
+      ...plan().changes[0],
+      path,
+      kind,
+      clients,
+      explanation: kind === "lockFile" ? "Habi's record." : "Claude Code reads skills from .claude/skills.",
+    }) as Plan["changes"][number];
+
+  it("sit under one folder and one reason, with the skill's own file first", () => {
+    const groups = groupChanges([
+      file(".claude/skills/ask/agents/openai.yaml", "skillFile", ["claude-code"]),
+      file(".claude/skills/ask/SKILL.md", "skillFile", ["claude-code"]),
+      file(".habi/lock.json", "lockFile", []),
+    ]);
+    expect(groups.map((g) => [g.title, g.dir, g.why])).toEqual([
+      ["Claude Code", ".claude/skills/ask/", "Claude Code reads skills from .claude/skills."],
+      ["Habi's record", ".habi/", "Habi's record."],
+    ]);
+    expect(groups[0]?.rows.map((r) => r.name)).toEqual(["SKILL.md", "agents/openai.yaml"]);
+  });
+});
+
+describe("a long group of files", () => {
+  const many = Array.from({ length: 12 }, (_, i) => ({
+    ...plan().changes[0],
+    path: `.claude/skills/big/references/r${i}.md`,
+  })) as Plan["changes"];
+
+  it("shows the first few and the rest on request", async () => {
+    render(<ChangeTree changes={many} />);
+    expect(screen.getByText("r0.md")).toBeTruthy();
+    expect(screen.queryByText("r11.md")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Show 7 more files" }));
+    expect(screen.getByText("r11.md")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Show fewer" }));
+    expect(screen.queryByText("r11.md")).toBeNull();
+  });
+
+  it("leaves a short group whole", () => {
+    render(<ChangeTree changes={many.slice(0, 8)} />);
+    expect(screen.queryByRole("button", { name: /more files/ })).toBeNull();
+    expect(screen.getByText("r7.md")).toBeTruthy();
+  });
+});
+
 describe("review for this machine", () => {
   it("plans against the person's own folders, not a project", async () => {
     wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
-    expect(await screen.findByText(/Install for Claude Code on this machine/)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Install on this machine/ })).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("plan_install_machine", {
       items: install.kind === "install" ? install.items : [],
       clients: ["claude-code"],
@@ -149,9 +200,17 @@ describe("review for this machine", () => {
     expect(called("plan_install")).toBe(false);
     // Skills only: no MCP option, and the scope says every project.
     expect(screen.queryByText(/Add suggested MCP configuration/)).toBeNull();
-    expect(screen.getByText(/every project on this machine/)).toBeTruthy();
-    expect(screen.getByText(/reads ~\/\.claude\/skills/)).toBeTruthy();
-    expect(screen.getByText(/This machine/)).toBeTruthy();
+    expect(screen.getAllByText("~/.claude/skills").length).toBeGreaterThan(0);
+  });
+
+  it("always keeps one agent picked", async () => {
+    wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
+    const claude = await screen.findByRole("checkbox", { name: /Claude Code/ });
+    expect((claude as HTMLInputElement).disabled).toBe(true);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Codex/ }));
+    expect((claude as HTMLInputElement).disabled).toBe(false);
+    await userEvent.click(claude);
+    expect((screen.getByRole("checkbox", { name: /Codex/ }) as HTMLInputElement).disabled).toBe(true);
   });
 
   it("names the projects that already hold the skill and which copy a client uses", async () => {
@@ -168,27 +227,24 @@ describe("review for this machine", () => {
   it("applies the plan and reports it without pointing at a project's history", async () => {
     const onClose = vi.fn();
     wrap(<ReviewDialog projectId={null} request={install} onClose={onClose} />);
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Install for Claude Code on this machine/ }),
-    );
+    await userEvent.click(await screen.findByRole("button", { name: /Install on this machine/ }));
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("apply_plan", { planId: "plan-1" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(screen.queryByText(/Installed & history/)).toBeNull();
   });
 
-  it("keeps the confirm button off until an unaudited library is acknowledged", async () => {
+  it("warns about an unaudited library without blocking the install", async () => {
     wrap(<ReviewDialog projectId={null} request={{ ...install, unaudited: true }} onClose={() => {}} />);
-    const confirm = await screen.findByRole("button", { name: /Install for Claude Code on this machine/ });
-    expect((confirm as HTMLButtonElement).disabled).toBe(true);
-    await userEvent.click(screen.getByRole("checkbox", { name: /This library is not audited/ }));
+    const confirm = await screen.findByRole("button", { name: /Install on this machine/ });
+    expect(screen.getByText("Not audited.")).toBeTruthy();
     expect((confirm as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("does not ask for the tick when the library is the team's own", async () => {
+  it("says nothing of it when the library is the team's own", async () => {
     wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
-    const confirm = await screen.findByRole("button", { name: /Install for Claude Code on this machine/ });
+    const confirm = await screen.findByRole("button", { name: /Install on this machine/ });
     expect((confirm as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.queryByRole("checkbox", { name: /not audited/ })).toBeNull();
+    expect(screen.queryByText("Not audited.")).toBeNull();
   });
 
   it("uses the machine commands for update, remove and restore", async () => {
@@ -208,10 +264,28 @@ describe("review for this machine", () => {
     }
   });
 
+  it("offers the MCP option only for a skill that needs a server", async () => {
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
+      if (cmd === "plan_install") return plan({ project: "~/work/billing" });
+      if (cmd === "library") return { sourceId: "lib", items: [{ id: "liquibase", mcp: [] }] };
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<ReviewDialog projectId="p1" request={install} onClose={() => {}} />);
+    await screen.findByRole("button", { name: "Install" });
+    await waitFor(() => expect(called("library")).toBe(true));
+    expect(screen.queryByText(/Add suggested MCP configuration/)).toBeNull();
+  });
+
   it("still plans against a project when given one", async () => {
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "get_settings") return { autoRefreshHours: 12, defaultClients: ["claude-code"] };
       if (cmd === "plan_install") return plan({ project: "~/work/billing" });
+      if (cmd === "library")
+        return {
+          sourceId: "lib",
+          items: [{ id: "liquibase", mcp: [{ name: "db", purpose: null, server: null }] }],
+        };
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
     wrap(<ReviewDialog projectId="p1" request={install} onClose={() => {}} />);

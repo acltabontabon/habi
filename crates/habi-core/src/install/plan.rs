@@ -1784,8 +1784,8 @@ impl<'a> Planner<'a> {
             conflicts: self.conflicts,
             notes: dedup(self.notes),
             recovery: match self.scope {
-                Scope::Project => "Habi keeps every replaced or deleted file in its operation journal. Use Restore in the project's history (or `habi restore`) to put them back; restore also checks for edits made since.".into(),
-                Scope::Machine => "Habi keeps every replaced or deleted file in its operation journal, and checks for edits made since before it restores anything.".into(),
+                Scope::Project => "Replaced or deleted files are kept. Restore them from the project's history (or `habi restore`).".into(),
+                Scope::Machine => "Replaced or deleted files are kept, and can be restored.".into(),
             },
             root: root.to_path_buf(),
         })
