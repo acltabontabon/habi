@@ -1,8 +1,7 @@
 # Building and releasing
 
 Habi ships for **macOS and Windows**. Linux is not a release target. This page is the
-procedure; what still blocks the first release is tracked in
-[Project status](../project/status.md#release-blockers).
+procedure; see [Project status](../project/status.md) for where the project stands.
 
 ## Toolchain (pinned)
 
