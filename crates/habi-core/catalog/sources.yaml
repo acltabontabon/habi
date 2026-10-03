@@ -195,3 +195,15 @@ sources:
       group: 1
     notes:
       - "Broad and uneven; read a skill before adopting it."
+
+  - id: mattpocock
+    name: Matt Pocock
+    url: https://github.com/mattpocock/skills
+    summary: "Engineering workflows from his own agent setup: TDD, specs, code review, debugging."
+    publisher: { name: Matt Pocock, kind: community, owner: mattpocock }
+    discovery:
+      track: latest-release
+      include: ["skills/**"]
+      # Unfinished skills, by the author's own label.
+      exclude: ["skills/in-progress/**"]
+      group: 1

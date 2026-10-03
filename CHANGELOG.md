@@ -39,7 +39,7 @@ The first version, 0.1.0, is not released yet. It will contain the following.
   listed separately and labeled as not reviewed by your team.
 - Libraries are grouped by who stands behind them: *From the builders* (Anthropic, OpenAI,
   Microsoft, Google, GitHub, Cloudflare, Vercel, Sentry), *From the community* (Superpowers,
-  Addy Osmani, wshobson), *Connected* and *Bring your own*. The catalog is a registry file, not UI code, and every
+  Addy Osmani, wshobson, Matt Pocock), *Connected* and *Bring your own*. The catalog is a registry file, not UI code, and every
   count, licence and date shown comes from the repository itself. Aggregators that re-host
   other people's skills are left out.
 - One verb: **Connect**. Choosing a library opens its page (publisher, how ownership was
