@@ -155,7 +155,7 @@ The first version, 0.1.0, is not released yet. It will contain the following.
 ### Share
 - *Share with team* from a skill, or turn an improved installed skill into a contribution.
   Share actions name their destination ("Share back to Team library…"). With no library,
-  connect one on the spot or export a plain folder.
+  connect one on the spot or export a zip (the package under a folder named by its identifier).
 - Describe where it applies, preview exactly what would be shared (with per-file selection
   and a reference check, so leaving a file out cannot break the skill), then export a patch
   or push a branch for review, and open a pull or merge request with `gh` or `glab` if

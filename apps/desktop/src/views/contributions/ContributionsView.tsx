@@ -1111,7 +1111,7 @@ function StartContribution() {
     return (
       <p className="muted">
         Sharing an installed copy or a library item needs a connected Git library. Skills in My skills can
-        also be exported as plain folders.
+        also be exported as a zip.
       </p>
     );
   }

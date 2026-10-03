@@ -1780,8 +1780,10 @@ dependencies = [
 name = "habi-core"
 version = "0.1.0"
 dependencies = [
+ "crc32fast",
  "directories",
  "dunce",
+ "flate2",
  "globset",
  "habi-core",
  "hex",

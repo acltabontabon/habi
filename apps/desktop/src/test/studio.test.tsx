@@ -328,6 +328,30 @@ describe("the Skill Studio", () => {
     await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
   });
 
+  it("puts passing it on beside Use, said for where it came from", async () => {
+    handlers.get_skill = () => ({
+      ...skill(),
+      summary: {
+        ...skill().summary,
+        origin: {
+          type: "library",
+          sourceName: "Team",
+          sourceIdentity: "x",
+          itemId: "a",
+          snapshot: "s",
+          upstream: null,
+        },
+        modifiedLocally: true,
+      },
+    });
+    wrap(<SkillStudio id="k" />);
+    expect(await screen.findByRole("button", { name: "Contribute" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use" })).toBeInTheDocument();
+    // Not twice: the menu keeps only what the bar does not show.
+    await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
+    expect(screen.queryByRole("menuitem", { name: /Contribute to Team/ })).not.toBeInTheDocument();
+  });
+
   it("is silent about saving until something goes wrong", async () => {
     handlers.get_skill = () => skill();
     handlers.save_skill_document = () => {
@@ -622,6 +646,9 @@ describe("the Skill Studio", () => {
   });
 });
 
+/** The skills listed: each row's own button, not the actions beside it. */
+const rowsOf = (list: HTMLElement) => [...list.querySelectorAll<HTMLButtonElement>(".mys-row")];
+
 describe("My skills", () => {
   const summary = (i: number, over: Partial<LocalSkill["summary"]> = {}): LocalSkill["summary"] => ({
     ...skill().summary,
@@ -658,7 +685,7 @@ describe("My skills", () => {
     ];
     const { container } = wrap(<SkillsView />, { name: "skills" });
     const list = await screen.findByRole("list", { name: "Skills" });
-    expect(within(list).getAllByRole("button")).toHaveLength(3);
+    expect(rowsOf(list)).toHaveLength(3);
     // The purpose is the first sentence, not the trigger text.
     expect(within(list).getByText("Does thing 1.")).toBeInTheDocument();
     // Each skill's thread: where it came from, and what happened here.
@@ -669,13 +696,32 @@ describe("My skills", () => {
     expect(within(list).getByText("Draft · 2 things to finish")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /^Updates/ }));
-    expect(within(list).getAllByRole("button")).toHaveLength(1);
+    expect(rowsOf(list)).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: /^Drafts/ }));
     expect(within(list).getByText("Skill 003")).toBeInTheDocument();
     // Facets nothing matches are not offered.
     expect(screen.queryByRole("button", { name: /^Imported 0/ })).not.toBeInTheDocument();
     const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+  });
+
+  it("offers Use and the rest on a row, only where they apply", async () => {
+    handlers.list_skills = () => [summary(1), summary(2, { errors: 1, description: "" })];
+    const trashed = vi.fn(() => null);
+    handlers.trash_skill = trashed;
+    wrap(<SkillsView />, { name: "skills" });
+    const list = await screen.findByRole("list", { name: "Skills" });
+    // Ready: Use is there; a draft has none, only its way to finish (opening it).
+    expect(within(list).getByRole("button", { name: "Use Skill 001" })).toBeInTheDocument();
+    // What you wrote, ready, can be passed on from where it is listed.
+    expect(within(list).getByRole("button", { name: "Share Skill 001" })).toBeInTheDocument();
+    expect(within(list).queryByRole("button", { name: "Share Skill 002" })).not.toBeInTheDocument();
+    expect(within(list).queryByRole("button", { name: "Use Skill 002" })).not.toBeInTheDocument();
+    await userEvent.click(within(list).getByRole("button", { name: "More for Skill 002" }));
+    expect(screen.queryByRole("menuitem", { name: /Export as zip/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("menuitem", { name: /Move to trash/ }));
+    await waitFor(() => expect(trashed).toHaveBeenCalled());
+    expect(await screen.findByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
   it("finds with / and moves with the keyboard", async () => {
@@ -687,10 +733,10 @@ describe("My skills", () => {
     expect(search).toHaveFocus();
     await userEvent.type(search, "002");
     const list = screen.getByRole("list", { name: "Skills" });
-    expect(within(list).getAllByRole("button")).toHaveLength(1);
+    expect(rowsOf(list)).toHaveLength(1);
     await userEvent.clear(search);
     await userEvent.keyboard("{ArrowDown}");
-    const rows = within(list).getAllByRole("button");
+    const rows = rowsOf(list);
     expect(rows[0]).toHaveFocus();
     await userEvent.keyboard("j");
     expect(rows[1]).toHaveFocus();
@@ -703,7 +749,7 @@ describe("My skills", () => {
     const started = performance.now();
     wrap(<SkillsView />, { name: "skills" });
     const list = await screen.findByRole("list", { name: "Skills" });
-    expect(within(list).getAllByRole("button")).toHaveLength(300);
+    expect(rowsOf(list)).toHaveLength(300);
     expect(performance.now() - started).toBeLessThan(3000);
     await userEvent.click(screen.getByRole("button", { name: "A–Z" }));
     expect(within(list).getByText("S")).toBeInTheDocument();

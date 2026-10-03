@@ -56,7 +56,7 @@ import { UseSkillDialog } from "../UseSkillDialog";
 import { Materials, useDropToAdd } from "./files/Materials";
 import { Instructions, Outline, useOutline } from "./Instructions";
 import { ProjectEvaluation } from "./ProjectEvaluation";
-import { isCopy, Provenance, ProvenanceSheet } from "./Provenance";
+import { isCopy, onward, Provenance, ProvenanceSheet } from "./Provenance";
 import { nextStep, Readiness } from "./Readiness";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
 import { addSignal, WhenToUse, whenLine } from "./WhenToUse";
@@ -391,12 +391,12 @@ function Studio({ initial }: { initial: LocalSkill }) {
     }
   };
 
-  const exportFolder = async () => {
+  const exportZip = async () => {
     draft.setActionError(null);
     if (!(await draft.saveFirst())) return;
     try {
       const path = await api.exportSkill(id);
-      if (path) toast.show(`Exported to ${path}. It works there without Habi.`);
+      if (path) toast.show(`Saved ${path}.`);
     } catch (e) {
       draft.setActionError(e);
     }
@@ -481,8 +481,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
   // The palette offers the Studio's layers and actions while it is open.
   const switchYaml = draft.switchYaml;
-  const commandsRef = useRef({ go, openSheet, openDialog, viewSource, exportFolder, showFolder, switchYaml });
-  commandsRef.current = { go, openSheet, openDialog, viewSource, exportFolder, showFolder, switchYaml };
+  const commandsRef = useRef({ go, openSheet, openDialog, viewSource, exportZip, showFolder, switchYaml });
+  commandsRef.current = { go, openSheet, openDialog, viewSource, exportZip, showFolder, switchYaml };
   const commands = useMemo<ScreenCommand[]>(
     () => [
       {
@@ -577,9 +577,10 @@ function Studio({ initial }: { initial: LocalSkill }) {
       },
       {
         id: "export",
-        label: "Export as a folder…",
-        icon: "folder",
-        run: () => void commandsRef.current.exportFolder(),
+        label: "Export as zip…",
+        keywords: "download archive save folder",
+        icon: "download",
+        run: () => void commandsRef.current.exportZip(),
       },
       {
         id: "folder",
@@ -620,6 +621,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
   );
 
   const next = ready ? null : nextStep(draft);
+  const passOn = onward(skill.summary);
 
   const sheetTitle = sheet === "test" ? "Test against a project" : "Where it came from";
 
@@ -707,20 +709,40 @@ function Studio({ initial }: { initial: LocalSkill }) {
                   {next.label}
                 </Button>
               ) : ready ? (
-                <Button variant="primary" onClick={() => void openDialog("use")}>
-                  Use
-                </Button>
+                <>
+                  {passOn ? (
+                    <Button
+                      onClick={() => void openDialog("share")}
+                      title={
+                        origin.type === "library" ? `Offer your changes to ${origin.sourceName}` : undefined
+                      }
+                    >
+                      {passOn}
+                    </Button>
+                  ) : null}
+                  <Button variant="primary" onClick={() => void openDialog("use")}>
+                    Use
+                  </Button>
+                </>
               ) : null}
               <Menu
                 label="More for this skill"
                 items={[
                   [
-                    { label: shareLabel, icon: "share", onSelect: () => void openDialog("share") },
+                    // Shown in the bar when it is the thing to do; here otherwise.
+                    ...(ready && passOn
+                      ? []
+                      : [
+                          {
+                            label: shareLabel,
+                            icon: "share" as const,
+                            onSelect: () => void openDialog("share"),
+                          },
+                        ]),
                     {
-                      label: "Export as a folder…",
-                      icon: "folder",
-                      hint: "Works without Habi",
-                      onSelect: () => void exportFolder(),
+                      label: "Export as zip…",
+                      icon: "download",
+                      onSelect: () => void exportZip(),
                     },
                   ],
                   [
@@ -944,7 +966,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                   beforeReview={draft.saveFirst}
                   onReloaded={() => void draft.reloadFromDisk()}
                   onShare={() => void openDialog("share")}
-                  onExport={() => void exportFolder()}
+                  onExport={() => void exportZip()}
                 />
               )}
             </div>

@@ -14,7 +14,7 @@ const PICKERS: Record<string, string> = {
   pick_project: "Project folder",
   pick_library_folder: "Library folder",
   pick_import_folder: "Folder to look for skills in",
-  export_skill: "Folder to export the skill into",
+  export_skill: "Zip file to save the skill as",
   export_contribution: "Folder to save the patch in",
   add_skill_files: "File to add to the skill",
   replace_skill_file: "File to replace it with",

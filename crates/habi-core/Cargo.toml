@@ -11,7 +11,9 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
+crc32fast.workspace = true
 dunce.workspace = true
+flate2.workspace = true
 globset.workspace = true
 hex.workspace = true
 ignore.workspace = true

@@ -42,6 +42,18 @@ export function sourceName(o: Origin): string | null {
   }
 }
 
+/**
+ * Passing a skill on, when it makes sense to: what you wrote is shared, what
+ * you changed of a library's is contributed back. An unchanged copy has
+ * nothing of yours to pass on, so it offers nothing here.
+ */
+export function onward(summary: LocalSkillSummary): "Share" | "Contribute" | null {
+  const o = summary.origin;
+  if (!isCopy(o)) return "Share";
+  if (summary.modifiedLocally !== true) return null;
+  return o.type === "library" ? "Contribute" : "Share";
+}
+
 /** What happened here, in two words. */
 export function localWords(summary: LocalSkillSummary): { text: string; changed: boolean } {
   const o = summary.origin;
@@ -310,7 +322,7 @@ export function ProvenanceSheet({
               </button>
             )}
             <button type="button" className="pv-onward-link is-quiet" onClick={onExport}>
-              Export as a folder <span aria-hidden="true">→</span>
+              Export as zip <span aria-hidden="true">→</span>
             </button>
           </div>
         </li>

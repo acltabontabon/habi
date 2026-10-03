@@ -73,9 +73,12 @@ here*): the original, when it was imported, your version and what you changed he
 of the skill: *Instructions*, *When to use*, a file), a newer version in the library if there
 is one, the projects it is installed in, and the ways to pass it on — *Contribute
 improvement* and *Share your version* for an imported skill, *Share to a library* for one
-written here, *Export as a folder*.
+written here, *Export as zip*.
 
-The bar above the skill holds only where you are, **Ready** or **Draft**, **Use** and •••.
+The bar above the skill holds only where you are, **Ready** or **Draft**, **Use** and •••
+— with **Share** (a skill you wrote) or **Contribute** (a library's skill you changed) beside
+Use when there is something of yours to pass on. A draft shows its next step instead of Use.
+The same actions appear on a row in My skills when it is pointed at.
 *Ready* opens what readiness is made of: what still needs doing (each with the way to it),
 what is done — including the identifier, changed deliberately with *Change* — and what is
 optional. *Use* chooses a project (each with why the skill fits it, or not), says what Habi

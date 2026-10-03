@@ -1,8 +1,8 @@
 /**
  * Share with team, as a continuation of writing the skill: choose the
  * library (or connect one right here), then review exactly what would leave
- * this machine. Without a library, the skill can be exported as a plain
- * folder instead. The draft stays in My skills whatever happens.
+ * this machine. Without a library, the skill can be exported as a zip
+ * instead. The draft stays in My skills whatever happens.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -85,13 +85,13 @@ export function ShareSkillDialog({
     }
   };
 
-  const exportFolder = async () => {
+  const exportZip = async () => {
     setError(null);
     try {
       const path = await api.exportSkill(skill.summary.id);
       if (path) {
         setExported(path);
-        toast.show(`Exported to ${path}`);
+        toast.show(`Saved ${path}.`);
       }
     } catch (e) {
       setError(e);
@@ -185,12 +185,12 @@ export function ShareSkillDialog({
                 <span className="choice-detail">A Git repository of skills your team reviews together.</span>
               </span>
             </button>
-            <button type="button" className="share-option" onClick={() => void exportFolder()}>
+            <button type="button" className="share-option" onClick={() => void exportZip()}>
               <Icon name="download" />
               <span>
-                <span className="choice-title">Export as a folder…</span>
+                <span className="choice-title">Export as zip…</span>
                 <span className="choice-detail">
-                  A standard skill folder you can send, commit or copy anywhere. Works without Habi.
+                  A standard skill package to send, commit or unpack anywhere.
                 </span>
               </span>
             </button>
@@ -210,8 +210,8 @@ export function ShareSkillDialog({
           ) : null}
           {exported ? (
             <p className="muted">
-              <Status tone="ok">Exported</Status> to <span className="mono">{exported}</span>. Exporting is
-              not sharing: nobody has received it yet.
+              <Status tone="ok">Saved</Status> <span className="mono">{exported}</span>. Exporting is not
+              sharing: nobody has received it yet.
             </p>
           ) : null}
 

@@ -10,9 +10,11 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { Fragment, type KeyboardEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import type { LocalSkill } from "../../bindings/LocalSkill";
 import type { LocalSkillSummary } from "../../bindings/LocalSkillSummary";
 import type { SkillStanding } from "../../bindings/SkillStanding";
 import { Icon } from "../../components/Icon";
+import { Menu } from "../../components/Menu";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Working } from "../../components/ui";
 import { useActions } from "../../lib/actions";
@@ -21,8 +23,10 @@ import { type Dye, dyeMap } from "../../lib/dye";
 import { plural, relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useSkills, useSkillsOverview, useSources } from "../../lib/queries";
+import { ShareSkillDialog } from "./ShareSkillDialog";
 import { SkillsEmpty } from "./SkillsEmpty";
-import { Provenance } from "./studio/Provenance";
+import { isCopy, onward, Provenance } from "./studio/Provenance";
+import { UseSkillDialog } from "./UseSkillDialog";
 
 const SkillStudio = lazy(() => import("./studio/SkillStudio").then((m) => ({ default: m.SkillStudio })));
 
@@ -135,17 +139,27 @@ function Row({
   letter,
   onOpen,
   onKeyDown,
+  onUse,
+  onShare,
+  onExport,
+  onTrash,
 }: {
   s: LocalSkillSummary;
   standing: SkillStanding | undefined;
   letter: string | null;
   onOpen: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  onUse: () => void;
+  onShare: () => void;
+  onExport: () => void;
+  onTrash: () => void;
 }) {
   const installed = standing?.installedIn ?? [];
   const word = standingWord(s);
+  const passOn = onward(s);
+  const thread = isCopy(s.origin) || s.origin.type === "instructions" || Boolean(standing?.upstream);
   return (
-    <li>
+    <li className="mys-item">
       <button type="button" className="mys-row" onClick={onOpen} onKeyDown={onKeyDown}>
         <span className="mys-letter" aria-hidden="true">
           {letter}
@@ -155,14 +169,17 @@ function Row({
           <span className="mys-purpose">
             {s.description ? purpose(s.description) : <span className="mys-none">No purpose yet</span>}
           </span>
-          <span className="mys-thread">
-            <Provenance summary={s} standing={standing} />
-            {installed.length > 0 ? (
-              <span className="mys-used" title={installed.map((p) => p.projectName).join(", ")}>
-                in {installed.length === 1 ? installed[0]?.projectName : `${installed.length} projects`}
-              </span>
-            ) : null}
-          </span>
+          {thread || installed.length > 0 ? (
+            <span className="mys-thread">
+              {/* Only knowledge that came from somewhere has a thread to show; your own needs no label. */}
+              {thread ? <Provenance summary={s} standing={standing} /> : null}
+              {installed.length > 0 ? (
+                <span className="mys-used" title={installed.map((p) => p.projectName).join(", ")}>
+                  in {installed.length === 1 ? installed[0]?.projectName : `${installed.length} projects`}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
         </span>
         <span className="mys-side">
           <span className={`mys-state${word.ready ? " is-ready" : " is-draft"}`}>
@@ -172,6 +189,33 @@ function Row({
           <span className="mys-edited mono">{relativeTime(s.updatedAt)}</span>
         </span>
       </button>
+      {/* What you would open a skill only to do, where the skill is: shown when the row is pointed at or focused. */}
+      <span className="mys-acts">
+        {word.ready && passOn ? (
+          <Button size="sm" onClick={onShare} aria-label={`${passOn} ${s.title || "Untitled skill"}`}>
+            {passOn}
+          </Button>
+        ) : null}
+        {word.ready ? (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={onUse}
+            aria-label={`Use ${s.title || "Untitled skill"}`}
+          >
+            Use
+          </Button>
+        ) : null}
+        <Menu
+          label={`More for ${s.title || "Untitled skill"}`}
+          items={[
+            ...(word.ready
+              ? [{ label: "Export as zip…", icon: "download" as const, onSelect: onExport }]
+              : []),
+            { label: "Move to trash", icon: "trash" as const, danger: true, onSelect: onTrash },
+          ]}
+        />
+      </span>
     </li>
   );
 }
@@ -190,6 +234,8 @@ export function SkillsView({ skillId }: { skillId?: string }) {
   const [showTrash, setShowTrash] = useState(false);
   const [purging, setPurging] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [using, setUsing] = useState<LocalSkill | null>(null);
+  const [sharing, setSharing] = useState<LocalSkill | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLOListElement>(null);
 
@@ -255,6 +301,48 @@ export function SkillsView({ skillId }: { skillId?: string }) {
       await fn();
       invalidateSkills(client);
       toast.show(done);
+    } catch (e) {
+      setError(e);
+    }
+  };
+
+  const use = async (id: string) => {
+    setError(null);
+    try {
+      setUsing(await api.getSkill(id));
+    } catch (e) {
+      setError(e);
+    }
+  };
+
+  const share = async (id: string) => {
+    setError(null);
+    try {
+      setSharing(await api.getSkill(id));
+    } catch (e) {
+      setError(e);
+    }
+  };
+
+  const exportZip = async (id: string) => {
+    setError(null);
+    try {
+      const path = await api.exportSkill(id);
+      if (path) toast.show(`Saved ${path}.`);
+    } catch (e) {
+      setError(e);
+    }
+  };
+
+  const moveToTrash = async (s: LocalSkillSummary) => {
+    setError(null);
+    try {
+      await api.trashSkill(s.id);
+      invalidateSkills(client);
+      toast.show(`“${s.title || "Untitled skill"}” moved to the trash.`, "ok", {
+        label: "Undo",
+        run: () => void act(() => api.restoreSkill(s.id), `“${s.title || "Untitled skill"}” restored.`),
+      });
     } catch (e) {
       setError(e);
     }
@@ -461,6 +549,10 @@ export function SkillsView({ skillId }: { skillId?: string }) {
                 letter={sort === "title" && fresh && !query ? group : null}
                 onOpen={() => navigate({ name: "skills", skillId: s.id })}
                 onKeyDown={onRowKey}
+                onUse={() => void use(s.id)}
+                onShare={() => void share(s.id)}
+                onExport={() => void exportZip(s.id)}
+                onTrash={() => void moveToTrash(s)}
               />
             </Fragment>
           );
@@ -468,6 +560,26 @@ export function SkillsView({ skillId }: { skillId?: string }) {
       </ol>
 
       {trashSection}
+      {sharing ? (
+        <ShareSkillDialog
+          skill={sharing}
+          onClose={() => setSharing(null)}
+          onFix={() => {
+            setSharing(null);
+            navigate({ name: "skills", skillId: sharing.summary.id });
+          }}
+        />
+      ) : null}
+      {using ? (
+        <UseSkillDialog
+          skill={using}
+          onClose={() => setUsing(null)}
+          onFix={() => {
+            setUsing(null);
+            navigate({ name: "skills", skillId: using.summary.id });
+          }}
+        />
+      ) : null}
     </div>
   );
 }
