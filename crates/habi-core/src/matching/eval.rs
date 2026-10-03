@@ -239,11 +239,18 @@ impl<'a> View<'a> {
     }
 }
 
+/// Coverage areas of the manifest readers, one per ecosystem.
+const MANIFEST_AREAS: &[&str] = &["maven", "gradle", "npm", "go", "cargo", "pypi", "composer"];
+
 fn eco_area(e: Ecosystem) -> &'static str {
     match e {
         Ecosystem::Maven => "maven",
         Ecosystem::Gradle => "gradle",
         Ecosystem::Npm => "npm",
+        Ecosystem::Go => "go",
+        Ecosystem::Cargo => "cargo",
+        Ecosystem::Pypi => "pypi",
+        Ecosystem::Composer => "composer",
     }
 }
 
@@ -712,9 +719,9 @@ fn eval_tag(condition: &Condition, tag: &str, view: &View) -> EvalNode {
         );
     };
     let mut areas: Vec<&str> = match basis {
-        TagBasis::Manifest => vec!["maven", "gradle", "npm"],
+        TagBasis::Manifest => MANIFEST_AREAS.to_vec(),
         TagBasis::Files => vec!["files"],
-        TagBasis::Both => vec!["maven", "gradle", "npm", "files"],
+        TagBasis::Both => MANIFEST_AREAS.iter().copied().chain(["files"]).collect(),
     };
     // OpenAPI documents and Liquibase changelogs are recognized by content,
     // so their absence also depends on every candidate file having been read.

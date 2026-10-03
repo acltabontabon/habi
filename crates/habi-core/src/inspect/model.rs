@@ -19,6 +19,10 @@ pub enum Ecosystem {
     Maven,
     Gradle,
     Npm,
+    Go,
+    Cargo,
+    Pypi,
+    Composer,
 }
 
 impl Ecosystem {
@@ -27,6 +31,23 @@ impl Ecosystem {
             Ecosystem::Maven => "Maven",
             Ecosystem::Gradle => "Gradle",
             Ecosystem::Npm => "npm",
+            Ecosystem::Go => "Go",
+            Ecosystem::Cargo => "Cargo",
+            Ecosystem::Pypi => "PyPI",
+            Ecosystem::Composer => "Composer",
+        }
+    }
+
+    /// The language a module of this ecosystem is written in, as a tag: what
+    /// a project's color falls back to when no source file has been seen.
+    pub fn language(self) -> &'static str {
+        match self {
+            Ecosystem::Maven | Ecosystem::Gradle => "lang:java",
+            Ecosystem::Npm => "lang:javascript",
+            Ecosystem::Go => "lang:go",
+            Ecosystem::Cargo => "lang:rust",
+            Ecosystem::Pypi => "lang:python",
+            Ecosystem::Composer => "lang:php",
         }
     }
 

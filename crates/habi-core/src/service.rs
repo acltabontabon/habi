@@ -1181,7 +1181,17 @@ impl Habi {
                         }
                     }
                     counts.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-                    counts.into_iter().map(|(t, _)| t).collect()
+                    let mut languages: Vec<String> = counts.into_iter().map(|(t, _)| t).collect();
+                    // No source file seen yet: the build ecosystems say what it is written in.
+                    if languages.is_empty() {
+                        for e in inspection.modules.iter().flat_map(|m| &m.ecosystems) {
+                            let tag = e.language().to_string();
+                            if !languages.contains(&tag) {
+                                languages.push(tag);
+                            }
+                        }
+                    }
+                    languages
                 },
                 at: crate::time::now(),
             }

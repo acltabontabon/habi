@@ -282,7 +282,7 @@
                   "additionalProperties": false,
                   "properties": {
                     "name": { "type": "string", "minLength": 1, "maxLength": 200 },
-                    "ecosystem": { "enum": ["maven", "gradle", "npm", "jvm"] },
+                    "ecosystem": { "enum": ["maven", "gradle", "npm", "go", "cargo", "pypi", "composer", "jvm"] },
                     "version": { "type": "string", "minLength": 1, "maxLength": 100 }
                   }
                 }

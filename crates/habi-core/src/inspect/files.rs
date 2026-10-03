@@ -52,6 +52,8 @@ const NAME_ROLES: &[(&str, &str)] = &[
     (".github/workflows/*.yml", "ci:github-actions"),
     (".github/workflows/*.yaml", "ci:github-actions"),
     (".gitlab-ci.yml", "ci:gitlab"),
+    ("dbt_project.yml", "data:dbt-project"),
+    ("**/dbt_project.yml", "data:dbt-project"),
     ("**/Dockerfile", "container:dockerfile"),
     ("Dockerfile", "container:dockerfile"),
     ("**/mvnw", "build-wrapper:maven"),
@@ -270,6 +272,7 @@ pub fn language_of(path: &str) -> Option<&'static str> {
         "go" => Some("lang:go"),
         "rs" => Some("lang:rust"),
         "cs" => Some("lang:csharp"),
+        "php" => Some("lang:php"),
         _ => None,
     }
 }
