@@ -46,7 +46,9 @@ pub fn project_dirs(client: ClientId) -> &'static [&'static str] {
 }
 
 /// A skills directory in the person's home folder, and the clients that read
-/// it. Habi only reads these; it never writes to one.
+/// it. Habi reads all of them. Installing on this machine writes only the two
+/// shared ones, `~/.claude/skills` and `~/.agents/skills` (as in a project),
+/// never a folder that a single client owns.
 #[derive(Debug, Clone, Copy)]
 pub struct UserSkillDir {
     /// Names the directory in a skill's id ("claude", "agents", "cursor").

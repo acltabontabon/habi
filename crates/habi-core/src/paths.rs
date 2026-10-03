@@ -24,7 +24,7 @@ const WINDOWS_FORBIDDEN: &[char] = &['<', '>', ':', '"', '|', '?', '*'];
 /// Windows, if it would. Checked on every platform: a project written on macOS
 /// or Linux is often checked out on Windows, where `a.` is the same file as
 /// `a`, `nul.txt` is the null device and `a:b` is an alternate data stream.
-fn windows_alias(part: &str) -> Option<&'static str> {
+pub(crate) fn windows_alias(part: &str) -> Option<&'static str> {
     if part.chars().any(|c| WINDOWS_FORBIDDEN.contains(&c)) {
         return Some(
             r#"contains a character Windows does not allow in file names (< > : " | ? *)"#,
@@ -289,6 +289,20 @@ pub fn canonical_dir(path: &Path) -> Result<PathBuf> {
     Ok(canonical)
 }
 
+/// Whether `path` (as text) names a place on another machine, or could: a UNC
+/// path (`\\host\share`, `//host/share`, with either slash), or a device or
+/// verbatim one that reaches one (`\\?\UNC\host\share`). Windows opens those
+/// over SMB and offers the host the person's sign-in (an NTLM hash), so a path
+/// read from a file Habi does not control must never lead there. Checked on
+/// every platform; elsewhere it only refuses an unusual way to write `/`.
+pub fn is_network_path(path: &str) -> bool {
+    let mut chars = path.chars();
+    matches!(
+        (chars.next(), chars.next()),
+        (Some('/' | '\\'), Some('/' | '\\'))
+    )
+}
+
 /// Replaces the user's home directory with `~` for display and logs.
 pub fn display_path(path: &Path) -> String {
     if let Some(home) = directories::BaseDirs::new().map(|b| b.home_dir().to_path_buf())
@@ -364,6 +378,33 @@ mod tests {
             "skills/x/a b.md",
         ] {
             assert!(RelPath::new(good).is_ok(), "{good:?} should be accepted");
+        }
+    }
+
+    #[test]
+    fn tells_paths_on_other_machines_apart() {
+        for remote in [
+            r"\\host\share\repo",
+            "//host/share/repo",
+            r"\/host/share",
+            r"/\host\share",
+            r"\\?\UNC\host\share\repo",
+            "//?/UNC/host/share",
+            r"\\.\UNC\host\share",
+            r"\\host@SSL\DavWWWRoot\repo",
+        ] {
+            assert!(is_network_path(remote), "{remote}");
+        }
+        for local in [
+            "C:/Users/ana/repo/.git/worktrees/wt",
+            r"C:\Users\ana\repo\.git",
+            "/home/ana/repo/.git",
+            r"\repo\.git",
+            "../..",
+            ".git/worktrees/wt",
+            "",
+        ] {
+            assert!(!is_network_path(local), "{local}");
         }
     }
 

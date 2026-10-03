@@ -6,6 +6,7 @@
 //! bounded look for `SKILL.md`. Hidden folders are never listed or browsed.
 
 use crate::error::{HabiError, Result};
+use crate::inspect::repo::git_pointer;
 use crate::inspect::walk::{DEFAULT_SKIPPED_DIRS, folder_shape_within};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -128,9 +129,16 @@ const STACKS: &[(&str, &str)] = &[
 /// Home folders macOS guards with a privacy prompt. They are listed, but
 /// only looked inside when the person opens one, so the prompt comes when
 /// it makes sense.
+#[cfg(target_os = "macos")]
 const GUARDED: &[&str] = &["Desktop", "Documents", "Downloads"];
+/// Nothing guards them elsewhere, and code is kept there: GitHub Desktop
+/// clones into `Documents\GitHub` on Windows.
+#[cfg(not(target_os = "macos"))]
+const GUARDED: &[&str] = &[];
 
 /// Home folders that never hold code: left out of the home listing.
+/// `AppData` is hidden on Windows already; named too, since what is inside
+/// (`AppData\Local\nvim`, a Git checkout) would pass for projects.
 const NOT_CODE: &[&str] = &[
     "Library",
     "Applications",
@@ -138,6 +146,7 @@ const NOT_CODE: &[&str] = &[
     "Music",
     "Pictures",
     "Public",
+    "AppData",
 ];
 
 /// Files and folders that hold instructions for coding agents.
@@ -307,9 +316,32 @@ pub fn list(home: &Path, path: &Path) -> Result<FolderListing> {
 
 /// Nothing in it but hidden files, if anything.
 fn is_empty(dir: &Path) -> bool {
-    std::fs::read_dir(dir).is_ok_and(|mut read| {
-        !read.any(|e| e.is_ok_and(|e| !e.file_name().to_string_lossy().starts_with('.')))
-    })
+    std::fs::read_dir(dir).is_ok_and(|mut read| !read.any(|e| e.is_ok_and(|e| !is_hidden(&e))))
+}
+
+/// Hidden the way the person's own file browser hides it: a name starting
+/// with a dot, or on Windows the hidden or system attribute.
+fn is_hidden(entry: &std::fs::DirEntry) -> bool {
+    entry.file_name().to_string_lossy().starts_with('.') || hidden_by_attribute(entry)
+}
+
+/// On Windows hiding is an attribute, not a leading dot: the home folder's
+/// `AppData` is hidden that way. `DirEntry::metadata` does not follow links,
+/// so a link is judged by its own attributes, and on Windows it costs nothing
+/// more: the directory listing already carries them.
+#[cfg(windows)]
+fn hidden_by_attribute(entry: &std::fs::DirEntry) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    // FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM
+    const HIDDEN_OR_SYSTEM: u32 = 0x2 | 0x4;
+    entry
+        .metadata()
+        .is_ok_and(|m| (m.file_attributes() & HIDDEN_OR_SYSTEM) != 0)
+}
+
+#[cfg(not(windows))]
+fn hidden_by_attribute(_: &std::fs::DirEntry) -> bool {
+    false
 }
 
 /// Visible, non-dependency subfolders, by name. Symbolic links are not followed.
@@ -322,8 +354,7 @@ fn subfolders(dir: &Path) -> Vec<PathBuf> {
         .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
         .filter(|e| {
             let name = e.file_name();
-            let name = name.to_string_lossy();
-            !name.starts_with('.') && !DEFAULT_SKIPPED_DIRS.contains(&name.as_ref())
+            !is_hidden(e) && !DEFAULT_SKIPPED_DIRS.contains(&name.to_string_lossy().as_ref())
         })
         .map(|e| e.path())
         .collect();
@@ -389,29 +420,57 @@ fn unix(t: SystemTime) -> Option<i64> {
     Some(t.duration_since(SystemTime::UNIX_EPOCH).ok()?.as_secs() as i64)
 }
 
+/// The most of a `.git` pointer file, `HEAD` or `commondir` that is read.
+const SMALL_GIT_FILE: u64 = 4 * 1024;
+/// The most of a repository's `config` that is read.
+const GIT_CONFIG_LIMIT: u64 = 1024 * 1024;
+/// How much of the end of the `HEAD` log `activity` reads.
+const LOG_WINDOW: u64 = 256 * 1024;
+
+/// A regular file (following symbolic links). Browsing reads files in folders
+/// the person merely looks at: opening a named pipe would wait for a writer
+/// forever, and a device could be read without end.
+fn is_regular_file(path: &Path) -> bool {
+    std::fs::metadata(path).is_ok_and(|m| m.is_file())
+}
+
+/// A regular file's text, if it is at most `limit` bytes.
+fn read_git_file(path: &Path, limit: u64) -> Option<String> {
+    if !is_regular_file(path) {
+        return None;
+    }
+    match crate::fsutil::read_bounded(path, limit).ok()? {
+        crate::fsutil::Bounded::Content(bytes) => String::from_utf8(bytes).ok(),
+        crate::fsutil::Bounded::TooLarge(_) => None,
+    }
+}
+
 /// Branch, remote and recent commits from the `.git` folder's own files,
 /// with the time of the last entry in its log. `None` when not a checkout.
 fn git_facts(dir: &Path) -> Option<(GitFacts, Option<i64>)> {
     let dot = dir.join(".git");
-    // A worktree or submodule points elsewhere: `gitdir: <path>`.
+    // A worktree or submodule points elsewhere: `gitdir: <path>`. Never to
+    // another machine (`git_pointer`): this runs for any folder listed.
     let git_dir = if dot.is_dir() {
         dot
     } else {
-        let text = std::fs::read_to_string(&dot).ok()?;
-        let target = text.strip_prefix("gitdir:")?.trim();
-        dir.join(target)
+        let text = read_git_file(&dot, SMALL_GIT_FILE)?;
+        git_pointer(dir, text.strip_prefix("gitdir:")?)?
     };
     // Still a checkout when its files cannot be read; there is just less to say.
-    let head = std::fs::read_to_string(git_dir.join("HEAD")).unwrap_or_default();
+    let head = read_git_file(&git_dir.join("HEAD"), SMALL_GIT_FILE).unwrap_or_default();
     let branch = match head.trim().strip_prefix("ref: refs/heads/") {
         Some(name) => Some(name.to_string()),
         None => head.trim().get(..7).map(str::to_string),
     };
     // A worktree keeps its config in the main repository.
-    let config = std::fs::read_to_string(git_dir.join("config"))
-        .or_else(|_| {
-            let common = std::fs::read_to_string(git_dir.join("commondir"))?;
-            std::fs::read_to_string(git_dir.join(common.trim()).join("config"))
+    let config = read_git_file(&git_dir.join("config"), GIT_CONFIG_LIMIT)
+        .or_else(|| {
+            let common = read_git_file(&git_dir.join("commondir"), SMALL_GIT_FILE)?;
+            read_git_file(
+                &git_pointer(&git_dir, &common)?.join("config"),
+                GIT_CONFIG_LIMIT,
+            )
         })
         .unwrap_or_default();
     let (weeks, last) = activity(&git_dir.join("logs/HEAD"));
@@ -450,19 +509,34 @@ fn tidy_remote(url: &str) -> String {
         .to_string()
 }
 
-/// Commits per week from the log's last 256 KiB, and the time of its last entry.
+/// Commits per week from the log's last `LOG_WINDOW` bytes, and the time of
+/// its last entry.
 fn activity(log: &Path) -> (Vec<u32>, Option<i64>) {
     use std::io::{Read, Seek, SeekFrom};
     let mut weeks = vec![0; WEEKS];
+    if !is_regular_file(log) {
+        return (weeks, None);
+    }
     let Ok(mut file) = std::fs::File::open(log) else {
         return (weeks, None);
     };
     let len = file.metadata().map(|m| m.len()).unwrap_or(0);
-    let _ = file.seek(SeekFrom::Start(len.saturating_sub(256 * 1024)));
-    let mut text = String::new();
-    if file.read_to_string(&mut text).is_err() {
+    let start = len.saturating_sub(LOG_WINDOW);
+    let mut bytes = Vec::new();
+    if file.seek(SeekFrom::Start(start)).is_err()
+        || file.take(LOG_WINDOW).read_to_end(&mut bytes).is_err()
+    {
         return (weeks, None);
     }
+    // Messages are in whatever encoding the commits used, and the window can
+    // start inside a line, even inside a character: decode leniently, and
+    // leave out the partial first line.
+    let decoded = String::from_utf8_lossy(&bytes);
+    let text = if start > 0 {
+        decoded.split_once('\n').map_or("", |(_, rest)| rest)
+    } else {
+        &decoded
+    };
     let now = unix(SystemTime::now()).unwrap_or(0);
     let mut last = None;
     for line in text.lines() {
@@ -564,6 +638,39 @@ mod tests {
     }
 
     #[test]
+    fn a_long_log_in_any_encoding_still_counts() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("HEAD");
+        let now = unix(SystemTime::now()).unwrap();
+        // Old entries with Latin-1 messages push the window's start into the
+        // middle of a line and of a multi-byte character.
+        let mut bytes = Vec::new();
+        while (bytes.len() as u64) < LOG_WINDOW + 1000 {
+            bytes.extend_from_slice(b"0 1 A <a@b.c> 1000000000 +0000\tcommit: caf\xe9 \xc3");
+            bytes.extend_from_slice("é\n".as_bytes());
+        }
+        bytes.extend_from_slice(format!("1 2 A <a@b.c> {now} +0000\tcommit: today\n").as_bytes());
+        fs::write(&log, bytes).unwrap();
+        let (weeks, last) = activity(&log);
+        assert_eq!(last, Some(now));
+        assert_eq!(weeks[WEEKS - 1], 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_pipe_named_like_git_files_is_not_opened() {
+        let dir = tempfile::tempdir().unwrap();
+        let status = std::process::Command::new("mkfifo")
+            .arg(dir.path().join(".git"))
+            .status()
+            .unwrap();
+        assert!(status.success());
+        // Opening the pipe would block until something writes to it.
+        assert!(git_facts(dir.path()).is_none());
+        assert_eq!(activity(&dir.path().join(".git")), (vec![0; WEEKS], None));
+    }
+
+    #[test]
     fn finds_repositories_and_tells_folders_apart() {
         let dir = tempfile::tempdir().unwrap();
         let home = crate::paths::canonical(dir.path()).unwrap();
@@ -637,8 +744,14 @@ mod tests {
             names,
             vec!["dev", "Documents", "IdeaProjects", "sdk", "Workspace"]
         );
-        // Guarded by macOS: named, not looked inside, until opened.
-        assert_eq!(at_home.entries[1].kind, FolderKind::Folder);
+        // Guarded by macOS: named, not looked inside, until opened. Elsewhere
+        // it is looked inside like any other folder.
+        let documents = if cfg!(target_os = "macos") {
+            FolderKind::Folder
+        } else {
+            FolderKind::Project
+        };
+        assert_eq!(at_home.entries[1].kind, documents);
         assert_eq!(
             list(&home, &home.join("Documents")).unwrap().folder.kind,
             FolderKind::Project
@@ -646,5 +759,107 @@ mod tests {
 
         assert!(list(&home, &home.join("Workspace/.hidden")).is_err());
         assert!(list(&home, home.parent().unwrap()).is_err());
+    }
+
+    #[test]
+    fn app_data_is_never_a_place_and_only_macos_guards_documents() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = crate::paths::canonical(dir.path()).unwrap();
+        fs::create_dir_all(home.join("AppData/Local/nvim/.git")).unwrap();
+        fs::create_dir_all(home.join("Documents/GitHub/app/.git")).unwrap();
+        let roots: Vec<String> = places(&home).roots.into_iter().map(|r| r.name).collect();
+        let expected: &[&str] = if cfg!(target_os = "macos") {
+            &[]
+        } else {
+            &["Documents"]
+        };
+        assert_eq!(roots, expected);
+        let listed: Vec<String> = list(&home, &home)
+            .unwrap()
+            .entries
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(listed, ["Documents"]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn folders_windows_hides_are_left_out() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = crate::paths::canonical(dir.path()).unwrap();
+        for name in ["Shown", "Hidden", "System"] {
+            fs::create_dir_all(home.join(name).join("app").join(".git")).unwrap();
+        }
+        for (flag, name) in [("+h", "Hidden"), ("+s", "System")] {
+            let status = std::process::Command::new("attrib")
+                .arg(flag)
+                .arg(home.join(name))
+                .status()
+                .unwrap();
+            assert!(status.success(), "attrib {flag} {name}");
+        }
+        assert_eq!(subfolders(&home), [home.join("Shown")]);
+        let roots: Vec<String> = places(&home).roots.into_iter().map(|r| r.name).collect();
+        assert_eq!(roots, ["Shown"]);
+    }
+
+    /// `path`, written to start with two slashes yet still name it: `//x` is
+    /// `/x` on macOS and Linux, and `\\?\C:\x` is `C:\x` on Windows.
+    fn doubled(path: &Path) -> String {
+        if cfg!(windows) {
+            format!(r"\\?\{}", path.display())
+        } else {
+            format!("/{}", path.display())
+        }
+    }
+
+    #[test]
+    fn git_pointers_never_lead_to_another_machine() {
+        let dir = tempfile::tempdir().unwrap();
+        let main = dir.path().join("main");
+        fs::create_dir_all(&main).unwrap();
+        fs::write(main.join("HEAD"), "ref: refs/heads/topic\n").unwrap();
+        fs::write(
+            main.join("config"),
+            "[remote \"origin\"]\n\turl = https://github.com/acme/app\n",
+        )
+        .unwrap();
+
+        // A `.git` file is followed on this machine only. Refused, it is not
+        // taken for a checkout; the first target would reach `main` if followed.
+        let linked = dir.path().join("linked");
+        fs::create_dir_all(&linked).unwrap();
+        let point = |target: &str| {
+            fs::write(linked.join(".git"), format!("gitdir: {target}\n")).unwrap();
+        };
+        point(&main.to_string_lossy());
+        let facts = git_facts(&linked).unwrap().0;
+        assert_eq!(facts.branch.as_deref(), Some("topic"));
+        for target in [
+            doubled(&main),
+            r"\\host.invalid\share\repo\.git".into(),
+            "//host.invalid/share/repo/.git".into(),
+            r"\\?\UNC\host.invalid\share\repo\.git".into(),
+        ] {
+            point(&target);
+            assert!(git_facts(&linked).is_none(), "{target}");
+        }
+
+        // So is a worktree's `commondir`, which leads to its config.
+        let worktree = dir.path().join("worktree");
+        fs::create_dir_all(worktree.join(".git")).unwrap();
+        let common = |target: &str| {
+            fs::write(
+                worktree.join(".git").join("commondir"),
+                format!("{target}\n"),
+            )
+            .unwrap();
+        };
+        common(&main.to_string_lossy());
+        let facts = git_facts(&worktree).unwrap().0;
+        assert_eq!(facts.remote.as_deref(), Some("github.com/acme/app"));
+        common(&doubled(&main));
+        assert_eq!(git_facts(&worktree).unwrap().0.remote, None);
     }
 }

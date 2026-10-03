@@ -645,8 +645,12 @@ fn machine_install_contract_end_to_end() {
         json!({ "items": items, "clients": ["claude-code"], "decisions": {} }),
     )
     .unwrap();
-    // The plan names the home folder (shown as `~` for the real one), not a project.
-    assert_eq!(plan["project"], person.path().to_string_lossy().as_ref());
+    // The plan names the home folder, not a project, as paths are shown: under
+    // the real home folder, as `~/…` (where Windows keeps its temp folder).
+    assert_eq!(
+        plan["project"],
+        habi_core::paths::display_path(person.path())
+    );
     assert!(plan["title"].as_str().unwrap().ends_with("on this machine"));
     assert!(
         plan["changes"]

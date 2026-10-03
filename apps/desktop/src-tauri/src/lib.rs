@@ -108,6 +108,48 @@ fn merge_login_path() -> Vec<String> {
     added
 }
 
+/// The window opens at its designed size (`tauri.conf.json`, which also sets
+/// the 1024×700 minimum repeated below). A smaller
+/// screen — a 1366×768 laptop, or 1920×1080 at 125% — would put part of it
+/// out of reach, so there the size, and the minimum if it too is larger,
+/// shrink to the screen's work area; the layout adapts down to 720 px.
+fn fit_to_screen(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+    use tauri::LogicalSize;
+    let Some(monitor) = window.current_monitor()? else {
+        return Ok(());
+    };
+    let area = monitor
+        .work_area()
+        .size
+        .to_logical::<f64>(monitor.scale_factor());
+    let size = window
+        .inner_size()?
+        .to_logical::<f64>(window.scale_factor()?);
+    // Room for the title bar and the window frame, which the inner size leaves out.
+    let fits = LogicalSize::new(
+        size.width.min(area.width - 16.0).max(720.0),
+        size.height.min(area.height - 48.0).max(560.0),
+    );
+    if fits.width < size.width || fits.height < size.height {
+        tracing::info!(
+            width = fits.width,
+            height = fits.height,
+            "fitting the window to a small screen"
+        );
+        // The configured minimum, lowered only as far as the screen needs.
+        let (min_width, min_height) = (1024.0_f64, 700.0_f64);
+        if fits.width < min_width || fits.height < min_height {
+            window.set_min_size(Some(LogicalSize::new(
+                fits.width.min(min_width),
+                fits.height.min(min_height),
+            )))?;
+        }
+        window.set_size(fits)?;
+        window.center()?;
+    }
+    Ok(())
+}
+
 pub fn run() {
     #[cfg(target_os = "macos")]
     let added_to_path = merge_login_path();
@@ -143,6 +185,11 @@ pub fn run() {
                 (None, error) => AppState::new(None, error, guard),
             };
             app.manage(state);
+            if let Some(window) = app.get_webview_window("main")
+                && let Err(e) = fit_to_screen(&window)
+            {
+                tracing::warn!(error = %e, "could not fit the window to the screen");
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

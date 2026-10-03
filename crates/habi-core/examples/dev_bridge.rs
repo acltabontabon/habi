@@ -266,7 +266,9 @@ impl Bridge {
                 cancel,
             )?),
             "revise_contribution" => out(h.revise_contribution_with(&s("id")?, cancel)?),
-            "cancel_contribution_revision" => out(h.cancel_contribution_revision(&s("id")?)?),
+            "cancel_contribution_revision" => {
+                out(h.cancel_contribution_revision_with(&s("id")?, cancel)?)
+            }
             "refresh_contribution_review" => out(h.refresh_contribution_review(&s("id")?, cancel)?),
             "contribution_rehearsal" => out(h.contribution_rehearsal(&s("id")?, cancel)?),
             "export_contribution" => match picked(a)? {

@@ -519,22 +519,32 @@ pub fn build_index(
     }
 
     // Skill directories.
+    let skill_suffix = format!("/{SKILL_FILE}");
+    let root_prefix = format!("{skills_root}/");
     let mut skill_dirs: Vec<String> = files
         .iter()
-        .filter(|f| f.path == SKILL_FILE || f.path.ends_with(&format!("/{SKILL_FILE}")))
+        .filter(|f| f.path == SKILL_FILE || f.path.ends_with(&skill_suffix))
         .map(|f| dir_of(&f.path).to_string())
-        .filter(|d| {
-            skills_root.is_empty() || d == &skills_root || d.starts_with(&format!("{skills_root}/"))
-        })
+        .filter(|d| skills_root.is_empty() || d == &skills_root || d.starts_with(&root_prefix))
         .collect();
     skill_dirs.sort();
     let all_skill_dirs: HashSet<String> = skill_dirs.iter().cloned().collect();
+    // A folder sorts before everything inside it, so when a folder is reached
+    // the skill enclosing it, if any, has already been accepted. Looking up
+    // each of its parent folders keeps this linear in the number of skills
+    // (times their depth) for libraries with thousands of them.
     let mut accepted: Vec<String> = Vec::new();
+    let mut accepted_dirs: HashSet<&str> = HashSet::new();
+    fn parent(dir: &str) -> Option<&str> {
+        dir.rsplit_once('/').map(|(p, _)| p)
+    }
     for dir in &skill_dirs {
-        if let Some(outer) = accepted
-            .iter()
-            .find(|o| o.is_empty() || dir.starts_with(&format!("{o}/")))
-        {
+        let enclosing = if !dir.is_empty() && accepted_dirs.contains("") {
+            Some("")
+        } else {
+            std::iter::successors(parent(dir), |d| parent(d)).find(|d| accepted_dirs.contains(d))
+        };
+        if let Some(outer) = enclosing {
             index.diagnostics.push(Diagnostic::warning(
                 format!(
                     "`{dir}` is nested inside the skill `{outer}` and is treated as part of it"
@@ -543,6 +553,7 @@ pub fn build_index(
             ));
             continue;
         }
+        accepted_dirs.insert(dir);
         accepted.push(dir.clone());
     }
 
@@ -1316,6 +1327,22 @@ fn markdown_references(text: &str) -> Vec<MarkdownRef> {
 )]
 fn inline_references(line: &str, out: &mut Vec<MarkdownRef>) {
     let chars: Vec<char> = line.chars().collect();
+    // Where each whole run of backticks starts, by its length, with how many
+    // of those starts are already behind the scanner. A code span closes at
+    // the next run of exactly its opener's length; looking that up here,
+    // instead of scanning the rest of the line for every opener, keeps a line
+    // of many unmatched runs (hostile, or just odd) linear.
+    let mut runs: HashMap<usize, (Vec<usize>, usize)> = HashMap::new();
+    let mut k = 0;
+    while k < chars.len() {
+        if chars[k] == '`' {
+            let r = chars[k..].iter().take_while(|c| **c == '`').count();
+            runs.entry(r).or_default().0.push(k);
+            k += r;
+        } else {
+            k += 1;
+        }
+    }
     let mut i = 0;
     let mut open_brackets = 0usize;
     while i < chars.len() {
@@ -1323,21 +1350,14 @@ fn inline_references(line: &str, out: &mut Vec<MarkdownRef>) {
             '\\' => i += 1,
             '`' => {
                 let run = chars[i..].iter().take_while(|c| **c == '`').count();
-                // Find the closing run of exactly the same length.
-                let mut j = i + run;
-                let mut close = None;
-                while j < chars.len() {
-                    if chars[j] == '`' {
-                        let r = chars[j..].iter().take_while(|c| **c == '`').count();
-                        if r == run {
-                            close = Some(j);
-                            break;
-                        }
-                        j += r;
-                    } else {
-                        j += 1;
+                // The first run of exactly the same length after this one.
+                // The scanner only moves forward, so neither does `passed`.
+                let close = runs.get_mut(&run).and_then(|(starts, passed)| {
+                    while starts.get(*passed).is_some_and(|&s| s < i + run) {
+                        *passed += 1;
                     }
-                }
+                    starts.get(*passed).copied()
+                });
                 match close {
                     Some(end) => {
                         let code: String = chars[i + run..end].iter().collect();

@@ -76,7 +76,7 @@
           "description": "Clients this content is known to work with. Omit when not restricted.",
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["claude-code", "cursor", "codex"] }
+          "items": { "enum": ["claude-code", "cursor", "codex", "gemini-cli", "copilot", "opencode", "junie"] }
         }
       }
     },

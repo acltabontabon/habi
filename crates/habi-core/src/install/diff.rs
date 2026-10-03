@@ -2,9 +2,22 @@
 
 use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff as SimilarDiff};
+use std::time::Duration;
 use ts_rs::TS;
 
 const MAX_LINES: usize = 2_000;
+
+/// The most time one file's line diff may take. Files of up to a few MiB reach this
+/// code, and a diff of two large, very different texts can take seconds; a plan
+/// previews every changed file, so one such file would stall the whole preview.
+///
+/// Past this, `similar` stops searching for the smallest edit and settles the rest
+/// coarsely. The result is still a true edit script, so the preview stays honest:
+/// every line shown as removed is in the old text, every line shown as added is in
+/// the new one, and applying them turns one into the other. Only the `+N −M` counts
+/// may then be larger than the fewest possible, as when a moved block shows as removed
+/// in one place and added in another.
+const DIFF_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -67,7 +80,9 @@ pub fn diff(old: Option<&[u8]>, new: Option<&[u8]>) -> TextDiff {
     // otherwise show every line as removed and added with identical text.
     let old_text = old_text.unwrap_or_default().replace("\r\n", "\n");
     let new_text = new_text.unwrap_or_default().replace("\r\n", "\n");
-    let d = SimilarDiff::from_lines(&old_text, &new_text);
+    let d = SimilarDiff::configure()
+        .timeout(DIFF_TIMEOUT)
+        .diff_lines(&old_text, &new_text);
     let mut result = TextDiff::default();
     let mut emitted = 0usize;
     for group in d.grouped_ops(3) {
@@ -132,6 +147,23 @@ mod tests {
         let created = diff(None, Some(b"x\n"));
         assert_eq!(created.added, 1);
         assert!(diff(Some(&[0, 159, 146, 150]), Some(b"x")).binary);
+    }
+
+    #[test]
+    fn a_large_diff_still_accounts_for_every_line() {
+        // Two long texts that share lines in a shuffled order: hard work for a
+        // line diff. Whether or not the time limit is reached, the counts must
+        // describe a real edit: the unchanged lines are the same on both sides.
+        let old: String = (0..20_000).map(|i| format!("line {}\n", i % 997)).collect();
+        let new: String = (0..20_000)
+            .map(|i| format!("line {}\n", (i * 7) % 991))
+            .collect();
+        let d = diff(Some(old.as_bytes()), Some(new.as_bytes()));
+        assert!(!d.binary);
+        assert!(d.truncated, "far more than the shown lines changed");
+        let kept_old = 20_000 - d.removed;
+        let kept_new = 20_000 - d.added;
+        assert_eq!(kept_old, kept_new);
     }
 
     #[test]

@@ -78,7 +78,7 @@ pub struct AppInfo {
 pub async fn app_info(state: State<'_, AppState>) -> CmdResult<AppInfo> {
     // Looking up tools spawns processes; keep that off the async runtime.
     let (git_available, gh_available, glab_available) =
-        tauri::async_runtime::spawn_blocking(|| (which("git"), which("gh"), which("glab")))
+        tauri::async_runtime::spawn_blocking(|| (on_path("git"), on_path("gh"), on_path("glab")))
             .await
             .map_err(|e| internal(format!("background task failed: {e}")))?;
     Ok(AppInfo {
@@ -96,13 +96,10 @@ pub async fn app_info(state: State<'_, AppState>) -> CmdResult<AppInfo> {
     })
 }
 
-fn which(program: &str) -> bool {
-    std::process::Command::new(if cfg!(windows) { "where" } else { "which" })
-        .arg(program)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
+/// Whether `program` is on PATH. Searched in-process: running `where` on
+/// Windows flashes a console window, and minimal Linux systems have no `which`.
+fn on_path(program: &str) -> bool {
+    which::which(program).is_ok()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -1022,9 +1019,14 @@ pub async fn revise_contribution(
 pub async fn cancel_contribution_revision(
     state: State<'_, AppState>,
     id: String,
+    job_id: Option<String>,
 ) -> CmdResult<Contribution> {
     let habi = state.habi()?;
-    blocking(habi, move |h| h.cancel_contribution_revision(&id)).await
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| {
+        h.cancel_contribution_revision_with(&id, &cancel)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1294,7 +1296,15 @@ pub async fn open_skill_file(
         None
     };
     match spawned {
-        Some(Ok(_)) => Ok(()),
+        Some(Ok(mut child)) => {
+            // Reap the child when it exits, or it lingers as a zombie process for
+            // as long as Habi runs. `open` returns at once; Notepad stays until
+            // closed, so the wait happens on its own thread.
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            Ok(())
+        }
         Some(Err(e)) => Err(internal(format!("could not open a text editor: {e}"))),
         None => app
             .opener()

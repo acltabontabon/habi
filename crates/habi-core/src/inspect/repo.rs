@@ -12,16 +12,21 @@ fn read_head(git_dir: &Path) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Where a pointer in a repository's own files leads (the `gitdir:` of a `.git`
+/// file, a worktree's `commondir`), relative to `base` unless absolute. `None`
+/// for a path on another machine: these files come with any downloaded or
+/// unpacked folder, and on Windows merely reading `\\host\share\HEAD` connects
+/// to that host and offers it the person's credentials (`is_network_path`).
+pub(crate) fn git_pointer(base: &Path, target: &str) -> Option<PathBuf> {
+    let target = target.trim();
+    (!crate::paths::is_network_path(target)).then(|| base.join(target))
+}
+
 fn gitdir_from_file(dot_git: &Path) -> Option<PathBuf> {
     let bytes = read_prefix(dot_git, 4096).ok()?;
     let text = String::from_utf8_lossy(&bytes);
-    let target = text.trim().strip_prefix("gitdir:")?.trim();
-    let path = PathBuf::from(target);
-    Some(if path.is_absolute() {
-        path
-    } else {
-        dot_git.parent()?.join(path)
-    })
+    let target = text.trim().strip_prefix("gitdir:")?;
+    git_pointer(dot_git.parent()?, target)
 }
 
 pub fn describe(root: &Path) -> RepositoryInfo {
@@ -110,6 +115,46 @@ mod tests {
         let info = describe(plain.path());
         if info.repository_root.is_none() {
             assert_eq!(info.kind, RepositoryKind::Plain);
+        }
+    }
+
+    /// `path`, written to start with two slashes yet still name it: `//x` is
+    /// `/x` on macOS and Linux, and `\\?\C:\x` is `C:\x` on Windows.
+    fn doubled(path: &Path) -> String {
+        if cfg!(windows) {
+            format!(r"\\?\{}", path.display())
+        } else {
+            format!("/{}", path.display())
+        }
+    }
+
+    #[test]
+    fn gitdir_never_leads_to_another_machine() {
+        let dir = tempfile::tempdir().unwrap();
+        let gitdir = dir
+            .path()
+            .join("repo")
+            .join(".git")
+            .join("worktrees")
+            .join("wt");
+        std::fs::create_dir_all(&gitdir).unwrap();
+        std::fs::write(gitdir.join("HEAD"), "ref: refs/heads/topic\n").unwrap();
+        let wt = dir.path().join("wt");
+        std::fs::create_dir_all(&wt).unwrap();
+        std::fs::write(wt.join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
+        assert_eq!(describe(&wt).branch.as_deref(), Some("topic"));
+        // Still a checkout, with nothing read through the pointer; the first
+        // one would reach the same folder if it were followed.
+        for target in [
+            doubled(&gitdir),
+            r"\\host.invalid\share\repo\.git".into(),
+            "//host.invalid/share/repo/.git".into(),
+            r"\\?\UNC\host.invalid\share\repo\.git".into(),
+        ] {
+            std::fs::write(wt.join(".git"), format!("gitdir: {target}\n")).unwrap();
+            let info = describe(&wt);
+            assert_eq!(info.kind, RepositoryKind::Git, "{target}");
+            assert_eq!(info.branch, None, "{target}");
         }
     }
 }

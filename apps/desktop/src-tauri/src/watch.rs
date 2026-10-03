@@ -13,9 +13,21 @@ use std::sync::PoisonError;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
-pub struct ProjectWatcher {
-    pub project_id: String,
-    _debouncer: Debouncer<notify_debouncer_mini::notify::RecommendedWatcher>,
+type ProjectWatcher = Debouncer<notify_debouncer_mini::notify::RecommendedWatcher>;
+
+/// The project being watched, kept in `AppState`.
+///
+/// Its lock is only held for moments: setting up a recursive watch of a large
+/// tree can take seconds, and `stop` runs on the main thread when the window
+/// closes, so the watcher is built outside the lock and swapped in. `request`
+/// counts `start` and `stop` calls so a watcher finished after a newer call is
+/// dropped instead of replacing what that call asked for.
+#[derive(Default)]
+pub struct WatchSlot {
+    watcher: Option<ProjectWatcher>,
+    /// The project the latest `start` asked for, watched or still being set up.
+    project_id: Option<String>,
+    request: u64,
 }
 
 #[derive(Clone, Serialize)]
@@ -75,11 +87,48 @@ pub fn start(
     root: &Path,
 ) -> notify_debouncer_mini::notify::Result<()> {
     let state = app.state::<AppState>();
-    let mut guard = state.watcher.lock().unwrap_or_else(PoisonError::into_inner);
-    if guard.as_ref().is_some_and(|w| w.project_id == project_id) {
-        return Ok(());
+    let (ticket, previous) = {
+        let mut slot = state.watcher.lock().unwrap_or_else(PoisonError::into_inner);
+        if slot.project_id.as_deref() == Some(project_id) {
+            return Ok(());
+        }
+        slot.request += 1;
+        slot.project_id = Some(project_id.to_string());
+        (slot.request, slot.watcher.take())
+    };
+    // Stopping a watcher waits for its thread; do it outside the lock too.
+    drop(previous);
+    let built = watcher(app, project_id, root);
+    let mut slot = state.watcher.lock().unwrap_or_else(PoisonError::into_inner);
+    let current = slot.request == ticket;
+    match built {
+        Ok(watcher) if current => {
+            slot.watcher = Some(watcher);
+            Ok(())
+        }
+        // A newer `start` or a `stop` came while this one was being set up.
+        Ok(stale) => {
+            drop(slot);
+            drop(stale);
+            Ok(())
+        }
+        Err(e) => {
+            if current {
+                // Let the next `start` for this project try again.
+                slot.project_id = None;
+            }
+            Err(e)
+        }
     }
-    *guard = None;
+}
+
+/// A debounced recursive watcher of `root` that tells the UI about relevant
+/// changes.
+fn watcher(
+    app: &AppHandle,
+    project_id: &str,
+    root: &Path,
+) -> notify_debouncer_mini::notify::Result<ProjectWatcher> {
     let app = app.clone();
     let id = project_id.to_string();
     let root_owned: PathBuf = root.to_path_buf();
@@ -107,20 +156,23 @@ pub fn start(
         },
     )?;
     debouncer.watcher().watch(root, RecursiveMode::Recursive)?;
-    *guard = Some(ProjectWatcher {
-        project_id: project_id.to_string(),
-        _debouncer: debouncer,
-    });
-    Ok(())
+    Ok(debouncer)
 }
 
-/// Stops watching. With a project id, only that project's watcher stops, so
-/// a late "stop" from a screen that closed cannot end the next one's watch.
+/// Stops watching, including a watch still being set up. With a project id,
+/// only that project's watcher stops, so a late "stop" from a screen that
+/// closed cannot end the next one's watch. Never waits for a `start`.
 pub fn stop(state: &AppState, project_id: Option<&str>) {
-    let mut guard = state.watcher.lock().unwrap_or_else(PoisonError::into_inner);
-    if project_id.is_none_or(|id| guard.as_ref().is_some_and(|w| w.project_id == id)) {
-        *guard = None;
-    }
+    let previous = {
+        let mut slot = state.watcher.lock().unwrap_or_else(PoisonError::into_inner);
+        if !project_id.is_none_or(|id| slot.project_id.as_deref() == Some(id)) {
+            return;
+        }
+        slot.request += 1;
+        slot.project_id = None;
+        slot.watcher.take()
+    };
+    drop(previous);
 }
 
 #[cfg(test)]

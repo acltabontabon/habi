@@ -41,7 +41,8 @@ use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Instant;
 use ts_rs::TS;
 
 /// A project one of My skills is installed in.
@@ -102,9 +103,10 @@ pub struct ProjectRecord {
 #[serde(tag = "kind", rename_all = "camelCase")]
 #[ts(export)]
 pub enum ProjectPick {
-    Opened {
-        project: ProjectRecord,
-    },
+    /// Boxed: a record dwarfs the other variant, and more so on Windows,
+    /// where `PathBuf` is larger (clippy's `large_enum_variant`). The JSON
+    /// and the TypeScript type are the same as unboxed.
+    Opened { project: Box<ProjectRecord> },
     /// Skills and no build files: likely a library chosen by mistake.
     /// Nothing was registered.
     Skills {
@@ -132,7 +134,23 @@ pub struct ProjectSummary {
     /// Language tags (`lang:rust`), the most used first: the project's colors in lists.
     #[serde(default)]
     pub languages: Vec<String>,
+    /// Per library, what it brings to the project: the home page's weave draws a library's
+    /// thread solid where something from it is installed, and loose where it only fits.
+    #[serde(default)]
+    pub tally: Vec<SourceTally>,
     pub at: String,
+}
+
+/// One library's part in a project.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SourceTally {
+    pub source_id: String,
+    /// Its items that apply to the project (team requirements included).
+    pub fits: u32,
+    /// Titles of its items installed in the project, whatever their fit.
+    pub installed: Vec<String>,
 }
 
 fn summary_key(project_id: &str) -> String {
@@ -405,6 +423,9 @@ pub struct Habi {
     sources: Sources,
     plans: Mutex<HashMap<String, Plan>>,
     inspections: Mutex<HashMap<String, ProjectInspection>>,
+    /// One inspection walk at a time per project (see `inspect`), each with
+    /// when its last walk started.
+    inspecting: Mutex<HashMap<String, Arc<Mutex<Option<Instant>>>>>,
     check_previews: Mutex<HashMap<String, StoredCheck>>,
     /// `gh`/`glab` for review requests; tests point these at stand-ins.
     pub review_tools: ReviewTools,
@@ -445,6 +466,7 @@ impl Habi {
             sources,
             plans: Mutex::new(HashMap::new()),
             inspections: Mutex::new(HashMap::new()),
+            inspecting: Mutex::new(HashMap::new()),
             check_previews: Mutex::new(HashMap::new()),
             review_tools,
             user_home: directories::BaseDirs::new()
@@ -494,8 +516,9 @@ impl Habi {
                 skills: shape.skills,
             });
         }
-        self.open_project(&root)
-            .map(|project| ProjectPick::Opened { project })
+        self.open_project(&root).map(|project| ProjectPick::Opened {
+            project: Box::new(project),
+        })
     }
 
     /// Registers (or re-opens) a project directory and returns its record.
@@ -675,35 +698,56 @@ impl Habi {
         rescan: bool,
         cancel: &CancelToken,
     ) -> Result<ProjectInspection> {
+        let asked = Instant::now();
+        let cached = || {
+            self.inspections
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .get(id)
+                .cloned()
+        };
         // Cloned out first: the staleness check reads the file system, and
-        // the cache stays available to other threads meanwhile.
-        let cached = (!rescan)
-            .then(|| {
-                self.inspections
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .get(id)
-                    .cloned()
-            })
-            .flatten();
-        // A cheap re-check (sizes and modification times of manifests,
-        // lockfiles and listed directories) catches edits, added or removed
-        // files and branch switches since the last scan.
-        if let Some(cached) = cached
+        // the cache stays available to other threads meanwhile. A cheap
+        // re-check (sizes and modification times of manifests, lockfiles and
+        // listed directories) catches edits, added or removed files and
+        // branch switches since the last scan.
+        if !rescan
+            && let Some(cached) = cached()
             && !cached.is_stale()
         {
             return Ok(cached);
+        }
+        // The overview, a plan and the watcher's refresh often ask at once,
+        // and each would walk the whole repository. One walks; the others
+        // wait for it and take its result, if it is fresh enough for them.
+        let gate = self
+            .inspecting
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(id.to_string())
+            .or_default()
+            .clone();
+        let mut last_walk = gate.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(cached) = cached() {
+            // A walk that started after this request saw everything this one
+            // would; otherwise the cached result must pass the re-check.
+            let walked_since = last_walk.is_some_and(|started| started >= asked);
+            if walked_since || (!rescan && !cached.is_stale()) {
+                return Ok(cached);
+            }
         }
         let project = self.existing_project(id)?;
         let options = WalkOptions {
             exclusions: project.exclusions.clone(),
             ..Default::default()
         };
+        let started = Instant::now();
         let inspection = inspect(&project.root, &options, cancel)?;
         self.inspections
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .insert(id.to_string(), inspection.clone());
+        *last_walk = Some(started);
         Ok(inspection)
     }
 
@@ -1179,6 +1223,32 @@ impl Habi {
                 }
             }
             by_source.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+            let mut tally: Vec<SourceTally> = Vec::new();
+            for r in &recommendations {
+                let applies = r.applicability.applicability == Applicability::Applies;
+                if !applies && r.installation.is_none() {
+                    continue;
+                }
+                let at = match tally.iter().position(|t| t.source_id == r.item.source_id) {
+                    Some(at) => at,
+                    None => {
+                        tally.push(SourceTally {
+                            source_id: r.item.source_id.clone(),
+                            fits: 0,
+                            installed: Vec::new(),
+                        });
+                        tally.len() - 1
+                    }
+                };
+                if let Some(t) = tally.get_mut(at) {
+                    if applies {
+                        t.fits += 1;
+                    }
+                    if r.installation.is_some() {
+                        t.installed.push(r.item.title.clone());
+                    }
+                }
+            }
             ProjectSummary {
                 fits,
                 needs_information,
@@ -1211,6 +1281,7 @@ impl Habi {
                     }
                     languages
                 },
+                tally,
                 at: crate::time::now(),
             }
         };
@@ -2525,8 +2596,17 @@ impl Habi {
     /// Backs out of a revision: back to the version that was prepared or
     /// sent before "Revise".
     pub fn cancel_contribution_revision(&self, id: &str) -> Result<Contribution> {
-        self.contributions()
-            .cancel_revision(id, &CancelToken::new())
+        self.cancel_contribution_revision_with(id, &CancelToken::new())
+    }
+
+    /// `cancel_contribution_revision` with cancellation of the Git reads that
+    /// restore the earlier version (nothing is written until they finish).
+    pub fn cancel_contribution_revision_with(
+        &self,
+        id: &str,
+        cancel: &CancelToken,
+    ) -> Result<Contribution> {
+        self.contributions().cancel_revision(id, cancel)
     }
 
     /// Reads the review request's state and comments from the Git host.

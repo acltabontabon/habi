@@ -24,6 +24,7 @@ use rusqlite::{OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 use ts_rs::TS;
 
@@ -487,6 +488,68 @@ pub struct Sources {
     paths: AppPaths,
     store: Store,
     blobs: Blobs,
+    /// Indexes built before (see `IndexMemo`).
+    indexes: Mutex<IndexMemo>,
+}
+
+/// Library indexes this process built, by source and snapshot.
+///
+/// Building an index reads every skill's files back from the blob store,
+/// verifying each digest, and parses and validates their metadata; every
+/// project overview and install plan needs the index of every library, and
+/// the overview runs again on each change the project watcher reports. A
+/// recorded snapshot never changes (its row is inserted once and its files
+/// are addressed by digest), so its index is built once and then copied.
+/// Each use still looks up the snapshot's row, so a snapshot maintenance
+/// removed is not found here either, and one recorded again is rebuilt.
+#[derive(Default)]
+struct IndexMemo {
+    entries: HashMap<(String, String), MemoIndex>,
+    /// Counts uses, to find the least recently used entry.
+    clock: u64,
+}
+
+struct MemoIndex {
+    /// The snapshot row it was built from: its `rowid` and `created_at`.
+    row: (i64, String),
+    index: LibraryIndex,
+    used: u64,
+}
+
+/// Indexes kept at most: a few libraries, each at its current snapshot and at
+/// the snapshots projects installed from. The least recently used goes first.
+const MAX_MEMO_INDEXES: usize = 32;
+
+impl IndexMemo {
+    fn get(&mut self, key: &(String, String), row: &(i64, String)) -> Option<LibraryIndex> {
+        self.clock += 1;
+        let clock = self.clock;
+        let entry = self.entries.get_mut(key).filter(|e| &e.row == row)?;
+        entry.used = clock;
+        Some(entry.index.clone())
+    }
+
+    fn put(&mut self, key: (String, String), row: (i64, String), index: &LibraryIndex) {
+        self.clock += 1;
+        if !self.entries.contains_key(&key) && self.entries.len() >= MAX_MEMO_INDEXES {
+            let oldest = self
+                .entries
+                .iter()
+                .min_by_key(|(_, e)| e.used)
+                .map(|(k, _)| k.clone());
+            if let Some(oldest) = oldest {
+                self.entries.remove(&oldest);
+            }
+        }
+        self.entries.insert(
+            key,
+            MemoIndex {
+                row,
+                index: index.clone(),
+                used: self.clock,
+            },
+        );
+    }
 }
 
 fn freshness(
@@ -576,6 +639,7 @@ impl Sources {
             paths: paths.clone(),
             store: store.clone(),
             blobs: Blobs::new(&paths.blobs()),
+            indexes: Mutex::default(),
         }
     }
 
@@ -1181,7 +1245,9 @@ impl Sources {
         let contents = git.read_blobs(&cache, &oids, total, cancel)?;
         let mut files = Vec::with_capacity(wanted.len());
         for ((rel, _, size, executable), bytes) in wanted.into_iter().zip(contents) {
-            let digest = self.blobs.put(&bytes)?;
+            // Snapshot content can be fetched again: stored as cache, unflushed
+            // (see `store::cas`).
+            let digest = self.blobs.put_cached(&bytes)?;
             files.push(SnapshotFile {
                 path: rel,
                 digest,
@@ -1270,7 +1336,8 @@ impl Sources {
                     match read_bounded(&path, MAX_FILE_BYTES)? {
                         Bounded::Content(bytes) => {
                             total += bytes.len() as u64;
-                            let digest = self.blobs.put(&bytes)?;
+                            // Read again on the next refresh: cache (see `store::cas`).
+                            let digest = self.blobs.put_cached(&bytes)?;
                             files.push(SnapshotFile {
                                 path: rel,
                                 digest,
@@ -1340,7 +1407,37 @@ impl Sources {
         self.index_at(id, &snapshot)
     }
 
+    /// Index of a snapshot, built once per process (see `IndexMemo`).
     pub fn index_at(&self, id: &str, snapshot: &str) -> Result<LibraryIndex> {
+        let row: (i64, String) = self
+            .store
+            .conn()?
+            .query_row(
+                "SELECT rowid, created_at FROM snapshots WHERE source_id = ?1 AND snapshot = ?2",
+                [id, snapshot],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?
+            .ok_or_else(|| {
+                HabiError::NotFound(format!("snapshot {} of source {id}", short(snapshot)))
+            })?;
+        let key = (id.to_string(), snapshot.to_string());
+        let memo = || self.indexes.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(index) = memo().get(&key, &row) {
+            return Ok(index);
+        }
+        let (index, complete) = self.build_index_at(id, snapshot)?;
+        // An index built while a blob could not be read reports that; once the
+        // blob is restored, the next use must build it again.
+        if complete {
+            memo().put(key, row, &index);
+        }
+        Ok(index)
+    }
+
+    /// Builds the index of a snapshot, and says whether every file it needed
+    /// could be read from the blob store.
+    fn build_index_at(&self, id: &str, snapshot: &str) -> Result<(LibraryIndex, bool)> {
         let data = self.snapshot_data(id, snapshot)?;
         let by_path: HashMap<&str, &str> = data
             .files
@@ -1348,11 +1445,15 @@ impl Sources {
             .map(|f| (f.path.as_str(), f.digest.as_str()))
             .collect();
         let blobs = &self.blobs;
+        let unreadable = std::cell::Cell::new(false);
         let mut index = library::build_index(id, snapshot, &data.files, &|path| {
             let digest = by_path
                 .get(path)
                 .ok_or_else(|| format!("{path} is not in the snapshot"))?;
-            blobs.get(digest).map_err(|e| e.to_string())
+            blobs.get(digest).map_err(|e| {
+                unreadable.set(true);
+                e.to_string()
+            })
         });
         // Items with skipped files are incomplete: installing them would
         // silently drop content, so they are marked and refused at install.
@@ -1385,7 +1486,7 @@ impl Sources {
             }
         }
         index.diagnostics.extend(data.skipped);
-        Ok(index)
+        Ok((index, !unreadable.get()))
     }
 
     /// Reads a file of an item at a snapshot.

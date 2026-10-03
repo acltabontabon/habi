@@ -14,8 +14,8 @@ use crate::state::AppState;
 use habi_core::error::ErrorInfo;
 use serde::{Deserialize, Serialize};
 use std::sync::PoisonError;
-use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use time::format_description::well_known::Rfc3339;
 use ts_rs::TS;
@@ -24,6 +24,18 @@ type CmdResult<T> = Result<T, ErrorInfo>;
 
 /// How long a check may take before the person is told it could not finish.
 const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
+
+/// How long the whole installer download may take. The updater copies the check's
+/// timeout into the update it returns and applies it to the entire response body, so
+/// left alone a download on a slow link would be cut off after `CHECK_TIMEOUT` every
+/// time. This is generous enough for a slow connection (an installer of tens of
+/// megabytes at a few dozen kilobytes a second) while a stalled one still ends in an
+/// error the person can retry, rather than a progress bar that never moves again.
+const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
+/// The least time between two `update-progress` events. The download arrives in small
+/// chunks, and the UI re-renders on every event; a few updates a second read as smooth.
+const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 
 /// A newer release, as the UI shows it.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -80,6 +92,7 @@ pub async fn check_for_update(
     let updater = app
         .updater_builder()
         .timeout(CHECK_TIMEOUT)
+        .on_before_exit(before_exit(app.clone()))
         .build()
         .map_err(|e| {
             failure(
@@ -106,12 +119,27 @@ pub async fn check_for_update(
     Ok(result)
 }
 
+/// What the updater runs on Windows just before it starts the installer and ends Habi with
+/// `std::process::exit`. That skips the window's `Destroyed` handler, so this does its work
+/// (see `lib.rs`): running jobs are told to stop and the project watcher is let go. The
+/// updater never calls it elsewhere.
+fn before_exit<R: Runtime>(app: AppHandle<R>) -> impl Fn() + Send + Sync + 'static {
+    move || {
+        if let Some(state) = app.try_state::<AppState>() {
+            state.cancel_all();
+            crate::watch::stop(&state, None);
+        }
+    }
+}
+
 /// Downloads and installs the update the last check found, reporting progress as
-/// `update-progress` events. On Windows the installer closes Habi itself; elsewhere the
-/// new version starts at the next launch, or at once with `restart_app`.
+/// `update-progress` events. On Windows this never returns: the updater starts the
+/// installer and ends Habi (after `before_exit`), so the UI writes pending edits before
+/// asking. Elsewhere the new version starts at the next launch, or at once with
+/// `restart_app`.
 #[tauri::command]
 pub async fn install_update(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
-    let update = {
+    let mut update = {
         let mut slot = state.update.lock().unwrap_or_else(PoisonError::into_inner);
         if slot.installing {
             return Err(failure(
@@ -128,13 +156,16 @@ pub async fn install_update(app: AppHandle, state: State<'_, AppState>) -> CmdRe
         slot.installing = true;
         update
     };
-    let mut downloaded: u64 = 0;
+    // The check's short timeout must not bound the download (see `DOWNLOAD_TIMEOUT`).
+    update.timeout = Some(DOWNLOAD_TIMEOUT);
+    let mut progress = ProgressThrottle::default();
     let progress_app = app.clone();
     let result = update
         .download_and_install(
             move |chunk, total| {
-                downloaded = downloaded.saturating_add(chunk as u64);
-                let _ = progress_app.emit("update-progress", UpdateProgress { downloaded, total });
+                if let Some(event) = progress.advance(chunk as u64, total) {
+                    let _ = progress_app.emit("update-progress", event);
+                }
             },
             || {},
         )
@@ -157,8 +188,101 @@ pub async fn install_update(app: AppHandle, state: State<'_, AppState>) -> CmdRe
     }
 }
 
+/// Thins the updater's per-chunk callbacks into `update-progress` events: one when the
+/// download has moved on by at least a percent, or `PROGRESS_INTERVAL` has passed, since
+/// the last event, and always the first and the last, so the UI starts and ends exact.
+#[derive(Default)]
+struct ProgressThrottle {
+    downloaded: u64,
+    /// What the last event said had arrived, and when it was sent.
+    last: Option<(u64, Instant)>,
+}
+
+impl ProgressThrottle {
+    fn advance(&mut self, chunk: u64, total: Option<u64>) -> Option<UpdateProgress> {
+        self.advance_at(chunk, total, Instant::now())
+    }
+
+    fn advance_at(
+        &mut self,
+        chunk: u64,
+        total: Option<u64>,
+        now: Instant,
+    ) -> Option<UpdateProgress> {
+        self.downloaded = self.downloaded.saturating_add(chunk);
+        let downloaded = self.downloaded;
+        let due = match self.last {
+            None => true,
+            Some((sent, at)) => {
+                let finished = total.is_some_and(|t| downloaded >= t);
+                // A percent of the whole; with no size given, time alone decides.
+                let step = total.map_or(u64::MAX, |t| (t / 100).max(1));
+                finished
+                    || downloaded.saturating_sub(sent) >= step
+                    || now.saturating_duration_since(at) >= PROGRESS_INTERVAL
+            }
+        };
+        if !due {
+            return None;
+        }
+        self.last = Some((downloaded, now));
+        Some(UpdateProgress { downloaded, total })
+    }
+}
+
 /// Quits and starts Habi again, which is how an installed update takes effect.
 #[tauri::command]
 pub fn restart_app(app: AppHandle) {
     app.restart()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn progress_is_sent_per_percent_and_always_at_the_start_and_end() {
+        let mut throttle = ProgressThrottle::default();
+        let start = Instant::now();
+        let total = Some(10_000);
+        // The first chunk is always reported.
+        assert!(throttle.advance_at(10, total, start).is_some());
+        // Less than a percent more, moments later: held back.
+        assert!(throttle.advance_at(10, total, start).is_none());
+        // A full percent since the last event: reported.
+        let event = throttle
+            .advance_at(100, total, start)
+            .expect("a percent more");
+        assert_eq!(event.downloaded, 120);
+        // Less than a percent, but a while since the last event: reported.
+        let later = start + PROGRESS_INTERVAL;
+        assert!(throttle.advance_at(1, total, later).is_some());
+        // The last chunk is always reported, however small.
+        assert!(throttle.advance_at(9_000, total, later).is_some());
+        let last = throttle.advance_at(879, total, later).expect("the end");
+        assert_eq!(last.downloaded, 10_000);
+    }
+
+    /// The hook only ever runs on Windows, as the installer starts; this is its one rehearsal.
+    #[test]
+    fn before_exit_stops_running_jobs() {
+        let app = tauri::test::mock_app();
+        app.manage(AppState::new(None, None, None));
+        let state = app.state::<AppState>();
+        let (job, _guard) = state.job(Some("apply".into()));
+        before_exit(app.handle().clone())();
+        assert!(job.is_cancelled());
+    }
+
+    #[test]
+    fn progress_without_a_size_is_paced_by_time() {
+        let mut throttle = ProgressThrottle::default();
+        let start = Instant::now();
+        assert!(throttle.advance_at(1, None, start).is_some());
+        assert!(throttle.advance_at(1_000_000, None, start).is_none());
+        let event = throttle
+            .advance_at(1, None, start + PROGRESS_INTERVAL)
+            .expect("interval passed");
+        assert_eq!(event.downloaded, 1_000_002);
+    }
 }
