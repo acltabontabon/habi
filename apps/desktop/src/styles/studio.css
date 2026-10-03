@@ -187,6 +187,46 @@ button.rd-word:hover,
   color: var(--ink-muted);
 }
 
+.rd-better {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rd-better-dot {
+  width: 5px;
+  height: 5px;
+  margin-left: 1px;
+  border-radius: 50%;
+  background: var(--thread);
+}
+
+/* The count stays folded until asked for, and is always there for assistive technology. */
+.rd-better-count {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  color: var(--thread-strong);
+  opacity: 0;
+  transition:
+    max-width 220ms var(--ease),
+    opacity 160ms var(--ease);
+}
+
+.rd-word:hover .rd-better-count,
+.rd-word:focus-visible .rd-better-count,
+.rd-word[aria-expanded="true"] .rd-better-count {
+  max-width: 14ch;
+  opacity: 1;
+}
+
+.rd-word:hover .rd-better-dot,
+.rd-word:focus-visible .rd-better-dot,
+.rd-word[aria-expanded="true"] .rd-better-dot {
+  display: none;
+}
+
 .rd-word.is-trashed {
   color: var(--ink-muted);
 }
@@ -518,6 +558,10 @@ button.rd-word:hover,
   margin-top: var(--s5);
 }
 
+.sk-layers[hidden] {
+  display: none;
+}
+
 .sk-layer-link {
   display: grid;
   gap: 3px;
@@ -557,16 +601,6 @@ button.rd-word:hover,
 .sk-layer-link:hover .sk-layer-value::after,
 .sk-layer-link:focus-visible .sk-layer-value::after {
   opacity: 1;
-}
-
-.sk-infer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s2);
-  margin-top: var(--s4);
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
 }
 
 .sk-broken {
@@ -634,6 +668,12 @@ button.rd-word:hover,
 .source-editor .cm-mark-warning,
 .source-editor .cm-mark-info {
   background: linear-gradient(to right, var(--warn-wash), transparent 85%);
+  border-radius: 3px;
+}
+
+/* What a starter left unfilled: a faint saffron wash, explained on hover. */
+.source-editor .cm-mark-todo {
+  background: linear-gradient(to right, color-mix(in srgb, var(--thread) 13%, transparent), transparent 60%);
   border-radius: 3px;
 }
 
@@ -848,6 +888,12 @@ button.rd-word:hover,
   width: min(100%, calc(var(--measure) + 2 * var(--gutter)));
   margin: 0 auto;
   padding: clamp(var(--s5), 5cqi, var(--s7)) var(--gutter) var(--s8);
+}
+
+/* Working on files, the layer takes the whole stage, and the editor the rest of it. */
+.sk.is-source .sk-layer.is-materials,
+.sk.has-file .sk-layer.is-materials {
+  height: 100%;
 }
 
 .sk-work-page {
@@ -1311,9 +1357,18 @@ button.rd-word:hover,
 
 .mt-empty {
   display: grid;
-  gap: var(--s2);
+  gap: var(--s4);
+}
+
+.mt-start {
   font-size: var(--text-md);
-  color: var(--ink-soft);
+  color: var(--ink);
+}
+
+.mt-start-hint {
+  margin-left: var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
 }
 
 .mt-empty-hint {
@@ -1528,32 +1583,69 @@ button.rd-word:hover,
   max-height: 60vh;
 }
 
-/* ---------- The package source: the literal tree ---------- */
+/* ---------- The package source: the literal tree, beside the file ---------- */
 
+/*
+ * Two panes on one baseline: the tree and the open file share a head row of
+ * the same height, and their bodies start on the same line. Rows, the search
+ * field and the head all keep one inset, so the eye runs straight down.
+ */
 .src {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding-top: var(--s4);
-}
-
-.src .layer-head {
-  margin-bottom: var(--s4);
-}
-
-.src-body {
+  --src-head: 40px;
+  --src-inset: 10px;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   gap: var(--s5);
-  flex: 1;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: var(--s4);
+}
+
+.src-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
   min-height: 0;
 }
 
-.src-explorer {
+.src-head {
   display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  min-height: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  height: var(--src-head);
+  padding-left: var(--src-inset);
+}
+
+.src-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.src-meta {
+  margin-left: var(--s2);
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+.src-head .menu-trigger:not(.is-icon) {
+  height: 26px;
+  padding: 0 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.src-head .menu-trigger:not(.is-icon):hover,
+.src-head .menu-trigger:not(.is-icon)[aria-expanded="true"] {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.src-side .mt-create {
+  margin: 0;
+  padding: var(--s2) var(--src-inset);
 }
 
 .src-search {
@@ -1561,7 +1653,7 @@ button.rd-word:hover,
   align-items: center;
   gap: var(--s2);
   height: 32px;
-  padding: 0 10px;
+  padding: 0 var(--src-inset);
   border-radius: var(--radius);
   background: var(--paper-sunken);
   color: var(--ink-faint);
@@ -1582,6 +1674,7 @@ button.rd-word:hover,
   flex: 1;
   min-height: 0;
   overflow: auto;
+  margin-top: var(--s1);
 }
 
 .src-list {
@@ -1598,7 +1691,7 @@ button.rd-word:hover,
   gap: 6px;
   width: 100%;
   min-height: 28px;
-  padding-right: 8px;
+  padding-right: var(--src-inset);
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -1614,7 +1707,7 @@ button.rd-word:hover,
 }
 
 .src-row.is-open {
-  background: var(--paper-sunken);
+  background: var(--paper-raised);
   color: var(--ink);
   box-shadow: inset 2px 0 0 var(--thread);
 }
@@ -1623,12 +1716,63 @@ button.rd-word:hover,
   color: var(--ink-muted);
 }
 
+.src-glyph {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.src-row.is-open .src-glyph {
+  color: var(--thread);
+}
+
 .src-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* What a package can hold but this one does not yet: faint, and one click from being made. */
+.src-row.is-ghost {
+  color: var(--ink-faint);
+}
+
+.src-row.is-ghost .src-name {
+  flex: none;
+  text-decoration: underline dotted var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.src-ghost-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  color: var(--thread-strong);
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.src-row.is-ghost:hover,
+.src-row.is-ghost:focus-visible {
+  color: var(--ink-soft);
+}
+
+.src-row.is-ghost:hover .src-ghost-hint,
+.src-row.is-ghost:focus-visible .src-ghost-hint {
+  opacity: 1;
+}
+
+.src-list + .src-list,
+.src-tree > .src-list > li:has(> .is-ghost):first-of-type {
+  margin-top: var(--s2);
 }
 
 .src-problem {
@@ -1666,7 +1810,7 @@ button.rd-word:hover,
   display: grid;
   gap: 2px;
   width: 100%;
-  padding: 4px 8px;
+  padding: 4px var(--src-inset);
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -1695,6 +1839,47 @@ button.rd-word:hover,
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+}
+
+.src-main .mt-file-main {
+  flex: 1;
+}
+
+.src-main .mt-file-head {
+  height: var(--src-head);
+  min-height: 0;
+  margin-bottom: var(--s2);
+}
+
+.src-path {
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.src-path-dir {
+  color: var(--ink-faint);
+}
+
+/* Until the file arrives, its place is already there. */
+.src-loading {
+  flex: 1;
+  margin-top: calc(var(--src-head) + var(--s2));
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+}
+
+/* Written as is: the bar steps out of the way, keeping only a save word when there is one. */
+.file-editor {
+  position: relative;
+}
+
+.file-editor-bar.is-bare {
+  position: absolute;
+  top: 6px;
+  right: var(--s4);
+  z-index: 2;
+  min-height: 0;
+  padding: 0;
 }
 
 .src-rename,
@@ -2168,7 +2353,7 @@ button.rd-word:hover,
     display: none;
   }
 
-  .src-body {
+  .src {
     grid-template-columns: 200px minmax(0, 1fr);
   }
 }
@@ -2192,12 +2377,13 @@ button.rd-word:hover,
     gap: var(--s4);
   }
 
-  .src-body {
+  .src {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .src-explorer {
-    max-height: 38vh;
+  .src-side {
+    max-height: 34vh;
   }
 
   .wu-adder-row {

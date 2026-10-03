@@ -177,7 +177,13 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     // The first heading is its title, and the title its identifier.
     expect(await screen.findByLabelText("Skill title")).toHaveValue("Liquibase Changeset Review");
-    await userEvent.click(screen.getByRole("button", { name: "Use the opening line" }));
+    // What would make it better waits under Ready, each with its action.
+    await userEvent.click(screen.getByRole("button", { name: /^Ready/ }));
+    await userEvent.click(
+      within(screen.getByRole("dialog", { name: "Ready to use" })).getByRole("button", {
+        name: "Use the opening line",
+      }),
+    );
     expect(screen.getByLabelText("What it is for")).toHaveValue(
       "Before approving a Liquibase changeset, check that every change can be rolled back.",
     );
@@ -189,8 +195,11 @@ describe("the Skill Studio", () => {
     expect(last.title).toBe("Liquibase Changeset Review");
     expect(last.document.name).toBe("liquibase-changeset-review");
     // The instructions keep naming Liquibase: one click makes it a signal, said in words.
-    expect(screen.getByText(/Looks related to Liquibase projects/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Suggest it there" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Ready/ }));
+    const better = screen.getByRole("dialog", { name: "Ready to use" });
+    expect(within(better).getByText(/The instructions are brief/)).toBeInTheDocument();
+    expect(within(better).getByText("Looks related to Liquibase projects.")).toBeInTheDocument();
+    await userEvent.click(within(better).getByRole("button", { name: "Suggest it there" }));
     await waitFor(() => expect(formOf(rules.mock.calls)).toMatchObject({ appliesTags: ["db:liquibase"] }), {
       timeout: 2000,
     });
@@ -265,6 +274,57 @@ describe("the Skill Studio", () => {
     const left = screen.getByRole("dialog", { name: "What is left to do" });
     expect(within(left).getByText(/Agents decide whether to load a skill/)).toBeInTheDocument();
     await userEvent.click(within(left).getByRole("button", { name: "Edit the purpose" }));
+    await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
+  });
+
+  it("offers Use only when the skill is ready, and the next step until then", async () => {
+    handlers.get_skill = () => ({
+      ...skill({ description: "" }),
+      summary: { ...skill().summary, errors: 1 },
+      diagnostics: [
+        {
+          level: "error",
+          message: "SKILL.md has no `description`",
+          path: "SKILL.md",
+          code: "missingDescription",
+        },
+      ],
+    });
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    expect(screen.queryByRole("button", { name: "Use" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Add a purpose" }));
+    await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
+  });
+
+  it("asks a nameless draft for a title, not an identifier", async () => {
+    handlers.get_skill = () => ({
+      ...skill({ name: "", body: "Steps." }),
+      summary: { ...skill().summary, title: "", errors: 1 },
+      diagnostics: [
+        { level: "error", message: "SKILL.md has no `name`", path: "SKILL.md", code: "invalidName" },
+      ],
+    });
+    wrap(<SkillStudio id="k" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Give it a title" }));
+    await waitFor(() => expect(screen.getByLabelText("Skill title")).toHaveFocus());
+  });
+
+  it("points at what a starter left unfilled, and takes the author there", async () => {
+    handlers.get_skill = () =>
+      skill({
+        description: "haha",
+        body: "## When to use this\n\nUse this when …\n\n## Steps\n\n1. Read it.\n2. \n",
+      });
+    wrap(<SkillStudio id="k" />);
+    await userEvent.click(await screen.findByRole("button", { name: /^Ready/ }));
+    const better = screen.getByRole("dialog", { name: "Ready to use" });
+    expect(within(better).getByText("2 places still read like the starter.")).toBeInTheDocument();
+    expect(within(better).getByRole("button", { name: "Show me" })).toBeInTheDocument();
+    expect(
+      within(better).getByText("“haha” is all an agent reads before choosing this skill."),
+    ).toBeInTheDocument();
+    await userEvent.click(within(better).getByRole("button", { name: "Say what it helps with" }));
     await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
   });
 

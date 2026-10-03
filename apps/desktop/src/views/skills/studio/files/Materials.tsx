@@ -25,6 +25,7 @@ import { useToast } from "../../../../components/Toasts";
 import { Button, ErrorNotice } from "../../../../components/ui";
 import { api, HabiError } from "../../../../lib/api";
 import { plural } from "../../../../lib/format";
+import { languageFor } from "../../../../lib/languages";
 import {
   fileLede,
   KIND_GLYPH,
@@ -46,6 +47,13 @@ import {
 import { BinaryView, FileEditor, size } from "./FileEditor";
 
 type Creating = { shape: NewFileShape; name: string };
+
+/** The same marks as Materials, plus the skill's own two files. */
+function srcGlyph(f: SkillFileEntry): string {
+  if (f.path === "SKILL.md") return "§";
+  if (/^habi\.ya?ml$/.test(f.path)) return "◇";
+  return KIND_GLYPH[materialKind(f.path, f.executable)];
+}
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -173,6 +181,8 @@ function MaterialsList({
   addMenu,
   creating,
   pasted,
+  onStart,
+  onImport,
 }: {
   skill: LocalSkill;
   materials: Material[];
@@ -183,6 +193,9 @@ function MaterialsList({
   addMenu: React.ReactNode;
   creating: React.ReactNode;
   pasted: React.ReactNode;
+  /** Starts a new file of a shape (an id from NEW_FILE_SHAPES). */
+  onStart: (shape: string) => void;
+  onImport: () => void;
 }) {
   const groups = KIND_ORDER.map((kind) => ({ kind, items: materials.filter((m) => m.kind === kind) })).filter(
     (g) => g.items.length > 0,
@@ -190,22 +203,41 @@ function MaterialsList({
   return (
     <div className="mt">
       <header className="layer-head">
-        <div>
-          <h2 className="layer-title">Materials</h2>
-          <p className="layer-lede">Things this skill brings with it.</p>
-        </div>
-        {readOnly ? null : addMenu}
+        <h2 className="layer-title">Materials</h2>
+        {readOnly || materials.length === 0 ? null : addMenu}
       </header>
       {creating}
       {pasted}
       {materials.length === 0 ? (
-        <div className="mt-empty">
-          <p>Nothing yet — instructions alone are a complete skill.</p>
-          <p className="mt-empty-hint">
-            Scripts it runs, examples it learns from, references it reads: add them with Add, paste code here,
-            or drop files on the window.
-          </p>
-        </div>
+        readOnly ? (
+          <p className="mt-empty-hint">Nothing comes with it.</p>
+        ) : (
+          // Empty, the layer is its own menu: what can come with a skill, each one click away.
+          <div className="mt-empty">
+            <ul className="mt-rows">
+              {(
+                [
+                  ["script", "Script", "with_server.py, check.sh", () => onStart("python")],
+                  ["example", "Example", "a worked case to learn from", () => onStart("example")],
+                  ["reference", "Reference", "architecture.md, API notes", () => onStart("reference")],
+                  ["other", "Files from your machine", "placed by type", onImport],
+                ] as const
+              ).map(([kind, label, hint, run]) => (
+                <li key={kind} className="mt-row">
+                  <button type="button" className="mt-open" onClick={run}>
+                    <span className={`mt-glyph is-${kind}`} aria-hidden="true">
+                      {KIND_GLYPH[kind]}
+                    </span>
+                    <span className="mt-start">
+                      {label} <span className="mt-start-hint">{hint}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-empty-hint">Or paste code, or drop files here.</p>
+          </div>
+        )
       ) : (
         groups.map((g) => (
           <section key={g.kind} className="mt-group" aria-label={KIND_NAME[g.kind].many}>
@@ -265,6 +297,10 @@ function SourceTree({
   renameField,
   confirmRemove,
   importInto,
+  onStart,
+  onWhen,
+  addMenu,
+  creating,
 }: {
   skill: LocalSkill;
   open: string | null;
@@ -277,6 +313,10 @@ function SourceTree({
   renameField: (path: string) => React.ReactNode;
   confirmRemove: (path: string, what: string) => React.ReactNode;
   importInto: (folder: string) => void;
+  onStart: (shape: string) => void;
+  onWhen: () => void;
+  addMenu: React.ReactNode;
+  creating: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -324,11 +364,14 @@ function SourceTree({
           data-row
           data-path={f.path}
           className={`src-row${open === f.path ? " is-open" : ""}`}
-          style={{ paddingLeft: `${8 + depth * 14}px` }}
+          style={{ paddingLeft: `${10 + depth * 16}px` }}
           aria-current={open === f.path ? "true" : undefined}
           title={f.path}
           onClick={() => onOpen(f.path)}
         >
+          <span className="src-glyph" aria-hidden="true">
+            {srcGlyph(f)}
+          </span>
           <span className="src-name">{depth === 0 ? f.path : `${innerDir(f.path)}${baseName(f.path)}`}</span>
           {problems.length > 0 ? (
             <span className="src-problem" title={problems.map((d) => d.message).join("\n")}>
@@ -342,8 +385,55 @@ function SourceTree({
     );
   };
 
+  // The standard parts of a package that are not there yet, each one click from being made.
+  const has = (prefix: string) =>
+    skill.files.some((f) => f.path === prefix || f.path.startsWith(`${prefix}/`));
+  const ghosts = readOnly
+    ? []
+    : [
+        {
+          path: "habi.yaml",
+          glyph: "◇",
+          hint: "when Habi suggests it",
+          run: onWhen,
+          here: has("habi.yaml") || has("habi.yml"),
+        },
+        {
+          path: "scripts/",
+          glyph: "▶",
+          hint: "code it runs",
+          run: () => onStart("python"),
+          here: has("scripts"),
+        },
+        {
+          path: "references/",
+          glyph: "¶",
+          hint: "docs it reads",
+          run: () => onStart("reference"),
+          here: has("references"),
+        },
+        {
+          path: "assets/",
+          glyph: "◫",
+          hint: "templates, images",
+          run: () => importInto("assets"),
+          here: has("assets"),
+        },
+      ].filter((g) => !g.here);
+  const total = skill.files.reduce((n, f) => n + f.size, 0);
+
   return (
-    <div className="src-explorer">
+    <div className="src-side">
+      <header className="src-head">
+        <p className="src-title">
+          Package{" "}
+          <span className="src-meta">
+            {plural(skill.files.length, "file")} · {size(total)}
+          </span>
+        </p>
+        {addMenu}
+      </header>
+      {creating}
       <label className="src-search">
         <Icon name="search" size={13} />
         <span className="visually-hidden">Find files and text</span>
@@ -381,7 +471,9 @@ function SourceTree({
                         })
                       }
                     >
-                      <Icon name={closed ? "chevronRight" : "chevronDown"} size={12} />
+                      <span className="src-glyph" aria-hidden="true">
+                        <Icon name={closed ? "chevronRight" : "chevronDown"} size={11} />
+                      </span>
                       <span className="src-name">{folder.name}/</span>
                     </button>
                     {!readOnly ? (
@@ -422,6 +514,28 @@ function SourceTree({
             );
           })}
           {shown.root.map((f) => row(f, 0))}
+          {query
+            ? null
+            : ghosts.map((g) => (
+                <li key={g.path}>
+                  <button
+                    type="button"
+                    data-row
+                    className="src-row is-ghost"
+                    style={{ paddingLeft: "10px" }}
+                    title={`Not in the package yet — ${g.hint}`}
+                    onClick={g.run}
+                  >
+                    <span className="src-glyph" aria-hidden="true">
+                      {g.glyph}
+                    </span>
+                    <span className="src-name">{g.path}</span>
+                    <span className="src-ghost-hint">
+                      <Icon name="plus" size={11} /> {g.hint}
+                    </span>
+                  </button>
+                </li>
+              ))}
         </ul>
         {matches && matches.length > 0 ? (
           <section className="src-matches" aria-label="In the text">
@@ -462,6 +576,7 @@ export function Materials({
   onPath,
   onSource,
   onReference,
+  onWhen,
 }: {
   skill: LocalSkill;
   readOnly: boolean;
@@ -482,6 +597,8 @@ export function Materials({
   onSource: (on: boolean) => void;
   /** Writes a reference to a file into the instructions. */
   onReference: (path: string) => void;
+  /** Goes to when Habi suggests it (habi.yaml is written from there). */
+  onWhen: () => void;
 }) {
   const id = skill.summary.id;
   const [open, setOpen] = useState<SkillFileContent | null>(null);
@@ -518,6 +635,10 @@ export function Materials({
       setOpen(null);
     }
   }, [path]);
+  // The package source always has a file open: the skill's own, to begin with.
+  useEffect(() => {
+    if (source && !path) onPath("SKILL.md");
+  }, [source, path, onPath]);
   // A file that disappears closes.
   useEffect(() => {
     if (path && open && !skill.files.some((f) => f.path === path)) onPath(null);
@@ -801,7 +922,19 @@ export function Materials({
     <div className="mt-file-main">
       <header className="mt-file-head">
         <p className="mt-facts">
-          {material ? (
+          {source ? (
+            <>
+              <span className="src-path mono" title={open.path}>
+                {open.path.includes("/") ? (
+                  <span className="src-path-dir">{open.path.slice(0, open.path.lastIndexOf("/") + 1)}</span>
+                ) : null}
+                {baseName(open.path)}
+              </span>
+              <span className="mt-fact">
+                {open.binary ? "binary" : languageFor(open.path).replace("plain", "text")}
+              </span>
+            </>
+          ) : material ? (
             <>
               <span className={`mt-glyph is-${material.kind}`} aria-hidden="true">
                 {KIND_GLYPH[material.kind]}
@@ -812,7 +945,7 @@ export function Materials({
             <span className="mono">{open.path}</span>
           )}
           {entry ? <span className="mt-fact">{size(entry.size)}</span> : null}
-          {material && material.kind !== "other" ? (
+          {!source && material && material.kind !== "other" ? (
             material.referenced ? (
               <span className="mt-fact is-ok">
                 <Icon name="check" size={12} /> referenced by the instructions
@@ -896,6 +1029,7 @@ export function Materials({
           file={open}
           readOnly={readOnly}
           line={line}
+          bare={source}
           onSaved={(fresh) => onSkill(fresh, open.path)}
         />
       )}
@@ -905,39 +1039,28 @@ export function Materials({
   if (source) {
     return (
       <div className="src">
-        <header className="layer-head">
-          <div>
-            <h2 className="layer-title">Package source</h2>
-            <p className="layer-lede">The skill as files, exactly as agents receive it.</p>
-          </div>
-          <span className="layer-head-actions">
-            {readOnly ? null : addMenu}
-            <button type="button" className="link-quiet" onClick={() => onSource(false)}>
-              Back to materials
-            </button>
-          </span>
-        </header>
-        {creatingRow}
-        {!open ? errorNotice : null}
-        <div className="src-body">
-          <SourceTree
-            skill={skill}
-            open={open?.path ?? null}
-            readOnly={readOnly}
-            onOpen={(p, l) => onPath(p, l)}
-            renaming={renaming}
-            setRenaming={setRenaming}
-            removing={removing}
-            setRemoving={setRemoving}
-            renameField={renameField}
-            confirmRemove={confirmRemove}
-            importInto={importInto}
-          />
-          <div className="src-main">
-            {fileView ?? (
-              <p className="mt-empty-hint">Choose a file. SKILL.md and habi.yaml open as written.</p>
-            )}
-          </div>
+        <SourceTree
+          skill={skill}
+          open={open?.path ?? null}
+          readOnly={readOnly}
+          onOpen={(p, l) => onPath(p, l)}
+          renaming={renaming}
+          setRenaming={setRenaming}
+          removing={removing}
+          setRemoving={setRemoving}
+          renameField={renameField}
+          confirmRemove={confirmRemove}
+          importInto={importInto}
+          onStart={(shapeId) => {
+            const shape = NEW_FILE_SHAPES.find((x) => x.id === shapeId);
+            if (shape) setCreating({ shape, name: "" });
+          }}
+          onWhen={onWhen}
+          addMenu={readOnly ? null : addMenu}
+          creating={creatingRow}
+        />
+        <div className="src-main">
+          {fileView ?? errorNotice ?? <div className="src-loading" aria-hidden="true" />}
         </div>
       </div>
     );
@@ -998,6 +1121,11 @@ export function Materials({
         addMenu={addMenu}
         creating={creatingRow}
         pasted={pastedRow}
+        onStart={(id) => {
+          const shape = NEW_FILE_SHAPES.find((x) => x.id === id);
+          if (shape) setCreating({ shape, name: "" });
+        }}
+        onImport={() => importInto("auto")}
       />
     </>
   );

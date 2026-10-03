@@ -12,6 +12,7 @@ import { type CSSProperties, type RefObject, useEffect, useMemo, useRef } from "
 import type { TemplateInfo } from "../../../bindings/TemplateInfo";
 import { SourceEditor } from "../../../components/lazy";
 import type { LineMark, SourceEditorHandle } from "../../../components/SourceEditor";
+import { unfinishedLines } from "../../../lib/coach";
 import { markdownOutline, type OutlineHeading, sectionAt } from "../../../lib/markdownOutline";
 import { packageCompletions } from "../../../lib/packageCompletions";
 import { useSkillTemplates } from "../../../lib/queries";
@@ -138,12 +139,19 @@ export function Instructions({
     () => ({ paths: () => pathsRef.current, onOpen: (path: string) => openRef.current(path) }),
     [],
   );
+  // Problems on their line, and what a starter left unfilled, said where it is.
   const marks: LineMark[] = useMemo(
-    () =>
-      skill.diagnostics
+    () => [
+      ...skill.diagnostics
         .filter((d) => d.path === "SKILL.md" && d.line != null)
         .map((d) => ({ line: d.line ?? 1, level: d.level, message: d.message })),
-    [skill.diagnostics],
+      ...unfinishedLines(document.body).map((u) => ({
+        line: u.line,
+        level: "todo" as const,
+        message: `${u.why} — fill it in, or remove it`,
+      })),
+    ],
+    [skill.diagnostics, document.body],
   );
   const empty = document.body.trim() === "";
 
