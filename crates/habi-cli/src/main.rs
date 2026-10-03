@@ -89,7 +89,7 @@ Examples:
         items: Vec<String>,
         #[command(flatten)]
         project: ProjectArg,
-        /// Agent tools to install for (comma-separated): claude-code, cursor, codex.
+        /// Agent tools to install for (comma-separated): claude-code, cursor, codex, gemini-cli, copilot, opencode, junie.
         /// Default: the tools this project already uses (.claude/ or CLAUDE.md,
         /// .cursor/, .codex/).
         #[arg(long, value_delimiter = ',')]
@@ -765,6 +765,18 @@ fn clients_in_project(root: &Path) -> Vec<ClientId> {
     if has(".codex") {
         out.push(ClientId::Codex);
     }
+    if has(".gemini") || has("GEMINI.md") {
+        out.push(ClientId::GeminiCli);
+    }
+    if has(".github/copilot-instructions.md") || has(".github/skills") {
+        out.push(ClientId::Copilot);
+    }
+    if has(".opencode") || has("opencode.json") || has("opencode.jsonc") {
+        out.push(ClientId::OpenCode);
+    }
+    if has(".junie") {
+        out.push(ClientId::Junie);
+    }
     out
 }
 
@@ -775,7 +787,9 @@ fn parse_clients(values: &[String]) -> Result<Vec<ClientId>> {
             ClientId::from_slug(v.trim()).ok_or_else(|| {
                 fail(
                     "invalidInput",
-                    format!("unknown client `{v}` (use claude-code, cursor or codex)"),
+                    format!(
+                        "unknown client `{v}` (use claude-code, cursor, codex, gemini-cli, copilot, opencode or junie)"
+                    ),
                 )
             })
         })
@@ -1044,7 +1058,7 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
                     return Err(fail(
                         "invalidInput",
                         format!(
-                            "Which agent tools should get it? Habi found none set up in this project.\nAdd --client with one or more of: claude-code, cursor, codex (e.g. `habi install {} --client claude-code`).",
+                            "Which agent tools should get it? Habi found none set up in this project.\nAdd --client with one or more of: claude-code, cursor, codex, gemini-cli, copilot, opencode, junie (e.g. `habi install {} --client claude-code`).",
                             items.join(" ")
                         ),
                     ));

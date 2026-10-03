@@ -172,6 +172,18 @@ describe("what a client does with two copies", () => {
     expect(
       precedenceNote({ ...sharedCopy, sharedReaders: [{ client: "codex", precedence: "notDocumented" }] }),
     ).toBe("Which copy Codex uses is not documented.");
+    expect(
+      precedenceNote({
+        ...sharedCopy,
+        sharedReaders: [
+          { client: "gemini-cli", precedence: "projectWins" },
+          { client: "copilot", precedence: "notDocumented" },
+          { client: "opencode", precedence: "notDocumented" },
+        ],
+      }),
+    ).toBe(
+      "Gemini CLI uses the project's copy. Which copy GitHub Copilot and OpenCode use is not documented.",
+    );
     // No client reads both, so neither hides the other.
     expect(precedenceNote({ ...sharedCopy, sharedReaders: [] })).toBeNull();
     expect(copyState(sharedCopy)).toBe("identical");

@@ -144,9 +144,21 @@ export const clientLabel: Record<ClientId, string> = {
   "claude-code": "Claude Code",
   cursor: "Cursor",
   codex: "Codex",
+  "gemini-cli": "Gemini CLI",
+  copilot: "GitHub Copilot",
+  opencode: "OpenCode",
+  junie: "Junie",
 };
 
-export const ALL_CLIENTS: ClientId[] = ["claude-code", "cursor", "codex"];
+export const ALL_CLIENTS: ClientId[] = [
+  "claude-code",
+  "cursor",
+  "codex",
+  "gemini-cli",
+  "copilot",
+  "opencode",
+  "junie",
+];
 
 export function clientsPhrase(clients: ClientId[]): string {
   const names = clients.map((c) => clientLabel[c]);

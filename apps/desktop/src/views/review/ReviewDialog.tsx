@@ -44,11 +44,19 @@ const clientReads: Record<ClientId, string[]> = {
   "claude-code": [".claude/skills", "CLAUDE.md"],
   cursor: [".agents/skills", ".claude/skills", "AGENTS.md"],
   codex: [".agents/skills", "AGENTS.md"],
+  "gemini-cli": [".agents/skills"],
+  copilot: [".agents/skills", ".claude/skills", "AGENTS.md"],
+  opencode: [".agents/skills", ".claude/skills", "AGENTS.md"],
+  junie: [".agents/skills", "AGENTS.md"],
 };
 const clientReadsOnMachine: Record<ClientId, string[]> = {
   "claude-code": ["~/.claude/skills"],
   cursor: ["~/.agents/skills", "~/.claude/skills"],
   codex: ["~/.agents/skills"],
+  "gemini-cli": ["~/.agents/skills"],
+  copilot: ["~/.agents/skills", "~/.claude/skills"],
+  opencode: ["~/.agents/skills", "~/.claude/skills"],
+  junie: ["~/.agents/skills"],
 };
 
 const opLabel: Record<ChangeOp, string> = { create: "Create", modify: "Modify", delete: "Delete" };

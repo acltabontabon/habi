@@ -4,4 +4,4 @@
  * Which copy a client uses when the same skill name exists for the person
  * and in a project.
  */
-export type Precedence = "personalWins" | "notDocumented";
+export type Precedence = "personalWins" | "projectWins" | "notDocumented";

@@ -96,7 +96,8 @@ pub struct InstructionDocument {
 
 fn convention(role: &str) -> &'static str {
     match role {
-        "agent-instructions:agents-md" => "AGENTS.md — read by Codex, Cursor and others",
+        "agent-instructions:agents-md" => "AGENTS.md — read by Codex, Cursor, OpenCode and others",
+        "agent-instructions:gemini-md" => "GEMINI.md — read by Gemini CLI",
         "agent-instructions:claude-md" => "CLAUDE.md — read by Claude Code",
         "agent-instructions:claude-rules" => "Claude Code rule",
         "agent-instructions:cursor-rules" => "Cursor rule",

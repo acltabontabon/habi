@@ -1168,9 +1168,9 @@ impl<'a> Planner<'a> {
         let readers: Vec<ClientId> = clients
             .iter()
             .copied()
-            .filter(|c| *c != ClientId::ClaudeCode)
+            .filter(|c| !matches!(c, ClientId::ClaudeCode | ClientId::GeminiCli))
             .collect();
-        let why = "Codex and Cursor read AGENTS.md natively; Claude Code reads it through the CLAUDE.md import.";
+        let why = "Codex, Cursor, GitHub Copilot, OpenCode and Junie read AGENTS.md natively; Claude Code reads it through the CLAUDE.md import.";
         let digest = self.put_section(
             INSTRUCTIONS_FILE,
             &item.id,
@@ -1220,15 +1220,27 @@ impl<'a> Planner<'a> {
                 ));
                 continue;
             };
+            // Clients that read one file (Claude Code and GitHub Copilot read
+            // `.mcp.json`) are configured once.
+            let mut handled: Vec<&str> = Vec::new();
             for &client in clients {
+                let file = mcp::config_path(client);
+                if handled.contains(&file) {
+                    self.notes.push(format!(
+                        "{} reads the same {file}, so the `{}` MCP server is configured once for both.",
+                        client.label(),
+                        requirement.name
+                    ));
+                    continue;
+                }
+                handled.push(file);
                 if locked
                     .mcp
                     .iter()
-                    .any(|m| m.client == client && m.server == requirement.name)
+                    .any(|m| m.file == file && m.server == requirement.name)
                 {
                     continue;
                 }
-                let file = mcp::config_path(client);
                 // Another installed item (possibly earlier in this plan) has
                 // Habi's entry for this server: share it, so it stays until
                 // no installed item needs it.
@@ -1238,7 +1250,7 @@ impl<'a> Planner<'a> {
                     let added_here = !self.original_lock.find(&owner.key()).is_some_and(|o| {
                         o.mcp
                             .iter()
-                            .any(|m| m.client == client && m.server == requirement.name)
+                            .any(|m| m.file == file && m.server == requirement.name)
                     });
                     self.notes.push(if added_here {
                         format!(
@@ -1342,7 +1354,7 @@ impl<'a> Planner<'a> {
             .find_map(|i| {
                 i.mcp
                     .iter()
-                    .find(|m| m.client == client && m.server == server)
+                    .find(|m| m.file == mcp::config_path(client) && m.server == server)
                     .map(|m| (i.clone(), m.clone()))
             })
     }
@@ -1465,7 +1477,7 @@ impl<'a> Planner<'a> {
                     // Items sharing this entry now share the new definition.
                     for other in &mut self.lock.items {
                         for m in &mut other.mcp {
-                            if m.client == entry.client
+                            if m.file == entry.file
                                 && m.server == entry.server
                                 && m.digest == entry.digest
                             {

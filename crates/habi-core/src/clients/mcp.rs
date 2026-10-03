@@ -8,6 +8,10 @@
 //! - Claude Code `.mcp.json`: `${VAR}`
 //! - Cursor `.cursor/mcp.json`: `${env:VAR}`
 //! - Codex `.codex/config.toml`: `env_vars = ["VAR"]` / `bearer_token_env_var`
+//! - GitHub Copilot `.mcp.json` (the same file and shape as Claude Code's): `${VAR}`
+//! - Junie `.junie/mcp/mcp.json`: no syntax is documented; `${VAR}` is written
+//! - Gemini CLI `.gemini/settings.json`: `${VAR}` in `env` only; headers are not expanded, so none is written
+//! - OpenCode `opencode.json`, under `mcp`: `{env:VAR}`
 //!
 //! "Configured" means an entry with that name exists in the file. It does not
 //! mean the server starts, is authenticated, or is authorized.
@@ -20,9 +24,20 @@ use serde_json::{Map, Value, json};
 
 pub fn config_path(client: ClientId) -> &'static str {
     match client {
-        ClientId::ClaudeCode => ".mcp.json",
+        ClientId::ClaudeCode | ClientId::Copilot => ".mcp.json",
         ClientId::Cursor => ".cursor/mcp.json",
         ClientId::Codex => ".codex/config.toml",
+        ClientId::GeminiCli => ".gemini/settings.json",
+        ClientId::OpenCode => "opencode.json",
+        ClientId::Junie => ".junie/mcp/mcp.json",
+    }
+}
+
+/// The JSON key that holds the servers in a client's configuration file.
+fn servers_key(client: ClientId) -> &'static str {
+    match client {
+        ClientId::OpenCode => "mcp",
+        _ => "mcpServers",
     }
 }
 
@@ -65,6 +80,43 @@ pub fn translation_notes(client: ClientId, spec: &McpServerSpec) -> Vec<String> 
             }
             notes.push("Codex reads project .codex/config.toml only for projects you have marked as trusted.".into());
         }
+        ClientId::Copilot => {
+            if has_env {
+                notes.push("Written as ${VAR}, as Claude Code expects in the same .mcp.json. GitHub Copilot's documentation does not say it expands ${VAR} there, so check that the server receives the value.".into());
+            }
+            notes.push(
+                "GitHub Copilot in VS Code asks you to trust a server before it starts.".into(),
+            );
+        }
+        ClientId::Junie => {
+            if has_env {
+                notes.push("Written as ${VAR}. Junie's documentation does not describe variable expansion in mcp.json, so check that the server receives the value.".into());
+            }
+        }
+        ClientId::GeminiCli => {
+            if matches!(
+                spec,
+                McpServerSpec::Http {
+                    bearer_token_env: Some(_),
+                    ..
+                }
+            ) {
+                notes.push("Gemini CLI expands variables only in a server's `env`, not in `headers`, so Habi did not write the Authorization header. Add it yourself, or sign in to the server from Gemini CLI.".into());
+            } else if has_env {
+                notes.push(
+                    "Gemini CLI expands ${VAR} in a server's `env` from your environment.".into(),
+                );
+            }
+            notes.push("Gemini's documentation does not say whether .gemini/settings.json applies in a folder you have not trusted.".into());
+        }
+        ClientId::OpenCode => {
+            if has_env {
+                notes.push(
+                    "Written as {env:VAR}, OpenCode's syntax for reading your environment.".into(),
+                );
+            }
+            notes.push("OpenCode also reads opencode.jsonc; Habi writes opencode.json and does not edit a file with comments.".into());
+        }
     }
     notes
 }
@@ -72,6 +124,43 @@ pub fn translation_notes(client: ClientId, spec: &McpServerSpec) -> Vec<String> 
 fn json_entry(client: ClientId, spec: &McpServerSpec) -> Value {
     match (client, spec) {
         (ClientId::Codex, _) => unreachable!("Codex uses TOML"),
+        (ClientId::OpenCode, McpServerSpec::Stdio { command, args, env }) => {
+            let mut entry = Map::new();
+            entry.insert("type".into(), json!("local"));
+            let mut argv = vec![command.clone()];
+            argv.extend(args.iter().cloned());
+            entry.insert("command".into(), json!(argv));
+            if !env.is_empty() {
+                let mut e = Map::new();
+                for (k, v) in env {
+                    let value = match var_name(v) {
+                        Some(name) => format!("{{env:{name}}}"),
+                        None => v.clone(),
+                    };
+                    e.insert(k.clone(), json!(value));
+                }
+                entry.insert("environment".into(), Value::Object(e));
+            }
+            Value::Object(entry)
+        }
+        (
+            ClientId::OpenCode,
+            McpServerSpec::Http {
+                url,
+                bearer_token_env,
+            },
+        ) => {
+            let mut entry = Map::new();
+            entry.insert("type".into(), json!("remote"));
+            entry.insert("url".into(), json!(url));
+            if let Some(var) = bearer_token_env {
+                entry.insert(
+                    "headers".into(),
+                    json!({ "Authorization": format!("Bearer {{env:{var}}}") }),
+                );
+            }
+            Value::Object(entry)
+        }
         (_, McpServerSpec::Stdio { command, args, env }) => {
             let mut entry = Map::new();
             if client == ClientId::Cursor {
@@ -102,11 +191,22 @@ fn json_entry(client: ClientId, spec: &McpServerSpec) -> Value {
             },
         ) => {
             let mut entry = Map::new();
-            if client == ClientId::ClaudeCode {
+            if matches!(client, ClientId::ClaudeCode | ClientId::Copilot) {
                 entry.insert("type".into(), json!("http"));
             }
-            entry.insert("url".into(), json!(url));
-            if let Some(var) = bearer_token_env {
+            // Gemini CLI names the key for streamable HTTP `httpUrl`; `url` is its SSE transport.
+            let url_key = if client == ClientId::GeminiCli {
+                "httpUrl"
+            } else {
+                "url"
+            };
+            entry.insert(url_key.into(), json!(url));
+            // Gemini CLI does not expand variables in `headers`, so a bearer
+            // token reference would be sent as literal text.
+            if let Some(var) = bearer_token_env
+                .as_ref()
+                .filter(|_| client != ClientId::GeminiCli)
+            {
                 let reference = match client {
                     ClientId::Cursor => format!("${{env:{var}}}"),
                     _ => format!("${{{var}}}"),
@@ -343,7 +443,7 @@ pub fn entry_digest(
         }
         _ => {
             let v = parse_json(existing, file)?;
-            Ok(v.get("mcpServers")
+            Ok(v.get(servers_key(client))
                 .and_then(|s| s.get(server))
                 .map(|entry| sha256(entry.to_string().as_bytes())))
         }
@@ -389,12 +489,13 @@ pub fn insert(
         _ => {
             let mut v = parse_json(existing, file)?;
             let obj = v.as_object_mut().expect("checked object");
+            let key = servers_key(client);
             let servers = obj
-                .entry("mcpServers")
+                .entry(key)
                 .or_insert_with(|| json!({}))
                 .as_object_mut()
                 .ok_or_else(|| {
-                    HabiError::Conflict(format!("`mcpServers` in {file} is not an object"))
+                    HabiError::Conflict(format!("`{key}` in {file} is not an object"))
                 })?;
             let entry = json_entry(client, spec);
             let digest = sha256(entry.to_string().as_bytes());
@@ -448,7 +549,10 @@ pub fn replace(
         }
         _ => {
             let mut v = parse_json(Some(existing), file)?;
-            let Some(entry) = v.get_mut("mcpServers").and_then(|s| s.get_mut(server)) else {
+            let Some(entry) = v
+                .get_mut(servers_key(client))
+                .and_then(|s| s.get_mut(server))
+            else {
                 return Ok(None);
             };
             *entry = json_entry(client, spec);
@@ -481,9 +585,9 @@ pub fn is_empty_config(client: ClientId, content: &[u8]) -> bool {
             doc.to_string().trim().is_empty()
         }
         _ => match parse_json(Some(content), file) {
-            Ok(Value::Object(obj)) => obj
-                .iter()
-                .all(|(k, v)| k == "mcpServers" && v.as_object().is_some_and(|s| s.is_empty())),
+            Ok(Value::Object(obj)) => obj.iter().all(|(k, v)| {
+                k == servers_key(client) && v.as_object().is_some_and(|s| s.is_empty())
+            }),
             _ => false,
         },
     }
@@ -514,7 +618,10 @@ pub fn remove(
         }
         _ => {
             let mut v = parse_json(Some(existing), file)?;
-            if let Some(s) = v.get_mut("mcpServers").and_then(|s| s.as_object_mut()) {
+            if let Some(s) = v
+                .get_mut(servers_key(client))
+                .and_then(|s| s.as_object_mut())
+            {
                 s.remove(server);
             }
             Ok(Some(like_original(Some(existing), json_text(&v))))
@@ -701,5 +808,148 @@ mod tests {
             .unwrap()
             .is_none()
         );
+    }
+
+    fn remote() -> McpServerSpec {
+        McpServerSpec::Http {
+            url: "https://mcp.example.com/mcp".into(),
+            bearer_token_env: Some("EXAMPLE_TOKEN".into()),
+        }
+    }
+
+    fn entry_of(client: ClientId, spec: &McpServerSpec) -> Value {
+        let (out, _) = insert(client, None, "s", spec).unwrap();
+        let v: Value = serde_json::from_slice(&out).unwrap();
+        v[servers_key(client)]["s"].clone()
+    }
+
+    #[test]
+    fn copilot_shares_claude_codes_file_and_entry() {
+        assert_eq!(
+            config_path(ClientId::Copilot),
+            config_path(ClientId::ClaudeCode)
+        );
+        for spec in [stdio(), remote()] {
+            assert_eq!(
+                spec_digest(ClientId::Copilot, "s", &spec).unwrap(),
+                spec_digest(ClientId::ClaudeCode, "s", &spec).unwrap()
+            );
+        }
+        assert_eq!(entry_of(ClientId::Copilot, &remote())["type"], "http");
+    }
+
+    #[test]
+    fn junie_uses_its_own_file_and_the_plain_shape() {
+        assert_eq!(config_path(ClientId::Junie), ".junie/mcp/mcp.json");
+        let local = entry_of(ClientId::Junie, &stdio());
+        assert!(local.get("type").is_none());
+        assert_eq!(local["command"], "npx");
+        assert_eq!(local["env"]["GITHUB_TOKEN"], "${GITHUB_TOKEN}");
+        let http = entry_of(ClientId::Junie, &remote());
+        assert!(http.get("type").is_none());
+        assert_eq!(http["url"], "https://mcp.example.com/mcp");
+        assert_eq!(http["headers"]["Authorization"], "Bearer ${EXAMPLE_TOKEN}");
+    }
+
+    #[test]
+    fn gemini_writes_http_url_and_never_a_header_it_would_not_expand() {
+        assert_eq!(config_path(ClientId::GeminiCli), ".gemini/settings.json");
+        let local = entry_of(ClientId::GeminiCli, &stdio());
+        assert_eq!(local["env"]["GITHUB_TOKEN"], "${GITHUB_TOKEN}");
+        let http = entry_of(ClientId::GeminiCli, &remote());
+        assert_eq!(http["httpUrl"], "https://mcp.example.com/mcp");
+        assert!(http.get("url").is_none());
+        assert!(http.get("headers").is_none(), "{http}");
+        let notes = translation_notes(ClientId::GeminiCli, &remote());
+        assert!(notes.iter().any(|n| n.contains("Authorization header")));
+        // No bearer token, nothing to leave out.
+        let open = McpServerSpec::Http {
+            url: "https://mcp.example.com/mcp".into(),
+            bearer_token_env: None,
+        };
+        assert!(
+            !translation_notes(ClientId::GeminiCli, &open)
+                .iter()
+                .any(|n| n.contains("Authorization"))
+        );
+    }
+
+    #[test]
+    fn gemini_settings_keep_their_other_keys() {
+        let existing =
+            br#"{ "ui": { "theme": "dark" }, "mcpServers": { "mine": { "command": "x" } } }"#;
+        let (out, digest) =
+            insert(ClientId::GeminiCli, Some(existing), "github", &stdio()).unwrap();
+        let v: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(v["ui"]["theme"], "dark");
+        assert!(v["mcpServers"]["mine"].is_object());
+        let removed = remove(ClientId::GeminiCli, &out, "github", &digest)
+            .unwrap()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&removed).unwrap();
+        assert_eq!(v["ui"]["theme"], "dark");
+        assert!(v["mcpServers"].get("github").is_none());
+        // Settings that hold anything else are never treated as an empty file.
+        assert!(!is_empty_config(ClientId::GeminiCli, &removed));
+        assert!(is_empty_config(
+            ClientId::GeminiCli,
+            b"{\"mcpServers\": {}}"
+        ));
+    }
+
+    #[test]
+    fn opencode_uses_its_own_shape_under_mcp() {
+        assert_eq!(config_path(ClientId::OpenCode), "opencode.json");
+        let local = entry_of(ClientId::OpenCode, &stdio());
+        assert_eq!(local["type"], "local");
+        assert_eq!(
+            local["command"],
+            json!(["npx", "-y", "@modelcontextprotocol/server-github"])
+        );
+        assert_eq!(local["environment"]["GITHUB_TOKEN"], "{env:GITHUB_TOKEN}");
+        assert!(local.get("env").is_none() && local.get("args").is_none());
+        let http = entry_of(ClientId::OpenCode, &remote());
+        assert_eq!(http["type"], "remote");
+        assert_eq!(http["url"], "https://mcp.example.com/mcp");
+        assert_eq!(
+            http["headers"]["Authorization"],
+            "Bearer {env:EXAMPLE_TOKEN}"
+        );
+    }
+
+    #[test]
+    fn opencode_config_keeps_its_other_keys_and_round_trips() {
+        let existing =
+            br#"{ "model": "x/y", "mcp": { "mine": { "type": "local", "command": ["a"] } } }"#;
+        let (out, digest) = insert(ClientId::OpenCode, Some(existing), "github", &stdio()).unwrap();
+        let v: Value = serde_json::from_slice(&out).unwrap();
+        assert_eq!(v["model"], "x/y");
+        assert!(v["mcp"]["mine"].is_object() && v["mcp"]["github"].is_object());
+        assert!(v.get("mcpServers").is_none());
+        assert!(is_configured(ClientId::OpenCode, Some(&out), "github").unwrap());
+        // Habi's own entry is replaced in place when the library changes it.
+        let changed = McpServerSpec::Stdio {
+            command: "uvx".into(),
+            args: vec![],
+            env: BTreeMap::new(),
+        };
+        let (updated, new_digest) = replace(ClientId::OpenCode, &out, "github", &changed, &digest)
+            .unwrap()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&updated).unwrap();
+        assert_eq!(v["mcp"]["github"]["command"], json!(["uvx"]));
+        let removed = remove(ClientId::OpenCode, &updated, "github", &new_digest)
+            .unwrap()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&removed).unwrap();
+        assert!(v["mcp"].get("github").is_none() && v["mcp"].get("mine").is_some());
+        // A file with comments is not valid JSON: reported, never rewritten.
+        let commented = b"{\n  // my servers\n  \"mcp\": {}\n}\n";
+        assert!(insert(ClientId::OpenCode, Some(commented), "github", &stdio()).is_err());
+        assert!(is_empty_config(ClientId::OpenCode, b"{\"mcp\": {}}"));
+        assert!(!is_empty_config(
+            ClientId::OpenCode,
+            b"{\"mcpServers\": {}}"
+        ));
     }
 }

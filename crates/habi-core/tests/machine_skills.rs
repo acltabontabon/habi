@@ -74,8 +74,26 @@ fn skills_in_the_three_folders_are_found_with_their_readers() {
     let alpha = &found[0];
     assert_eq!(alpha.name, "alpha");
     assert_eq!(alpha.location, "~/.claude/skills/alpha");
-    assert_eq!(alpha.readers, [ClientId::ClaudeCode, ClientId::Cursor]);
-    assert_eq!(found[1].readers, [ClientId::Codex, ClientId::Cursor]);
+    assert_eq!(
+        alpha.readers,
+        [
+            ClientId::ClaudeCode,
+            ClientId::Cursor,
+            ClientId::Copilot,
+            ClientId::OpenCode
+        ]
+    );
+    assert_eq!(
+        found[1].readers,
+        [
+            ClientId::Codex,
+            ClientId::Cursor,
+            ClientId::GeminiCli,
+            ClientId::Copilot,
+            ClientId::OpenCode,
+            ClientId::Junie
+        ]
+    );
     assert_eq!(found[2].readers, [ClientId::Cursor]);
     assert!(!alpha.is_link && alpha.complete && alpha.digest.len() > 10);
     assert!(alpha.imported_as.is_none() && alpha.in_projects.is_empty());
@@ -202,7 +220,9 @@ fn adding_to_a_project_installs_a_byte_identical_copy_and_says_who_wins() {
         by_client,
         [
             (ClientId::ClaudeCode, Precedence::PersonalWins),
-            (ClientId::Cursor, Precedence::NotDocumented)
+            (ClientId::Cursor, Precedence::NotDocumented),
+            (ClientId::Copilot, Precedence::NotDocumented),
+            (ClientId::OpenCode, Precedence::NotDocumented)
         ]
     );
 
@@ -220,8 +240,8 @@ fn a_copy_no_client_reads_alongside_the_global_one_shadows_nothing() {
     let data = tempfile::tempdir().unwrap();
     let home = tempfile::tempdir().unwrap();
     let proj = tempfile::tempdir().unwrap();
-    // Global: read by Claude Code and Cursor. Project: only in `.agents/skills`,
-    // which Claude Code does not read, so only Cursor sees both.
+    // Global: read by Claude Code, Cursor, Copilot and OpenCode. Project: only in
+    // `.agents/skills`, which Claude Code does not read, so only the others see both.
     write_skill(home.path(), ".claude/skills", "alpha", "");
     write_skill(proj.path(), ".agents/skills", "alpha", "");
     let habi = open(data.path(), home.path());
@@ -230,7 +250,10 @@ fn a_copy_no_client_reads_alongside_the_global_one_shadows_nothing() {
     let copies = &listed[0].in_projects;
     assert_eq!(copies.len(), 1);
     let clients: Vec<ClientId> = copies[0].shared_readers.iter().map(|u| u.client).collect();
-    assert_eq!(clients, [ClientId::Cursor]);
+    assert_eq!(
+        clients,
+        [ClientId::Cursor, ClientId::Copilot, ClientId::OpenCode]
+    );
 }
 
 #[test]
@@ -385,4 +408,48 @@ mod links {
         assert!(outcome.imported.is_empty());
         assert_eq!(outcome.skipped.len(), 1);
     }
+}
+
+#[test]
+fn skills_in_each_clients_own_home_folder_are_found_and_gemini_prefers_the_project() {
+    let data = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    write_skill(home.path(), ".gemini/skills", "g", "");
+    write_skill(home.path(), ".copilot/skills", "c", "");
+    write_skill(home.path(), ".config/opencode/skills", "o", "");
+    write_skill(home.path(), ".junie/skills", "j", "");
+    // The project holds its own copy of `g` in Gemini's folder.
+    write_skill(proj.path(), ".gemini/skills", "g", "");
+    let habi = open(data.path(), home.path());
+    habi.open_project(proj.path()).unwrap();
+
+    let found = habi.machine_skills().unwrap();
+    let mut by_id: Vec<(&str, &str, &[ClientId])> = found
+        .iter()
+        .map(|s| (s.id.as_str(), s.location.as_str(), s.readers.as_slice()))
+        .collect();
+    by_id.sort();
+    assert_eq!(
+        by_id,
+        [
+            ("copilot/c", "~/.copilot/skills/c", &[ClientId::Copilot][..]),
+            ("gemini/g", "~/.gemini/skills/g", &[ClientId::GeminiCli][..]),
+            ("junie/j", "~/.junie/skills/j", &[ClientId::Junie][..]),
+            (
+                "opencode/o",
+                "~/.config/opencode/skills/o",
+                &[ClientId::OpenCode][..]
+            ),
+        ]
+    );
+
+    let g = found.iter().find(|s| s.id == "gemini/g").unwrap();
+    assert_eq!(g.in_projects.len(), 1);
+    let uses: Vec<(ClientId, Precedence)> = g.in_projects[0]
+        .shared_readers
+        .iter()
+        .map(|u| (u.client, u.precedence))
+        .collect();
+    assert_eq!(uses, [(ClientId::GeminiCli, Precedence::ProjectWins)]);
 }

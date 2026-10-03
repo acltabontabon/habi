@@ -539,7 +539,10 @@ fn machine_skills_are_listed_and_imported_by_id_only() {
     let listed = call(&webview, "machine_skills", json!({})).unwrap();
     assert_eq!(listed[0]["id"], "claude/alpha");
     assert_eq!(listed[0]["location"], "~/.claude/skills/alpha");
-    assert_eq!(listed[0]["readers"], json!(["claude-code", "cursor"]));
+    assert_eq!(
+        listed[0]["readers"],
+        json!(["claude-code", "cursor", "copilot", "opencode"])
+    );
     assert_eq!(listed[0]["isLink"], false);
 
     // A path, or an id that climbs out of the skill folders, is refused.

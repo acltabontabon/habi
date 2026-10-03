@@ -493,6 +493,10 @@ pub const TAG_RULES: &[TagRule] = &[
             "agent-skill:claude-code",
             "agent-skill:agents",
             "agent-skill:cursor",
+            "agent-skill:gemini-cli",
+            "agent-skill:copilot",
+            "agent-skill:opencode",
+            "agent-skill:junie",
         ],
     },
 ];
