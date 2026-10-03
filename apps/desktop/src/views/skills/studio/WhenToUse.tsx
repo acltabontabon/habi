@@ -29,7 +29,6 @@ import {
   type Proposal,
   proposeSignals,
   type Signal,
-  signalClause,
   signalWords,
   technologiesIn,
 } from "../../../lib/materials";
@@ -90,8 +89,7 @@ export function ReadRules({
   appliesWhen: Condition | null;
   excludes: Condition | null;
 }) {
-  if (!appliesWhen && !excludes)
-    return <p className="wu-empty">No signals — Habi won’t suggest it on its own.</p>;
+  if (!appliesWhen && !excludes) return <p className="wu-empty">No signals — chosen by hand.</p>;
   return (
     <div className="wu-read">
       {appliesWhen ? (
@@ -178,7 +176,7 @@ function Adder({
   return (
     <div className="wu-adder">
       <label className="visually-hidden" htmlFor={`${id}-q`}>
-        What should Habi look for?
+        What to look for
       </label>
       <div className="wu-adder-row">
         <input
@@ -210,7 +208,7 @@ function Adder({
         </p>
       ) : null}
       {offers.length > 0 ? (
-        <div className="wu-offers" id={`${id}-offers`} role="listbox" aria-label="Signals Habi can look for">
+        <div className="wu-offers" id={`${id}-offers`} role="listbox" aria-label="Signals to look for">
           {offers.map((o, i) => (
             // biome-ignore lint/a11y/useKeyWithClickEvents: the field above moves through the list.
             <div
@@ -321,17 +319,11 @@ export function WhenToUse({
   draft,
   projects,
   projectId,
-  onProject,
-  onTest,
-  onOpenProject,
   preview,
 }: {
   draft: SkillDraft;
   projects: ProjectRecord[];
   projectId: string | null;
-  onProject: (id: string) => void;
-  onTest: () => void;
-  onOpenProject: () => void;
   /** The latest evaluation of the rules on screen, for the YAML view's reading. */
   preview: SkillPreview | null;
 }) {
@@ -353,7 +345,7 @@ export function WhenToUse({
     .map((s) => ({ kind: s.kind, value: s.value, why: s.evidence ?? "", seen: project?.name }));
 
   const add = (s: Signal): string | null => {
-    if (applies.some((r) => r.kind === s.kind && r.value === s.value)) return "Habi already looks for that.";
+    if (applies.some((r) => r.kind === s.kind && r.value === s.value)) return "Already there.";
     if (applies.length >= 20) return "That is a lot of signals. Remove one first, or edit the YAML.";
     setForm(addSignal(form, s));
     return null;
@@ -391,49 +383,9 @@ export function WhenToUse({
     setToolCommands("");
   };
 
-  const tryIt = (
-    <section className="wu-section wu-try" aria-labelledby="wu-try">
-      <h3 id="wu-try" className="wu-lead">
-        Try it
-      </h3>
-      {projects.length === 0 ? (
-        <p className="wu-line">
-          <span className="wu-empty">No project open to try it against.</span>
-          <button type="button" className="link-btn" onClick={onOpenProject}>
-            Open a project…
-          </button>
-        </p>
-      ) : (
-        <p className="wu-line">
-          <label className="visually-hidden" htmlFor="wu-project">
-            Project to try it against
-          </label>
-          <select
-            id="wu-project"
-            className="wu-select"
-            value={projectId ?? ""}
-            onChange={(e) => onProject(e.target.value)}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <Button size="sm" onClick={onTest}>
-            Test
-          </Button>
-        </p>
-      )}
-    </section>
-  );
-
   const header = (
     <header className="wu-head">
       <h2 className="layer-title">When to use</h2>
-      <p className="layer-lede">
-        Habi suggests this skill in projects that show these signals. Without any, you choose it by hand.
-      </p>
     </header>
   );
 
@@ -453,15 +405,14 @@ export function WhenToUse({
         </div>
         {preview?.problem ? (
           <p className="field-problem" role="alert">
-            Habi can’t read this yet: {preview.problem}. It is ignored for suggestions until fixed.
+            Can’t be read: {preview.problem}. Ignored until fixed.
           </p>
         ) : preview ? (
           <div className="wu-reads">
-            <p className="wu-kicker">Habi reads this as</p>
+            <p className="wu-kicker">Reads as</p>
             <ReadRules appliesWhen={preview.appliesWhen} excludes={preview.excludes} />
           </div>
         ) : null}
-        {tryIt}
         <p className="wu-mode">
           <button type="button" className="link-quiet" onClick={() => void switchYaml(false)}>
             ← Back to sentences
@@ -477,7 +428,7 @@ export function WhenToUse({
       <div className="wu">
         {header}
         <p className="field-problem" role="alert">
-          Habi can’t read these rules, so it ignores them for suggestions. Nothing was rewritten.
+          These rules can’t be read, so they are ignored. Nothing was rewritten.
         </p>
         <ul className="wu-problems">
           {skill.diagnostics
@@ -501,12 +452,11 @@ export function WhenToUse({
         {header}
         <ReadRules appliesWhen={skill.appliesWhen} excludes={skill.excludes} />
         <p className="wu-note">
-          Written with combinations these sentences can’t edit, so they are kept exactly as written.{" "}
+          Too intricate for sentences, so kept exactly as written.{" "}
           <button type="button" className="link-btn" onClick={() => void switchYaml(true)}>
-            Edit as habi.yaml
+            Edit as YAML
           </button>
         </p>
-        {tryIt}
       </div>
     );
   }
@@ -515,58 +465,66 @@ export function WhenToUse({
     <div className="wu">
       {header}
       <fieldset className="wu-form" disabled={trashed}>
-        <legend className="visually-hidden">When Habi suggests this skill</legend>
+        <legend className="visually-hidden">When to suggest this skill</legend>
 
         <section className="wu-section" aria-labelledby="wu-when">
           <h3 id="wu-when" className="wu-lead">
             Suggest when
-            {applies.length > 1 ? (
-              <span className="wu-choice">
-                {(["any", "all"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={form.matchMode === mode}
-                    className={form.matchMode === mode ? "is-on" : undefined}
-                    onClick={() => setForm({ ...form, matchMode: mode })}
-                  >
-                    {mode === "any" ? "any of these" : "all of these"}
-                  </button>
-                ))}
-              </span>
-            ) : null}
           </h3>
-          {applies.length === 0 && adding !== "applies" ? (
-            inferred ? (
-              <p className="wu-infer">
-                <span>
-                  The instructions keep mentioning <strong>{TAG_LABELS[inferred.value]}</strong>.
-                </span>
-                <button type="button" className="link-btn" onClick={() => add(inferred)}>
-                  Suggest it when {signalClause(inferred)}
-                </button>
-              </p>
-            ) : (
-              <p className="wu-empty">Nothing yet.</p>
-            )
-          ) : (
+          {applies.length > 0 ? (
             <Rows signals={applies} onRemove={remove} disabled={trashed} />
-          )}
+          ) : inferred && adding !== "applies" ? (
+            // A signal the instructions point at, waiting to be taken: a ghost row.
+            <button type="button" className="wu-row is-ghost" onClick={() => add(inferred)}>
+              <span className="wu-knot" aria-hidden="true" />
+              <span className="wu-text">
+                <Words s={inferred} />
+              </span>
+              <span className="wu-why">
+                <Icon name="plus" size={11} /> named in the instructions
+              </span>
+            </button>
+          ) : null}
           {adding === "applies" ? (
             <Adder
               kinds={["tag", "dependency", "file"]}
-              placeholder="What should Habi look for? Playwright, @playwright/test, **/db/changelog/**…"
+              placeholder="Playwright, @playwright/test, **/db/changelog/**…"
               observedFrom={project?.name ?? null}
               observed={observed}
               observing={suggestions.isFetching}
               onAdd={add}
               onClose={() => setAdding(null)}
             />
-          ) : (
-            <button type="button" className="wu-add" onClick={() => setAdding("applies")}>
-              <Icon name="plus" size={12} /> Add signal
-            </button>
-          )}
+          ) : null}
+          {adding !== "applies" || applies.length > 1 ? (
+            <div className="wu-foot">
+              {adding === "applies" ? (
+                <span />
+              ) : (
+                <button type="button" className="wu-add" onClick={() => setAdding("applies")}>
+                  <Icon name="plus" size={12} /> Add signal
+                </button>
+              )}
+              {applies.length > 1 ? (
+                <span className="wu-match">
+                  match
+                  <span className="wu-choice">
+                    {(["any", "all"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-pressed={form.matchMode === mode}
+                        className={form.matchMode === mode ? "is-on" : undefined}
+                        onClick={() => setForm({ ...form, matchMode: mode })}
+                      >
+                        {mode === "any" ? "any of these" : "all of these"}
+                      </button>
+                    ))}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section className="wu-section" aria-labelledby="wu-avoid">
@@ -575,8 +533,6 @@ export function WhenToUse({
           </h3>
           {excludes.length > 0 ? (
             <Rows signals={excludes} onRemove={removeExclude} disabled={trashed} />
-          ) : adding !== "excludes" ? (
-            <p className="wu-empty">Nothing yet.</p>
           ) : null}
           {adding === "excludes" ? (
             <Adder
@@ -651,8 +607,6 @@ export function WhenToUse({
                 );
               })}
             </ul>
-          ) : adding !== "tool" ? (
-            <p className="wu-empty">No tools. Looked up on PATH, never run.</p>
           ) : null}
           {adding === "tool" ? (
             <div className="wu-adder is-tool">
@@ -687,6 +641,7 @@ export function WhenToUse({
               <Button size="sm" variant="quiet" onClick={() => setAdding(null)}>
                 Done
               </Button>
+              <p className="wu-note">Looked up on PATH, never run.</p>
             </div>
           ) : (
             <button type="button" className="wu-add" onClick={() => setAdding("tool")}>
@@ -695,14 +650,6 @@ export function WhenToUse({
           )}
         </section>
       </fieldset>
-
-      {tryIt}
-
-      <p className="wu-mode">
-        <button type="button" className="link-quiet" onClick={() => void switchYaml(true)}>
-          View as habi.yaml →
-        </button>
-      </p>
     </div>
   );
 }

@@ -25,7 +25,7 @@ function RunLine({ command }: { command: string }) {
   return (
     <p className="file-run">
       <Icon name="terminal" size={13} />
-      <span>Habi never runs it. To run it yourself:</span>
+      <span>Never run here. To run it yourself:</span>
       <code>{command}</code>
       <button
         type="button"

@@ -17,10 +17,10 @@ import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ModuleDetail, ProjectRow, rank } from "../ApplicabilityPreview";
 
 const sentence = {
-  applies: "Habi would suggest this skill",
-  doesNotApply: "Habi would not suggest it here",
-  needsInformation: "Habi can’t tell yet",
-  undeclared: "No signals — Habi won’t suggest it on its own",
+  applies: "Would be suggested here",
+  doesNotApply: "Would not be suggested here",
+  needsInformation: "Can’t tell yet",
+  undeclared: "No signals — chosen by hand only",
 } as const;
 
 const mark = {
@@ -133,7 +133,7 @@ export function ProjectEvaluation({
   if (projects.length === 0) {
     return (
       <div className="tv-sheet">
-        <p className="tv-empty">Open a project to test the skill against it. Habi only reads it.</p>
+        <p className="tv-empty">Open a project to test against. It is only read.</p>
         <Button size="sm" icon="folder" onClick={onOpenProject}>
           Open a project…
         </Button>

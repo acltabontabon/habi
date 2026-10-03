@@ -128,7 +128,7 @@ export function refinements(input: {
     } else if (body.trim()) {
       out.push({
         kind: "signals",
-        text: "Habi won’t suggest it in any project yet.",
+        text: "Not suggested in any project yet.",
         action: "Add a signal",
       });
     }
