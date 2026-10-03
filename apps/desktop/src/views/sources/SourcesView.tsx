@@ -21,6 +21,7 @@ import type { SourceVersion } from "../../bindings/SourceVersion";
 import { BackLink } from "../../components/BackLink";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
+import { tip } from "../../components/Tooltips";
 import { Button, Empty, ErrorNotice, Notice, Working } from "../../components/ui";
 import { Strand } from "../../components/Weave";
 import { WaitingLoom, Weaving } from "../../components/Weaving";
@@ -157,6 +158,10 @@ function EntryRow({
         ? "unreachable"
         : null;
   const fresh = source ? freshnessText(source) : null;
+  // What a person weighing a library wants to know: how many people use it
+  // and whether it is alive. Asked of GitHub only once they point at the row.
+  const [curious, setCurious] = useState(false);
+  const facts = useRepoFacts(curious ? entry.id : undefined).data;
   const problem: { text: string; tone: string } | null = warn
     ? { text: warn, tone: "warn" }
     : fresh && entry.availability === "connected" && fresh.tone !== "muted" && fresh.tone !== "ok"
@@ -170,7 +175,26 @@ function EntryRow({
         type="button"
         className={`library-row is-entry${entry.availability === "connected" ? " is-connected" : ""}`}
         onClick={onOpen}
+        onPointerEnter={() => setCurious(true)}
+        onFocus={() => setCurious(true)}
         title={entry.problem?.message ?? undefined}
+        {...(facts && !entry.problem
+          ? tip({
+              title: `${compactCount(facts.stars)} stars`,
+              lines: [
+                {
+                  text: [
+                    facts.pushedAt ? `updated ${relativeTime(facts.pushedAt)}` : null,
+                    facts.createdYear ? `since ${facts.createdYear}` : null,
+                    `${compactCount(facts.forks)} forks`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
+                },
+              ],
+              note: facts.archived ? { text: "Archived — no longer maintained", tone: "warn" } : undefined,
+            })
+          : {})}
       >
         <Strand dye={dye} size={18} />
         <span className="lr-main">
@@ -181,9 +205,7 @@ function EntryRow({
               →
             </span>
           </span>
-          <span className="library-row-summary" title={entry.summary}>
-            {entry.summary}
-          </span>
+          <span className="library-row-summary">{entry.summary}</span>
           {/* Counts, licence and age live in the library's own header. A row only
               speaks up when something is wrong. */}
           {problem ? <span className={`lr-facts tone-${problem.tone}`}>{problem.text}</span> : null}
@@ -245,7 +267,7 @@ function Group({
 }: {
   id: string;
   /** Where the group sits when the page has room for columns. */
-  area: "connected" | "own" | "builders" | "community";
+  area: "connected" | "builders" | "community";
   title: string;
   note?: string;
   count?: number;
@@ -382,7 +404,17 @@ function LibrariesOverview() {
       <header className="libraries-head">
         <p className="kicker">Libraries</p>
         <h1 className="page-title">Where your knowledge comes from</h1>
-        <PathSteps connected={sources.data.length > 0} adopted={adoptedAny} />
+        {/* Your own library, one glance away on every visit. */}
+        <div className="libraries-bring">
+          <Button icon="branch" onClick={() => navigate({ name: "sources", view: "git" })}>
+            Connect a Git repository
+          </Button>
+          <Button icon="folder" onClick={() => navigate({ name: "sources", view: "folder" })}>
+            Use a folder
+          </Button>
+        </div>
+        {/* The way it works, only until something is connected. */}
+        {sources.data.length === 0 ? <PathSteps connected={false} adopted={adoptedAny} /> : null}
         <div className="libraries-filter">
           <Icon name="search" size={12} />
           <label className="visually-hidden" htmlFor="libraries-filter">
@@ -406,7 +438,11 @@ function LibrariesOverview() {
       </header>
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: arrow-key movement between the rows' own buttons */}
-      <div className="libraries-groups" ref={list} onKeyDown={onKeyDown}>
+      <div
+        className={`libraries-groups is-${[mine.length, builders.length, community.length].filter((n) => n > 0).length}`}
+        ref={list}
+        onKeyDown={onKeyDown}
+      >
         {mine.length === 0 ? null : (
           <Group
             id="lib-connected"
@@ -436,51 +472,6 @@ function LibrariesOverview() {
                 />
               );
             })}
-          </Group>
-        )}
-
-        {q ? null : (
-          <Group id="lib-own" area="own" title="Bring your own" note="">
-            <li>
-              <button
-                type="button"
-                className="library-row is-entry is-own"
-                onClick={() => navigate({ name: "sources", view: "git" })}
-              >
-                <span aria-hidden="true" />
-                <span className="lr-main">
-                  <span className="lr-head">
-                    <span className="library-row-name">Connect a Git repository</span>
-                    <span className="lr-go" aria-hidden="true">
-                      →
-                    </span>
-                  </span>
-                  <span className="library-row-summary">
-                    A team repository of skills, read with the Git access you already have.
-                  </span>
-                </span>
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="library-row is-entry is-own"
-                onClick={() => navigate({ name: "sources", view: "folder" })}
-              >
-                <span aria-hidden="true" />
-                <span className="lr-main">
-                  <span className="lr-head">
-                    <span className="library-row-name">Use a folder on this machine</span>
-                    <span className="lr-go" aria-hidden="true">
-                      →
-                    </span>
-                  </span>
-                  <span className="library-row-summary">
-                    A checkout or your own collection, read in place.
-                  </span>
-                </span>
-              </button>
-            </li>
           </Group>
         )}
 
