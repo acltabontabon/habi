@@ -52,28 +52,30 @@ its one signature — used only where it carries meaning.
   recommendations when there is nothing to recommend yet.
 - **My skills** — an index, not a wall of cards: a hanging letter (A–Z) or a time landmark
   (recent) above each run of rows; each row is a title, the purpose's first sentence, the
-  origin with its library's dye (stitched for community), and status words only when true
-  (*2 things to finish*, *Changed here*, *Update available*, *In billing*). Facets appear
+  thread (its library's dye, stitched for community, and *changed here*), and one state word
+  (*Ready*, or *Draft · missing purpose*). Facets appear
   only when they match something; `/` finds, ↑/↓ or j/k move. Under the title, a thin strip
   of threads shows where the collection comes from, by count.
-- **Skill Studio** — one skill as one document. The head is SKILL.md's frontmatter set as a
-  document head: the lineage line (the original's dye → the knot where it became yours → a
-  saffron thread for what was added since), the title, the purpose as the lede (`description:`
-  named quietly while it is written), `name:` with a deliberate *Change*, and the validity.
-  One action, *Use & share*; the rest behind ⋯. A sticky bar holds the three modes —
-  Instructions, When it applies, Files (⌘1–3) — and the panel toggle (⌘\\). The context
-  panel follows the work: outline, problems and package while writing; *Would Habi suggest
-  it?* while editing rules; file details among files; lineage; use & share. It docks beside
-  the document when the Studio has room and comes in as a sheet when it does not; below
-  700 px everything is one column and files are list-then-file.
-- **When it applies** — sentences, not a form: "Suggest this skill when *all/any* of these
-  hold", "Unless", "It needs", "Checked across *each module / the whole repository*". The
-  choices are words in the sentence; each condition hangs on a saffron thread, as its reason
-  will in a project. Tools are said apart: they never change whether Habi suggests a skill.
-  The YAML view shows "Habi reads this as" under the editor.
-- **Files** — a compact explorer (SKILL.md and habi.yaml lead to their modes) beside the open
-  file; one *New* menu; drop files on the window to add them to a chosen folder. A script
-  shows the command a person would run, to copy — there is no Run button anywhere.
+- **Skill Studio** — one skill as one document with layers; the knowledge dominates. Two
+  regions only: a slim bar (back, where you are, *Ready/Draft*, *Use*, ⋯) and the stage. The
+  stage opens on the skill: title, purpose as the lede, the provenance thread (the source's
+  dye → the knot where it became yours → saffron for what changed here), one line each for
+  *When to use* and *Comes with*, then the instructions in a reading measure. Markdown steps
+  aside away from the caret. The outline is a spine of ticks in the margin that unfolds on
+  hover, focus or ⌘⇧O. Layers (⌘1–3) take the stage in turn and keep their state; a file
+  turns the Materials layer into a focused editor. Testing and provenance are sheets, gone
+  when done. Readiness is one popover (to do, done — with the identifier — and optional).
+  Saving is ambient: nothing unless saving or failed. Structure comes from type and space;
+  the only lines are threads.
+- **When to use** — facts, not a form: "Playwright is used", "Depends on `x`". *Add signal*
+  is one field that proposes what Habi could look for, and what it saw in a project, each
+  with why. *Any/all of these* appears only with two signals; *Check within* only with one.
+  Signals hang on a saffron thread, as their reasons will in a project. Tools are said apart.
+  The YAML is a link away, with "Habi reads this as" under the editor.
+- **Materials** — kinds, not folders: a mono glyph, the name, and what it is for in the
+  instructions' words. Habi places added, pasted and dropped files by type. *View package
+  source* is the literal tree (SKILL.md and habi.yaml opened as written). A script shows the
+  command a person would run, to copy — there is no Run button anywhere.
 - **Add skills** — one list of where skills come from (a project, a folder, a Git repository,
   a connected library), each with what it needs in place. A Git address forks into two
   choices said apart: *Make my own copy* (read once, nothing connected) and *Connect as a

@@ -25,7 +25,7 @@ function RunLine({ command }: { command: string }) {
   return (
     <p className="file-run">
       <Icon name="terminal" size={13} />
-      <span>Habi never runs scripts. To run it yourself, from the skill's folder:</span>
+      <span>Habi never runs it. To run it yourself:</span>
       <code>{command}</code>
       <button
         type="button"
@@ -145,7 +145,7 @@ export function FileEditor({
         ) : (
           <span className="kicker">{language === "plain" ? "text" : language}</span>
         )}
-        {readOnly ? null : <SaveIndicator state={save.state} />}
+        {readOnly ? null : <SaveIndicator state={save.state} ambient onRetry={() => void save.flush()} />}
       </div>
       {script ? <RunLine command={runCommand(file.path, text.split("\n", 1)[0])} /> : null}
       {save.state === "conflict" ? (

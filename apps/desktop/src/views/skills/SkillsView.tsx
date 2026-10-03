@@ -1,10 +1,10 @@
 /**
  * My skills: the knowledge this person keeps — written here or brought in
  * and made their own — as an index rather than a wall of cards. Each row
- * says what the skill is for, where it came from (with its library's dye),
- * and only what is true about it now: unfinished, changed here, a newer
- * version upstream, in use in projects. Quiet facets narrow the list; "/"
- * searches; ↑/↓ or j/k move and Enter opens. Grouped by when it was last
+ * says what the skill is for, its thread (where it came from, in its
+ * library's dye, and whether it was changed here), and one word for where it
+ * stands: Ready, or Draft and what is missing. Quiet facets narrow the list;
+ * "/" searches; ↑/↓ or j/k move and Enter opens. Grouped by when it was last
  * touched, or by letter when sorted by title, so three skills and three
  * hundred both read well.
  */
@@ -12,18 +12,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Fragment, type KeyboardEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { LocalSkillSummary } from "../../bindings/LocalSkillSummary";
 import type { SkillStanding } from "../../bindings/SkillStanding";
-import { Icon, type IconName } from "../../components/Icon";
+import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Working } from "../../components/ui";
-import { Strand } from "../../components/Weave";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import { type Dye, dyeMap } from "../../lib/dye";
 import { plural, relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useSkills, useSkillsOverview, useSources } from "../../lib/queries";
-import { originShort } from "../../lib/skills";
 import { SkillsEmpty } from "./SkillsEmpty";
+import { Provenance } from "./studio/Provenance";
 
 const SkillStudio = lazy(() => import("./studio/SkillStudio").then((m) => ({ default: m.SkillStudio })));
 
@@ -37,7 +36,7 @@ const FACETS: { id: Facet; label: string }[] = [
   { id: "changed", label: "Changed here" },
   { id: "installed", label: "In projects" },
   { id: "updates", label: "Updates" },
-  { id: "unfinished", label: "Unfinished" },
+  { id: "unfinished", label: "Drafts" },
 ];
 
 const written = (s: LocalSkillSummary) =>
@@ -123,34 +122,28 @@ function Composition({ skills, dyes }: { skills: LocalSkillSummary[]; dyes: Map<
   );
 }
 
+/** Where a skill stands, in a word: Ready, or Draft and what is missing. */
+function standingWord(s: LocalSkillSummary): { ready: boolean; text: string } {
+  if (s.errors === 0) return { ready: true, text: "Ready" };
+  if (!s.description.trim()) return { ready: false, text: "Draft · missing purpose" };
+  return { ready: false, text: `Draft · ${plural(s.errors, "thing")} to finish` };
+}
+
 function Row({
   s,
   standing,
   letter,
-  dye,
   onOpen,
   onKeyDown,
 }: {
   s: LocalSkillSummary;
   standing: SkillStanding | undefined;
   letter: string | null;
-  dye: Dye | undefined;
   onOpen: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const installed = standing?.installedIn ?? [];
-  const words: { text: string; tone: string; icon: IconName }[] = [];
-  if (s.errors > 0)
-    words.push({ text: `${plural(s.errors, "thing")} to finish`, tone: "warn", icon: "warning" });
-  if (standing?.upstream === "changed")
-    words.push({ text: "Update available", tone: "thread", icon: "refresh" });
-  if (s.modifiedLocally) words.push({ text: "Changed here", tone: "thread", icon: "pencil" });
-  if (installed.length > 0)
-    words.push({
-      text: installed.length === 1 ? `In ${installed[0]?.projectName}` : `In ${installed.length} projects`,
-      tone: "muted",
-      icon: "download",
-    });
+  const word = standingWord(s);
   return (
     <li>
       <button type="button" className="mys-row" onClick={onOpen} onKeyDown={onKeyDown}>
@@ -162,20 +155,20 @@ function Row({
           <span className="mys-purpose">
             {s.description ? purpose(s.description) : <span className="mys-none">No purpose yet</span>}
           </span>
+          <span className="mys-thread">
+            <Provenance summary={s} standing={standing} />
+            {installed.length > 0 ? (
+              <span className="mys-used" title={installed.map((p) => p.projectName).join(", ")}>
+                in {installed.length === 1 ? installed[0]?.projectName : `${installed.length} projects`}
+              </span>
+            ) : null}
+          </span>
         </span>
         <span className="mys-side">
-          <span className="mys-origin">
-            {s.origin.type === "library" ? (
-              <Strand dye={dye ?? { color: "var(--ink-faint)", community: false }} size={12} />
-            ) : null}
-            <span>{s.origin.type === "library" ? s.origin.sourceName : originShort(s.origin)}</span>
+          <span className={`mys-state${word.ready ? " is-ready" : " is-draft"}`}>
+            <span className="mys-dot" aria-hidden="true" />
+            {word.text}
           </span>
-          {words.map((w) => (
-            <span key={w.text} className={`mys-word tone-${w.tone}`}>
-              <Icon name={w.icon} size={11} />
-              {w.text}
-            </span>
-          ))}
           <span className="mys-edited mono">{relativeTime(s.updatedAt)}</span>
         </span>
       </button>
@@ -361,7 +354,7 @@ export function SkillsView({ skillId }: { skillId?: string }) {
       <header className="mys-head">
         <div className="mys-intro">
           <h1 className="page-title">My skills</h1>
-          <p className="mys-lead">Written here or made your own — to refine, use and pass on.</p>
+          <p className="mys-lead">Your knowledge, gathered and refined.</p>
           <Composition skills={live} dyes={dyes} />
         </div>
         <div className="mys-actions">
@@ -466,7 +459,6 @@ export function SkillsView({ skillId }: { skillId?: string }) {
                 s={s}
                 standing={standing.get(s.id)}
                 letter={sort === "title" && fresh && !query ? group : null}
-                dye={s.origin.type === "library" ? dyes.get(s.origin.sourceName) : undefined}
                 onOpen={() => navigate({ name: "skills", skillId: s.id })}
                 onKeyDown={onRowKey}
               />

@@ -106,32 +106,34 @@ The first version, 0.1.0, is not released yet. It will contain the following.
 - Write a skill in Habi — purpose, Markdown instructions, supporting files — or bring in the
   ones you already have. No project, library, account or model is needed, and a draft is an
   ordinary Agent Skills folder.
-- **The Skill Studio:** a skill is edited as one document. Its head is the frontmatter set as
-  a document head — where it came from, the title, the purpose as the lede, the identifier
-  agents see, and whether it is ready — with one action, *Use & share*. Below, the
-  instructions, when it applies and its files are three modes of one surface (⌘1–3); beside
-  them a panel follows what you are doing (outline and package while writing, an evaluation
-  while editing rules, file details among files, lineage, ways to use and share). It docks
-  when there is room and becomes a sheet when there is not (⌘\\).
-- **Writing:** instructions are set in the reading face with sized headings; package paths
-  complete after `](` and in backticks; problems are marked on their line; list and link
-  shortcuts; optional starters (Workflow, Troubleshooting, Code review, Tool-assisted) on an
-  empty page. Fenced code is highlighted in previews and in the library reader.
-- **When it applies, in sentences:** "Suggest this skill when … Unless … It needs … Checked
-  across …", built one statement at a time with suggestions from what Habi observed. The
-  YAML view edits the same file and shows what Habi reads from it; rules the sentences cannot
+- **The Skill Studio:** a skill opens inside its knowledge — title, purpose, where it came
+  from, and the instructions — with only *Ready*, *Use* and ••• above it. When to use and
+  Materials are layers of the same skill (⌘1–3), named in a line each under the purpose;
+  testing and provenance slide in as sheets and leave again. *New skill* opens an empty page:
+  the first heading names it, the title names its identifier, and the opening line can become
+  its purpose. Saving is silent unless it fails.
+- **Writing:** Markdown steps aside away from the caret — headings, emphasis, highlighted code
+  blocks, and references to the package's own files (⌘-click opens one) — while the line
+  being edited shows its markup. Package paths complete after `](` and in backticks; problems
+  are marked on their line; an outline spine in the margin (⌘⇧O); optional starters on an
+  empty page.
+- **When to use, as facts:** "Playwright is used", "Depends on …" — added from a few words,
+  with Habi proposing what it could look for and what it saw in a project. *Avoid when*,
+  *Check within*, *Needs*. When the instructions keep naming a technology, Habi offers it as a
+  signal (one click, undoable). The YAML is one link away and rules the sentences cannot
   express are read out and kept as written.
-- **Would Habi suggest it?** Evaluate the rules in one project: a plain verdict, each
-  condition with its evidence, what could not be established, the scope, and whether the
-  tools it needs are on PATH or in the project (looked up, never run).
-- **The package as a workspace:** a compact explorer beside the open file; one *New* action
-  for scripts (Python, shell, JavaScript, with useful headers), references and blank files;
-  import with the picker or by dropping files on the window (only what was dropped is taken,
-  nothing is replaced); search names and text. Scripts are shown with the command to run them
-  yourself — Habi never runs them.
-- **An index of what you know:** My skills lists each skill's purpose, origin (with its
-  library's dye), and only what is true now — unfinished, changed here, update available, in
-  which projects. Facets, `/` to find, j/k to move.
+- **Test against a project:** on request, a plain verdict and each signal with its evidence,
+  what could not be established, and whether the tools it needs are on PATH (looked up, never
+  run).
+- **Materials:** scripts, examples, references and assets by kind, each with what it is for in
+  the instructions' words; a gentle *Reference it* for one the instructions never mention.
+  *Add* places files by what they are; pasted code becomes a script or an example; dropped
+  files are placed the same way, with *Undo*. A file opens as a focused editor. The package
+  source (the literal tree, `SKILL.md` and `habi.yaml` included) is one step away. Scripts are
+  shown with the command to run them yourself — Habi never runs them.
+- **An index of what you know:** My skills lists each skill's purpose, its thread (where it
+  came from, in its library's dye, and whether it was changed here), and one word for where it
+  stands — Ready, or Draft and what is missing. Facets, `/` to find, j/k to move.
 - **Lineage:** an imported copy keeps its original files, so what you changed is shown file by
   file whatever it came from, even after the source is gone; library updates are reviewed
   against it, and a contribution can be prepared from the same place.

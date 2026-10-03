@@ -26,12 +26,28 @@ function useRouteLabel(route: Route | undefined): string | null {
   }
 }
 
-export function BackLink({ fallback, fallbackLabel }: { fallback: Route; fallbackLabel: string }) {
+export function BackLink({
+  fallback,
+  fallbackLabel,
+  compact,
+}: {
+  fallback: Route;
+  fallbackLabel: string;
+  /** Just the arrow, named for assistive technology and on hover. */
+  compact?: boolean;
+}) {
   const { previous, back, navigate } = useNav();
   const label = useRouteLabel(previous);
+  const text = previous && label ? label : fallbackLabel;
   return (
-    <button type="button" className="editor-back" onClick={() => (previous ? back() : navigate(fallback))}>
-      <Icon name="arrowLeft" size={14} /> {previous && label ? label : fallbackLabel}
+    <button
+      type="button"
+      className={`editor-back${compact ? " is-icon" : ""}`}
+      title={compact ? text : undefined}
+      aria-label={compact ? `Back to ${text}` : undefined}
+      onClick={() => (previous ? back() : navigate(fallback))}
+    >
+      <Icon name="arrowLeft" size={14} /> {compact ? null : text}
     </button>
   );
 }

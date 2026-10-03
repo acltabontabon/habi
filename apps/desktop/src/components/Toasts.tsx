@@ -6,8 +6,10 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import type { Tone } from "../lib/format";
 import { Icon } from "./Icon";
 
-type Toast = { id: number; tone: Tone; text: string };
-type Toaster = { show: (text: string, tone?: Tone) => void };
+/** One thing to do about what just happened — usually taking it back. */
+export type ToastAction = { label: string; run: () => void };
+type Toast = { id: number; tone: Tone; text: string; action?: ToastAction };
+type Toaster = { show: (text: string, tone?: Tone, action?: ToastAction) => void };
 
 const ToastContext = createContext<Toaster>({ show: () => {} });
 const SHOWN_MS = 6000;
@@ -15,9 +17,9 @@ const SHOWN_MS = 6000;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
-  const show = useCallback((text: string, tone: Tone = "ok") => {
+  const show = useCallback((text: string, tone: Tone = "ok", action?: ToastAction) => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t.slice(-3), { id, tone, text }]);
+    setToasts((t) => [...t.slice(-3), { id, tone, text, action }]);
   }, []);
   const value = useMemo(() => ({ show }), [show]);
   return (
@@ -53,6 +55,18 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       }}
     >
       <span>{toast.text}</span>
+      {toast.action ? (
+        <button
+          type="button"
+          className="link-btn toast-action"
+          onClick={() => {
+            toast.action?.run();
+            onDismiss(id);
+          }}
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
       <button type="button" className="icon-btn" aria-label="Dismiss" onClick={() => onDismiss(id)}>
         <Icon name="close" size={14} />
       </button>

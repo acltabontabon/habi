@@ -1,17 +1,21 @@
 /**
  * Places inside the Skill Studio a problem, a dialog or the palette can send
- * the author to — the field, mode, file or line that fixes it.
+ * the author to — the field, layer, file or line that fixes it.
  */
 import type { Diagnostic } from "../bindings/Diagnostic";
 
-export type StudioMode = "instructions" | "rules" | "files";
+/**
+ * The layers of one skill: the knowledge itself, when Habi suggests it, what
+ * comes with it, and — for those who ask — the package as files.
+ */
+export type StudioLayer = "skill" | "when" | "materials" | "source";
 export type StudioField = "title" | "description" | "identifier";
 
 export type NavTarget = {
-  mode?: StudioMode;
-  /** A field of the skill's identity, in the header. */
+  layer?: StudioLayer;
+  /** A field of the skill's identity. */
   field?: StudioField;
-  /** A package file (opens it under Files). */
+  /** A package file (opens it with the materials). */
   path?: string;
   /** 1-based line in the instructions or the file. */
   line?: number;
@@ -21,10 +25,10 @@ export function targetLabel(t: NavTarget): string {
   if (t.field === "description") return "Edit the purpose";
   if (t.field === "identifier") return "Change the identifier";
   if (t.field === "title") return "Edit the title";
-  if (t.mode === "rules") return "Open the rules";
-  if (t.mode === "instructions") return t.line ? `Go to line ${t.line}` : "Open the instructions";
+  if (t.layer === "when") return "Open When to use";
+  if (t.layer === "skill") return t.line ? `Go to line ${t.line}` : "Open the instructions";
   if (t.path) return `Open ${t.path.split("/").pop()}`;
-  return "Open Files";
+  return "Open Materials";
 }
 
 const isMetadata = (path: string | null) => path !== null && /(^|\/)habi\.ya?ml$/.test(path);
@@ -48,11 +52,11 @@ export function plainProblem(d: Diagnostic): { text: string; target: NavTarget |
     case "duplicateName":
       return { text: `The identifier needs attention: ${m}`, target: { field: "identifier" } };
     case "invalidMetadata":
-      return { text: `The rules for when it applies need attention: ${m}`, target: { mode: "rules" } };
+      return { text: `When to use needs attention: ${m}`, target: { layer: "when" } };
     case "brokenLink":
     case "missingReferencedFile":
       return d.path === "SKILL.md" || d.path === null
-        ? { text: m, target: { mode: "instructions", line } }
+        ? { text: m, target: { layer: "skill", line } }
         : { text: `${d.path}: ${m}`, target: { path: d.path, line } };
     default:
       break;
@@ -66,8 +70,8 @@ export function plainProblem(d: Diagnostic): { text: string; target: NavTarget |
     };
   }
   if (isMetadata(d.path)) {
-    return { text: `The rules for when it applies need attention: ${m}`, target: { mode: "rules" } };
+    return { text: `When to use needs attention: ${m}`, target: { layer: "when" } };
   }
-  if (d.path === "SKILL.md") return { text: m, target: { mode: "instructions", line } };
+  if (d.path === "SKILL.md") return { text: m, target: { layer: "skill", line } };
   return { text: d.path ? `${d.path}: ${m}` : m, target: d.path ? { path: d.path, line } : null };
 }
