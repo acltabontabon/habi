@@ -190,7 +190,7 @@ apply) are listed with the other limitations in
   no objects and changes nothing. A library moves only when the user presses Update, which
   fetches and records a new snapshot exactly as before; installed skills and adopted copies
   never change because a library did.
-- **The one web request.** Opening the page of a catalog library you have not connected asks
+- **Catalog facts.** Opening the page of a catalog library you have not connected asks
   GitHub's public API for that repository's stars, forks, last push and archived flag
   (`GET https://api.github.com/repos/<owner>/<repo>`, through the system `curl`, anonymous,
   HTTPS only, 10 seconds). The address is built from the built-in catalog, never from text a
@@ -199,3 +199,14 @@ apply) are listed with the other limitations in
   button: they never rank, filter or recommend anything, and the page says that how many
   people use a library is not evidence that it is safe. GitHub sees the request's IP address
   and Habi's name; no account, token or project data is sent.
+- **Checking for a newer Habi.** While Habi is open (unless turned off in Settings) it asks
+  `https://github.com/acltabontabon/habi/releases/latest/download/latest.json` for the newest
+  version, from Rust, through the updater plugin. The request carries no identifier and nothing
+  about the machine or its projects; GitHub sees an IP address, as with any download. Finding
+  a newer version changes nothing. Installing happens only when the person presses Update:
+  Habi downloads the installer named in `latest.json` and installs it only if its signature
+  verifies against the public key compiled into the app (`plugins.updater.pubkey`), so a
+  tampered file or a compromised download host cannot install anything. The private key is
+  held by the maintainer and a CI secret (`TAURI_SIGNING_PRIVATE_KEY`); losing it means
+  installed copies can only be replaced by hand. The webview has no updater permission: it can
+  only ask Rust to install the update Rust itself found, after pending edits are written.

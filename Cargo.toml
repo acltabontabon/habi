@@ -50,6 +50,8 @@ tauri = "2.12.1"
 tauri-build = "2.7.1"
 tauri-plugin-dialog = "2.8.1"
 tauri-plugin-opener = "2.7.0"
+# The operating system's TLS (Security.framework, Schannel) rather than a bundled one.
+tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
 notify-debouncer-mini = "0.7.0"
 ctrlc = "3.5.2"
 

@@ -4,4 +4,9 @@ export type Settings = {
 /**
  * 0 disables scheduled refresh.
  */
-autoRefreshHours: number, };
+autoRefreshHours: number, 
+/**
+ * Whether Habi asks GitHub for a newer release while it is open. Installing
+ * one always waits for the person.
+ */
+checkForUpdates: boolean, };

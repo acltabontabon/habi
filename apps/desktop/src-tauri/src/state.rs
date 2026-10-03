@@ -29,6 +29,8 @@ pub struct AppState {
     /// the same reason as `picked_folders`.
     dropped: Mutex<HashMap<PathBuf, Instant>>,
     pub watcher: Mutex<Option<crate::watch::ProjectWatcher>>,
+    /// A newer Habi found by the last update check, waiting to be installed.
+    pub update: Mutex<crate::updates::UpdateSlot>,
     _log_guard: Option<tracing_appender::non_blocking::WorkerGuard>,
 }
 
@@ -46,6 +48,7 @@ impl AppState {
             browsed_folders: Mutex::new(HashSet::new()),
             dropped: Mutex::new(HashMap::new()),
             watcher: Mutex::new(None),
+            update: Mutex::new(crate::updates::UpdateSlot::default()),
             _log_guard: guard,
         }
     }

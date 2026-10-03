@@ -1,8 +1,9 @@
 name: Release
 
 # Pushing a tag vX.Y.Z runs every CI check, confirms the tag matches the version in each
-# manifest, builds the installers and the `habi` command-line tool for macOS (one universal
-# build) and Windows, and creates a draft release. See docs/dev/release.md.
+# manifest and that CHANGELOG.md has an entry for it, builds the installers (signed for Habi's
+# own updater) and the `habi` command-line tool for macOS (one universal build) and Windows, and
+# creates a draft release with the update manifest (latest.json). See docs/dev/release.md.
 
 on:
   push:
@@ -43,6 +44,11 @@ jobs:
             fi
           done
           exit "$status"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: CHANGELOG.md has an entry for this version
+        run: node scripts/updater-manifest.mjs --check "$GITHUB_REF_NAME"
 
   build:
     name: Build (${{ matrix.platform }})
@@ -111,13 +117,29 @@ jobs:
               echo "APPLE_API_KEY_PATH=$key"
             } >> "$GITHUB_ENV"
           fi
+      # Installed copies of Habi only accept an update signed by this key; without it a release
+      # could never be installed by the people already running Habi. Not the Apple or Windows
+      # code-signing credentials above: generate it once with `pnpm tauri signer generate`.
+      - name: Updater signing key
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it people cannot update to this release. See docs/dev/release.md."
+            exit 1
+          fi
       - name: Build desktop installers
         shell: bash
         env:
           TAURI_ARGS: ${{ matrix.tauri-args }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           read -ra args <<< "$TAURI_ARGS"
-          pnpm tauri build "${args[@]}"
+          # Updater artifacts (and their signatures) are made for releases only, so local and CI
+          # builds do not need the key.
+          pnpm tauri build "${args[@]}" --config '{"bundle":{"createUpdaterArtifacts":true}}'
         working-directory: apps/desktop
       - name: Build command-line tool (macOS, universal)
         if: runner.os == 'macOS'
@@ -142,7 +164,11 @@ jobs:
           # The globs below only match file names this job wrote, none starting with a dash.
           mkdir -p dist
           find target -type f -path '*/release/bundle/*' \
-            \( -name "*.dmg" -o -name "*.msi" -o -name "*-setup.exe" \) -exec cp {} dist/ \;
+            \( -name "*.dmg" -o -name "*.msi" -o -name "*-setup.exe" -o -name "*-setup.exe.sig" \) -exec cp {} dist/ \;
+          # The macOS update is the zipped app; named by version and architecture like the rest.
+          for f in $(find target -type f -path '*/release/bundle/macos/*' -name '*.app.tar.gz*'); do
+            cp "$f" "dist/Habi_${GITHUB_REF_NAME#v}_universal.${f##*/Habi.}"
+          done
           # shellcheck disable=SC2035
           (cd target/cli && tar -czf "../../dist/habi-cli-${GITHUB_REF_NAME}-${CLI_TARGET}.tar.gz" *)
           cd dist
@@ -168,16 +194,32 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
           merge-multiple: true
+      # latest.json is what running copies of Habi ask for; the release notes are this version's
+      # section of CHANGELOG.md, so the release, the update and What's new always agree.
+      - name: Update manifest and release text
+        shell: bash
+        run: |
+          node scripts/updater-manifest.mjs "$GITHUB_REF_NAME" dist "$GITHUB_REPOSITORY"
+          mv dist/release-notes.md "$RUNNER_TEMP/release-notes.md"
+          {
+            cat "$RUNNER_TEMP/release-notes.md"
+            printf '\n---\n\n'
+            printf 'Draft release: check docs/dev/release.md before publishing. Publishing it is what\n'
+            printf 'offers it to people already running Habi (`latest.json`).\n\n'
+            printf 'Installers are UNSIGNED for macOS and Windows unless code-signing secrets were configured\n'
+            printf 'for this run. Checksums: SHA256SUMS-macos.txt and SHA256SUMS-windows.txt. Verify\n'
+            printf 'provenance with `gh attestation verify <file> --repo acltabontabon/habi`.\n'
+          } > "$RUNNER_TEMP/body.md"
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           draft: true
-          body: |
-            Draft release. Check docs/dev/release.md before publishing.
-            Artifacts are UNSIGNED unless signing secrets were configured for this run.
-            Checksums: SHA256SUMS-macos.txt and SHA256SUMS-windows.txt. Verify provenance with
-            `gh attestation verify <file> --repo acltabontabon/habi`.
+          body_path: ${{ runner.temp }}/body.md
           files: dist/*

@@ -108,15 +108,20 @@ fn which(program: &str) -> bool {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
+#[serde(default)]
 pub struct Settings {
     /// 0 disables scheduled refresh.
     pub auto_refresh_hours: u32,
+    /// Whether Habi asks GitHub for a newer release while it is open. Installing
+    /// one always waits for the person.
+    pub check_for_updates: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Settings {
             auto_refresh_hours: 12,
+            check_for_updates: true,
         }
     }
 }
