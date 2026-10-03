@@ -14,7 +14,8 @@
  *
  * Rows and sources are real controls (open the project, open the library);
  * pointing at either brings what it is connected to forward. The loom
- * weaves itself once on arrival, then stays still.
+ * weaves itself once on arrival, then stays still. In a tall window the warp
+ * hangs on below the last row and fades out, so the room is the loom's.
  */
 import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import type { Dye } from "../lib/dye";
@@ -136,7 +137,7 @@ export function Loom({
 
   return (
     <div
-      className={`loom${row || col ? " is-pointing" : ""}`}
+      className={`loom${row || col ? " is-pointing" : ""}${lines === 0 ? " is-unwritten" : ""}`}
       style={{ "--loom-head": `${HEAD}px`, "--loom-row": `${ROW}px` } as CSSProperties}
     >
       <div className="loom-labels">
@@ -233,6 +234,21 @@ export function Loom({
             ))}
             <line x1={0} y1={y(lines)} x2={width} y2={y(lines)} className="loom-pick is-new" />
           </g>
+        </svg>
+        {/* Where the window is taller than the weave, the warp hangs on and fades out. */}
+        <svg className="loom-tail" style={{ top: height - 4 }} aria-hidden="true" focusable="false">
+          {strands.map((s, i) => (
+            <line
+              key={`t${i}`}
+              x1={s.x}
+              y1={0}
+              x2={s.x}
+              y2="100%"
+              className={`loom-strand${s.tint ? " is-bare" : ""}${sourceLit(s.source?.id) ? "" : " is-dim"}`}
+              style={s.source ? { stroke: s.source.dye.color } : s.tint ? { stroke: s.tint } : undefined}
+              strokeDasharray={s.source?.dye.community ? "4 4" : undefined}
+            />
+          ))}
         </svg>
       </div>
 

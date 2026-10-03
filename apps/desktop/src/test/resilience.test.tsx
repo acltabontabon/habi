@@ -422,22 +422,19 @@ function library(overrides: Partial<Source> = {}): Source {
 }
 
 describe("the start screen", () => {
-  it("leads with one action and says where things stand in one line", async () => {
+  it("leads with one action", async () => {
     handlers.recent_projects = () => [project];
     handlers.list_sources = () => [library(), library({ id: "docs", name: "Docs", skillCount: 3 })];
     handlers.list_skills = () => [skill().summary, { ...skill().summary, id: "k2" }];
     const { container } = wrap(<Welcome />);
-    expect(await screen.findByRole("button", { name: "2 libraries" })).toBeInTheDocument();
-    expect(container.querySelector(".home-status")).toHaveTextContent(
-      "2 libraries · 2 of your skills · nothing shared yet",
-    );
+    expect(await screen.findByRole("button", { name: "Open a project…" })).toBeInTheDocument();
     expect(container.querySelectorAll(".btn-primary")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Open a project…" })).toHaveClass("btn-primary");
     // Counts come with the library list; no library index is read for them.
     expect(screen.getByTitle("Team skills · team · 12 skills")).toBeInTheDocument();
     expect(invoke.mock.calls.some(([cmd]) => cmd === "library")).toBe(false);
     // With projects, the first-run choices step aside.
-    expect(screen.queryByRole("button", { name: "Try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
   });
 
   it("waits for the projects instead of flashing the first-run screen", async () => {
@@ -445,11 +442,11 @@ describe("the start screen", () => {
     handlers.recent_projects = () => new Promise((resolve) => (answer = resolve));
     wrap(<Welcome />);
     expect(screen.getByText("Loading your projects…")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
 
     await act(async () => answer([project]));
     expect(await screen.findByText("billing-service")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
   });
 
   it("says when the projects cannot be listed, and tries again", async () => {
@@ -460,7 +457,7 @@ describe("the start screen", () => {
     };
     wrap(<Welcome />);
     expect(await screen.findByText("Habi could not list your projects")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
     fail = false;
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("billing-service")).toBeInTheDocument();

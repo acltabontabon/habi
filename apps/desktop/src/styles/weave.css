@@ -65,6 +65,15 @@
   column-gap: var(--s5);
 }
 
+/* No projects yet, so no meta to carry: the weave runs to the same right edge as the page. */
+.loom.is-unwritten {
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+}
+
+.loom.is-unwritten .loom-meta {
+  display: none;
+}
+
 .loom-labels,
 .loom-meta {
   display: flex;
@@ -135,6 +144,16 @@
 .loom-svg {
   display: block;
   overflow: visible;
+}
+
+.loom-tail {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(#000, transparent);
+  mask-image: linear-gradient(#000, transparent);
 }
 
 /* Source names head their warp threads, like a weaving draft. */

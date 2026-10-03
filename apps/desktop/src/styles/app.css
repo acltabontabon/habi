@@ -708,9 +708,10 @@
 .home {
   min-height: 100%;
   display: grid;
-  align-content: start;
+  /* Three zones: the question on top, the loom in the room that is left, the quiet links along the foot. */
+  grid-template-rows: auto 1fr auto;
   gap: clamp(var(--s6), 6vh, var(--s8));
-  padding: clamp(var(--s6), 8vh, 88px) clamp(var(--s5), 5vw, 72px) var(--s6);
+  padding: clamp(var(--s6), 8vh, 88px) clamp(var(--s5), 5vw, 72px) clamp(var(--s5), 4vh, var(--s7));
 }
 
 .home-head {
@@ -735,14 +736,6 @@
   margin-top: var(--s3);
   color: var(--ink-muted);
   font-size: var(--text-lg);
-}
-
-/* Libraries · your skills · shared: one plain line, links only where there is something. */
-.home-status {
-  margin-top: var(--s4);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
 }
 
 .link-quiet {
@@ -777,22 +770,14 @@
   cursor: help;
 }
 
-/* First run: what opening a project does, the sample, and two quiet links. */
-.home-start {
-  display: grid;
-  gap: var(--s4);
-  max-width: 68ch;
-}
-
-.home-next {
-  color: var(--ink-soft);
-}
-
-.home-sample {
+.home-foot {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2) var(--s3);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3) var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
   font-size: var(--text-sm);
   color: var(--ink-muted);
 }
@@ -802,14 +787,13 @@
   color: var(--ink-muted);
 }
 
-.home-foot {
-  display: grid;
-  gap: var(--s3);
-  font-size: var(--text-sm);
+.link-quiet:disabled {
+  cursor: progress;
   color: var(--ink-muted);
 }
 
 .home-keys {
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2) var(--s5);
