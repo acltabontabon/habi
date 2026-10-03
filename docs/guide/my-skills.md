@@ -47,10 +47,11 @@ layer of the same skill, named in one line each under the purpose:
 - **When to use** (⌘2) — signals, said as facts about a project: *Playwright is used*,
   *Depends on `@playwright/test`*, *Has files matching `playwright.config.*`*. *Add signal*
   takes a few words and proposes what Habi could look for (a technology it detects, a
-  dependency, a file pattern), plus what it actually saw in the project chosen under *Try it*,
-  with the file it came from. Then *Avoid when* (exceptions), *Check within* (each module or
+  dependency, a file pattern), plus what it actually saw in your most recent project, with
+  the file it came from. A technology the instructions keep naming waits as a faint row, added
+  with one click. Then *Avoid when* (exceptions), *Check within* (each module or
   the whole repository), and *Needs* (tools, looked up on PATH, never run). These write the
-  same `habi.yaml` conditions the matcher evaluates. *View as habi.yaml* edits the file
+  same `habi.yaml` conditions the matcher evaluates. For precision, *Edit When to use as YAML* (⌘K) or the package source edits `habi.yaml`
   directly, saves it exactly as typed and shows what Habi reads from it; rules the sentences
   cannot express are read out and kept as written.
 - **Materials** (⌘3) — what the skill brings with it, by kind: scripts, examples, references,
@@ -63,7 +64,7 @@ layer of the same skill, named in one line each under the purpose:
   way and can be undone. Opening a material turns the layer into an editor, with the other
   materials beside it when there is room. Scripts are stored and shown, never run.
 
-**Test** (in *When to use*, the ••• menu, or the palette) slides in a sheet: whether Habi
+**Test against a project** (in ••• or the palette) slides in a sheet: whether Habi
 would suggest the skill in a chosen project, and because of what — each signal with the file
 it was decided on. Nothing runs until asked, and the sheet leaves when you are done.
 

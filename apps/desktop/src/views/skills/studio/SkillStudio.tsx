@@ -429,7 +429,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const suggestSignal = (signal: Signal) => {
     const before = draft.form;
     draft.setForm(addSignal(before, signal));
-    toast.show(`Habi will suggest it when ${signalClause(signal)}.`, "ok", {
+    toast.show(`Now suggested when ${signalClause(signal)}.`, "ok", {
       label: "Undo",
       run: () => draft.setForm(before),
     });
@@ -480,8 +480,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
         : "Share…";
 
   // The palette offers the Studio's layers and actions while it is open.
-  const commandsRef = useRef({ go, openSheet, openDialog, viewSource, exportFolder, showFolder });
-  commandsRef.current = { go, openSheet, openDialog, viewSource, exportFolder, showFolder };
+  const switchYaml = draft.switchYaml;
+  const commandsRef = useRef({ go, openSheet, openDialog, viewSource, exportFolder, showFolder, switchYaml });
+  commandsRef.current = { go, openSheet, openDialog, viewSource, exportFolder, showFolder, switchYaml };
   const commands = useMemo<ScreenCommand[]>(
     () => [
       {
@@ -549,6 +550,16 @@ function Studio({ initial }: { initial: LocalSkill }) {
         keywords: "provenance history origin upstream diff changes lineage",
         icon: "branch",
         run: () => commandsRef.current.openSheet("provenance"),
+      },
+      {
+        id: "yaml",
+        label: "Edit When to use as YAML",
+        keywords: "habi.yaml rules raw signals",
+        icon: "thread",
+        run: () => {
+          commandsRef.current.go("when");
+          void commandsRef.current.switchYaml(true);
+        },
       },
       {
         id: "source",
@@ -861,9 +872,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
                 draft={draft}
                 projects={available}
                 projectId={evalProject}
-                onProject={setChosenProject}
-                onTest={() => openSheet("test")}
-                onOpenProject={() => void openProject({ stay: true })}
                 preview={evaluation.preview}
               />
             </div>

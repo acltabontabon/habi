@@ -394,7 +394,7 @@ function SourceTree({
         {
           path: "habi.yaml",
           glyph: "◇",
-          hint: "when Habi suggests it",
+          hint: "when to suggest it",
           run: onWhen,
           here: has("habi.yaml") || has("habi.yml"),
         },
@@ -731,7 +731,7 @@ export function Materials({
     [
       {
         label: "Add files…",
-        hint: "Habi files them as scripts, references or assets",
+        hint: "Placed by type",
         icon: "upload",
         onSelect: () => importInto("auto"),
       },

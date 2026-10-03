@@ -409,9 +409,10 @@ describe("the Skill Studio", () => {
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     const when = screen.getByRole("region", { name: "Suggest when" });
-    expect(within(when).getByText("Nothing yet.")).toBeInTheDocument();
+    // Empty, a section is just its action.
+    expect(within(when).queryByText(/Nothing yet/)).not.toBeInTheDocument();
     await userEvent.click(within(when).getByRole("button", { name: "Add signal" }));
-    const ask = within(when).getByLabelText("What should Habi look for?");
+    const ask = within(when).getByLabelText("What to look for");
     await userEvent.type(ask, "Spring Boot{Enter}");
     expect(within(when).getByText("Spring Boot is used")).toBeInTheDocument();
     await userEvent.type(ask, "org.liquibase:liquibase-core{Enter}");
@@ -443,8 +444,8 @@ describe("the Skill Studio", () => {
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     const needs = screen.getByRole("region", { name: "Needs" });
-    expect(within(needs).getByText(/Looked up on PATH, never run/)).toBeInTheDocument();
     await userEvent.click(within(needs).getByRole("button", { name: "Add tool" }));
+    expect(within(needs).getByText(/Looked up on PATH, never run/)).toBeInTheDocument();
     await userEvent.type(within(needs).getByLabelText("Tool name"), "Maven");
     await userEvent.type(
       within(needs).getByLabelText("Commands, any one of which satisfies the requirement"),
@@ -495,6 +496,7 @@ describe("the Skill Studio", () => {
     expect(within(layer).getByText("**/pom.xml")).toBeInTheDocument();
     expect(within(layer).getByText("not when")).toBeInTheDocument();
     expect(within(layer).getByText(/kept exactly as written/)).toBeInTheDocument();
+    expect(within(layer).getByRole("button", { name: "Edit as YAML" })).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 900));
     expect(save).not.toHaveBeenCalled();
   });
@@ -539,12 +541,14 @@ describe("the Skill Studio", () => {
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     await new Promise((r) => setTimeout(r, 400));
-    // Editing the rules does not run diagnostics.
+    // Editing the rules does not run diagnostics, and offers no test station.
     expect(preview).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Test" }));
+    expect(screen.queryByRole("button", { name: "Test" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Test against a project/ }));
     const sheet = await screen.findByRole("complementary", { name: "Test against a project" });
     expect(
-      await within(sheet).findByText("Habi would suggest this skill", {}, { timeout: 2000 }),
+      await within(sheet).findByText("Would be suggested here", {}, { timeout: 2000 }),
     ).toBeInTheDocument();
     expect(within(sheet).getByText(/Maven/)).toBeInTheDocument();
     expect(within(sheet).getByText(/Looked up, never run/)).toBeInTheDocument();
@@ -592,7 +596,7 @@ describe("the Skill Studio", () => {
     expect(within(layer).queryByText("scripts/")).not.toBeInTheDocument();
     await userEvent.click(within(layer).getByRole("button", { name: /check\.py/ }));
     expect(await within(layer).findByText("python3 scripts/check.py")).toBeInTheDocument();
-    expect(within(layer).getByText(/Habi never runs it/)).toBeInTheDocument();
+    expect(within(layer).getByText(/Never run here/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Run/ })).not.toBeInTheDocument();
     // The crumb leads back; the editor chrome goes with the file.
     await userEvent.click(screen.getByRole("button", { name: "Materials" }));

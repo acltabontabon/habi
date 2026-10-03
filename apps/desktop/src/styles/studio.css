@@ -940,8 +940,91 @@ button.rd-word:hover,
   border: 0;
 }
 
+/*
+ * Label beside its content, on one line: a sheet that reads like a sentence
+ * per row, with signals, exceptions and tools lined up in one column.
+ */
+.wu {
+  --wu-label: 9.5rem;
+}
+
+.wu-head {
+  margin-bottom: var(--s6);
+  padding-bottom: var(--s2);
+}
+
+.wu-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+}
+
+.wu-match {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
 .wu-section {
-  padding: var(--s5) 0 var(--s3);
+  display: grid;
+  grid-template-columns: var(--wu-label) minmax(0, 1fr);
+  column-gap: var(--s5);
+  row-gap: var(--s1);
+  align-items: start;
+  padding: var(--s4) 0;
+}
+
+.wu-section > * {
+  grid-column: 2;
+}
+
+.wu-section > .wu-lead {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  align-self: start;
+  align-content: center;
+  min-height: 34px;
+  margin: 0;
+}
+
+.wu-section + .wu-section {
+  border-top: 1px solid color-mix(in srgb, var(--hairline) 60%, transparent);
+}
+
+.wu-section .wu-add {
+  min-height: 34px;
+  margin-top: 0;
+}
+
+.wu-section .wu-rows + .wu-add,
+.wu-section .wu-rows + .wu-foot .wu-add,
+.wu-section .wu-row.is-ghost + .wu-foot .wu-add {
+  min-height: 28px;
+}
+
+.wu-mode {
+  padding-left: calc(var(--wu-label) + var(--s5));
+}
+
+@container sk (max-width: 640px) {
+  .wu-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wu-section > *,
+  .wu-section > .wu-lead {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .wu-mode {
+    padding-left: 0;
+  }
 }
 
 .wu-lead {
@@ -1020,6 +1103,44 @@ button.rd-word:hover,
 
 .wu-row .wu-knot {
   background: var(--thread);
+}
+
+/* A signal the instructions point at, not yet taken: the knot open, the words faint. */
+.wu-row.is-ghost {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.wu-row.is-ghost .wu-knot {
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--thread);
+  border-radius: 50%;
+}
+
+.wu-row.is-ghost .wu-why {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--thread-strong);
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.wu-row.is-ghost:hover,
+.wu-row.is-ghost:focus-visible {
+  color: var(--ink-soft);
+}
+
+.wu-row.is-ghost:hover .wu-why,
+.wu-row.is-ghost:focus-visible .wu-why {
+  opacity: 1;
 }
 
 .wu-knot.is-tool {
@@ -1112,6 +1233,10 @@ button.rd-word:hover,
 .wu-adder.is-tool {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
   align-items: center;
+}
+
+.wu-adder.is-tool .wu-note {
+  grid-column: 1 / -1;
 }
 
 .wu-adder-input {
@@ -3056,4 +3181,9 @@ button.rd-word:hover,
 
 .use-brings svg {
   color: var(--ok-ink);
+}
+
+.wu-section .wu-radios {
+  min-height: 34px;
+  align-items: center;
 }
