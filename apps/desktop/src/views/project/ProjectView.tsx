@@ -181,9 +181,10 @@ export function ProjectView({
 
   if (overview.isPending) {
     return (
-      <div className="page">
-        <Working onCancel={overview.cancel}>
-          Inspecting the project — reading manifests and file names…
+      <div className="page page-waiting">
+        <Working stage>
+          Inspecting the project
+          <span className="working-aside">reading manifests and file names</span>
         </Working>
       </div>
     );
