@@ -35,6 +35,11 @@ The first version, 0.1.0, is not released yet. It will contain the following.
 - Tell Habi what it could not establish (for example, a dependency inherited from a company
   parent POM). Questions are asked in plain words ("Does api use jOOQ?"), and your answers
   are labeled as yours and can be undone.
+- A project's page says what it is in the authors' own words: the root manifest's
+  `description`, else the first paragraph of the README. Starter-template boilerplate is
+  skipped, nothing is written for projects that offer neither, and the line stays out of the
+  way when absent. The stack under it reads in order: languages, what the project is built
+  on, then build and test tooling, quieter.
 
 ### Libraries
 - Connect a Git repository (or a subfolder, branch or tag) using your existing Git

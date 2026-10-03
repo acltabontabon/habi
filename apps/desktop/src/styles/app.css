@@ -355,6 +355,23 @@
   color: var(--ink);
 }
 
+/* Working: the glyph turns until it is done. */
+.icon-btn.is-working {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .icon-btn.is-working svg {
+    animation: icon-turn 0.9s linear infinite;
+  }
+}
+
+@keyframes icon-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .link-btn {
   display: inline-flex;
   align-items: center;
@@ -872,6 +889,12 @@
   gap: 6px;
 }
 
+/* Chips beside the title sit on its baseline, lifted to center on the lowercase letters. */
+.project-title-row > :not(.project-title) {
+  position: relative;
+  top: -3px;
+}
+
 .project-title-row {
   display: flex;
   align-items: baseline;
@@ -885,21 +908,36 @@
   overflow-wrap: break-word;
 }
 
-.project-path {
-  color: var(--ink-muted);
-  font-size: var(--text-sm);
+.project-description {
+  max-width: 64ch;
+  color: var(--ink-soft);
+  font-size: var(--text-md);
+  line-height: 1.45;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: flex;
-  gap: var(--s3);
-  align-items: center;
 }
 
 .project-branch {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  align-self: baseline;
+  display: inline-block;
+  max-width: 18ch;
+  padding: 1px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-branch svg {
+  vertical-align: -2px;
+  margin-right: 3px;
 }
 
 .project-actions {
@@ -951,8 +989,17 @@
   background: var(--dye);
 }
 
-.stack-token-quiet {
+.stack-token-quiet,
+.stack-token-tool {
   color: var(--ink-faint);
+}
+
+/* Between what it is built on and the tooling around it. */
+.stack-rule {
+  width: 1px;
+  height: 11px;
+  margin: 0 -2px;
+  background: var(--hairline-strong, var(--hairline));
 }
 
 /* What fits, by library: the composition bar. */
@@ -2864,18 +2911,6 @@ details > summary.change-head::-webkit-details-marker {
   }
   .project-title {
     font-size: 24px;
-  }
-  .project-head-woven .project-actions .btn > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .project-head-woven .project-actions .btn {
-    padding-left: 8px;
-    padding-right: 8px;
   }
   .composition {
     margin-bottom: var(--s3);
