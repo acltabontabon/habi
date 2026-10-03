@@ -240,7 +240,11 @@ export function ProjectView({
             ) : null}
             {project.sample ? <Label tone="thread">Sample project</Label> : null}
           </div>
-          {inspection.description ? <p className="project-description">{inspection.description}</p> : null}
+          {inspection.description ? (
+            <p className="project-description" title={inspection.description}>
+              {inspection.description}
+            </p>
+          ) : null}
           <ul className="stack-tokens" aria-label="What Habi recognized">
             {written.map((l) => (
               <li

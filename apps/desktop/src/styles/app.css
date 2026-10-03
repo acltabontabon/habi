@@ -908,16 +908,14 @@
   overflow-wrap: break-word;
 }
 
+/* One line: it takes the width the header has, and ends in an ellipsis (the full text is the tooltip). */
 .project-description {
-  max-width: 64ch;
   color: var(--ink-soft);
   font-size: var(--text-md);
   line-height: 1.45;
-  text-wrap: pretty;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .project-branch {
@@ -1306,6 +1304,15 @@
   align-items: center;
   gap: 4px 10px;
   margin-top: 2px;
+}
+
+/* The library name is a part of this line: same size, no block spacing, centred with the kind beside it. */
+.rec-row-meta .provenance {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: inherit;
 }
 
 .role-switch {
