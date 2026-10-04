@@ -83,9 +83,34 @@ impl AppPaths {
         ] {
             std::fs::create_dir_all(&dir)
                 .map_err(|e| HabiError::io(format!("creating {}", dir.display()), e))?;
+            private(&dir, 0o700)?;
+        }
+        // Log files written by an earlier run, before they were private.
+        if let Ok(entries) = std::fs::read_dir(self.logs()) {
+            for entry in entries.flatten() {
+                if entry.file_type().is_ok_and(|t| t.is_file()) {
+                    private(&entry.path(), 0o600)?;
+                }
+            }
         }
         Ok(())
     }
+}
+
+/// Limits `path` to the current user (unix: `mode`, `0700` for folders and
+/// `0600` for files). The journal keeps copies of files Habi overwrote, and
+/// the logs and database name projects, so none of it is for other accounts.
+/// Windows keeps a profile folder's access rules and needs nothing here.
+#[cfg(unix)]
+fn private(path: &Path, mode: u32) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+        .map_err(|e| HabiError::io(format!("restricting {}", path.display()), e))
+}
+
+#[cfg(not(unix))]
+fn private(_path: &Path, _mode: u32) -> Result<()> {
+    Ok(())
 }
 
 /// Handle to the SQLite database. Connections are opened per operation, so
@@ -102,8 +127,34 @@ impl Store {
         let store = Store {
             path: path.to_path_buf(),
         };
+        // Created private from the start, not made private afterwards.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .mode(0o600)
+                .open(path)
+                .map_err(|e| HabiError::io(format!("opening {}", path.display()), e))?;
+        }
         let mut conn = store.connect_raw()?;
         migrations::migrate(&mut conn, path)?;
+        // The write-ahead log, shared-memory and pre-migration backup files
+        // come and go with the connections; those that exist now are limited
+        // like the database.
+        if let (Some(dir), Some(name)) = (path.parent(), path.file_name()) {
+            let name = name.to_string_lossy().into_owned();
+            for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+                let file = entry.file_name().to_string_lossy().into_owned();
+                let ours = file == name
+                    || [format!("{name}-wal"), format!("{name}-shm")].contains(&file)
+                    || file.starts_with(&format!("{name}.pre-v"));
+                if ours && entry.file_type().is_ok_and(|t| t.is_file()) {
+                    private(&entry.path(), 0o600)?;
+                }
+            }
+        }
         Ok(store)
     }
 
@@ -249,5 +300,35 @@ mod tests {
         assert!(matches!(second, Err(HabiError::Busy(_))));
         drop(first);
         assert!(ResourceLock::acquire(&paths, "project-x", Duration::from_millis(10)).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_data_folder_and_database_are_private_to_the_user() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::at(dir.path().join("data"));
+        // A folder and a log from before they were private.
+        std::fs::create_dir_all(paths.logs()).unwrap();
+        std::fs::set_permissions(paths.root.clone(), std::fs::Permissions::from_mode(0o755))
+            .unwrap();
+        std::fs::write(paths.logs().join("habi.log"), "x").unwrap();
+        std::fs::set_permissions(
+            paths.logs().join("habi.log"),
+            std::fs::Permissions::from_mode(0o644),
+        )
+        .unwrap();
+        paths.ensure().unwrap();
+        let store = Store::open(&paths.db()).unwrap();
+        store.set_setting("a", "1").unwrap();
+        for sub in [paths.root.clone(), paths.journal(), paths.logs()] {
+            assert_eq!(mode(&sub), 0o700, "{}", sub.display());
+        }
+        assert_eq!(mode(&paths.logs().join("habi.log")), 0o600);
+        assert_eq!(mode(&paths.db()), 0o600);
+        // Re-opening keeps it that way.
+        Store::open(&paths.db()).unwrap();
+        assert_eq!(mode(&paths.db()), 0o600);
     }
 }

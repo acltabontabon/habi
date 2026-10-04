@@ -349,12 +349,22 @@ pub fn parse_location(input: &str) -> Result<Location> {
     }
     if let Some((scheme, rest)) = s.split_once("://") {
         let scheme = scheme.to_ascii_lowercase();
-        if !["https", "http", "ssh", "git", "file"].contains(&scheme.as_str()) {
+        // Remotes are https or ssh only: `http` and `git` carry nothing
+        // private or authenticated. `file` is a folder, and is handled below.
+        if !["https", "ssh", "file"].contains(&scheme.as_str()) {
             return Err(HabiError::invalid(format!(
                 "`{scheme}` URLs are not supported; use https or ssh"
             )));
         }
         let authority = rest.split('/').next().unwrap_or("");
+        // A host that starts with `-` would be read by ssh as an option
+        // (`-oProxyCommand=…`).
+        let host = authority.rsplit('@').next().unwrap_or("");
+        if scheme != "file" && host.starts_with('-') {
+            return Err(HabiError::invalid(
+                "that location's host name is not accepted",
+            ));
+        }
         if let Some((userinfo, _)) = authority.rsplit_once('@') {
             // A user name is normal for ssh (`git@host`). Over http(s) and git://
             // any userinfo is treated as a credential: tokens are often passed as
@@ -387,6 +397,12 @@ pub fn parse_location(input: &str) -> Result<Location> {
         {
             return Err(HabiError::invalid(
                 "that location's user name is not accepted",
+            ));
+        }
+        // As above: ssh would read `user@-oX:path` as an option.
+        if host.rsplit('@').next().is_some_and(|h| h.starts_with('-')) {
+            return Err(HabiError::invalid(
+                "that location's host name is not accepted",
             ));
         }
         return Ok(Location::Remote(s.to_string()));
@@ -1874,6 +1890,29 @@ mod tests {
             parse_location(&dir.path().to_string_lossy()),
             Ok(Location::LocalDir(_))
         ));
+    }
+
+    #[test]
+    fn remotes_are_https_or_ssh_and_hosts_are_not_options() {
+        for refused in [
+            "http://example.com/x.git",
+            "git://example.com/x.git",
+            "ssh://git@-oProxyCommand=touch%20/tmp/x/y",
+            "ssh://-oProxyCommand=touch/y",
+            "https://-example.com/x.git",
+            "git@-oProxyCommand=touch:path",
+            "-oProxyCommand=x:path",
+        ] {
+            assert!(parse_location(refused).is_err(), "{refused}");
+        }
+        assert!(parse_location("ssh://git@example.com:22/x.git").is_ok());
+        assert!(parse_location("git@github.com:team/skills.git").is_ok());
+        // `file://` is a folder, whatever the letter case, never a remote.
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!("FILE://{}", dir.path().to_string_lossy());
+        if !cfg!(windows) {
+            assert!(matches!(parse_location(&url), Ok(Location::LocalDir(_))));
+        }
     }
 
     #[test]

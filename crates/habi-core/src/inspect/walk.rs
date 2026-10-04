@@ -159,6 +159,16 @@ const SECRET_FILE_PATTERNS: &[&str] = &[
     ".npmrc",
     ".netrc",
     ".pgpass",
+    ".git-credentials",
+    ".dockercfg",
+    "credentials",
+    "credentials.json",
+    "*.tfvars",
+    "*.tfvars.json",
+    "kubeconfig",
+    "kubeconfig.*",
+    "service-account*.json",
+    "service_account*.json",
 ];
 
 /// True if a file name looks like it may hold secrets (never read or shown).
@@ -365,6 +375,36 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn credential_file_names_are_secret_names() {
+        for name in [
+            ".env",
+            ".env.production",
+            "server.pem",
+            "tls.key",
+            "credentials",
+            "credentials.json",
+            ".git-credentials",
+            "prod.tfvars",
+            "prod.auto.tfvars.json",
+            "kubeconfig",
+            "kubeconfig.yaml",
+            "service-account.json",
+            "service-account-prod.json",
+        ] {
+            assert!(is_secret_name(name), "{name}");
+        }
+        for name in [
+            "credentials.md",
+            "README.md",
+            "config.yaml",
+            "keys.md",
+            "env.ts",
+        ] {
+            assert!(!is_secret_name(name), "{name}");
+        }
+    }
 
     #[test]
     fn skips_dependencies_ignored_paths_and_secrets() {

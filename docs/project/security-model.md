@@ -23,7 +23,9 @@ Habi uses the system `git` with:
 `core.hooksPath=<empty dir>`, `core.fsmonitor=false`, `protocol.ext.allow=never`,
 `GIT_ALLOW_PROTOCOL=file:git:http:https:ssh`, submodule recursion off, `diff.external=`
 cleared, `GIT_TERMINAL_PROMPT=0`, no askpass, and repository-redirecting environment
-variables (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, …) removed. Arguments are arrays;
+variables (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, …) removed. A command that has no
+repository of its own (`ls-remote`, a fetch from a URL) runs in the empty directory with
+`GIT_CEILING_DIRECTORIES`, never in the folder Habi was started from. Arguments are arrays;
 URLs and refs are validated (no leading `-`, no `<transport>::` helpers, no embedded
 passwords) and passed after `--`.
 
@@ -38,9 +40,10 @@ push runs the target repository's receive hooks with its own configuration). Hab
 `git fetch` *inside* the target, with Habi's hook-free configuration, to create the
 contribution branch; an existing branch is never overwritten.
 
-Source URLs may not carry credentials: any user information on http(s)/git URLs is rejected
-(tokens are often passed as the user name), and the portable identity written to
-`.habi/lock.json` never contains user information.
+Remote source URLs are `https` or `ssh` (`http://` and `git://` are refused, and so is a host
+name that starts with `-`). Source URLs may not carry credentials: any user information on an
+https URL is rejected (tokens are often passed as the user name), and the portable identity
+written to `.habi/lock.json` never contains user information.
 
 A contribution revision is built on the commit Habi last pushed. Before preparing it, Habi
 fetches the contribution branch; if it moved (someone else pushed), Habi stops unless the
@@ -149,7 +152,10 @@ and it is what makes authentication work without Habi handling secrets.
 - Errors, logs and diagnostic bundles pass through `redact` (credential URLs, common token
   shapes, private keys, `key=value` secrets). Logs never include file bodies or environment
   values. Diagnostic bundles are previewed before saving and omit project paths and
-  repository paths (host only).
+  repository paths (host only); the log excerpt has the home folder, project folders and
+  library folders replaced with placeholders.
+- On macOS and Linux Habi's data folder is `0700` and its database and logs `0600`: the journal
+  keeps copies of project files Habi overwrote.
 - Contributions are scanned for high-signal secrets (private keys, cloud/API tokens) and
   blocked if any are found. Only the files shown in the preview leave the machine, and only
   on explicit export or publish.

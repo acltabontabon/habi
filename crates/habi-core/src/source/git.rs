@@ -219,6 +219,14 @@ impl Git {
         }
         all.extend(args.iter().map(|s| s.to_string()));
         let mut spec = Spec::new(&self.program, all);
+        if git_dir.is_none() {
+            // Without a repository of its own, Git would look for one from
+            // wherever Habi was started and read that repository's
+            // `.git/config` (`credential.helper`, `core.sshCommand`,
+            // `url.insteadOf`). Run in the empty directory, and never above it.
+            // The person's global Git and SSH configuration is unaffected.
+            spec.cwd = Some(self.hooks_dir.clone());
+        }
         spec.env_remove = CLEARED_ENV.iter().map(|s| s.to_string()).collect();
         spec.env = vec![
             ("GIT_TERMINAL_PROMPT".into(), "0".into()),
@@ -234,6 +242,14 @@ impl Git {
             // not quietly download them one by one.
             ("GIT_NO_LAZY_FETCH".into(), "1".into()),
         ];
+        if git_dir.is_none()
+            && let Some(parent) = self.hooks_dir.parent()
+        {
+            spec.env.push((
+                "GIT_CEILING_DIRECTORIES".into(),
+                parent.to_string_lossy().into_owned(),
+            ));
+        }
         if self.batch_ssh {
             spec.env.push(("GIT_SSH_COMMAND".into(), BATCH_SSH.into()));
         }
@@ -882,6 +898,36 @@ mod tests {
             ..git
         };
         assert_eq!(ssh(&theirs), None);
+    }
+
+    #[test]
+    fn repository_less_commands_run_in_the_empty_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        // The data directory sits inside a repository whose configuration
+        // must not be read.
+        let cancel = CancelToken::new();
+        let git = Git::locate(&tmp.path().join("data").join("empty")).unwrap();
+        git.run(
+            None,
+            &["init", "--quiet", &tmp.path().to_string_lossy()],
+            Duration::from_secs(30),
+            &cancel,
+        )
+        .unwrap();
+        let spec = git.spec(None, &["ls-remote"]);
+        assert_eq!(spec.cwd.as_deref(), Some(git.hooks_dir.as_path()));
+        assert!(spec.env.iter().any(|(k, _)| k == "GIT_CEILING_DIRECTORIES"));
+        assert!(git.spec(Some(tmp.path()), &["fetch"]).cwd.is_none());
+        let found = git.run(
+            None,
+            &["rev-parse", "--git-dir"],
+            Duration::from_secs(30),
+            &cancel,
+        );
+        assert!(
+            found.is_err(),
+            "found a repository above the empty directory"
+        );
     }
 
     #[test]

@@ -165,10 +165,34 @@ pub async fn cancel_job(state: State<'_, AppState>, job_id: String) -> CmdResult
 /// when a report is made.
 #[tauri::command]
 pub async fn log_ui_error(message: String, detail: Option<String>) -> CmdResult<()> {
-    let message: String = message.chars().take(2_000).collect();
-    let detail: String = detail.unwrap_or_default().chars().take(8_000).collect();
+    let message = log_field(&message, 2_000);
+    let detail = log_field(&detail.unwrap_or_default(), 4_000);
     tracing::error!(%message, %detail, "ui error");
     Ok(())
+}
+
+/// Text from the webview as one log line: line breaks and other control
+/// characters (which could forge log entries) become spaces, and the length
+/// is capped.
+fn log_field(text: &str, max_chars: usize) -> String {
+    text.chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .take(max_chars)
+        .collect()
+}
+
+#[cfg(test)]
+mod log_field_tests {
+    use super::log_field;
+
+    #[test]
+    fn webview_text_stays_on_one_capped_line() {
+        let out = log_field("a\nINFO fake entry\r\n\u{1b}[31mred\u{0}", 100);
+        assert!(!out.chars().any(char::is_control), "{out:?}");
+        assert!(out.starts_with("a INFO fake entry"));
+        assert_eq!(log_field(&"x".repeat(10_000), 4_000).chars().count(), 4_000);
+        assert_eq!(log_field("héllo", 2), "hé");
+    }
 }
 
 // ----- projects ------------------------------------------------------------------

@@ -63,6 +63,36 @@ pub fn parse_repo(json: &str, fetched_at: &str) -> Option<RepoFacts> {
     })
 }
 
+/// The arguments for one request to GitHub's API.
+fn curl_args(owner: &str, repo: &str) -> Vec<String> {
+    vec![
+        // Not the person's `~/.curlrc`: it could add headers (a token for
+        // another site), a proxy or an output file to this request. Curl
+        // only honours this as the very first argument.
+        "-q".into(),
+        "--silent".into(),
+        "--fail".into(),
+        "--location".into(),
+        // Both the request and any redirect stay on https, a few hops at most,
+        // and an answer larger than the reply Habi reads is not fetched.
+        "--proto".into(),
+        "=https".into(),
+        "--proto-redir".into(),
+        "=https".into(),
+        "--max-redirs".into(),
+        "3".into(),
+        "--max-filesize".into(),
+        "524288".into(),
+        "--max-time".into(),
+        "10".into(),
+        "--header".into(),
+        "Accept: application/vnd.github+json".into(),
+        "--header".into(),
+        "User-Agent: habi".into(),
+        format!("https://api.github.com/repos/{owner}/{repo}"),
+    ]
+}
+
 /// Asks GitHub about `owner/repo`. `None` on any failure (offline, rate
 /// limited, not found, no `curl`): the caller shows nothing rather than an error.
 pub fn fetch_repo(owner: &str, repo: &str, cancel: &CancelToken) -> Option<String> {
@@ -78,27 +108,7 @@ pub fn fetch_repo(owner: &str, repo: &str, cancel: &CancelToken) -> Option<Strin
         return None;
     }
     let curl = which::which("curl").ok()?;
-    let mut spec = Spec::new(
-        curl,
-        vec![
-            // Not the person's `~/.curlrc`: it could add headers (a token for
-            // another site), a proxy or an output file to this request. Curl
-            // only honours this as the very first argument.
-            "-q".into(),
-            "--silent".into(),
-            "--fail".into(),
-            "--location".into(),
-            "--max-time".into(),
-            "10".into(),
-            "--proto".into(),
-            "=https".into(),
-            "--header".into(),
-            "Accept: application/vnd.github+json".into(),
-            "--header".into(),
-            "User-Agent: habi".into(),
-            format!("https://api.github.com/repos/{owner}/{repo}"),
-        ],
-    );
+    let mut spec = Spec::new(curl, curl_args(owner, repo));
     spec.timeout = Duration::from_secs(15);
     spec.stdout_limit = 512 * 1024;
     let out = process::run(spec, cancel).ok()?;
@@ -135,6 +145,21 @@ mod tests {
         assert!(parse_repo(r#"{"message":"Not Found"}"#, "t").is_none());
         assert!(parse_repo("not json", "t").is_none());
         assert!(parse_repo("", "t").is_none());
+    }
+
+    #[test]
+    fn redirects_stay_on_https_and_the_reply_is_bounded() {
+        let args = curl_args("o", "r");
+        let value = |flag: &str| {
+            let at = args.iter().position(|a| a == flag).unwrap();
+            args[at + 1].as_str()
+        };
+        assert_eq!(args[0], "-q");
+        assert_eq!(value("--proto"), "=https");
+        assert_eq!(value("--proto-redir"), "=https");
+        assert_eq!(value("--max-redirs"), "3");
+        assert_eq!(value("--max-filesize"), (512 * 1024).to_string());
+        assert_eq!(args.last().unwrap(), "https://api.github.com/repos/o/r");
     }
 
     #[test]

@@ -355,6 +355,51 @@ fn instruction_files_are_never_added_to_this_machine() {
     assert!(!env.home.join("AGENTS.md").exists());
 }
 
+#[test]
+fn a_machine_lock_with_instruction_or_mcp_entries_is_refused() {
+    let env = setup();
+    install(&env, &[ClientId::ClaudeCode]);
+    let lock_path = env.home.join(".habi/lock.json");
+    let original = std::fs::read_to_string(&lock_path).unwrap();
+    let key = {
+        let lock: serde_json::Value = serde_json::from_str(&original).unwrap();
+        let item = &lock["items"][0];
+        format!(
+            "{}#{}",
+            item["source"]["identity"].as_str().unwrap(),
+            item["id"].as_str().unwrap()
+        )
+    };
+    let tampered: [fn(&mut serde_json::Value); 3] = [
+        |v| {
+            v["items"][0]["sections"] = serde_json::json!([
+                { "file": "AGENTS.md", "marker": "m", "digest": "d" }
+            ]);
+        },
+        |v| {
+            v["items"][0]["mcp"] = serde_json::json!([
+                { "client": "claude-code", "file": ".mcp.json", "server": "s", "digest": "d" }
+            ]);
+        },
+        |v| v["items"][0]["kind"] = serde_json::json!("instructions"),
+    ];
+    for edit in tampered {
+        let mut lock: serde_json::Value = serde_json::from_str(&original).unwrap();
+        edit(&mut lock);
+        std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+        let removed = env
+            .habi
+            .plan_remove_machine(std::slice::from_ref(&key), &Decisions::new());
+        let message = removed.map(|_| String::new()).unwrap_err().to_string();
+        assert!(message.contains("never installs"), "{message}");
+        let updated = env
+            .habi
+            .plan_update_machine(std::slice::from_ref(&key), &Decisions::new());
+        let message = updated.map(|_| String::new()).unwrap_err().to_string();
+        assert!(message.contains("never installs"), "{message}");
+    }
+}
+
 #[cfg(unix)]
 mod links {
     use super::*;

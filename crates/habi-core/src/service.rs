@@ -224,6 +224,31 @@ pub enum ImportFrom {
     Machine { id: String },
 }
 
+/// A library's side of an `Upstream`: the same for all of its items.
+struct UpstreamBase {
+    url: Option<String>,
+    license: Option<String>,
+    publisher: Option<String>,
+    catalog_id: Option<String>,
+}
+
+impl UpstreamBase {
+    fn upstream(&self, source: &Source, item: &crate::library::model::LibraryItem) -> Upstream {
+        let path = match &source.subdir {
+            Some(sub) if !item.path.is_empty() => format!("{sub}/{}", item.path),
+            Some(sub) => sub.clone(),
+            None => item.path.clone(),
+        };
+        Upstream {
+            url: self.url.clone(),
+            path,
+            license: item.license.clone().or_else(|| self.license.clone()),
+            publisher: self.publisher.clone(),
+            catalog_id: self.catalog_id.clone(),
+        }
+    }
+}
+
 /// A repository fetched to copy skills from, without connecting it.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -1173,6 +1198,7 @@ impl Habi {
             .iter()
             .map(|(s, _)| crate::catalog::hints_for_source(s))
             .collect();
+        let runs = checks::runs_by_item(&self.store, id)?;
         for (((source, index), identity), hints) in
             libraries.iter().zip(&identities).zip(&hint_sets)
         {
@@ -1182,7 +1208,7 @@ impl Habi {
                     source_name: &source.name,
                     source_identity: identity,
                     snapshot: &index.snapshot,
-                    runs: checks::runs(&self.store, id, &item.key)?,
+                    runs: runs.get(&item.key).cloned().unwrap_or_default(),
                     hint: hints.as_ref().and_then(|h| h.find(&item.path)),
                 });
             }
@@ -1621,28 +1647,29 @@ impl Habi {
     /// Where an item of a library lives and who publishes it, recorded with
     /// a copy so the copy can be traced back to it.
     fn upstream_of(&self, source: &Source, item: &crate::library::model::LibraryItem) -> Upstream {
+        self.upstream_base(source).upstream(source, item)
+    }
+
+    /// What `upstream_of` needs from a library as a whole. Building the
+    /// catalog to find it is the costly part, so a loop over a library's items
+    /// does it once.
+    fn upstream_base(&self, source: &Source) -> UpstreamBase {
         let url = (source.kind == SourceKind::Git
             && !crate::source::is_local_location(&source.location))
         .then(|| crate::source::remote_identity(&source.location))
         .filter(|u| u.starts_with("https://") || u.starts_with("http://"));
-        let path = match &source.subdir {
-            Some(sub) if !item.path.is_empty() => format!("{sub}/{}", item.path),
-            Some(sub) => sub.clone(),
-            None => item.path.clone(),
-        };
         let entry = self.catalog().entries().ok().and_then(|all| {
             all.into_iter()
                 .find(|e| e.source_id.as_deref() == Some(source.id.as_str()))
         });
-        let library_license = entry
+        let license = entry
             .as_ref()
             .and_then(|e| e.contents.as_ref())
             .and_then(|c| c.license.as_ref())
             .map(|l| l.spdx.clone().unwrap_or_else(|| format!("see {}", l.file)));
-        Upstream {
+        UpstreamBase {
             url,
-            path,
-            license: item.license.clone().or(library_license),
+            license,
             publisher: entry.as_ref().map(|e| e.publisher.name.clone()),
             catalog_id: source.catalog_id.clone().or(entry.map(|e| e.id)),
         }
@@ -1760,6 +1787,7 @@ impl Habi {
         {
             {
                 let index = self.sources.index(&source.id)?;
+                let upstream = self.upstream_base(source);
                 let mut packages = Vec::new();
                 for item in index
                     .items
@@ -1789,7 +1817,7 @@ impl Habi {
                             source_identity: portable_identity(source),
                             item_id: item.id.clone(),
                             snapshot: index.snapshot.clone(),
-                            upstream: Some(self.upstream_of(source, item)),
+                            upstream: Some(upstream.upstream(source, item)),
                         },
                         title: Some(item.title.clone()),
                     });
