@@ -95,20 +95,19 @@ into `AGENTS.md`, so everything keeps working without Habi. Git uses your existi
 
 <br>
 
-## Status and platforms
+## Install
 
-**0.1.0.** Installers for macOS and Windows are on the
-[Releases page](https://github.com/acltabontabon/habi/releases/latest). They are not signed by Apple or
-Microsoft, so the first launch asks you to confirm once
-([how](docs/guide/getting-started.md#installing)); updates are signed with Habi's own key. You
-can also build it yourself ([CONTRIBUTING.md](CONTRIBUTING.md#set-up)). The known limitations are in the
-[security model](docs/project/security-model.md#known-limitations).
+```sh
+brew install --cask acltabontabon/tap/habi
+```
 
-| Platform | |
-|---|---|
-| macOS 11 or later | Supported, Apple Silicon and Intel (one universal build) |
-| Windows | Supported, 64-bit |
-| Linux | Not supported |
+Or download the installer from the [Releases page](https://github.com/acltabontabon/habi/releases/latest):
+macOS 11 or later (Apple Silicon and Intel) or Windows (64-bit). Linux is not supported.
+
+The installers are not signed by Apple or Microsoft, so the first launch asks you to confirm once
+([how](docs/guide/getting-started.md#installing)); updates after that are signed with Habi's own
+key. You can also build it yourself ([CONTRIBUTING.md](CONTRIBUTING.md#set-up)). The known
+limitations are in the [security model](docs/project/security-model.md#known-limitations).
 
 ## Documentation
 
