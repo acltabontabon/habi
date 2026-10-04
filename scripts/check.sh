@@ -31,6 +31,7 @@ echo "== Frontend build";   pnpm build
 cd ../..
 echo "== Third-party notices are up to date"; node scripts/third-party-notices.mjs --check
 echo "== Documentation links";                node scripts/check-links.mjs
+echo "== Script tests";                       node --test scripts/*.test.mjs
 
 cd website
 echo "== Website install"; pnpm install --frozen-lockfile

@@ -42,6 +42,23 @@ const INSTALLERS = [
   { match: /\.msi$/, system: "Windows", detail: "64-bit · MSI, for managed installs", note: "" },
 ];
 
+/**
+ * The changelog is wrapped by hand for the editor; a release page turns every line break into a
+ * hard one, so continuation lines are joined, and bullets are spaced apart to breathe.
+ */
+export function reflow(markdown) {
+  const out = [];
+  for (const line of markdown.split("\n")) {
+    const last = out.at(-1);
+    if (/^ {2,}\S/.test(line) && last?.trim() && !/^\s*[-*] /.test(line)) out[out.length - 1] = `${last} ${line.trim()}`;
+    else {
+      if (/^[-*] /.test(line) && /^[-*] /.test(last ?? "")) out.push("");
+      out.push(line);
+    }
+  }
+  return out.join("\n");
+}
+
 const esc = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 /**
@@ -91,21 +108,17 @@ export function buildReleaseNotes({ version, date, repo, notes, files, previous,
 
 # Habi ${version}
 
-${lede}<br>
-No account, no telemetry, no model calls. Your repository is read, never run.
+${lede}<br>No account, no telemetry, no model calls. Your repository is read, never run.
 
-${badge("macOS", "11+")}
-${badge("Windows", "64-bit")}
-${badge("agents", "7 tools")}
-${badge("license", "Apache-2.0")}
+${badge("macOS", "11+")} ${badge("Windows", "64-bit")} ${badge("agents", "7 tools")} ${badge("license", "Apache-2.0")}
 
-<br>
+&nbsp;
 
-<a href="${SITE}#demo"><img src="${raw("demo.gif")}" alt="Habi in a minute: skills stuck on one laptop, then Habi shows what fits a repository and why, installs for seven agents, and sends fixes back as pull requests." width="86%"></a>
+<a href="${SITE}#demo"><img src="${raw("demo.gif")}" alt="The Habi film: skills stuck on one laptop, then Habi shows what fits a repository and why, installs for seven agents, and sends fixes back as pull requests." width="86%"></a>
 
 <sub>The whole film, with sound, is <a href="${SITE}#demo">on the site</a>.</sub>
 
-<br>
+&nbsp;
 
 ## Download
 
@@ -116,11 +129,13 @@ ${rows.join("\n")}
 
 <sub>Not signed by Apple or Microsoft, so the first launch asks you to confirm once; <a href="#first-launch">how</a>. Updates after that are signed with Habi's own key.</sub>
 
+&nbsp;
+
 </div>
 
 ## What's new in ${version}
 
-${notes}
+${reflow(notes)}
 
 <br>
 
@@ -189,12 +204,13 @@ ${
 
 <div align="center">
 
-<a href="${SITE}docs/">Documentation</a> ·
-<a href="${SITE}docs/security-model/">Security model</a> ·
-<a href="https://github.com/${repo}/blob/${tag}/CHANGELOG.md">Changelog</a> ·
-<a href="https://github.com/${repo}/issues/new/choose">Report an issue</a>${
-    previous ? ` ·\n<a href="https://github.com/${repo}/compare/v${previous}...${tag}">All changes since ${previous}</a>` : ""
-  }
+${[
+    `<a href="${SITE}docs/">Documentation</a>`,
+    `<a href="${SITE}docs/security-model/">Security model</a>`,
+    `<a href="https://github.com/${repo}/blob/${tag}/CHANGELOG.md">Changelog</a>`,
+    `<a href="https://github.com/${repo}/issues/new/choose">Report an issue</a>`,
+    ...(previous ? [`<a href="https://github.com/${repo}/compare/v${previous}...${tag}">All changes since ${previous}</a>`] : []),
+  ].join(" · ")}
 
 <sub>Habi ${version}, released ${date}. Made by <a href="https://github.com/acltabontabon">Alvin Cris Tabontabon</a> in their own time. If it saves you some, <a href="https://ko-fi.com/aclt_attic">buy them a coffee</a>.</sub>
 

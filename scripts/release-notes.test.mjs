@@ -59,3 +59,17 @@ test("every picture on the page exists in docs/media", () => {
     assert.ok(existsSync(media + file), `docs/media/${file} is missing`);
   }
 });
+
+test("the changelog is joined into long lines, with a gap between bullets", async () => {
+  const { reflow } = await import("./release-notes.mjs");
+  assert.equal(
+    reflow("### Added\n\n- **One.** First line\n  and its wrap.\n- **Two.** Second."),
+    "### Added\n\n- **One.** First line and its wrap.\n\n- **Two.** Second.",
+  );
+});
+
+test("the links at the foot are one line, which a release page would otherwise break", () => {
+  const body = buildReleaseNotes(input);
+  const foot = body.split("\n").find((l) => l.includes("Documentation</a>"));
+  assert.match(foot, /Report an issue<\/a> · .*All changes since 0\.1\.0/);
+});
