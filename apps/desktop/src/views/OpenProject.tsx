@@ -134,6 +134,7 @@ export function ProjectChooser({
   const repos = places.data?.found ?? [];
   const active = repos.filter((e) => (e.git?.weeks ?? []).slice(-4).some((n) => n > 0)).length;
   const woven = entries.some((e) => e.git);
+  const hasRows = !error && !loading && entries.length > 0;
   // Stitch lengths compare across the list: the busiest week shown is the longest.
   const busiest = Math.max(1, ...entries.flatMap((e) => e.git?.weeks ?? []));
 
@@ -218,20 +219,13 @@ export function ProjectChooser({
                   onKeyDown={onKeyDown}
                   placeholder="habi, rust, github.com/acme…"
                   aria-label="Narrow by name, stack, branch or remote"
-                  aria-controls="chooser-list"
+                  aria-controls={hasRows ? "chooser-list" : undefined}
                   aria-activedescendant={chosen ? rowId(chosen) : undefined}
                   spellCheck={false}
                   autoComplete="off"
                 />
               </label>
-              <div
-                ref={list}
-                id="chooser-list"
-                key={railKey ?? "loading"}
-                className="chooser-list"
-                role="listbox"
-                aria-label="Folders"
-              >
+              <div ref={list} key={railKey ?? "loading"} className="chooser-list">
                 {error ? (
                   <div className="chooser-state">
                     <ErrorNotice error={error} title="This folder could not be read" />
@@ -254,9 +248,9 @@ export function ProjectChooser({
                     </div>
                   )
                 )}
-                {error || loading || entries.length === 0
-                  ? null
-                  : entries.map((e, i) => (
+                {hasRows ? (
+                  <div id="chooser-list" role="listbox" aria-label="Folders">
+                    {entries.map((e, i) => (
                       <Row
                         key={e.path}
                         entry={e}
@@ -270,6 +264,8 @@ export function ProjectChooser({
                         onInto={() => enter(e)}
                       />
                     ))}
+                  </div>
+                ) : null}
                 {listing.data?.truncated && !found ? (
                   <p className="chooser-more">first {all.length} folders</p>
                 ) : null}

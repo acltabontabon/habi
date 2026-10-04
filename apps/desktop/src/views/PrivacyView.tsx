@@ -29,6 +29,10 @@ const CROSSES: [from: Fact, to: Fact][] = [
     ["That library’s repository", "A Git fetch"],
   ],
   [
+    ["Checking a library for updates", "When you open it, and on your schedule"],
+    ["That library’s repository", "A Git ls-remote; nothing is downloaded"],
+  ],
+  [
     ["Opening a catalog library", "One you have not connected yet"],
     ["GitHub’s public API", "Stars and activity. Anonymous, kept for a day"],
   ],

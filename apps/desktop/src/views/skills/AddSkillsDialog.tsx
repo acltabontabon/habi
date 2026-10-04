@@ -222,7 +222,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
     try {
       const copy = await api.openGitCopy(location, job);
       if (!mounted.current) {
-        void api.forgetGitCopy(copy.sourceId);
+        void api.forgetGitCopy(copy.sourceId).catch(() => {});
         return;
       }
       // Back, then another repository: the one fetched before is no longer needed.

@@ -12,6 +12,7 @@ import { api } from "../lib/api";
 import { type Dye, useDyes } from "../lib/dye";
 import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
 import { lastProject, useNav } from "../lib/nav";
+import { modShortcut } from "../lib/platform";
 import {
   keys,
   useAppInfo,
@@ -105,7 +106,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
       <button type="button" className="palette-trigger" onClick={onOpenPalette}>
         <Icon name="search" />
         <span>Search and commands</span>
-        <Kbd>⌘K</Kbd>
+        <Kbd>{modShortcut("K")}</Kbd>
       </button>
 
       <div className="sidebar-group">
@@ -116,7 +117,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               type="button"
               className="icon-btn sidebar-reveal"
               aria-label="Open a project"
-              title="Open a project (⌘O)"
+              title={`Open a project (${modShortcut("O")})`}
               onClick={() => void openProject()}
             >
               <Icon name="plus" />
@@ -269,7 +270,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           className={`sidebar-item${route.name === "settings" ? " is-active" : ""}`}
           aria-current={route.name === "settings" ? "page" : undefined}
           onClick={() => navigate({ name: "settings" })}
-          title="Settings (⌘,)"
+          title={`Settings (${modShortcut(",")})`}
         >
           <Icon name="settings" />
           <span className="sidebar-item-text">Settings</span>

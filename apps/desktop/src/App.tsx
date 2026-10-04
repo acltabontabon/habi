@@ -8,7 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loading } from "./components/lazy";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { Tooltips } from "./components/Tooltips";
-import { ErrorNotice, Working } from "./components/ui";
+import { Button, ErrorNotice, Working } from "./components/ui";
 import { type Actions, ActionsContext, type NewSkillContext } from "./lib/actions";
 import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
@@ -71,6 +71,9 @@ function Startup() {
     return (
       <div className="startup">
         <ErrorNotice error={info.error} title="Habi could not start" />
+        <Button onClick={() => void info.refetch()} disabled={info.isFetching}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -84,6 +87,9 @@ function Startup() {
         <p className="muted">
           Data folder: <code>{info.data.dataDir || "unknown"}</code>. Nothing in your projects was changed.
         </p>
+        <Button onClick={() => void info.refetch()} disabled={info.isFetching}>
+          Retry
+        </Button>
       </div>
     );
   }

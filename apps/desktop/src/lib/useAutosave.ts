@@ -20,10 +20,15 @@ type Registered = {
   pending: () => boolean;
 };
 const registered = new Set<Registered>();
+/** The last write of an editor that has since closed: still counted until it settles. */
+const finalWrites = new Set<Promise<boolean>>();
 
 /** Writes every open editor's pending edits. Resolves true when all of them are saved. */
 export async function flushAutosaves(): Promise<boolean> {
-  const results = await Promise.all([...registered].map((r) => r.flush().catch(() => false)));
+  const results = await Promise.all([
+    ...[...registered].map((r) => r.flush().catch(() => false)),
+    ...finalWrites,
+  ]);
   return results.every(Boolean);
 }
 
@@ -34,7 +39,7 @@ export function hasUnsavedEdits(): boolean {
 
 /** Whether an open editor holds edits that are not written yet (but could still be). */
 export function hasPendingEdits(): boolean {
-  return [...registered].some((r) => r.pending());
+  return finalWrites.size > 0 || [...registered].some((r) => r.pending());
 }
 
 export type SaveState = "clean" | "pending" | "saving" | "saved" | "error" | "conflict";
@@ -84,9 +89,9 @@ export function useAutosave<T>(options: {
     }
     // Turned off, it writes nothing, whoever asks: a blur, leaving the screen, closing the window.
     if (!enabledRef.current) return true;
-    if (inFlight.current) {
-      await inFlight.current;
-    }
+    // A loop, not a single wait: of several callers woken together, only the first may write; the
+    // rest must see its write in flight (and then its saved key) rather than save the same snapshot again.
+    while (inFlight.current) await inFlight.current;
     if (blocked.current) return false;
     const snapshot = latest.current;
     const key = keyRef.current(snapshot);
@@ -118,9 +123,10 @@ export function useAutosave<T>(options: {
         return false;
       }
     })();
-    inFlight.current = attempt.then(() => undefined);
+    const mine = attempt.then(() => undefined);
+    inFlight.current = mine;
     const ok = await attempt;
-    inFlight.current = null;
+    if (inFlight.current === mine) inFlight.current = null;
     // Edits made during the write are saved next.
     if (alive.current && !blocked.current && keyRef.current(latest.current) !== savedKey.current) {
       if (timer.current === null) timer.current = window.setTimeout(() => void run(), 250);
@@ -153,7 +159,10 @@ export function useAutosave<T>(options: {
       window.removeEventListener("beforeunload", onHide);
       window.removeEventListener("blur", onHide);
       registered.delete(entry);
-      void run();
+      // Registered until it settles, so closing the window waits for it (see flushAutosaves).
+      const final = run().catch(() => false);
+      finalWrites.add(final);
+      void final.finally(() => finalWrites.delete(final));
       alive.current = false;
     };
   }, [run]);

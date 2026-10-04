@@ -81,13 +81,23 @@ export const Markdown = memo(function Markdown({
         const url = href ?? "";
         if (url.startsWith("https://")) {
           return (
+            // No href: a real one lets a middle click, ⌘-click or "Open Link" navigate Habi's own window.
             <a
-              href={url}
+              role="link"
+              tabIndex={0}
               title={`Opens ${url} in your browser`}
+              // biome-ignore lint/a11y/useValidAnchor: deliberately no href, so the webview has nothing to navigate to.
               onClick={(event) => {
                 event.preventDefault();
                 external.current(url);
               }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                external.current(url);
+              }}
+              onAuxClick={(event) => event.preventDefault()}
+              onContextMenu={(event) => event.preventDefault()}
             >
               {children}
             </a>

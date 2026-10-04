@@ -38,6 +38,7 @@ import {
   signalClause,
 } from "../../../lib/materials";
 import { useNav } from "../../../lib/nav";
+import { modShortcut } from "../../../lib/platform";
 import {
   invalidateSkills,
   keys,
@@ -72,8 +73,9 @@ type Sheet = "provenance" | "test";
 
 const DESCRIPTION_LIMIT = 1024;
 
+// The side sheet is a dialog too, but the Studio's own keys (Escape included) still reach it.
 const otherDialogOpen = () =>
-  document.querySelector('[role="dialog"]:not(.sk-pop), [role="alertdialog"]') !== null;
+  document.querySelector('[role="dialog"]:not(.sk-pop):not(.sk-sheet), [role="alertdialog"]') !== null;
 const isTextEntry = (t: EventTarget | null) =>
   t instanceof Element && t.closest("input, textarea, select, [contenteditable='true'], .cm-editor") !== null;
 
@@ -353,8 +355,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
   };
 
   // Keys that belong to the Studio.
-  const keyState = useRef({ go, up, layer, sheet, outline: outline.length });
-  keyState.current = { go, up, layer, sheet, outline: outline.length };
+  const keyState = useRef({ go, up, layer, sheet, closeSheet, outline: outline.length });
+  keyState.current = { go, up, layer, sheet, closeSheet, outline: outline.length };
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.defaultPrevented || otherDialogOpen()) return;
@@ -367,7 +369,11 @@ function Studio({ initial }: { initial: LocalSkill }) {
         e.preventDefault();
         if (k.layer !== "skill") k.go("skill");
         setOutlinePinned((p) => !p);
-      } else if (e.key === "Escape" && !mod && !isTextEntry(e.target) && !k.sheet && k.layer !== "skill") {
+      } else if (e.key === "Escape" && !mod && k.sheet) {
+        // The rest of the Studio is inert while a sheet is open, so wherever focus is, Escape is the sheet's.
+        e.preventDefault();
+        k.closeSheet();
+      } else if (e.key === "Escape" && !mod && !isTextEntry(e.target) && k.layer !== "skill") {
         e.preventDefault();
         k.up();
       }
@@ -505,7 +511,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
       {
         id: "layer-skill",
         label: "Go to the instructions",
-        keys: "⌘1",
+        keys: modShortcut("1"),
         icon: "pencil",
         run: () => commandsRef.current.go("skill"),
       },
@@ -513,7 +519,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
         id: "layer-when",
         label: "When to use",
         keywords: "rules signals suggest applies",
-        keys: "⌘2",
+        keys: modShortcut("2"),
         icon: "thread",
         run: () => commandsRef.current.go("when"),
       },
@@ -521,7 +527,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
         id: "layer-materials",
         label: "Materials",
         keywords: "files scripts examples references assets add script",
-        keys: "⌘3",
+        keys: modShortcut("3"),
         icon: "file",
         run: () => commandsRef.current.go("materials"),
       },
@@ -529,7 +535,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
         id: "outline",
         label: "Open the outline",
         keywords: "headings toc sections jump",
-        keys: "⌘⇧O",
+        keys: modShortcut("⇧O"),
         icon: "outline",
         run: () => {
           commandsRef.current.go("skill");
@@ -653,7 +659,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
       className={`sk is-${layer}${filePath ? " has-file" : ""}${wide ? " is-wide" : ""}${dropping ? " is-dropping" : ""}`}
       data-save={draft.saveState}
     >
-      <header className="sk-bar">
+      <header className="sk-bar" inert={sheet !== null}>
         <div className="sk-where">
           {layer === "skill" ? (
             <BackLink fallback={{ name: "skills" }} fallbackLabel="My skills" compact />
@@ -796,9 +802,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
         </div>
       </header>
 
-      <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} />
+      <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} inert={sheet !== null} />
 
-      <div className="sk-stage" ref={stage}>
+      <div className="sk-stage" ref={stage} inert={sheet !== null}>
         <section className="sk-layer is-skill" hidden={layer !== "skill"} aria-label="The skill">
           <div className="sk-page">
             {!broken ? (
@@ -960,15 +966,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
           <aside
             ref={sheetRef}
             className={`sk-sheet is-${sheet}`}
+            role="dialog"
+            aria-modal="true"
             aria-label={sheetTitle}
-            onKeyDown={(e) => {
-              // Only Escape pressed in the sheet itself: a dialog opened from it
-              // (in a portal, but still a React child) closes on its own.
-              if (e.key !== "Escape" || e.defaultPrevented) return;
-              if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) return;
-              e.stopPropagation();
-              closeSheet();
-            }}
           >
             <header className="sk-sheet-head">
               <h2 className="sk-sheet-title">{sheetTitle}</h2>
@@ -1018,11 +1018,19 @@ function Studio({ initial }: { initial: LocalSkill }) {
   );
 }
 
-function StudioNotices({ draft, onRepair }: { draft: SkillDraft; onRepair: () => void }) {
+function StudioNotices({
+  draft,
+  onRepair,
+  inert,
+}: {
+  draft: SkillDraft;
+  onRepair: () => void;
+  inert: boolean;
+}) {
   const { conflict, actionError, broken, skill } = draft;
   if (!conflict && !actionError && !broken) return null;
   return (
-    <div className="sk-notices">
+    <div className="sk-notices" inert={inert}>
       {conflict ? (
         <Notice
           tone="warn"

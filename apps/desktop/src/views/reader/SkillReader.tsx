@@ -31,6 +31,7 @@ import { api } from "../../lib/api";
 import { plural } from "../../lib/format";
 import { isInspectorShortcut, useInspectorOpen } from "../../lib/inspector";
 import { languageFor } from "../../lib/languages";
+import { modShortcut } from "../../lib/platform";
 import { useItemDetail } from "../../lib/queries";
 import { type PackageShape, packageShape } from "../../lib/skillFacts";
 import { Outline } from "./Outline";
@@ -89,7 +90,7 @@ export function ContentsToggle() {
       data-contents-toggle
       aria-expanded={pkg.open}
       aria-controls="package-inspector"
-      title={`${pkg.open ? "Close" : "Open"} the package (⌘I)`}
+      title={`${pkg.open ? "Close" : "Open"} the package (${modShortcut("I")})`}
       onClick={pkg.toggle}
     >
       Contents

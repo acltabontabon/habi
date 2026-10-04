@@ -11,6 +11,7 @@ import { useToast } from "../components/Toasts";
 import { Button, ErrorNotice, Notice } from "../components/ui";
 import { api } from "../lib/api";
 import { useNav } from "../lib/nav";
+import { modShortcut } from "../lib/platform";
 import { invalidateProjectData, keys, useRecentProjects, useSources } from "../lib/queries";
 
 /** Makes (or makes again) the sample workspace and opens its first project. */
@@ -100,7 +101,9 @@ export function RemoveSampleDialog({
       {error ? (
         <ErrorNotice error={error} title="The sample workspace was not removed" />
       ) : (
-        <p className="muted">You can try it again at any time from the command palette (⌘K).</p>
+        <p className="muted">
+          You can try it again at any time from the command palette ({modShortcut("K")}).
+        </p>
       )}
     </Dialog>
   );

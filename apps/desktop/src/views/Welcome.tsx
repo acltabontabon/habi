@@ -11,6 +11,7 @@ import { useActions } from "../lib/actions";
 import { useDyes } from "../lib/dye";
 import { plural, relativeTime } from "../lib/format";
 import { useNav } from "../lib/nav";
+import { modShortcut } from "../lib/platform";
 import { useAppInfo, useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { Loom, type LoomProject, type LoomSource } from "./Loom";
 import { useCreateSample } from "./SampleWorkspace";
@@ -155,10 +156,10 @@ export function Welcome() {
         </div>
         <p className="home-keys">
           <span>
-            <Kbd>⌘N</Kbd> new skill
+            <Kbd>{modShortcut("N")}</Kbd> new skill
           </span>
           <span>
-            <Kbd>⌘K</Kbd> everything else
+            <Kbd>{modShortcut("K")}</Kbd> everything else
           </span>
         </p>
       </footer>

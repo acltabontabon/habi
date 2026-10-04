@@ -21,6 +21,10 @@
   gap: var(--s4);
 }
 
+.startup > .btn {
+  justify-self: start;
+}
+
 /* ---------- Voice ---------- */
 
 /* The machine voice: labels, kickers and section names in monospace. */
@@ -490,6 +494,9 @@
   border: 1px solid var(--hairline-strong);
   border-radius: 4px;
   color: var(--ink-muted);
+  /* "Ctrl+K" is wider than "⌘K": never wrap or squeeze it. */
+  white-space: nowrap;
+  flex: none;
 }
 
 /* ---------- Notices, empty, working ---------- */
@@ -923,7 +930,8 @@
   font-size: 30px;
   font-weight: 620;
   letter-spacing: -0.028em;
-  overflow-wrap: break-word;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* One line: it takes the width the header has, and ends in an ellipsis (the full text is the tooltip). */
@@ -3818,6 +3826,12 @@ details > summary.change-head::-webkit-details-marker {
   border-left: 3px solid var(--thread);
 }
 
+/* A long unbroken path wraps instead of pushing the dismiss button out. */
+.toast > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .toast.tone-danger {
   border-left-color: var(--danger-ink);
 }
@@ -6157,6 +6171,13 @@ dl.facets,
   border-radius: 50%;
   opacity: 0;
   animation: knot-breathe 2.4s var(--ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .station.is-next .station-knot::after {
+    animation: none;
+    opacity: 0.5;
+  }
 }
 
 .station-title {
