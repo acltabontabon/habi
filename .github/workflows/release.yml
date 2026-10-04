@@ -153,25 +153,18 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      # latest.json is what running copies of Habi ask for; the release notes are this version's
-      # section of CHANGELOG.md, so the release, the update and What's new always agree.
-      - name: Update manifest and release text
+      # latest.json is what running copies of Habi ask for. The release page is laid out by
+      # scripts/release-notes.mjs around this version's section of CHANGELOG.md, so the release,
+      # the update and What's new always agree.
+      - name: Update manifest and release page
         shell: bash
         run: |
           node scripts/updater-manifest.mjs "$GITHUB_REF_NAME" dist "$GITHUB_REPOSITORY"
-          mv dist/release-notes.md "$RUNNER_TEMP/release-notes.md"
-          {
-            cat "$RUNNER_TEMP/release-notes.md"
-            printf '\n---\n\n'
-            printf 'Draft release: check docs/dev/release.md before publishing. Publishing it is what\n'
-            printf 'offers it to people already running Habi (`latest.json`).\n\n'
-            printf 'The installers are not signed by Apple or Microsoft. Opening them the first time:\n'
-            printf 'https://acltabontabon.com/habi/docs/getting-started/#installing\n\n'
-            printf 'Checksums: SHA256SUMS-macos.txt and SHA256SUMS-windows.txt. Verify provenance with\n'
-            printf '`gh attestation verify <file> --repo acltabontabon/habi`.\n'
-          } > "$RUNNER_TEMP/body.md"
+          rm dist/release-notes.md
+          node scripts/release-notes.mjs "$GITHUB_REF_NAME" dist "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/body.md"
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           draft: true
+          name: Habi ${{ github.ref_name }}
           body_path: ${{ runner.temp }}/body.md
           files: dist/*

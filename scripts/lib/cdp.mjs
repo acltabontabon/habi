@@ -169,7 +169,7 @@ export async function openBrowser({ out, width = 1440, height = 900, scale = 2, 
     browser.kill();
     // Chrome may still be writing its profile as it exits.
     await sleep(300);
-    rmSync(profile, { recursive: true, force: true });
+    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 
   mkdirSync(out, { recursive: true });
