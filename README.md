@@ -14,8 +14,6 @@ the improvement back to your team's library as a pull request.
 
 *Watch the whole film, with sound, [on the site](https://acltabontabon.com/habi/#demo).*
 
-![Habi showing which team skills fit a Spring Boot service, and why, down to the file and line](docs/media/project.jpg)
-
 ## What it does
 
 - **Find** skills that fit your repo (no building, no execution)
