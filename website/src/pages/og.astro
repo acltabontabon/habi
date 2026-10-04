@@ -9,16 +9,11 @@ import "@fontsource/ibm-plex-serif/500-italic.css";
 import Mark from "../components/Mark.astro";
 import "../styles/tokens.css";
 
-const warps = [
-  { x: 7, dye: "var(--dye-0)" },
-  { x: 21, dye: "var(--dye-1)" },
-  { x: 36, dye: "var(--ink-soft)" },
-  { x: 52, dye: "var(--dye-4)" },
-  { x: 67, dye: "var(--dye-2)", stitched: true },
-  { x: 81, dye: "var(--dye-3)" },
-  { x: 93, dye: "var(--dye-5)" },
+const lines = [
+  { verb: "Find", rest: " what applies.", dye: "var(--dye-0)" },
+  { verb: "Improve", rest: " what works.", dye: "var(--dye-1)" },
+  { verb: "Share", rest: " what you learn.", dye: "var(--dye-2)" },
 ];
-const lines = ["What one developer", "learns, |every project|", "keeps."];
 ---
 
 <html lang="en" data-theme="light">
@@ -29,39 +24,37 @@ const lines = ["What one developer", "learns, |every project|", "keeps."];
     <style>
       body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: var(--paper); color: var(--ink);
         font-family: "IBM Plex Sans Variable", sans-serif; }
-      .og { position: relative; height: 100%; padding: 64px 72px; box-sizing: border-box; }
-      .brand { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 650; letter-spacing: -0.03em; }
-      .cloth { position: relative; margin-top: 54px; }
-      .w { position: absolute; top: -40px; bottom: -36px; left: var(--x); width: 5px; border-radius: 3px; background: var(--dye); }
-      .w.s { background: repeating-linear-gradient(to bottom, var(--dye) 0 10px, transparent 10px 18px); }
-      h1 { position: relative; z-index: 1; margin: 0; font-size: 96px; font-weight: 650; letter-spacing: -0.055em; line-height: 0.98; }
-      h1 span { position: relative; display: block; }
-      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.035em; color: var(--thread-strong); }
-      .o { position: absolute; top: 6%; bottom: 4%; left: var(--x); width: 5px; border-radius: 3px; background: var(--dye); box-shadow: 0 0 0 7px var(--paper); z-index: 2; }
-      .weft { position: absolute; left: -72px; right: -72px; bottom: -22px; height: 7px; border-radius: 4px; background: var(--thread); box-shadow: 0 0 0 7px var(--paper); z-index: 1; }
-      .meta { position: absolute; left: 72px; bottom: 54px; font-family: "IBM Plex Mono", monospace; font-size: 20px; color: var(--ink-muted); }
+      .og { position: relative; height: 100%; padding: 60px 80px 0; box-sizing: border-box; }
+      .top { display: flex; align-items: center; justify-content: space-between; }
+      .brand { display: flex; align-items: center; gap: 18px; font-size: 44px; font-weight: 650; letter-spacing: -0.035em; }
+      .tag { font-family: "IBM Plex Mono", monospace; font-size: 22px; color: var(--thread-strong); }
+      .cloth { position: relative; margin-top: 44px; padding-left: 52px; }
+      .w { position: absolute; left: 0; width: 9px; border-radius: 5px; background: var(--dye); }
+      h1 { margin: 0; font-size: 90px; font-weight: 650; letter-spacing: -0.05em; line-height: 1.06; }
+      h1 span { display: block; white-space: nowrap; }
+      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.03em; color: var(--dye); }
+      .weft { position: absolute; left: -80px; right: -80px; top: var(--weft); height: 8px; border-radius: 4px; background: var(--thread); box-shadow: 0 0 0 5px var(--paper); }
+      .purpose { position: absolute; left: 80px; right: 80px; bottom: 54px; }
+      .purpose p { margin: 0; font-size: 30px; white-space: nowrap; line-height: 1.3; color: var(--ink-soft); letter-spacing: -0.01em; }
+      .purpose b { color: var(--ink); font-weight: 600; }
     </style>
   </head>
   <body>
     <div class="og">
-      <div class="brand"><Mark size={44} /> Habi</div>
-      <div class="cloth">
-        {warps.map((w) => <i class:list={["w", { s: w.stitched }]} style={`--x:${w.x}%;--dye:${w.dye}`} />)}
+      <div class="top">
+        <div class="brand"><Mark size={56} /> Habi</div>
+        <div class="tag">acltabontabon.com/habi</div>
+      </div>
+      <div class="cloth" style="--weft:318px">
+        {lines.map((l, i) => <i class="w" style={`--dye:${l.dye};top:${i * 95 + 8}px;height:${i === 2 ? 95 + 26 : 95}px`} />)}
         <h1>
-          {
-            lines.map((line, l) => (
-              <span>
-                {line.split("|").map((part, k) => (k % 2 ? <em>{part}</em> : part))}
-                {warps.map((w, i) =>
-                  (i + l) % 2 === 0 ? <i class="o" style={`--x:${w.x}%;--dye:${w.dye}`} /> : null,
-                )}
-              </span>
-            ))
-          }
+          {lines.map((l) => <span style={`--dye:${l.dye}`}><em>{l.verb}</em>{l.rest}</span>)}
         </h1>
         <i class="weft"></i>
       </div>
-      <p class="meta">Skills &amp; instructions for AI coding agents</p>
+      <div class="purpose">
+        <p>The desktop app for the <b>skills &amp; instructions</b> you give AI coding agents.</p>
+      </div>
     </div>
   </body>
 </html>
