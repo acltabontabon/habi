@@ -12,9 +12,9 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <em>Start weaving.</em>
   </h2>
   <div class="start-actions">
-    <a class="btn btn-primary btn-big" href={`${repo}/releases`}>
+    <a class="btn btn-primary btn-big" href={`${repo}/releases/latest`} data-download>
       <Icon name="download" size={16} />
-      Download
+      <span data-download-label>Download</span>
     </a>
     <a class="btn btn-quiet btn-big" href={`${repo}#build-from-source`}>
       <Icon name="terminal" size={14} />

@@ -81,8 +81,10 @@ const warps = [
     </div>
     <div class="hero-actions">
       <span class="hero-download">
-        <a class="btn btn-primary" href={`${repo}/releases`}>Download</a>
-        <span class="hero-platforms mono">macOS · Windows</span>
+        <a class="btn btn-primary" href={`${repo}/releases/latest`} data-download
+          ><span data-download-label>Download</span></a
+        >
+        <span class="hero-platforms mono"><span data-download-version></span> macOS · Windows</span>
       </span>
       <a class="btn btn-quiet" href={`${base}media/demo.mp4`} data-film-open data-at="0"
         ><Icon name="play" size={13} class="btn-play" /> Watch the film</a

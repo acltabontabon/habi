@@ -113,7 +113,7 @@ function answer(cmd: string, args: Args): unknown {
       return null;
     // A folder to choose and look inside, so the connect page can be seen with something in it.
     case "pick_library_folder":
-      return "/Users/aclt/Workspace/ai-standard-packs";
+      return "~/work/ai-standard-packs";
     case "inspect_import":
       return {
         origin: "ai-standard-packs",
