@@ -5,10 +5,9 @@ All notable changes to Habi are listed here. The format follows
 [semantic versioning](https://semver.org/spec/v2.0.0.html); how Habi applies it is in
 [docs/dev/release.md](docs/dev/release.md#versioning).
 
-<!-- The first release. Before tagging, rename "Unreleased" to "0.1.0 - YYYY-MM-DD" and start a
-new empty "Unreleased" above it (docs/dev/release.md, step 1). -->
-
 ## Unreleased
+
+## 0.1.0 - 2026-10-04
 
 ### Added
 
@@ -22,7 +21,9 @@ new empty "Unreleased" above it (docs/dev/release.md, step 1). -->
   when a library has something newer, and updates it only when you say so.
 - **Install for the agents you use, with a preview.** Claude Code, Cursor, Codex, Gemini CLI,
   GitHub Copilot, OpenCode and Junie, preselected from what the project already uses. You see
-  every file first, your own edits survive updates, and any change can be restored.
+  every file first, your own edits survive updates, and any change can be restored. Team
+  instructions go into a managed section of `AGENTS.md`, and MCP servers a skill suggests are
+  added only if you opt in, with secrets by reference and never written out.
 - **Skills for every project on this machine.** Add a skill to your own skill folders instead
   of one project, and update or remove it later. Skills already in those folders are listed,
   with a way to copy them into My skills or a project.
@@ -37,9 +38,22 @@ new empty "Unreleased" above it (docs/dev/release.md, step 1). -->
   libraries are marked as not reviewed by your team, and anything that downloads code or
   touches credentials is pointed out. Habi never runs a skill's scripts. A Privacy and security
   page lists everything that stays on your machine and the few requests that do not.
+- **Run a check, after reading it.** A skill's checks show the exact command and what it
+  reaches for, and run only when you press *Run this command*. Habi does not sandbox them, and
+  says so.
+- **Answer what Habi cannot tell.** When the files do not settle a question, such as whether a
+  project uses something, you answer it for that project. Your answer is labeled as yours, listed
+  in the project's settings, and can be undone.
+- **Put things right.** History lists what Habi changed and restores any of it, and a check for
+  interrupted operations finishes or undoes them. Settings can free up space and preview a
+  redacted troubleshooting report, which is saved only if you save it.
+- **Everything from the keyboard.** The command palette (⌘K on a Mac, Ctrl+K on Windows) reaches
+  every screen and action.
 - **Updates you choose.** Habi checks for a newer version, shows what changed in *What's new*,
   and installs it only when you press Update. Updates are signed, and the check can be turned
   off in Settings.
+- **For macOS 11 or later and Windows.** One universal build covers Apple Silicon and Intel
+  Macs, and the app follows your system's light or dark setting.
 - **A welcome that says what Habi is for**, under a headline that changes each time, and
   checks the one thing Habi needs: Git. The GitHub and GitLab command-line tools, for pull and
   merge requests, are optional; Settings shows whether each is installed and how to add it.
