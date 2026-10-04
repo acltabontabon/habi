@@ -254,7 +254,7 @@ fn signal_warnings(
     {
         let name = path
             .strip_prefix(root)
-            .map(display_path)
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
             .unwrap_or_else(|_| program.to_string());
         for s in signals::scan_code(&name, &text) {
             if s.severity >= SignalSeverity::Caution {
