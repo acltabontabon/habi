@@ -1,4 +1,5 @@
 ---
+import Icon from "./Icon.astro";
 import Mark from "./Mark.astro";
 
 interface Props {
@@ -28,3 +29,41 @@ const repo = "https://github.com/acltabontabon/habi";
     </nav>
   </div>
 </header>
+
+<!--
+  Download: a small chooser, not a button that shouts. The header's link still goes
+  to the release page without scripts; with them it opens this, with the system the
+  visitor is on marked, and the real installers (scripts/download.ts).
+-->
+<dialog class="get" data-get aria-labelledby="get-title">
+  <button class="get-close" type="button" data-get-close aria-label="Close">
+    <Icon name="close" size={16} />
+  </button>
+
+  <p class="get-kicker mono">Download <span data-get-version></span></p>
+  <h2 id="get-title" class="get-title">Where will you <em>weave?</em></h2>
+
+  <div class="get-grid">
+    <a class="get-tile" href={`${repo}/releases/latest`} data-get-os="macOS" style="--i:0">
+      <span class="get-flag mono">your system</span>
+      <span class="get-os">macOS</span>
+      <span class="get-meta mono">Apple silicon &amp; Intel</span>
+      <span class="get-file mono" data-get-file>.dmg</span>
+    </a>
+    <a class="get-tile" href={`${repo}/releases/latest`} data-get-os="Windows" style="--i:1">
+      <span class="get-flag mono">your system</span>
+      <span class="get-os">Windows</span>
+      <span class="get-meta mono">10 &amp; 11, 64-bit</span>
+      <span class="get-file mono" data-get-file>.exe</span>
+    </a>
+  </div>
+
+  <p class="get-note">
+    Free and open source. Not signed, so the first launch asks once:{" "}
+    <a href={`${base}docs/getting-started/#installing`}>here is how</a>.
+  </p>
+</dialog>
+
+<script>
+  import "../scripts/download";
+</script>

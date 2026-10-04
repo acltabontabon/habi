@@ -67,6 +67,14 @@ percent positions read off the screenshots. The captions are on the stage, not t
 With reduced motion, or without scripts, none of it runs and the six moves are a plain list, which is also
 what a screen reader reads (the stage is drawn only for the eyes).
 
+## Download
+
+The header's Download opens a small chooser (`<dialog>` in `Header.astro`, `scripts/download.ts`), so it is on
+every page: macOS or Windows, the system the visitor is on marked, each tile going straight to the installer
+with its size read from the latest GitHub release (the universal `.dmg`, the 64-bit `-setup.exe`). The note
+about the first launch (not signed, so it asks once) lives there. Without scripts, or if GitHub's API
+cannot be reached, the link and the tiles open the release page.
+
 ## The documentation
 
 `docs/` is the one copy of the documentation anybody edits. It reads on GitHub as it always has,
