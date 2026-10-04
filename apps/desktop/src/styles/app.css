@@ -1172,6 +1172,40 @@
   margin-top: var(--s2);
 }
 
+.workbench-filters {
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+}
+.workbench-filters summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+.workbench-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+.workbench-filter-fields .field {
+  min-width: 0;
+}
+.workbench-filter-fields .input {
+  width: 100%;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.workbench-filter-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--hairline);
+}
+
 /* Section bars: the list's landmarks, pinned while their items scroll by. */
 .rec-group-head {
   position: sticky;
@@ -9563,4 +9597,22 @@ button.chooser-crumb:focus-visible {
   margin-top: var(--s5);
   font-size: var(--text-sm);
   color: var(--ink-muted);
+}
+
+.fork-guide {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-size: var(--text-md);
+}
+.fork-guide summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.fork-guide li {
+  margin-top: var(--s3);
+}
+.fork-guide li .btn {
+  margin: var(--s2) 0 0;
 }

@@ -206,6 +206,8 @@ export function ProjectView({
   }
 
   const { project, inspection } = data;
+  const coverageGaps = inspection.coverage.filter((c) => c.status !== "complete");
+  const gapModules = new Set(coverageGaps.map((c) => c.module)).size;
   // What it is written in, then what it is built on, then the tooling around it.
   const written = tokens.filter((t) => t.role === "language").map((t) => t.label);
   const builtOn = tokens.filter((t) => t.role !== "language");
@@ -367,6 +369,21 @@ export function ProjectView({
         </Notice>
       ) : null}
 
+      {coverageGaps.length > 0 ? (
+        <Notice
+          tone={coverageGaps.some((g) => g.status === "failed") ? "warn" : "unknown"}
+          title={`Inspection has gaps in ${gapModules} module${gapModules === 1 ? "" : "s"}`}
+          action={
+            <Button size="sm" onClick={() => setSettings(true)}>
+              Review scan limits
+            </Button>
+          }
+        >
+          Some facts could not be established. Recommendations use the evidence available and may need more
+          information.
+        </Notice>
+      ) : null}
+
       <div className="project-body">
         {!itemKey && !browsing && !data.recommendations.some(fitsProject) ? (
           // Nothing fits: say so, offer what can be done with only this
@@ -378,7 +395,7 @@ export function ProjectView({
             onBrowse={() => setBrowsing(true)}
           />
         ) : (
-          <Workbench overview={data} itemKey={itemKey} openAvailable={browsing} />
+          <Workbench key={project.id} overview={data} itemKey={itemKey} openAvailable={browsing} />
         )}
       </div>
     </div>

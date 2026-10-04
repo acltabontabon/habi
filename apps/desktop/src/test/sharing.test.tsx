@@ -10,7 +10,7 @@ import type { ReviewStatus } from "../bindings/ReviewStatus";
 import { ToastProvider } from "../components/Toasts";
 import { NavProvider, type Route } from "../lib/nav";
 import { finalAction, nextAction, sharingChip, targetBranch, visibilityText } from "../lib/sharing";
-import { ContributionsView } from "../views/contributions/ContributionsView";
+import { ContributionsView, ForkGuide } from "../views/contributions/ContributionsView";
 
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
@@ -112,6 +112,25 @@ const base: Contribution = {
 };
 
 const remote = base.remote as NonNullable<Contribution["remote"]>;
+
+it("offers a manual fork route without changing Send's destination", async () => {
+  const user = userEvent.setup();
+  const onExport = vi.fn();
+  handlers.open_external = () => undefined;
+  wrap(
+    <ForkGuide
+      c={{ ...base, remote: { ...remote, repositoryUrl: "https://github.com/acme/skills" } }}
+      onExport={onExport}
+      busy={false}
+    />,
+  );
+  await user.click(screen.getByText("No write access? Contribute through a fork"));
+  expect(screen.getByText(/Exporting does not change where Habi’s Send action pushes/)).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Export patch…" }));
+  expect(onExport).toHaveBeenCalledOnce();
+  await user.click(screen.getByRole("button", { name: "Open library to fork" }));
+  expect(invoke).toHaveBeenCalledWith("open_external", { url: "https://github.com/acme/skills" });
+});
 
 const review: ReviewStatus = {
   host: "github",

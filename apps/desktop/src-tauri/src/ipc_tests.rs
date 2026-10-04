@@ -634,6 +634,7 @@ fn machine_install_contract_end_to_end() {
             commands::plan_restore_machine,
             commands::machine_install_preview,
             commands::machine_history,
+            commands::machine_recover,
             commands::machine_skills,
             commands::apply_plan,
         ])
@@ -685,6 +686,10 @@ fn machine_install_contract_end_to_end() {
     );
 
     let listed = call(&webview, "machine_skills", json!({})).unwrap();
+    assert_eq!(
+        call(&webview, "machine_recover", json!({})).unwrap(),
+        json!([])
+    );
     assert_eq!(listed[0]["managed"]["library"], "Team library");
     assert_eq!(listed[0]["managed"]["state"], "current");
     let key = listed[0]["managed"]["key"].clone();

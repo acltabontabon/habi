@@ -247,6 +247,11 @@ pub struct ContributionRemote {
     pub tracked: TrackedRef,
     /// Why no review request can be opened from here, if so.
     pub request_unavailable: Option<String>,
+    /// Credential-free link for opening the library and creating a fork on
+    /// its host. Habi never creates a fork or changes a push destination.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub repository_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -1816,6 +1821,7 @@ impl<'a> Contributions<'a> {
             host: repo.as_ref().and_then(RemoteRepo::known_host),
             tracked: source.tracked.clone(),
             request_unavailable,
+            repository_url: repo.as_ref().map(RemoteRepo::https_url),
         })
     }
 

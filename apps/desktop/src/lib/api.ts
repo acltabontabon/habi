@@ -205,6 +205,7 @@ export const api = {
   machineInstallPreview: (items: ItemRef[], clients: ClientId[]) =>
     call<InstallShadow[]>("machine_install_preview", { items, clients }),
   machineHistory: () => call<OperationSummary[]>("machine_history"),
+  machineRecover: () => call<OperationSummary[]>("machine_recover"),
   applyPlan: (planId: string) => call<OperationSummary>("apply_plan", { planId }),
   history: (projectId: string) => call<OperationSummary[]>("history", { projectId }),
   recover: (projectId: string) => call<OperationSummary[]>("recover", { projectId }),

@@ -194,7 +194,9 @@ To install a skill there on purpose, choose *Add to this machine…* on a librar
 → On this machine…** on one of yours. The review lists every file under your home folder
 before anything is written. Skills Habi installed say so and name their library, with
 *Update…* and *Remove from this machine…*. Each of these is journaled like a project install,
-but no screen offers to restore one yet. [Agent tools](agent-tools.md#install-on-your-machine)
+and **History and restore…** previews undoing any completed change. It also checks for
+interrupted operations, and remains available when no skills are left.
+[Agent tools](agent-tools.md#install-on-your-machine)
 lists the folders, the record Habi keeps and which copy each tool uses.
 
 ## Sharing

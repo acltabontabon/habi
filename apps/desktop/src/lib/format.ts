@@ -1,5 +1,6 @@
 /** Plain-language labels and small formatting helpers. */
 import type { Applicability } from "../bindings/Applicability";
+import type { CheckCoverage } from "../bindings/CheckCoverage";
 import type { CheckStatus } from "../bindings/CheckStatus";
 import type { ClientId } from "../bindings/ClientId";
 import type { EvidenceState } from "../bindings/EvidenceState";
@@ -91,6 +92,7 @@ export const evidenceLabel: Record<EvidenceState, string> = {
   locallyChecked: "Checked here",
   failed: "Check failed",
   stale: "Check out of date",
+  partial: "Partially checked",
   notEvaluated: "Not evaluated",
 };
 
@@ -99,6 +101,7 @@ export const evidenceTone: Record<EvidenceState, Tone> = {
   locallyChecked: "ok",
   failed: "danger",
   stale: "warn",
+  partial: "unknown",
   notEvaluated: "muted",
 };
 
@@ -233,4 +236,20 @@ export function pruneSummary(r: PruneReport): string {
   const busy =
     r.skippedBusy === 1 ? "1 project or library was" : `${r.skippedBusy} projects or libraries were`;
   return `${done} ${busy} in use and skipped; try again later.`;
+}
+
+export function checkCoverageText(coverage: CheckCoverage | undefined): string | undefined {
+  if (!coverage) return undefined;
+  const parts = [
+    [coverage.passed, "passed"],
+    [coverage.failed, "failed"],
+    [coverage.stale, "out of date"],
+    [coverage.unchecked, "unchecked"],
+  ] as const;
+  return (
+    parts
+      .filter(([n]) => n > 0)
+      .map(([n, label]) => `${n} ${label}`)
+      .join(" · ") || undefined
+  );
 }

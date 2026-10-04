@@ -291,6 +291,7 @@ pub fn run() {
             commands::machine_install_preview,
             commands::detected_clients,
             commands::machine_history,
+            commands::machine_recover,
             commands::apply_plan,
             commands::history,
             commands::recover,

@@ -4,22 +4,34 @@
     "name": "platform-monorepo",
     "path": "~/work/platform-monorepo",
     "exists": true,
-    "lastOpenedAt": "2026-10-02T21:58:00Z",
+    "lastOpenedAt": "2026-10-04T13:45:13Z",
     "exclusions": [],
     "sample": false,
     "summary": {
       "fits": 7,
       "needsInformation": 0,
       "sources": [
-        "e6bd262a6c6a"
+        "b577aeab8d11"
       ],
       "installed": 0,
-      "at": "2026-10-02T21:58:00Z"
+      "languages": [
+        "lang:java",
+        "lang:typescript"
+      ],
+      "tally": [
+        {
+          "sourceId": "b577aeab8d11",
+          "fits": 7,
+          "installed": []
+        }
+      ],
+      "at": "2026-10-04T13:45:13Z"
     }
   },
   "inspection": {
     "root": "~/work/platform-monorepo",
     "name": "platform-monorepo",
+    "description": "Mixed repository: a React web app (apps/web) and two Java services (services/*).",
     "repository": {
       "kind": "gitSubdirectory",
       "branch": "main",
@@ -787,17 +799,17 @@
       "unreadable": [],
       "symlinksSkipped": 0,
       "largeFilesSkipped": 0,
-      "elapsedMs": 1
+      "elapsedMs": 3
     },
-    "fingerprint": "sha256:d57ecf8a745d7841e71f5651818739efc8daf0aa544f9fe0a2742d98e5e60403",
-    "inspectedAt": "2026-10-02T21:58:00Z"
+    "fingerprint": "sha256:ac7bb4ccc3c759a0ed4029962188338341164a53cc89ef55ccb4395dc1f00de8",
+    "inspectedAt": "2026-10-04T13:45:13Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "e6bd262a6c6a/java-service-conventions",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/java-service-conventions",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -807,7 +819,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -899,22 +911,67 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/service-observability",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/service-observability",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -924,7 +981,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1040,22 +1097,67 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/liquibase-migration-review",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/liquibase-migration-review",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -1065,7 +1167,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1564,7 +1666,52 @@
             "purpose": "Runs Liquibase validation through the build.",
             "hint": null
           }
-        ]
+        ],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "ready",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "Maven or Gradle wrapper",
+                "status": "present",
+                "detail": "mvn at /opt/homebrew/bin/mvn",
+                "purpose": "Runs Liquibase validation through the build.",
+                "hint": null
+              }
+            ]
+          },
+          {
+            "client": "cursor",
+            "state": "ready",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "Maven or Gradle wrapper",
+                "status": "present",
+                "detail": "mvn at /opt/homebrew/bin/mvn",
+                "purpose": "Runs Liquibase validation through the build.",
+                "hint": null
+              }
+            ]
+          },
+          {
+            "client": "codex",
+            "state": "ready",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "Maven or Gradle wrapper",
+                "status": "present",
+                "detail": "mvn at /opt/homebrew/bin/mvn",
+                "purpose": "Runs Liquibase validation through the build.",
+                "hint": null
+              }
+            ]
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
@@ -1579,15 +1726,22 @@
             "by": "Platform Guild (example)"
           }
         ],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 1,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/react-component-review",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/react-component-review",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1597,7 +1751,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1712,7 +1866,25 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
@@ -1727,15 +1899,22 @@
             "by": null
           }
         ],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/jooq-query-review",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/jooq-query-review",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1745,7 +1924,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1856,22 +2035,67 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/frontend-test-practices",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/frontend-test-practices",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -1881,7 +2105,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2335,22 +2559,67 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 1,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/github-pr-summary",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/github-pr-summary",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -2360,7 +2629,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2418,26 +2687,190 @@
             "kind": "mcp",
             "name": "github",
             "status": "notConfigured",
-            "detail": "Not configured in this project's client settings. User-level settings were not read.",
+            "detail": "Not configured for Claude Code in .mcp.json. User-level settings were not read.",
             "purpose": "Read pull requests, files and review comments.",
             "hint": "Habi can add the suggested configuration when you install this item."
           }
-        ]
+        ],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for Claude Code in .mcp.json. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          },
+          {
+            "client": "cursor",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for Cursor in .cursor/mcp.json. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          },
+          {
+            "client": "codex",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for Codex in .codex/config.toml. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          },
+          {
+            "client": "gemini-cli",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for Gemini CLI in .gemini/settings.json. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          },
+          {
+            "client": "copilot",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for GitHub Copilot in .mcp.json. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          },
+          {
+            "client": "opencode",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for OpenCode in opencode.json. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          },
+          {
+            "client": "junie",
+            "state": "missing",
+            "prerequisites": [
+              {
+                "kind": "tool",
+                "name": "GitHub CLI",
+                "status": "present",
+                "detail": "gh at /opt/homebrew/bin/gh",
+                "purpose": "Optional; used to open the PR locally.",
+                "hint": null
+              },
+              {
+                "kind": "mcp",
+                "name": "github",
+                "status": "notConfigured",
+                "detail": "Not configured for Junie in .junie/mcp/mcp.json. User-level settings were not read.",
+                "purpose": "Read pull requests, files and review comments.",
+                "hint": "Habi can add the suggested configuration when you install this item."
+              }
+            ]
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "setUpPrerequisites",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/incident-notes",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/incident-notes",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -2447,7 +2880,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -2466,22 +2899,67 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "install",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/api-contract-review",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/api-contract-review",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -2491,7 +2969,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2599,7 +3077,45 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
@@ -2614,15 +3130,22 @@
             "by": null
           }
         ],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "none",
       "unmanagedCopies": []
     },
     {
       "item": {
-        "key": "e6bd262a6c6a/jpa-entity-review",
-        "sourceId": "e6bd262a6c6a",
+        "key": "b577aeab8d11/jpa-entity-review",
+        "sourceId": "b577aeab8d11",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -2632,7 +3155,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
+        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2795,14 +3318,59 @@
       "basis": "declared",
       "readiness": {
         "state": "noRequirements",
-        "prerequisites": []
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": []
       },
       "installState": "notInstalled",
       "installation": null,
       "evidence": {
         "state": "notEvaluated",
         "declared": [],
-        "latestRun": null
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
       },
       "nextAction": "none",
       "unmanagedCopies": []
@@ -2810,7 +3378,7 @@
   ],
   "sources": [
     {
-      "id": "e6bd262a6c6a",
+      "id": "b577aeab8d11",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -2820,11 +3388,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-02T21:57:59Z",
-      "snapshot": "3c5e131423d34551d992bf36dae8500bbe0747d6",
-      "snapshotAt": "2026-10-02T21:57:59Z",
-      "commitSummary": "Example library — Example, 2026-10-03",
-      "lastAttemptAt": "2026-10-02T21:57:59Z",
+      "createdAt": "2026-10-04T13:45:12Z",
+      "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+      "snapshotAt": "2026-10-04T13:45:12Z",
+      "commitSummary": "Example library — Example, 2026-10-04",
+      "lastAttemptAt": "2026-10-04T13:45:12Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",

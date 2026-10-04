@@ -1,14 +1,14 @@
 {
-  "sourceId": "bed841edeafd",
-  "snapshot": "a966b2ee74bb86c2f7a6ae843affd6d2891da1ff",
+  "sourceId": "251f65ddf602",
+  "snapshot": "28f8940656be629aeec6945c0e2bfbaa721197f6",
   "name": null,
   "owner": null,
   "description": null,
   "contact": null,
   "items": [
     {
-      "key": "bed841edeafd/api-design",
-      "sourceId": "bed841edeafd",
+      "key": "251f65ddf602/api-design",
+      "sourceId": "251f65ddf602",
       "id": "api-design",
       "kind": "skill",
       "title": "API design",
@@ -55,8 +55,8 @@
       "complete": true
     },
     {
-      "key": "bed841edeafd/ci-review",
-      "sourceId": "bed841edeafd",
+      "key": "251f65ddf602/ci-review",
+      "sourceId": "251f65ddf602",
       "id": "ci-review",
       "kind": "skill",
       "title": "CI review",
@@ -97,8 +97,8 @@
       "complete": true
     },
     {
-      "key": "bed841edeafd/migrations",
-      "sourceId": "bed841edeafd",
+      "key": "251f65ddf602/migrations",
+      "sourceId": "251f65ddf602",
       "id": "migrations",
       "kind": "skill",
       "title": "Migrations",
@@ -170,8 +170,8 @@
       "complete": true
     },
     {
-      "key": "bed841edeafd/wrangler",
-      "sourceId": "bed841edeafd",
+      "key": "251f65ddf602/wrangler",
+      "sourceId": "251f65ddf602",
       "id": "wrangler",
       "kind": "skill",
       "title": "Wrangler",

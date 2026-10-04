@@ -27,4 +27,9 @@ tracked: TrackedRef,
 /**
  * Why no review request can be opened from here, if so.
  */
-requestUnavailable: string | null, };
+requestUnavailable: string | null, 
+/**
+ * Credential-free link for opening the library and creating a fork on
+ * its host. Habi never creates a fork or changes a push destination.
+ */
+repositoryUrl?: string, };

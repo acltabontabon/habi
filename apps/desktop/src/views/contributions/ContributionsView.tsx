@@ -365,6 +365,43 @@ function Destination({
   );
 }
 
+/** An explicit route for someone who cannot push to the original library. */
+export function ForkGuide({ c, onExport, busy }: { c: Contribution; onExport: () => void; busy: boolean }) {
+  const open = useOpenExternal();
+  if (!c.remote || c.remote.onThisMachine || !c.remote.host || !c.remote.repositoryUrl) return null;
+  return (
+    <details className="fork-guide">
+      <summary>No write access? Contribute through a fork</summary>
+      <ol>
+        <li>
+          Open the library on {hostName(c)} and use its <strong>Fork</strong> action to create your own copy.
+          <Button size="sm" icon="external" onClick={() => open(c.remote?.repositoryUrl ?? "")}>
+            Open library to fork
+          </Button>
+        </li>
+        <li>
+          Export the reviewed change as a patch. It stays on this machine until you send it.
+          <Button size="sm" icon="download" busy={busy} onClick={onExport}>
+            Export patch…
+          </Button>
+        </li>
+        <li>
+          Clone your fork and create a new branch. Apply the exported patch with{" "}
+          <span className="mono">git am</span>.
+        </li>
+        <li>
+          Push that branch to your fork, then open a {requestWord(c)} targeting the original library and the
+          intended target branch.
+        </li>
+      </ol>
+      <p className="muted">
+        The remaining steps happen in your Git host and terminal. Habi keeps this contribution as prepared; it
+        cannot follow a request created this way. Exporting does not change where Habi’s Send action pushes.
+      </p>
+    </details>
+  );
+}
+
 /**
  * The way the work travels: Habi pushes the contribution branch; a
  * maintainer, never Habi, merges it into the target. Every name is the
@@ -1120,6 +1157,9 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                 Based on <span className="mono">{shortId(c.baseCommit)}</span> of {c.sourceName}. Habi never
                 pushes to the target branch, never overwrites commits and never merges.
               </p>
+              {c.state === "committed" || c.state === "exported" ? (
+                <ForkGuide c={c} onExport={() => void exportPatch()} busy={busy === "export"} />
+              ) : null}
             </div>
             <Destination c={c} compact onLineage={editable ? (record) => lineage(record) : undefined} />
           </div>

@@ -27,8 +27,9 @@ import {
   precedenceNote,
 } from "../../lib/machine";
 import { useNav } from "../../lib/nav";
-import { invalidateSkills, useMachineSkills } from "../../lib/queries";
+import { invalidateSkills, useMachineHistory, useMachineSkills } from "../../lib/queries";
 import { purpose } from "../../lib/skills";
+import { History } from "../project/History";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { UseSkillDialog } from "./UseSkillDialog";
 
@@ -169,6 +170,8 @@ function Row({
 
 export function OnThisMachine() {
   const machine = useMachineSkills();
+  const operations = useMachineHistory();
+  const [history, setHistory] = useState(false);
   const { navigate } = useNav();
   const { addSkills } = useActions();
   const client = useQueryClient();
@@ -182,7 +185,7 @@ export function OnThisMachine() {
 
   // A folder Habi cannot read is not worth a broken page: show nothing.
   const found = groupMachineSkills(machine.data ?? []);
-  if (found.length === 0) return null;
+  if (found.length === 0 && !operations.data?.length && !operations.isError) return null;
 
   /** Puts the skill in My skills if it is not there, then opens the dialog that chooses the project. */
   const bringToProject = async (group: MachineGroup) => {
@@ -224,12 +227,18 @@ export function OnThisMachine() {
         <p className="kicker" id="on-this-machine">
           On this machine
         </p>
+        <Button size="sm" icon="history" onClick={() => setHistory(true)}>
+          History and restore…
+        </Button>
         <p className="mach-lead">
-          {plural(found.length, "skill")} in your own folders. Habi only reads them: copy one to keep it here,
-          or to put it in a project your team shares.
+          {plural(found.length, "skill")} in your own folders. Copy one into My skills or a project. Skills
+          Habi installed here can be updated, removed, or restored from history.
         </p>
       </header>
       {error ? <ErrorNotice error={error} /> : null}
+      {operations.isError ? (
+        <ErrorNotice error={operations.error} title="Could not load machine history" />
+      ) : null}
       <ul className="mach-rows" aria-label="Skills on this machine">
         {found.map((g) => (
           <Row
@@ -275,6 +284,7 @@ export function OnThisMachine() {
         </Dialog>
       ) : null}
       {review ? <ReviewDialog projectId={null} request={review} onClose={() => setReview(null)} /> : null}
+      {history ? <History overview={null} onClose={() => setHistory(false)} /> : null}
       {using ? (
         <UseSkillDialog
           skill={using}

@@ -24,6 +24,7 @@ export const keys = {
   skill: (id: string) => ["skill", id] as const,
   skillsOverview: ["skillsOverview"] as const,
   machineSkills: ["machineSkills"] as const,
+  machineHistory: ["machineHistory"] as const,
   skillTemplates: ["skillTemplates"] as const,
   knowledge: (projectId: string) => ["knowledge", projectId] as const,
 };
@@ -230,6 +231,10 @@ export function useMachineSkills() {
   });
 }
 
+export function useMachineHistory() {
+  return useQuery({ queryKey: keys.machineHistory, queryFn: api.machineHistory, staleTime: 30_000 });
+}
+
 /** The starters the editor offers; they ship with Habi. */
 export function useSkillTemplates() {
   return useQuery({
@@ -254,6 +259,7 @@ export function invalidateSkills(client: QueryClient) {
   void client.invalidateQueries({ queryKey: keys.skills });
   void client.invalidateQueries({ queryKey: keys.skillsOverview });
   void client.invalidateQueries({ queryKey: keys.machineSkills });
+  void client.invalidateQueries({ queryKey: keys.machineHistory });
   void client.invalidateQueries({ queryKey: ["knowledge"] });
   void client.invalidateQueries({ queryKey: ["overview"] });
 }

@@ -7,10 +7,24 @@ import { Icon } from "../../components/Icon";
 import { Empty, Status } from "../../components/ui";
 import { Strand } from "../../components/Weave";
 import { useDyes } from "../../lib/dye";
-import { groupHint, groupLabel, installLabel, installTone, kindLabel } from "../../lib/format";
+import {
+  ALL_CLIENTS,
+  clientLabel,
+  groupHint,
+  groupLabel,
+  installLabel,
+  installTone,
+  kindLabel,
+} from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { useKnowledge } from "../../lib/queries";
 import { useMedia } from "../../lib/useMedia";
+import {
+  emptyWorkbenchFilters,
+  readWorkbenchFilters,
+  saveWorkbenchFilters,
+  type WorkbenchFilters,
+} from "../../lib/workbenchFilters";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { HereDetail, hereItems } from "./AlreadyHere";
 import { ItemDetailPane } from "./ItemDetailPane";
@@ -18,6 +32,11 @@ import { ItemDetailPane } from "./ItemDetailPane";
 const GROUPS: Group[] = ["required", "relevant", "needsInformation", "available", "notApplicable"];
 
 function rowStatus(r: Recommendation) {
+  if (r.installState === "conflict") return <Status tone="danger">{installLabel.conflict}</Status>;
+  if (r.evidence.state === "failed") return <Status tone="danger">Check failed</Status>;
+  if (r.evidence.state === "stale") return <Status tone="warn">Check out of date</Status>;
+  if (r.readiness.state === "missing" && r.applicability.applicability === "applies")
+    return <Status tone="warn">Prerequisite missing</Status>;
   if (r.installState === "current") return null;
   if (r.installState !== "notInstalled")
     return <Status tone={installTone[r.installState]}>{installLabel[r.installState]}</Status>;
@@ -62,13 +81,22 @@ export function Workbench({
   openAvailable?: boolean;
 }) {
   const { navigate } = useNav();
-  const [filter, setFilter] = useState("");
+  const [filters, setFilters] = useState(() => readWorkbenchFilters(overview.project.id));
+  const filter = filters.query;
+  const setFilter = (query: string) => setFilters((f) => ({ ...f, query }));
+  const setFacet = (key: keyof WorkbenchFilters, value: string) =>
+    setFilters((f) => ({ ...f, [key]: value }));
+  const activeFilters = Object.values(filters).some(Boolean);
   const [showNotApplicable, setShowNotApplicable] = useState(false);
   const [showAvailable, setShowAvailable] = useState(openAvailable);
   const [review, setReview] = useState<ReviewRequest | null>(null);
   const knowledge = useKnowledge(overview.project.id);
   const listRef = useRef<HTMLDivElement>(null);
   const projectId = overview.project.id;
+  useEffect(() => saveWorkbenchFilters(projectId, filters), [projectId, filters]);
+  const libraries = [
+    ...new Map(overview.recommendations.map((r) => [r.item.sourceId, r.item.sourceName])).entries(),
+  ].sort((a, b) => a[1].localeCompare(b[1]));
   const dyes = useDyes();
   // Narrow windows show the list or one item, not both squeezed side by side.
   const narrow = useMedia("(max-width: 1020px)");
@@ -99,12 +127,26 @@ export function Workbench({
     const q = filter.trim().toLowerCase();
     return overview.recommendations.filter(
       (r) =>
-        !q ||
-        r.item.title.toLowerCase().includes(q) ||
-        r.item.id.includes(q) ||
-        r.item.description.toLowerCase().includes(q),
+        (!q ||
+          r.item.title.toLowerCase().includes(q) ||
+          r.item.id.toLowerCase().includes(q) ||
+          r.item.description.toLowerCase().includes(q)) &&
+        (!filters.library || r.item.sourceId === filters.library) &&
+        (!filters.module ||
+          r.applicability.applicability === "undeclared" ||
+          r.applicability.modules.some(
+            (m) => (m.module === filters.module || m.module === "*") && m.applicability !== "doesNotApply",
+          )) &&
+        (!filters.agent || !r.item.clients || r.item.clients.some((c) => c === filters.agent)) &&
+        (!filters.attention ||
+          (filters.attention === "updates" &&
+            (r.installState === "updateAvailable" || r.installState === "conflict")) ||
+          (filters.attention === "prerequisites" && r.readiness.state === "missing") ||
+          (filters.attention === "information" && r.applicability.applicability === "needsInformation") ||
+          (filters.attention === "checks" &&
+            (r.evidence.state === "failed" || r.evidence.state === "stale"))),
     );
-  }, [overview.recommendations, filter]);
+  }, [overview.recommendations, filter, filters]);
 
   // What is installed has a section of its own, whatever Habi's match says;
   // the groups below it list what could still be added.
@@ -112,7 +154,7 @@ export function Workbench({
   const candidates = visible.filter((r) => r.installState === "notInstalled");
   // Items without applicability rules are not recommendations: they are listed only when shown.
   const listed = (r: Recommendation) =>
-    filter || fitsProject(r) || (r.group === "notApplicable" ? showNotApplicable : showAvailable);
+    activeFilters || fitsProject(r) || (r.group === "notApplicable" ? showNotApplicable : showAvailable);
   const membersOf = (group: Group) => candidates.filter((r) => r.group === group && listed(r));
   // In the order they are drawn: installed first, then each group.
   const navigable = [...installed, ...GROUPS.flatMap(membersOf)];
@@ -129,11 +171,18 @@ export function Workbench({
   const here = useMemo(() => {
     const q = filter.trim().toLowerCase();
     return hereItems(knowledge.data).filter(
-      (h) => !q || h.title.toLowerCase().includes(q) || h.gist.toLowerCase().includes(q),
+      (h) =>
+        (!q || h.title.toLowerCase().includes(q) || h.gist.toLowerCase().includes(q)) &&
+        !filters.library &&
+        !filters.attention &&
+        (!filters.agent || (h.kind === "skill" && h.skill.readers.some((c) => c === filters.agent))) &&
+        (!filters.module ||
+          filters.module === "." ||
+          (h.kind === "skill" ? h.skill.path : h.file.path).startsWith(`${filters.module}/`)),
     );
-  }, [knowledge.data, filter]);
+  }, [knowledge.data, filter, filters]);
   const chosenHere = here.find((h) => h.key === itemKey);
-  const chosen = overview.recommendations.find((r) => r.item.key === itemKey);
+  const chosen = visible.find((r) => r.item.key === itemKey);
   const selected = chosenHere ? undefined : (chosen ?? navigable[0]);
   const selectedHere = chosenHere ?? (selected ? undefined : here[0]);
   const activeKey = selectedHere?.key ?? selected?.item.key;
@@ -217,7 +266,83 @@ export function Workbench({
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-        {updatable.length > 1 && !filter ? (
+        <details className="workbench-filters" open={activeFilters || undefined}>
+          <summary>Filter by module, library or agent</summary>
+          <div className="workbench-filter-fields">
+            <label className="field">
+              <span className="field-label">Module</span>
+              <select
+                className="input"
+                value={filters.module}
+                onChange={(e) => setFacet("module", e.target.value)}
+              >
+                <option value="">All modules</option>
+                {overview.inspection.modules.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Library</span>
+              <select
+                className="input"
+                value={filters.library}
+                onChange={(e) => setFacet("library", e.target.value)}
+              >
+                <option value="">All libraries</option>
+                {libraries.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Compatible with</span>
+              <select
+                className="input"
+                value={filters.agent}
+                onChange={(e) => setFacet("agent", e.target.value)}
+              >
+                <option value="">All agents</option>
+                {ALL_CLIENTS.map((c) => (
+                  <option key={c} value={c}>
+                    {clientLabel[c]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Needs attention</span>
+              <select
+                className="input"
+                value={filters.attention}
+                onChange={(e) => setFacet("attention", e.target.value)}
+              >
+                <option value="">Everything</option>
+                <option value="updates">Updates and conflicts</option>
+                <option value="prerequisites">Missing prerequisites</option>
+                <option value="information">Needs information</option>
+                <option value="checks">Failed or outdated checks</option>
+              </select>
+            </label>
+          </div>
+        </details>
+        {activeFilters ? (
+          <div className="workbench-filter-summary" role="status">
+            <span>{visible.length + here.length} matching items</span>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => setFilters({ ...emptyWorkbenchFilters })}
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : null}
+        {updatable.length > 1 && !activeFilters ? (
           <div className="rec-updates">
             <span>{updatable.length} updates available</span>
             <button
@@ -258,7 +383,7 @@ export function Workbench({
         {visible.length === 0 && here.length === 0
           ? null
           : GROUPS.filter((g) => counts[g] > 0).map((group) => {
-              const collapsible = (group === "notApplicable" || group === "available") && !filter;
+              const collapsible = (group === "notApplicable" || group === "available") && !activeFilters;
               const shown = group === "notApplicable" ? showNotApplicable : showAvailable;
               const setShown = group === "notApplicable" ? setShowNotApplicable : setShowAvailable;
               const members = membersOf(group);

@@ -461,5 +461,39 @@
     "fetched": null,
     "contents": null,
     "problem": null
+  },
+  {
+    "id": "mattpocock",
+    "name": "Matt Pocock",
+    "url": "https://github.com/mattpocock/skills",
+    "repo": "mattpocock/skills",
+    "summary": "Engineering workflows from his own agent setup: TDD, specs, code review, debugging.",
+    "notes": [],
+    "publisher": {
+      "name": "Matt Pocock",
+      "kind": "community",
+      "owner": "mattpocock"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "skills/**"
+    ],
+    "exclude": [
+      "skills/in-progress/**"
+    ],
+    "followsReleases": true,
+    "fitsWhen": [],
+    "groupSegment": 1,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
   }
 ]

@@ -76,6 +76,22 @@ your Git credentials.
 
 For a local library, Habi creates the branch via `git fetch` (no push).
 
+### When you cannot push to the library
+
+After preparing the branch, expand **No write access? Contribute through a fork**. This route
+does not attempt a push to the original library:
+
+1. **Open library to fork** opens the repository on its Git host. Use the host's **Fork** action.
+2. **Export patch…** saves the reviewed change as a `git am`-compatible patch on this machine.
+3. Clone your fork, create a new branch, and apply the patch with `git am /path/to/exported.patch`.
+4. Push the branch to your fork and open a pull/merge request against the original library's
+   intended target branch. If it follows a tag, choose an appropriate target branch on the host.
+
+Fork creation and submission happen in the Git host and terminal. Habi continues to show the
+contribution as prepared and cannot follow a request created this way. Exporting a patch does
+not redirect Habi's **Send** action to your fork. For an unrecognized host, export the patch
+and follow its own contribution instructions.
+
 ## Step 6: Follow the review
 
 Habi doesn't auto-poll. Click **Check status** anytime to see:

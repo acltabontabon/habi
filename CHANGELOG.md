@@ -7,6 +7,36 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Added
+
+- **Focus recommendations on your work.** Filter by module, library, compatible agent, or
+  items needing attention. Habi remembers the filters separately for each project, and a
+  scan-gap notice links directly to what could not be inspected.
+- **Restore changes on this machine.** My skills → On this machine → History and restore
+  lists personal skill installs, updates and removals, previews restores, and checks for
+  interrupted operations. History stays available after the last skill is removed.
+- **A route for contributors without write access.** Prepared contributions explain how to
+  fork the library, export the reviewed patch, and submit it through the Git host.
+
+### Changed
+
+- **Readiness is specific to the agent.** Choose an agent in Prerequisites to see its own
+  MCP configuration. Install review points out missing prerequisites for the agents selected;
+  configuration for another agent no longer makes an item ready.
+- **Check evidence shows its coverage.** The latest completed result for each declared check
+  and applicable module contributes to the summary: passed, failed, out of date, or unchecked.
+  One pass cannot hide another failure. Passing results with unchecked pairs or an incomplete
+  scan are labeled *Partially checked*.
+
+### Fixed
+
+- Source and script edits that keep the same file size now invalidate cached inspection and
+  passing check evidence when their modification time changes. Source bodies remain unread
+  during inspection.
+- Opening install review in the browser design preview no longer crashes on outdated fixture
+  data. The preview now includes real machine install, history and restore fixtures, with
+  tests that open those flows through the preview bridge.
+
 ## 0.1.0 - 2026-10-04
 
 ### Added

@@ -87,6 +87,26 @@ fetches a copy; Habi tells you when something newer exists and updates it only w
 
 Next: [My skills](my-skills.md) (write and edit skills) or [Sharing](sharing.md) (send improvements back).
 
+### Focus the recommendations
+
+Below the search field, **Filter by module, library or agent** opens filters for a module,
+library, compatible agent, and items needing attention (updates, missing prerequisites,
+unanswered questions, or failed/outdated checks). A module filter keeps skills whose rules
+hold or remain unknown there, plus skills without rules. The agent filter checks declared
+compatibility and the readers of existing skill folders; it does not prove the agent loaded
+anything. Habi remembers these choices separately for each project. **Clear filters** brings
+the full list back.
+
+If inspection has gaps, a notice above the list opens **Review scan limits**. It explains
+which modules and detectors were incomplete, rather than treating missing evidence as absence.
+
+In an item's **Prerequisites**, **Readiness for** shows the chosen agent's own configuration.
+An MCP entry for Cursor does not establish readiness for Codex. Install review checks the
+agents selected there too. An entry is only *Configured*: Habi does not start or authorize
+the server, and it does not read user-level MCP settings.
+
+![Filtering the monorepo workbench by web module, with visible inspection gaps and Codex-specific readiness.](../media/workbench-filters.jpg)
+
 ## Checks and corrections
 
 A skill can declare **checks**: commands that confirm it works in your project. They are on
@@ -94,6 +114,17 @@ the skill's **Checks** tab. Habi shows the exact program, arguments, folder and 
 first, and lists anything in the command that stands out. The command runs only when you
 press **Run this command**. It runs your repository's code on your machine and is not
 sandboxed.
+
+The evidence summary counts the latest completed result for each declared check in each
+applicable module. **Partially checked** means some pairs are still unchecked, or inspection
+was incomplete. A failure remains visible even if a different check passed later; cancelling
+a run preserves the previous completed result. An old failure, like an old pass, is marked
+out of date when the item or inspected project state changes.
+
+Habi notices ordinary source and script edits through file sizes and modification times,
+without reading their bodies. Changes outside inspection's scope (ignored files, environment
+variables, external services, or edits preserving size and modification time) are not covered.
+A passing result establishes only that command's success condition.
 
 When the files can't say whether a skill fits, the **Why this fits** tab asks, for example
 *Does api use jOOQ?*, and you answer **Yes** or **No**, with a note if you like. The answer

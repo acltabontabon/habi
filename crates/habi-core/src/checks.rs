@@ -463,8 +463,9 @@ pub fn runs(store: &Store, project_id: &str, item_key: &str) -> Result<Vec<Check
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
-/// `runs` for every item of a project at once, by item key: one query instead
-/// of one database connection per item.
+/// Latest non-cancelled result for each check/module pair, across every item.
+/// Unlike the bounded history, repeated runs of one check cannot hide a
+/// different check's failure or leave an assessed module out of the summary.
 pub fn runs_by_item(
     store: &Store,
     project_id: &str,
@@ -472,9 +473,11 @@ pub fn runs_by_item(
     let conn = store.conn()?;
     let mut stmt = conn.prepare(&format!(
         "SELECT {RUN_COLUMNS} FROM (
-             SELECT *, ROW_NUMBER() OVER (PARTITION BY item_key ORDER BY started_at DESC) AS n
-             FROM check_runs WHERE project_id = ?1
-         ) WHERE n <= 20 ORDER BY item_key, started_at DESC"
+             SELECT *, ROW_NUMBER() OVER (
+                 PARTITION BY item_key, check_id, module ORDER BY started_at DESC, id DESC
+             ) AS n
+             FROM check_runs WHERE project_id = ?1 AND status != 'cancelled'
+         ) WHERE n = 1 ORDER BY item_key, started_at DESC, id DESC"
     ))?;
     let mut by_item: std::collections::HashMap<String, Vec<CheckRun>> =
         std::collections::HashMap::new();
@@ -490,7 +493,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn runs_for_every_item_match_runs_item_by_item() {
+    fn summaries_keep_the_latest_result_per_check_and_module() {
         let dir = tempfile::tempdir().unwrap();
         let store = Store::open(&dir.path().join("habi.db")).unwrap();
         let conn = store.conn().unwrap();
@@ -518,10 +521,24 @@ mod tests {
         for key in ["a#x", "b#y"] {
             let one = runs(&store, "p1", key).unwrap();
             let ids = |v: &[CheckRun]| v.iter().map(|r| r.id.clone()).collect::<Vec<_>>();
-            assert_eq!(ids(&all[key]), ids(&one), "{key}");
+            assert_eq!(ids(&all[key]), ids(&one[..1]), "{key}");
         }
-        assert_eq!(all["a#x"].len(), 20);
+        assert_eq!(all["a#x"].len(), 1);
         assert_eq!(all["a#x"][0].started_at, "2026-01-01T00:00:24Z");
+        conn.execute(
+            "INSERT INTO check_runs (id, project_id, item_key, item_digest, check_id, module,
+             argv_json, cwd, project_fingerprint, started_at, status)
+             VALUES ('old-failure', 'p1', 'a#x', 'd', 'other', 'backend', '[]', '.', 'f',
+                     '2025-01-01T00:00:00Z', 'failed')",
+            [],
+        )
+        .unwrap();
+        let all = runs_by_item(&store, "p1").unwrap();
+        assert_eq!(
+            all["a#x"].len(),
+            2,
+            "failure survives more than twenty other runs"
+        );
         assert!(runs_by_item(&store, "none").unwrap().is_empty());
     }
 }

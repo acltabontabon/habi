@@ -85,8 +85,15 @@ impl RemoteRepo {
         }
     }
 
-    fn https_url(&self) -> String {
-        format!("https://{}/{}", self.host, self.path)
+    pub fn https_url(&self) -> String {
+        let path = self
+            .path
+            .split(['?', '#'])
+            .next()
+            .unwrap_or(&self.path)
+            .trim_end_matches('/')
+            .trim_end_matches(".git");
+        format!("https://{}/{path}", self.host)
     }
 }
 
@@ -804,6 +811,14 @@ fn newest(list: &Value, key: &str) -> Option<Value> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn repository_link_drops_credentials_and_query_parameters() {
+        let repo = super::remote_repo(
+            "https://user:password@github.com/acme/skills.git?token=secret#readme",
+        )
+        .unwrap();
+        assert_eq!(repo.https_url(), "https://github.com/acme/skills");
+    }
     use super::*;
     use serde_json::json;
 
