@@ -23,7 +23,7 @@ cd website
 pnpm dev          # the site on http://localhost:4321/habi/, reloading as you edit
 pnpm build        # the static site in website/dist/, as Pages serves it
 pnpm preview      # that build, served locally
-pnpm media        # public/media/: the tour's screenshots (light and dark), the film and its chapter stills
+pnpm media        # public/media/: the tour's screenshots (dark; the site has no light theme), and the film
 pnpm og           # public/og-v2.png, from the /og/ page with headless Chrome (pnpm dev first)
 ```
 
@@ -33,9 +33,13 @@ seeded workspace, and the film is cut from the same screenshots (below).
 ## The film
 
 The landing page shows a film (`docs/media/demo.mp4`): an ad cut from the app's own dark
-screenshots, set to a synthesized score. A filmstrip of its chapters runs under the hero (one still per
-chapter, at the `still` second `timeline.json` gives it, cut by `pnpm media`); a frame opens the film
-at that chapter, in a dialog over the page. Its source is `scripts/film/`, and like the screenshots it is
+screenshots, set to a synthesized score. It is the hero's backdrop, the way a streaming service
+opens: the still (`demo-poster.jpg`) first, then, a couple of seconds after load, the film eases in
+behind the words, muted, from its very beginning, and plays once; it pauses when
+scrolled away from and the still returns when it ends. While it loads (or stalls) a small loom weaves
+over the still, its weft as long as the film that has really arrived. Nothing is written over or under it: the film tells the problem itself, and the first screen is the film. Nothing depends on it, and it never starts by
+itself with reduced motion or data saver. The two small buttons over it start it with sound and take
+it full screen. `/#demo` is the hero. Its source is `scripts/film/`, and like the screenshots it is
 remade by a script, so changing the app does not mean redrawing it.
 
 | Step | What it does |
@@ -51,6 +55,17 @@ rise, crops of the UI lifted off them, the type over them), `film.css` styles th
 `timeline.json` says where each scene starts. `node scripts/render-film.mjs
 --stills 3,9.6,20` renders single pictures at those seconds, which is the quick way to look at a
 change. It uses the site's fonts and tokens, so run `pnpm install` in `website/` first.
+
+## How it works
+
+The landing page's "How it works" is a journey, not a list (`Tour.astro`, `scripts/tour.ts`, the `.rig` rules
+in `showcase.css`). The six screens (the dark screenshots `pnpm media` makes) sit on one large plane along a
+stitched path; the page pins a stage and, as you scroll, a camera flies from screen to screen, pulling back
+mid-flight to show the route, with the saffron thread filling in behind it and a shuttle at its tip, and ends
+standing back on the whole weave. Where each screen sits is by hand (`place` in `Tour.astro`); the pins are
+percent positions read off the screenshots. The captions are on the stage, not the plane, so they stay put.
+With reduced motion, or without scripts, none of it runs and the six moves are a plain list, which is also
+what a screen reader reads (the stage is drawn only for the eyes).
 
 ## The documentation
 

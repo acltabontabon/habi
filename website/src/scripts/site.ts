@@ -3,9 +3,7 @@
  * scene plays once (or follows the scroll), and nothing moves forever.
  */
 import { download } from "./download";
-import { film } from "./film";
-import { reel } from "./reel";
-import { cloth } from "./hero";
+import { hero } from "./hero";
 import { tour } from "./tour";
 
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -44,16 +42,18 @@ window.addEventListener(
   { passive: true },
 );
 
-/* The hero's cloth. */
-const hero = document.querySelector<HTMLElement>("[data-cloth]");
-if (hero) cloth(hero, reduce);
+/* The header's "ha·bi, to weave" steps aside while the page's own definition of it is in view. */
+const lexeme = document.querySelector<HTMLElement>(".lexeme");
+const aside = document.querySelector<HTMLElement>(".top-def");
+if (lexeme && aside && "IntersectionObserver" in window) {
+  new IntersectionObserver(([e]) => aside.classList.toggle("is-quiet", Boolean(e?.isIntersecting)), {
+    rootMargin: "-60px 0px 0px 0px",
+  }).observe(lexeme);
+}
 
-/* The film, its strip in the hero, and how it works. */
-const demo = document.querySelector<HTMLDialogElement>("dialog[data-demo]");
-if (demo) film(demo);
-
-const strip = document.querySelector<HTMLElement>("[data-reel]");
-if (strip) reel(strip, reduce);
+/* The hero, with the film in its word, and how it works. */
+const cut = document.querySelector<HTMLElement>("[data-hero]");
+if (cut) hero(cut, reduce);
 
 const walk = document.querySelector<HTMLElement>("[data-tour]");
 if (walk) tour(walk, reduce);

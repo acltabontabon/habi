@@ -193,7 +193,7 @@
   margin-bottom: 18px;
   font-size: clamp(34px, 4.2vw, 46px);
   font-weight: 680;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.025em;
   line-height: 1.06;
   color: var(--ink);
   text-wrap: balance;
@@ -212,7 +212,7 @@
   margin: 2.4em 0 0.6em;
   font-size: 25px;
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.014em;
   line-height: 1.2;
 }
 

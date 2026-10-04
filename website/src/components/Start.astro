@@ -2,30 +2,20 @@
 import Icon from "./Icon.astro";
 
 const repo = "https://github.com/acltabontabon/habi";
-const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 ---
 
 <div class="screen finale">
 <section class="start" id="start" aria-labelledby="start-title" data-reveal>
   <h2 id="start-title" class="start-title">
-    <span>Mute #engineering.</span>
+    <span>Stop copying skills.</span>
     <em>Start weaving.</em>
   </h2>
   <div class="start-actions">
     <a class="btn btn-primary btn-big" href={`${repo}/releases/latest`} data-download>
       <Icon name="download" size={16} />
-      <span data-download-label>Download</span>
-    </a>
-    <a class="btn btn-quiet btn-big" href={`${repo}/blob/main/CONTRIBUTING.md#set-up`}>
-      <Icon name="terminal" size={14} />
-      Build from source
+      Download
     </a>
   </div>
-  <p class="start-note">
-    For macOS and Windows, from GitHub Releases. The first launch offers a sample workspace to try everything on, and
-    removes it in one step. Not signed by Apple or Microsoft, so that first launch asks once;
-    <a href={`${base}docs/getting-started/#installing`}>here is how</a>.
-  </p>
 </section>
 
 <footer class="foot">
@@ -34,7 +24,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <span class="woven-word-warps" aria-hidden="true">
       {
         [12, 30, 50, 70, 88].map((x, i) => (
-          <i class:list={{ "is-over": i % 2 === 0 }} style={`--x:${x}%;--dye:var(--dye-${[0, 1, 4, 2, 3][i]})`} />
+          <i class:list={{ "is-over": i % 2 === 0 }} style={`--x:${x}%;--dye:var(--ink-${["faint", "muted", "faint", "muted", "faint"][i]})`} />
         ))
       }
       <b></b>
@@ -46,5 +36,10 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
       To weave: to pass one thread over and under the others until, together, they <em>hold</em>.
     </p>
   </div>
+  <p class="colophon mono">
+    <span>Made by <a href="https://acltabontabon.com">Alvin Cris Tabontabon</a></span>
+    <a href={repo}>GitHub</a>
+    <span>Apache-2.0</span>
+  </p>
 </footer>
 </div>
