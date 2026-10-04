@@ -1,0 +1,11 @@
+{"fps":30,"width":1440,"height":900,"duration":78,"bpm":120,"poster":21.6,"gif":[18,33],
+ "scenes":[{"id":"open","start":0,"chapter":"One laptop, old copies, no idea what fits","still":2.6},
+  {"id":"reveal","start":14,"chapter":"Meet Habi","still":16.6},
+  {"id":"hero","start":18,"chapter":"Every project, every library","still":21.6},
+  {"id":"find","start":24,"chapter":"What fits, and why","still":27.0},
+  {"id":"explore","start":33,"chapter":"The builders, the community, your team","still":35.8},
+  {"id":"install","start":40,"chapter":"Seven agents","still":45.6},
+  {"id":"studio","start":47,"chapter":"The Skill Studio","still":49.6},
+  {"id":"share","start":54,"chapter":"Send it back; everyone updates","still":62.6},
+  {"id":"never","start":65,"chapter":"No strings","still":66.6},
+  {"id":"end","start":71}]}

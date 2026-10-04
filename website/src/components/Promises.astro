@@ -1,0 +1,68 @@
+---
+/*
+ * The principles, said as one refusal: a single sentence, set large, with a
+ * saffron thread stitched under each clause as it comes into view (under, not
+ * through: through would cross it out). Beneath it, the receipts: what each
+ * clause means in practice, small, in a grid. Pointing at a clause lights its
+ * receipt, and the other way round (CSS :has, no script). The section is
+ * always dark, in either theme, a change of weather between the pages around
+ * it. Every claim is one the security model makes (docs/project/security-model.md).
+ */
+const never = [
+  {
+    phrase: "phone home",
+    proof: "No account, telemetry or cloud service. The few requests that leave your machine are listed on a Privacy page in the app; the update check can be switched off.",
+  },
+  {
+    phrase: "guess",
+    proof: "No model calls, no confidence percentages. Every answer comes with its evidence, and when the files can't say, Habi asks.",
+  },
+  {
+    phrase: "run things behind your back",
+    proof: "Inspecting a project builds and executes nothing. A check runs only after you have read the exact command and pressed Run.",
+  },
+  {
+    phrase: "touch a file you haven't seen",
+    proof: "Every change is a previewed plan, applied atomically and journaled. Whatever it replaces is kept, and restorable.",
+  },
+  {
+    phrase: "lock you in",
+    proof: "Agent Skills folders, AGENTS.md and Git. Uninstall Habi and every skill, instruction and library keeps working.",
+  },
+  {
+    phrase: "pretend strangers are vetted",
+    proof: "Community libraries are marked as not reviewed by your team; anything that downloads code or touches credentials is called out.",
+  },
+];
+const joint = (i: number) => (i === never.length - 1 ? "." : i === never.length - 2 ? ", or " : ", ");
+---
+
+<section class="promises" id="promises" aria-labelledby="promises-title">
+  <div class="promises-in">
+    <p class="kicker">The principles</p>
+    <h2 id="promises-title" class="vow" data-reveal>
+      Habi will <em>never</em>{" "}
+      {
+        never.map((n, i) => (
+          <>
+            {/* prettier-ignore */}
+            <a class="clause" href={`#never-${i + 1}`} data-n={i + 1} style={`--i:${i}`}><span class="stitch">{n.phrase}</span><sup class="mono" aria-hidden="true">{i + 1}</sup></a><span class="joint">{joint(i)}</span>
+          </>
+        ))
+      }
+    </h2>
+
+    <ol class="receipts" data-reveal>
+      {
+        never.map((n, i) => (
+          <li class="receipt" id={`never-${i + 1}`} data-n={i + 1} style={`--i:${i}`}>
+            <p class="receipt-head mono">
+              <span>{String(i + 1).padStart(2, "0")}</span> never {n.phrase}
+            </p>
+            <p class="receipt-body">{n.proof}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

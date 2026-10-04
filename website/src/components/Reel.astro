@@ -1,0 +1,45 @@
+---
+/*
+ * The film, as a strip of it: one frame per chapter, cut from the film itself
+ * (`pnpm media`), on a length of dark stock with sprocket holes and the
+ * chapter names in edge print. It drifts sideways on its own, stops when you
+ * point at it, and can be dragged or swiped (scripts/reel.ts). A frame opens
+ * the film at its chapter, with sound. Without scripts the strip is a plain
+ * horizontal scroller and each frame is a link to the video at that time.
+ */
+import demo from "../data/demo.json";
+import Icon from "./Icon.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const mm = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const frames = demo.chapters.map((c, i) => ({ ...c, n: String(i + 1).padStart(2, "0") }));
+---
+
+<div class="reel" data-reel>
+  <div class="reel-track" data-reel-track tabindex="-1">
+    {
+      [0, 1].map((copy) => (
+        <ol class="reel-strip" aria-label={copy ? undefined : "The film, chapter by chapter"} aria-hidden={copy ? "true" : undefined}>
+          {frames.map((f) => (
+            <li class="reel-cell">
+              <a
+                class="reel-frame"
+                href={`${base}media/demo.mp4#t=${f.at}`}
+                data-film-open
+                data-at={f.at}
+                tabindex={copy ? -1 : undefined}
+                aria-label={`Play the film from ${f.title}`}
+              >
+                <img src={`${base}media/film/${f.n}.jpg`} alt="" width="960" height="600" loading="lazy" decoding="async" draggable="false" />
+                <span class="reel-play" aria-hidden="true"><Icon name="play" size={16} /></span>
+              </a>
+              <p class="reel-edge mono" aria-hidden="true">
+                <span>{f.n}</span> {f.title} <span class="reel-at">▸ {mm(f.at)}</span>
+              </p>
+            </li>
+          ))}
+        </ol>
+      ))
+    }
+  </div>
+</div>

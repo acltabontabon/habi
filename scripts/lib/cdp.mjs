@@ -4,7 +4,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 const PORT = 9337;
 
@@ -19,14 +19,18 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * Takes away what only a development setup shows, and any toast still on screen. Runs in the
  * page, so it is passed there as source.
  */
-function tidyPage(home) {
+function tidyPage(home, work) {
   for (const b of document.querySelectorAll(".toasts [aria-label=Dismiss]")) b.click();
   const shown = "~/Library/Application Support/com.acltabontabon.Habi";
-  const homes = home ? [home, home.replace(/^\/private/, "")] : [];
+  // The data folder is shown as a Mac's real one; the folder holding libraries and projects beside it
+  // (HABI_SHOTS_ROOT) as a plain `~/work`. The data folder comes first, as it is inside the other.
+  const homes = [];
+  for (const [path, as] of [[home, shown], [work, "~/work"]])
+    if (path) homes.push([path, as], [path.replace(/^\/private/, ""), as]);
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     let text = n.nodeValue.replace(/(\d+\.\d+\.\d+)-bridge/, "$1");
-    for (const h of homes) text = text.replaceAll(h, shown);
+    for (const [path, as] of homes) text = text.replaceAll(path, as);
     if (text !== n.nodeValue) n.nodeValue = text;
   }
   return true;
@@ -36,7 +40,7 @@ function tidyPage(home) {
  * Starts Chrome and returns the helpers that drive it: `page`, `until`, `click`, `type`, `shot` and
  * `close`. Pictures are written to `out`.
  */
-export async function openBrowser({ out, width = 1440, height = 900 }) {
+export async function openBrowser({ out, width = 1440, height = 900, scale = 2, motion = false, scheme = "light" }) {
   const chrome =
     process.env.CHROME_PATH ?? (chromes[process.platform] ?? []).find((p) => existsSync(p)) ?? "google-chrome";
 
@@ -151,13 +155,13 @@ export async function openBrowser({ out, width = 1440, height = 900 }) {
   }
 
   async function shot(name) {
-    await page(`(${tidyPage.toString()})(${JSON.stringify(process.env.HABI_HOME ?? "")})`);
+    await page(`(${tidyPage.toString()})(${JSON.stringify(process.env.HABI_HOME ?? "")}, ${JSON.stringify(process.env.HABI_SHOTS_ROOT ?? "")})`);
     // Fonts, images and the last frame of anything that eased in.
     await page("document.fonts.ready.then(() => true)");
     await sleep(600);
     const { data } = await send("Page.captureScreenshot", { format: "jpeg", quality: 86 });
     writeFileSync(join(out, name), Buffer.from(data, "base64"));
-    console.log(`docs/media/${name}`);
+    console.log(relative(process.cwd(), join(out, name)));
   }
 
   async function close() {
@@ -171,11 +175,11 @@ export async function openBrowser({ out, width = 1440, height = 900 }) {
   mkdirSync(out, { recursive: true });
   await send("Page.enable");
   await send("Runtime.enable");
-  await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 2, mobile: false });
+  await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: scale, mobile: false });
   await send("Emulation.setEmulatedMedia", {
     features: [
-      { name: "prefers-color-scheme", value: "light" },
-      { name: "prefers-reduced-motion", value: "reduce" },
+      { name: "prefers-color-scheme", value: scheme },
+      { name: "prefers-reduced-motion", value: motion ? "no-preference" : "reduce" },
     ],
   });
 

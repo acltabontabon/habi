@@ -1,0 +1,197 @@
+/* A product film: a dark stage, the app on floating glass, light, and type. */
+
+html,
+body {
+  margin: 0;
+  width: 1440px;
+  height: 900px;
+  overflow: hidden;
+  background: #08080a;
+}
+
+#stage {
+  position: relative;
+  width: 1440px;
+  height: 900px;
+  overflow: hidden;
+  background: #08080a;
+  color: #f2f1ee;
+  font-family: "IBM Plex Sans Variable", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Light: three slow glows behind everything. */
+.glow {
+  position: absolute;
+  width: 1400px;
+  height: 1400px;
+  margin: -700px 0 0 -700px;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+/* The app lives in a 3D world; the words sit flat above it. */
+.world {
+  position: absolute;
+  inset: 0;
+  perspective: 1700px;
+  perspective-origin: 50% 45%;
+  transform-style: preserve-3d;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(8, 8, 10, 0.97) 0, rgba(8, 8, 10, 0.92) 560px, rgba(8, 8, 10, 0) 860px);
+}
+
+/* A window of the app, on glass. */
+.win {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1440px;
+  height: 900px;
+  margin: -450px 0 0 -720px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #0f0f11;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 60px 160px rgba(0, 0, 0, 0.7),
+    0 0 120px rgba(242, 165, 65, 0.08);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+}
+
+.win > img {
+  position: absolute;
+  inset: 0;
+  width: 1440px;
+  height: 900px;
+}
+
+.sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.11) 47%, rgba(255, 255, 255, 0.02) 52%, rgba(255, 255, 255, 0) 60%);
+  background-size: 300% 100%;
+  mix-blend-mode: screen;
+}
+
+/* A piece of the app, lifted off the screen. */
+.crop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 12px;
+  background-repeat: no-repeat;
+  background-size: 1440px 900px;
+  box-shadow:
+    0 0 0 1.5px rgba(242, 165, 65, 0.85),
+    0 30px 80px rgba(0, 0, 0, 0.75),
+    0 0 50px rgba(242, 165, 65, 0.28);
+  transform-origin: 50% 50%;
+  opacity: 0;
+}
+
+/* Type. */
+.type {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 0.98;
+  color: #f2f1ee;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+.type.left {
+  left: 96px;
+  right: auto;
+  text-align: left;
+}
+
+.type em,
+.accent {
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: #f2a541;
+}
+
+.kicker {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f2a541;
+}
+
+.frag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+  color: #f2f1ee;
+  white-space: nowrap;
+  transform-origin: 50% 50%;
+}
+
+.chip {
+  display: inline-block;
+  padding: 10px 18px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 99px;
+  background: rgba(20, 20, 24, 0.75);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 22px;
+  color: #f2f1ee;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.55) 100%);
+  z-index: 50;
+}
+
+.grain {
+  position: absolute;
+  inset: -200px;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  z-index: 51;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.4 -0.2'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>");
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 49;
+}
