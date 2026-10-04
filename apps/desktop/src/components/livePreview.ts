@@ -16,6 +16,7 @@ import {
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
+import { modKey } from "../lib/platform";
 
 export type LivePreviewOptions = {
   /** The package's files, to recognise references to them. */
@@ -113,7 +114,9 @@ function build(view: EditorView, options: LivePreviewOptions, focused: boolean):
           out.push(
             Decoration.mark({
               class: ref ? "cm-lp-code cm-lp-ref" : "cm-lp-code",
-              attributes: ref ? { "data-path": normalise(inner), title: "⌘-click to open" } : undefined,
+              attributes: ref
+                ? { "data-path": normalise(inner), title: `${modKey()}-click to open` }
+                : undefined,
             }).range(node.from, node.to),
           );
           if (!isActive(node.from)) {
@@ -154,7 +157,7 @@ function build(view: EditorView, options: LivePreviewOptions, focused: boolean):
             Decoration.mark({
               class: ref ? "cm-lp-link cm-lp-ref" : "cm-lp-link",
               attributes: ref
-                ? { "data-path": target, title: `${target} — ⌘-click to open` }
+                ? { "data-path": target, title: `${target} — ${modKey()}-click to open` }
                 : { title: url },
             }).range(textFrom, textTo),
           );

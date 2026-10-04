@@ -9,6 +9,7 @@ import type { SkillTemplate } from "../../bindings/SkillTemplate";
 import { Icon, type IconName } from "../../components/Icon";
 import { Button, Kbd } from "../../components/ui";
 import { useActions } from "../../lib/actions";
+import { modShortcut } from "../../lib/platform";
 import { slugify } from "../../lib/skills";
 import type { AddSkillsStart } from "./AddSkillsDialog";
 
@@ -187,7 +188,7 @@ export function SkillsEmpty() {
               Create a skill
             </Button>
             <span className="skills-way-key">
-              <Kbd>⌘N</Kbd>
+              <Kbd>{modShortcut("N")}</Kbd>
             </span>
           </div>
         </section>

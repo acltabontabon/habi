@@ -62,6 +62,11 @@ a:hover {
   text-decoration-color: var(--thread);
 }
 
+/* Links without an href (Markdown's external ones) are opened by the app, not the webview. */
+a[role="link"] {
+  cursor: pointer;
+}
+
 code,
 kbd,
 pre,

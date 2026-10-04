@@ -424,11 +424,18 @@ describe("the Skill Studio", () => {
     });
     wrap(<SkillStudio id="k" />);
     await userEvent.click(await screen.findByRole("button", { name: /From review, changed here/ }));
-    const sheet = screen.getByRole("complementary", { name: "Where it came from" });
+    const sheet = screen.getByRole("dialog", { name: "Where it came from" });
     expect(within(sheet).getByText("From review")).toBeInTheDocument();
     // Changes are said as parts of the skill, not as files.
     expect(await within(sheet).findByText("Instructions")).toBeInTheDocument();
     expect(within(sheet).getByRole("button", { name: /Share to a library/ })).toBeInTheDocument();
+    // A modal sheet: the rest of the Studio is inert, and Escape closes it wherever focus is.
+    expect(sheet).toHaveAttribute("aria-modal", "true");
+    expect(document.querySelector(".sk-stage")).toHaveAttribute("inert");
+    expect(document.querySelector(".sk-bar")).toHaveAttribute("inert");
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Where it came from" })).not.toBeInTheDocument();
+    expect(document.querySelector(".sk-stage")).not.toHaveAttribute("inert");
   });
 
   it("turns a few words into signals, said as facts about a project", async () => {
@@ -576,7 +583,7 @@ describe("the Skill Studio", () => {
     expect(screen.queryByRole("button", { name: "Test" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
     await userEvent.click(screen.getByRole("menuitem", { name: /Test against a project/ }));
-    const sheet = await screen.findByRole("complementary", { name: "Test against a project" });
+    const sheet = await screen.findByRole("dialog", { name: "Test against a project" });
     expect(
       await within(sheet).findByText("Would be suggested here", {}, { timeout: 2000 }),
     ).toBeInTheDocument();
@@ -586,7 +593,7 @@ describe("the Skill Studio", () => {
     const request = preview.mock.calls[0]?.[0].request as { projectId?: string } | undefined;
     expect(request?.projectId).toBe("p1");
     await userEvent.click(within(sheet).getByRole("button", { name: "Done" }));
-    expect(screen.queryByRole("complementary", { name: "Test against a project" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Test against a project" })).not.toBeInTheDocument();
   });
 
   it("keeps materials human, files placed by Habi, and the package source one step away", async () => {

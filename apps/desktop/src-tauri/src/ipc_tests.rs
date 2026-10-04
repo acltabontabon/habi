@@ -105,6 +105,7 @@ fn webview_contract_end_to_end() {
             commands::app_info,
             commands::log_ui_error,
             commands::add_source,
+            commands::open_git_copy,
             commands::refresh_source,
             commands::catalog,
             commands::catalog_repo_facts,
@@ -226,6 +227,20 @@ fn webview_contract_end_to_end() {
         local["code"], "invalidInput",
         "local folders must come from the native picker"
     );
+    // `file://` (any letter case) is a folder too: not a way round the picker.
+    for location in [
+        format!("file://{}", home.path().to_string_lossy()),
+        format!("FILE://{}", home.path().to_string_lossy()),
+        home.path().to_string_lossy().into_owned(),
+    ] {
+        let copy = call(
+            &webview,
+            "open_git_copy",
+            json!({ "location": location, "jobId": null }),
+        )
+        .unwrap_err();
+        assert_eq!(copy["code"], "invalidInput", "{location}");
+    }
     let escape = call(
         &webview,
         "read_project_excerpt",

@@ -116,7 +116,8 @@ export const api = {
   restartApp: () => call<void>("restart_app"),
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<Settings>("set_settings", { settings }),
-  cancelJob: (jobId: string) => call<boolean>("cancel_job", { jobId }),
+  /** Callers fire and forget: a job that already ended (or a failed call) is not an error. */
+  cancelJob: (jobId: string) => call<boolean>("cancel_job", { jobId }).catch(() => false),
   logUiError: (message: string, detail: string | null) => call<void>("log_ui_error", { message, detail }),
 
   pickProject: () => call<ProjectPick | null>("pick_project"),

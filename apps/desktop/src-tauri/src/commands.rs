@@ -1572,7 +1572,14 @@ pub async fn open_git_copy(
     location: String,
     job_id: Option<String>,
 ) -> CmdResult<habi_core::service::GitCopy> {
-    if habi_core::source::is_local_location(location.trim()) {
+    // `file://` URLs (any letter case) are folders too, and parse to a local
+    // location, so the test is on the parsed result, not the leading character.
+    let local = habi_core::source::is_local_location(location.trim())
+        || !matches!(
+            habi_core::source::parse_location(&location).map_err(|e| e.to_info())?,
+            habi_core::source::Location::Remote(_)
+        );
+    if local {
         return Err(HabiError::invalid(
             "that is a folder on this machine; choose it with Add skills → A folder",
         )

@@ -13,6 +13,7 @@ import { applicabilityLabel } from "../lib/format";
 import { setInspectorOpen } from "../lib/inspector";
 import { DOCS, SUPPORT } from "../lib/links";
 import { useNav } from "../lib/nav";
+import { modShortcut } from "../lib/platform";
 import { invalidateProjectData, keys, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { useOpenExternal } from "../lib/safeInvoke";
 import { useScreenCommands } from "../lib/screenCommands";
@@ -142,7 +143,7 @@ function Palette({
                     >
                       <Icon name="layers" />
                       <span>Show the package contents</span>
-                      <span className="palette-meta mono">⌘I</span>
+                      <span className="palette-meta mono">{modShortcut("I")}</span>
                     </Command.Item>
                   ) : null}
                 </Command.Group>
@@ -220,10 +221,12 @@ function Palette({
               </Command.Group>
               <Command.Group heading="Actions">
                 <Command.Item value="open project folder" onSelect={() => run(() => void openProject())}>
-                  <Icon name="folder" /> <span>Open a project…</span> <span className="palette-meta">⌘O</span>
+                  <Icon name="folder" /> <span>Open a project…</span>{" "}
+                  <span className="palette-meta">{modShortcut("O")}</span>
                 </Command.Item>
                 <Command.Item value="create new skill draft write" onSelect={() => run(() => newSkill())}>
-                  <Icon name="pencil" /> <span>Create a skill</span> <span className="palette-meta">⌘N</span>
+                  <Icon name="pencil" /> <span>Create a skill</span>{" "}
+                  <span className="palette-meta">{modShortcut("N")}</span>
                 </Command.Item>
                 <Command.Item
                   value="add import existing skills folder"
@@ -282,7 +285,8 @@ function Palette({
                   value="settings preferences diagnostics"
                   onSelect={() => run(() => navigate({ name: "settings" }))}
                 >
-                  <Icon name="settings" /> <span>Settings</span> <span className="palette-meta">⌘,</span>
+                  <Icon name="settings" /> <span>Settings</span>{" "}
+                  <span className="palette-meta">{modShortcut(",")}</span>
                 </Command.Item>
                 <Command.Item
                   value="privacy security data telemetry network safe"

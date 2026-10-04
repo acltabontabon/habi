@@ -108,6 +108,35 @@ fn merge_login_path() -> Vec<String> {
     added
 }
 
+/// Whether the webview may load `url`: only Habi's own pages (the `tauri`
+/// scheme on macOS and Linux, `tauri.localhost` on Windows), the blank page a
+/// webview starts from, and, in debug builds, the dev server (`devUrl`).
+fn is_app_page(url: &tauri::Url, dev_url: Option<&tauri::Url>) -> bool {
+    let own = match url.scheme() {
+        "tauri" => url.host_str() == Some("localhost"),
+        "http" | "https" => url.host_str() == Some("tauri.localhost") && url.port().is_none(),
+        "about" => url.as_str() == "about:blank",
+        _ => false,
+    };
+    own || (cfg!(debug_assertions) && dev_url.is_some_and(|dev| url.origin() == dev.origin()))
+}
+
+/// Defense in depth: a link, redirect or script that tries to take the main
+/// window to another page is refused (links open in the system browser
+/// through `open_external`). Habi's CSP and the lack of remote IPC
+/// capabilities already limit what such a page could do.
+fn navigation_guard<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::new("navigation-guard")
+        .on_navigation(|webview, url| {
+            let allowed = is_app_page(url, webview.app_handle().config().build.dev_url.as_ref());
+            if !allowed {
+                tracing::warn!(url = %url, "refused navigation away from Habi");
+            }
+            allowed
+        })
+        .build()
+}
+
 /// The window opens at its designed size (`tauri.conf.json`, which also sets
 /// the 1024×700 minimum repeated below). A smaller
 /// screen — a 1366×768 laptop, or 1920×1080 at 125% — would put part of it
@@ -170,6 +199,7 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .plugin(navigation_guard())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -327,4 +357,50 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Habi");
+}
+
+#[cfg(test)]
+mod navigation_tests {
+    use super::is_app_page;
+
+    fn url(text: &str) -> tauri::Url {
+        text.parse().expect("a valid URL")
+    }
+
+    #[test]
+    fn only_habis_own_pages_load() {
+        for own in [
+            "tauri://localhost/",
+            "tauri://localhost/index.html",
+            "http://tauri.localhost/",
+            "https://tauri.localhost/index.html",
+            "about:blank",
+        ] {
+            assert!(is_app_page(&url(own), None), "{own}");
+        }
+        for other in [
+            "https://example.com/",
+            "http://example.com/tauri.localhost",
+            "http://tauri.localhost.evil.test/",
+            "http://tauri.localhost:8080/",
+            "tauri://evil/",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "data:text/html,hi",
+            "about:srcdoc",
+        ] {
+            assert!(!is_app_page(&url(other), None), "{other}");
+        }
+    }
+
+    #[test]
+    fn the_dev_server_loads_only_in_debug_builds() {
+        let dev = url("http://127.0.0.1:1420");
+        assert_eq!(
+            is_app_page(&url("http://127.0.0.1:1420/src/main.tsx"), Some(&dev)),
+            cfg!(debug_assertions)
+        );
+        assert!(!is_app_page(&url("http://127.0.0.1:1421/"), Some(&dev)));
+        assert!(!is_app_page(&url("http://127.0.0.1:1420/"), None));
+    }
 }

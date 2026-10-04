@@ -32,10 +32,15 @@ export function ThreadChoice<T extends string | number>({
             name={name}
             checked={o.value === value}
             onChange={() => onChange(o.value)}
-            aria-label={o.description}
+            aria-describedby={o.description ? `${name}-${i}` : undefined}
           />
           <span className="tc-knot" aria-hidden="true" />
           <span className="tc-label">{o.label}</span>
+          {o.description && (
+            <span id={`${name}-${i}`} hidden>
+              {o.description}
+            </span>
+          )}
         </label>
       ))}
     </div>

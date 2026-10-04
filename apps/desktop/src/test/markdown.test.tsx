@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Markdown } from "../components/Markdown";
 
@@ -20,7 +20,8 @@ describe("skill Markdown rendering", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("[onerror]")).toBeNull();
     for (const a of container.querySelectorAll("a")) {
-      expect(a.getAttribute("href")?.startsWith("javascript:")).toBe(false);
+      // No link carries an href at all: the webview must have nothing to navigate to.
+      expect(a.getAttribute("href")).toBeNull();
     }
     expect((window as unknown as { pwned?: boolean }).pwned).toBeUndefined();
     expect(container.textContent).toContain("[image: tracker]");
@@ -78,5 +79,21 @@ describe("skill Markdown rendering", () => {
     expect(ts?.querySelector(".tok-typeName")?.textContent).toBe("number");
     expect(yaml?.querySelector(".tok-propertyName, .tok-definition")).not.toBeNull();
     expect(json?.querySelector(".tok-bool")?.textContent).toBe("true");
+  });
+
+  it("opens https links through Habi, never by navigating the window", () => {
+    invoke.mockClear();
+    const { getByRole } = render(<Markdown text="[docs](https://example.invalid/docs)" />);
+    const link = getByRole("link", { name: "docs" });
+    expect(link.hasAttribute("href")).toBe(false);
+    expect(link.getAttribute("title")).toBe("Opens https://example.invalid/docs in your browser");
+    for (const type of ["auxclick", "contextmenu"]) {
+      expect(fireEvent(link, new MouseEvent(type, { bubbles: true, cancelable: true }))).toBe(false);
+    }
+    expect(invoke).not.toHaveBeenCalled();
+    fireEvent.click(link);
+    fireEvent.keyDown(link, { key: "Enter" });
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenCalledWith("open_external", { url: "https://example.invalid/docs" });
   });
 });
