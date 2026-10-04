@@ -65,6 +65,27 @@
   max-width: 760px;
 }
 
+/* The heading rises in once it has come up the screen (the page's reveal, scripts/site.ts). */
+@media (prefers-reduced-motion: no-preference) {
+  .js .tour-head[data-reveal] > * {
+    opacity: 0;
+    translate: 0 22px;
+    transition:
+      opacity 900ms var(--ease),
+      translate 900ms var(--ease);
+  }
+  .js .tour-head[data-reveal].is-in > * {
+    opacity: 1;
+    translate: 0 0;
+  }
+  .js .tour-head[data-reveal].is-in > :nth-child(2) {
+    transition-delay: 120ms;
+  }
+  .js .tour-head[data-reveal].is-in > :nth-child(3) {
+    transition-delay: 240ms;
+  }
+}
+
 /* The screens themselves: the picture, and pins on what matters. */
 .shot {
   position: relative;

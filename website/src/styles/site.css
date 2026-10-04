@@ -261,8 +261,8 @@ em {
   position: relative;
   z-index: 1;
   max-width: var(--page);
-  /* The film has the first screen; it fades into the page at its foot, where the problem's panels begin. */
-  height: clamp(420px, calc(100svh - var(--top) - 24px), 900px);
+  /* The film is the whole first screen, exactly: the screen less the header, so nothing of what follows can show until you scroll. */
+  height: max(420px, calc(100svh - var(--top)));
   margin-inline: auto;
 }
 
