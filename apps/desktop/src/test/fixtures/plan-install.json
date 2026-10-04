@@ -1,16 +1,16 @@
 {
-  "id": "0a4ba5b7-24c1-431d-9d63-8ea3dbb262a7",
+  "id": "6d98baab-09c8-47df-9180-cdb577313514",
   "action": "install",
   "title": "Install for Claude Code and Codex in this project",
   "project": "~/work/billing-service",
-  "createdAt": "2026-10-02T21:58:00Z",
+  "createdAt": "2026-10-04T13:45:13Z",
   "items": [
     {
       "key": "local:Example team library#liquibase-migration-review",
       "title": "Liquibase migration review",
       "kind": "workflow",
       "source": "Example team library",
-      "version": "3c5e131423",
+      "version": "d1087c10c6",
       "clients": [
         "claude-code",
         "codex"
@@ -22,7 +22,7 @@
       "title": "Java service conventions",
       "kind": "instructions",
       "source": "Example team library",
-      "version": "3c5e131423",
+      "version": "d1087c10c6",
       "clients": [
         "claude-code",
         "codex"
@@ -1267,7 +1267,7 @@
       ],
       "before": null,
       "after": "sha256:a1b3d59770a6a3b4b039a224858003c030bbc625bb73f32865368cc1a31c24c5",
-      "explanation": "Codex and Cursor read AGENTS.md natively; Claude Code reads it through the CLAUDE.md import.",
+      "explanation": "Codex, Cursor, GitHub Copilot, OpenCode and Junie read AGENTS.md natively; Claude Code reads it through the CLAUDE.md import.",
       "diff": {
         "hunks": [
           {
@@ -1414,7 +1414,7 @@
       "items": [],
       "clients": [],
       "before": null,
-      "after": "sha256:b61ac65fc621eb8b4f3433d73cc905621a0e0916372db570bc079dbfc2311a54",
+      "after": "sha256:b67870e755b68615e2a5bfd6573a40d2a8e283786fb23384f3f19e8eed3c2328",
       "explanation": "Records what Habi installed (sources, versions, file digests) so it can detect updates and local edits. Safe to commit; contains no absolute paths or secrets.",
       "diff": {
         "hunks": [
@@ -1509,7 +1509,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 15,
-                "text": "      \"installedAt\": \"2026-10-02T21:58:00Z\","
+                "text": "      \"installedAt\": \"2026-10-04T13:45:13Z\","
               },
               {
                 "tag": "added",
@@ -1653,7 +1653,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 39,
-                "text": "      \"snapshot\": \"3c5e131423d34551d992bf36dae8500bbe0747d6\","
+                "text": "      \"snapshot\": \"d1087c10c67d06b784610b7203b9f4a0d15ca56e\","
               },
               {
                 "tag": "added",
@@ -1665,7 +1665,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 41,
-                "text": "      \"installedAt\": \"2026-10-02T21:58:00Z\","
+                "text": "      \"installedAt\": \"2026-10-04T13:45:13Z\","
               },
               {
                 "tag": "added",
@@ -1815,7 +1815,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 66,
-                "text": "      \"snapshot\": \"3c5e131423d34551d992bf36dae8500bbe0747d6\","
+                "text": "      \"snapshot\": \"d1087c10c67d06b784610b7203b9f4a0d15ca56e\","
               },
               {
                 "tag": "added",
@@ -1827,7 +1827,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 68,
-                "text": "      \"installedAt\": \"2026-10-02T21:58:00Z\","
+                "text": "      \"installedAt\": \"2026-10-04T13:45:13Z\","
               },
               {
                 "tag": "added",
@@ -2160,5 +2160,6 @@
   ],
   "conflicts": [],
   "notes": [],
+  "mcpSuggestions": [],
   "recovery": "Replaced or deleted files are kept. Restore them from the project's history, or with habi restore."
 }

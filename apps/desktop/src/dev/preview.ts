@@ -12,9 +12,13 @@ import { mockIPC } from "@tauri-apps/api/mocks";
 import catalog from "../test/fixtures/catalog.json";
 import details from "../test/fixtures/item-details.json";
 import library from "../test/fixtures/library.json";
+import machineHistory from "../test/fixtures/machine-history.json";
+import machineSkills from "../test/fixtures/machine-skills.json";
 import billing from "../test/fixtures/overview-billing-service.json";
 import monorepo from "../test/fixtures/overview-platform-monorepo.json";
 import plan from "../test/fixtures/plan-install.json";
+import machinePlan from "../test/fixtures/plan-install-machine.json";
+import machineRestore from "../test/fixtures/plan-restore-machine.json";
 
 type Args = Record<string, unknown> | undefined;
 
@@ -177,16 +181,15 @@ function answer(cmd: string, args: Args): unknown {
       return plan;
     // Skills in the person's own folders: the same plan, rooted at the home folder.
     case "plan_install_machine":
-      return {
-        ...plan,
-        title: "Install for Claude Code on this machine",
-        project: "~",
-        items: plan.items.slice(0, 1),
-        changes: [
-          ...plan.changes.filter((c) => c.kind === "skillFile" && c.clients.includes("claude-code")),
-          ...plan.changes.filter((c) => c.kind === "lockFile"),
-        ],
-      };
+      return machinePlan;
+    case "plan_restore_machine":
+      return machineRestore;
+    case "machine_history":
+      return machineHistory;
+    case "machine_skills":
+      return machineSkills;
+    case "machine_recover":
+      return [];
     case "detected_clients":
       return ["claude-code"];
     case "machine_install_preview":

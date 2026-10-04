@@ -703,23 +703,8 @@ pub fn inspect(
             && !signals.is_empty());
     repository.workspace_signals = signals;
 
-    // Fingerprint: manifests' content plus the shape of the file tree.
-    let listing = sha256(
-        files
-            .iter()
-            .map(|(p, s)| format!("{p}\t{s}\n"))
-            .collect::<String>()
-            .as_bytes(),
-    );
-    fingerprint_parts.push(("<tree>".into(), listing));
-    let fingerprint = tree_digest(
-        fingerprint_parts
-            .iter()
-            .map(|(a, b)| (a.as_str(), b.as_str())),
-    );
-
     // What a cached copy re-checks to notice edits, new or removed files and
-    // branch switches: manifests, lockfiles, ignore files, Git's HEAD and the
+    // branch switches: indexed files, ignore files, Git's HEAD and the
     // listed directories.
     let mut watched: Vec<String> = Vec::new();
     watched.extend(poms.iter().cloned());
@@ -758,8 +743,41 @@ pub fn inspect(
     watched.extend(describe::readme_of(&files).map(str::to_string));
     watched.push("gradle/libs.versions.toml".into());
     watched.push(".git/HEAD".into());
+    // Content probes and check freshness also depend on ordinary files.
+    watched.extend(files.iter().map(|(path, _)| path.clone()));
     watched.extend(walked_dirs);
+    watched.sort();
+    watched.dedup();
     let freshness = model::Freshness::capture(&root, watched.iter().map(String::as_str));
+
+    // Include file modification times: checks may depend on source or script
+    // contents, even when an edit leaves the file size unchanged. Source bodies
+    // stay unread. Unchanged files keep the same fingerprint across rescans.
+    let file_stamps: HashMap<_, _> = freshness
+        .stamps
+        .iter()
+        .map(|(p, stamp)| (p.as_str(), stamp))
+        .collect();
+    let listing = sha256(
+        files
+            .iter()
+            .map(|(p, s)| {
+                let stamp = file_stamps
+                    .get(p.as_str())
+                    .and_then(|s| s.as_ref())
+                    .map(|s| s.fingerprint())
+                    .unwrap_or_else(|| "unreadable".into());
+                format!("{p}\t{s}\t{stamp}\n")
+            })
+            .collect::<String>()
+            .as_bytes(),
+    );
+    fingerprint_parts.push(("<tree>".into(), listing));
+    let fingerprint = tree_digest(
+        fingerprint_parts
+            .iter()
+            .map(|(a, b)| (a.as_str(), b.as_str())),
+    );
 
     let mut facts = out.facts;
     facts.sort_by(|a, b| a.module.cmp(&b.module).then(a.id.cmp(&b.id)));

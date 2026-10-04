@@ -252,7 +252,8 @@ pub struct ProjectInspection {
     pub facts: Vec<Fact>,
     pub coverage: Vec<Coverage>,
     pub scan: ScanReport,
-    /// Changes when any manifest or recognized file changes.
+    /// Manifest digests and the sizes and modification times of indexed files.
+    /// Conservatively invalidates check results without reading source bodies.
     pub fingerprint: String,
     pub inspected_at: String,
     /// All non-ignored file paths (repository-relative). Used for file-pattern
@@ -426,6 +427,10 @@ pub(crate) struct Stamp {
 }
 
 impl Stamp {
+    pub(crate) fn fingerprint(&self) -> String {
+        format!("{}:{:?}:{}", self.size, self.modified, self.is_dir)
+    }
+
     pub(crate) fn of(path: &Path) -> Option<Stamp> {
         let m = std::fs::symlink_metadata(path).ok()?;
         Some(Stamp {

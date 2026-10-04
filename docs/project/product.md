@@ -63,9 +63,15 @@ Habi is not a marketplace, agent launcher, chat application or configuration das
 - **Applicability:** applies · does not apply · needs information · not matched (no metadata).
 - **Readiness:** ready · prerequisite missing · not established · no prerequisites.
 - **Installation:** not installed · installed · update available · edited locally · edited with conflicting update · source not connected.
-- **Evidence:** declared by author · checked here · check failed · check out of date · not evaluated.
+- **Evidence:** declared by author · checked here · partially checked · check failed · check out of date · not evaluated.
 
 They are never collapsed into a single "green" status.
+
+Readiness is reported per compatible agent and installation previews assess the selected
+agents. A project MCP entry establishes configuration only, not startup or authentication.
+Evidence summarizes the latest completed results across declared checks and applicable
+modules, with explicit failed, stale and unchecked counts. Incomplete inspection cannot
+produce a fully checked summary.
 
 ## Validation target
 

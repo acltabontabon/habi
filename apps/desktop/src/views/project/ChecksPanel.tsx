@@ -24,8 +24,8 @@ function RunResult({ run }: { run: CheckRun }) {
         </span>
       </p>
       <p className="muted">
-        This validates only that <span className="mono">{run.argv.join(" ")}</span> succeeded — not the
-        agent's work as a whole.
+        This records the outcome of <span className="mono">{run.argv.join(" ")}</span> in this module. A
+        passing result validates only this command's success condition.
       </p>
       {run.outputTail ? <pre className="code output">{run.outputTail}</pre> : null}
     </div>
@@ -43,11 +43,9 @@ function CheckCard({
 }) {
   const client = useQueryClient();
   const applying = recommendation.applicability.modules
-    .filter((m) => m.applicability === "applies")
+    .filter((m) => m.applicability === "applies" && m.module !== "*")
     .map((m) => m.module);
-  const modules = (applying.length > 0 ? applying : overview.inspection.modules.map((m) => m.id)).filter(
-    (m) => m !== "*",
-  );
+  const modules = applying.length > 0 ? applying : overview.inspection.modules.map((m) => m.id);
   const [module, setModule] = useState(modules[0] ?? ".");
   const [bindings, setBindings] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<CheckPreview | null>(null);

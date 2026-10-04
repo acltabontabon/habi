@@ -159,17 +159,25 @@ the user declares it for the project.
 
 Every fact records its detector, module, evidence file and line, a short non-sensitive
 excerpt (a coordinate, never file bodies), and its origin: read directly, derived, inherited
-from a local parent, or declared by the user. The project fingerprint (manifest and lockfile
-digests plus the file listing) changes when relevant files change; check results tied to an
-older fingerprint are shown as out of date.
+from a local parent, or declared by the user. The project fingerprint includes manifest and
+lockfile digests plus indexed file paths, sizes and modification times. Source bodies are
+not hashed. Check results tied to an older fingerprint are shown as out of date, including
+after a same-size source edit with a changed modification time.
+
+Evidence uses the latest completed result for each declared check and applicable module,
+independently of the limited recent-run history. A pass cannot hide a different failure or
+an unchecked pair; incomplete scan coverage keeps passing evidence partially checked.
+Cancellation preserves the previous completed result. Ignored files, environment changes,
+external services and content edits that preserve size and modification time are outside
+this freshness signal.
 
 Inspections are cached per project. Before a cached inspection is reused, Habi compares the
-size and modification time of every manifest, lockfile, ignore file, `.git/HEAD` and every
+size and modification time of every indexed file, ignore file, `.git/HEAD` and every
 listed directory (up to 20 000) with what it saw; any difference — an edit, a branch switch,
 a file added or removed — triggers a new inspection. Applying a plan (install, update,
-removal, restore) or recovering an interrupted one also drops the cached inspection. An
-in-place edit of an unrecognized file's content (for example turning an existing YAML file
-into an OpenAPI document) is only seen after a rescan.
+removal, restore) or recovering an interrupted one also drops the cached inspection.
+An ordinary content edit to an indexed file also triggers inspection, including turning an
+existing YAML file into an OpenAPI document.
 
 Versions are compared leniently: `3.2.0.RELEASE` is `3.2.0`. Only recognized pre-release
 markers (`alpha`, `beta`, `rc`, `cr`, `M1`/`milestone`, `SNAPSHOT`, `preview`, `ea`, `dev`,

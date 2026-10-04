@@ -245,13 +245,15 @@ By design, or not solved yet:
 - **Another process running as you** could race between path validation and directory
   creation while a plan is applied.
 - **Community libraries** usually need push access (or a fork) that you do not have. Habi
-  prepares the branch and offers *Export patch*; it does not create forks.
+  prepares the branch and offers a guided manual fork route with *Export patch*. Creating
+  the fork and opening its review request remain manual; *Send* keeps its original destination.
 - **Unsigned installers, by choice.** Habi ships on GitHub Releases only, without Apple or
   Microsoft code signing, so the first launch needs one confirmation
   ([how](../guide/getting-started.md#installing)). Updates are signed with Habi's own updater key
   and verified before they install.
-- Smaller gaps: an install on this machine is journaled
-  but no screen offers to restore it; turning an existing file into an
-  OpenAPI specification is noticed after a rescan ([detectors](../library-authors/detectors.md));
-  comments inside `habi.yaml` are not kept when the share form rewrites it
+- **Check freshness** covers indexed paths, sizes and modification times plus manifest
+  digests. It does not establish freshness of ignored files, environment variables or
+  external services, or edits preserving both size and modification time
+  ([detectors](../library-authors/detectors.md)).
+- Smaller gaps: comments inside `habi.yaml` are not kept when the share form rewrites it
   ([sharing](../guide/sharing.md)).

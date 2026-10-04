@@ -363,6 +363,38 @@ function managedSkill(state: NonNullable<MachineSkill["managed"]>["state"]) {
 }
 
 describe("skills Habi installed on this machine", () => {
+  it("keeps history accessible after the last skill is removed and can check recovery", async () => {
+    const operation = {
+      id: "removed",
+      title: "Remove last skill",
+      action: "remove",
+      state: "committed",
+      createdAt: "2026-10-03T00:00:00Z",
+      finishedAt: "2026-10-03T00:00:01Z",
+      files: [".claude/skills/liquibase/SKILL.md"],
+      problems: [],
+    };
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "machine_skills") return [];
+      if (cmd === "machine_history") return [operation];
+      if (cmd === "machine_recover") return [];
+      if (cmd === "plan_restore_machine") return plan({ action: "restore", title: "Restore last skill" });
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      throw { code: "notFound", message: cmd };
+    });
+    const user = userEvent.setup();
+    wrap(<OnThisMachine />);
+    await user.click(await screen.findByRole("button", { name: "History and restore…" }));
+    expect(await screen.findByText("Remove last skill")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Check for interrupted operations" }));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("machine_recover", undefined));
+    await user.click(screen.getByRole("button", { name: "Restore…" }));
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("plan_restore_machine", { operationId: "removed", decisions: {} }),
+    );
+    expect(await screen.findByRole("button", { name: "Restore last skill" })).toBeInTheDocument();
+  });
+
   it("say so, and offer update and remove through the same review", async () => {
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return [managedSkill("updateAvailable")];

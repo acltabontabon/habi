@@ -1,6 +1,7 @@
 /** Detail of one recommendation: why it fits, the workflow, its content, checks. */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import type { ClientId } from "../../bindings/ClientId";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Recommendation } from "../../bindings/Recommendation";
 import { AgentReach } from "../../components/AgentReach";
@@ -13,6 +14,7 @@ import { api } from "../../lib/api";
 import {
   applicabilityLabel,
   applicabilityTone,
+  checkCoverageText,
   clientLabel,
   evidenceLabel,
   evidenceTone,
@@ -77,6 +79,11 @@ export function ItemDetailPane({
   const [panel, setPanel] = useState<Panel>("why");
   const [review, setReview] = useState<ReviewRequest | null>(null);
   const [showOtherModules, setShowOtherModules] = useState(false);
+  const [readinessClient, setReadinessClient] = useState<ClientId | null>(null);
+  const agentReadiness = r.readiness.byClient ?? [];
+  const selectedAgent = readinessClient ?? r.readiness.assessedClients?.[0] ?? agentReadiness[0]?.client;
+  const readiness = agentReadiness.find((a) => a.client === selectedAgent) ?? r.readiness;
+  const coverageText = checkCoverageText(r.evidence.coverage);
   const { navigate } = useNav();
   const { addSkills } = useActions();
   const [fullRules, setFullRules] = useState(false);
@@ -126,13 +133,14 @@ export function ItemDetailPane({
     kind: "install",
     items: [{ sourceId: r.item.sourceId, itemId: r.item.id }],
     title: r.item.title,
+    clients: readinessClient ? [readinessClient] : undefined,
   };
   const key = r.installation?.key;
 
-  const missing = r.readiness.prerequisites.filter(
+  const missing = readiness.prerequisites.filter(
     (p) => p.status === "missing" || p.status === "notConfigured",
   );
-  const missingMcp = missing.some((p) => p.kind === "mcp");
+  const missingMcp = missing.some((p) => p.kind === "mcp" && p.hint);
   const missingText =
     missing.length === 0
       ? "A prerequisite is missing. Installing still works; the agent may not be able to follow every step."
@@ -304,8 +312,9 @@ export function ItemDetailPane({
           />
           <Facet
             label="Readiness"
-            value={readinessLabel[r.readiness.state]}
-            tone={readinessTone[r.readiness.state]}
+            value={readinessLabel[readiness.state]}
+            tone={readinessTone[readiness.state]}
+            detail={selectedAgent ? `for ${clientLabel[selectedAgent]}` : undefined}
           />
           <Facet
             label="Installation"
@@ -317,10 +326,13 @@ export function ItemDetailPane({
             label="Evidence"
             value={evidenceLabel[r.evidence.state]}
             tone={evidenceTone[r.evidence.state]}
+            detail={coverageText}
           />
         </dl>
 
-        {r.nextAction === "setUpPrerequisites" ? (
+        {r.installState === "notInstalled" &&
+        readiness.state === "missing" &&
+        a.applicability === "applies" ? (
           <p className="action-note">
             <Icon name="warning" size={14} /> {missingText}
           </p>
@@ -474,11 +486,30 @@ export function ItemDetailPane({
             ) : null}
 
             <Section title="Prerequisites" id="prereqs">
-              {r.readiness.prerequisites.length === 0 ? (
+              {agentReadiness.length > 0 && r.readiness.prerequisites.length > 0 ? (
+                <label className="field">
+                  <span className="field-label">Readiness for</span>
+                  <select
+                    className="input"
+                    value={selectedAgent}
+                    onChange={(e) => setReadinessClient(e.target.value as ClientId)}
+                  >
+                    {agentReadiness.map((a) => (
+                      <option key={a.client} value={a.client}>
+                        {clientLabel[a.client]} — {readinessLabel[a.state]}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="field-hint">
+                    Project configuration only. Server startup and authorization have not been checked.
+                  </span>
+                </label>
+              ) : null}
+              {readiness.prerequisites.length === 0 ? (
                 <p className="muted">None declared.</p>
               ) : (
                 <ul className="prereqs">
-                  {r.readiness.prerequisites.map((p) => (
+                  {readiness.prerequisites.map((p) => (
                     <li key={`${p.kind}-${p.name}`} className="prereq">
                       <div className="prereq-head">
                         <span className="prereq-name">
@@ -497,6 +528,18 @@ export function ItemDetailPane({
             </Section>
 
             <Section title="Evidence" id="evidence">
+              {r.evidence.coverage?.inputsComplete === false && coverageText ? (
+                <Notice tone="unknown">
+                  Inspection was incomplete, so check freshness could not be established for every indexed
+                  input.
+                </Notice>
+              ) : null}
+              {coverageText ? (
+                <p className="check-coverage">
+                  <strong>{coverageText}</strong>. Latest completed results for the declared checks in each
+                  applicable module. A passing command establishes only its own success condition.
+                </p>
+              ) : null}
               {r.evidence.latestRun ? (
                 <p>
                   Latest local check <strong>{r.evidence.latestRun.checkId}</strong>:{" "}
@@ -504,12 +547,12 @@ export function ItemDetailPane({
                     {r.evidence.latestRun.status}
                   </Status>{" "}
                   <span className="muted">{relativeTime(r.evidence.latestRun.finishedAt)}</span>
-                  {r.evidence.state === "stale" ? (
-                    <span className="muted">
-                      {" "}
-                      — the item or project changed since, so it no longer counts.
-                    </span>
-                  ) : null}
+                  <span className="muted"> · module {r.evidence.latestRun.module}</span>
+                </p>
+              ) : null}
+              {(r.evidence.coverage?.stale ?? 0) > 0 ? (
+                <p className="muted">
+                  Some check results no longer count because the item or project changed. Rerun those checks.
                 </p>
               ) : null}
               {r.evidence.declared.length === 0 && !r.evidence.latestRun ? (

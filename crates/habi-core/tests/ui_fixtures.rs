@@ -15,6 +15,7 @@ use std::process::Command;
 #[ignore = "writes fixture files for the desktop UI tests"]
 fn export_ui_fixtures() {
     let home = tempfile::tempdir().unwrap();
+    let user_home = tempfile::tempdir().unwrap();
     let lib = tempfile::tempdir().unwrap();
     copy_tree(&fixture("libraries/example-team-library"), lib.path());
     for args in [
@@ -39,7 +40,9 @@ fn export_ui_fixtures() {
             .unwrap();
         assert!(ok.success());
     }
-    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf()))
+        .unwrap()
+        .with_user_home(user_home.path().to_path_buf());
     let source = habi
         .sources()
         .add(&NewSource {
@@ -126,6 +129,44 @@ fn export_ui_fixtures() {
             write("plan-install.json", &plan);
         }
     }
+    // Machine history must be generated from the same real install/restore
+    // contract as the project fixtures, using an injected disposable home.
+    let plan = habi
+        .plan_install_machine(
+            &[habi_core::service::ItemRef {
+                source_id: source.id.clone(),
+                item_id: "liquibase-migration-review".into(),
+            }],
+            &[habi_core::clients::ClientId::ClaudeCode],
+            &Default::default(),
+        )
+        .unwrap();
+    let portable = |value: serde_json::Value| -> serde_json::Value {
+        let text = serde_json::to_string(&value)
+            .unwrap()
+            .replace(&user_home.path().to_string_lossy().to_string(), "~");
+        serde_json::from_str(&text).unwrap()
+    };
+    write(
+        "plan-install-machine.json",
+        &portable(serde_json::to_value(&plan).unwrap()),
+    );
+    let operation = habi.apply(&plan.id).unwrap();
+    write(
+        "machine-history.json",
+        &serde_json::to_value(habi.machine_history().unwrap()).unwrap(),
+    );
+    write(
+        "machine-skills.json",
+        &portable(serde_json::to_value(habi.machine_skills().unwrap()).unwrap()),
+    );
+    let restore = habi
+        .plan_restore_machine(&operation.id, &Default::default())
+        .unwrap();
+    write(
+        "plan-restore-machine.json",
+        &portable(serde_json::to_value(restore).unwrap()),
+    );
 }
 
 /// A library shaped like a public plugin collection, previewed through the

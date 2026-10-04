@@ -230,6 +230,7 @@ impl Bridge {
                 &arg::<Vec<_>>(a, "clients")?,
             )?),
             "machine_history" => out(h.machine_history()?),
+            "machine_recover" => out(h.machine_recover()?),
             "apply_plan" => out(h.apply(&s("planId")?)?),
             "history" => out(h.history(&s("projectId")?)?),
             "recover" => out(h.recover(&s("projectId")?)?),

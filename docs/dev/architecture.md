@@ -56,6 +56,9 @@
   Markdown sections (`sections`), and the MCP writers for each tool's own file (`mcp`). The
   paths come from [compatibility research](compatibility-research.md).
 - **`recommend`**: combines applicability, readiness, installation and evidence; ordering.
+  Readiness includes each compatible agent's project prerequisites and the agents assessed
+  for the aggregate. Evidence summarizes the latest completed check/module pairs. Indexed
+  file timestamps participate in freshness without reading source bodies.
 - **`skills`**: My skills. Package storage, document and applicability saving with
   external-edit detection, validation, zip export (`archive`), lineage and three-way library
   updates (`lineage`, `upstream`), the skills in your home folder (`machine`), and `intake`,

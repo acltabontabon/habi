@@ -63,6 +63,11 @@ literally.
 | OpenCode | `opencode.json` | `{env:VAR}` |
 | Junie | `.junie/mcp/mcp.json` | `${VAR}` |
 
+Readiness is assessed separately for each tool in **Prerequisites → Readiness for** and
+install review. A server configured in another tool's file does not satisfy the selected
+tool. Habi checks only the project files above; it neither reads user-level settings nor
+tests server startup or authorization.
+
 **`.habi/lock.json`** — records all installs. Commit to share with your team, or ignore.
 
 ## Install on your machine
@@ -73,6 +78,8 @@ Same folder rules apply. Instructions & MCP servers aren't installed this way.
 **Key details:**
 - Habi tracks installs in `~/.habi/lock.json` for updates & removal later
 - Skills you didn't install are never changed (name conflicts are flagged, not overwritten)
+- **My skills → On this machine → History and restore…** previews restores and checks
+  interrupted operations, including after every managed skill has been removed
 - If a skill exists in both personal and project folders: Claude Code uses personal; Gemini CLI
   uses project; others are unspecified (review notes it)
 - Community libraries show a warning that skills aren't audited (agents read them all)

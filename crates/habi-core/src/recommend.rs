@@ -69,6 +69,22 @@ pub enum ReadinessState {
 pub struct Readiness {
     pub state: ReadinessState,
     pub prerequisites: Vec<Prerequisite>,
+    /// Readiness for each supported agent; configuration in one agent does
+    /// not establish readiness in another.
+    #[serde(default)]
+    pub by_client: Vec<ClientReadiness>,
+    /// Installed agents, or the supported agents detected in this project.
+    #[serde(default)]
+    pub assessed_clients: Vec<ClientId>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ClientReadiness {
+    pub client: ClientId,
+    pub state: ReadinessState,
+    pub prerequisites: Vec<Prerequisite>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -77,12 +93,14 @@ pub struct Readiness {
 pub enum EvidenceState {
     /// Only the author's declared records exist.
     AuthorDeclared,
-    /// A check passed here for this version and project state.
+    /// Every declared check/module pair passed for this version and project state.
     LocallyChecked,
     /// The latest local check failed.
     Failed,
-    /// A local check passed, but the item or project changed since.
+    /// A completed local result is out of date after an item or project change.
     Stale,
+    /// Some pairs passed; others are unchecked or inspection was incomplete.
+    Partial,
     NotEvaluated,
 }
 
@@ -93,6 +111,22 @@ pub struct EvidenceSummary {
     pub state: EvidenceState,
     pub declared: Vec<DeclaredEvidence>,
     pub latest_run: Option<CheckRun>,
+    #[serde(default)]
+    pub coverage: CheckCoverage,
+}
+
+/// Latest completed result for every declared check and applicable module.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct CheckCoverage {
+    pub passed: u32,
+    pub failed: u32,
+    pub stale: u32,
+    pub unchecked: u32,
+    /// Whether inspection could index all non-ignored files. A truncated
+    /// scan cannot establish freshness for files it never reached.
+    pub inputs_complete: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, TS)]
@@ -278,57 +312,8 @@ pub fn tool_prerequisites(
 
 /// Checks prerequisites without executing anything: tools are looked up on
 /// PATH or in the project, MCP servers in the project's client configuration.
-pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String]) -> Readiness {
-    let mut prerequisites = tool_prerequisites(root, &item.tools, applicable_modules);
-    for requirement in &item.mcp {
-        let mut configured = Vec::new();
-        let mut unreadable = Vec::new();
-        for client in ClientId::ALL {
-            let file = mcp::config_path(client);
-            match read_project_file(root, file) {
-                Ok(bytes) => {
-                    match mcp::is_configured(client, bytes.as_deref(), &requirement.name) {
-                        Ok(true) => configured.push(format!("{} ({file})", client.label())),
-                        Ok(false) => {}
-                        Err(_) => unreadable.push(file),
-                    }
-                }
-                Err(_) => unreadable.push(file),
-            }
-        }
-        unreadable.sort_unstable();
-        unreadable.dedup();
-        let (status, detail) = if !configured.is_empty() {
-            (
-                PrerequisiteStatus::Configured,
-                format!(
-                    "Configured for {}. This shows an entry exists; it does not check that the server starts or is authorized.",
-                    configured.join(", ")
-                ),
-            )
-        } else if !unreadable.is_empty() {
-            (
-                PrerequisiteStatus::Unknown,
-                format!("Could not read {}", unreadable.join(", ")),
-            )
-        } else {
-            (
-                PrerequisiteStatus::NotConfigured,
-                "Not configured in this project's client settings. User-level settings were not read.".to_string(),
-            )
-        };
-        prerequisites.push(Prerequisite {
-            kind: PrerequisiteKind::Mcp,
-            name: requirement.name.clone(),
-            status,
-            detail,
-            purpose: requirement.purpose.clone(),
-            hint: requirement.server.as_ref().map(|_| {
-                "Habi can add the suggested configuration when you install this item.".to_string()
-            }),
-        });
-    }
-    let state = if prerequisites.is_empty() {
+fn readiness_state(prerequisites: &[Prerequisite]) -> ReadinessState {
+    if prerequisites.is_empty() {
         ReadinessState::NoRequirements
     } else if prerequisites.iter().any(|p| {
         matches!(
@@ -344,33 +329,150 @@ pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String])
         ReadinessState::Unknown
     } else {
         ReadinessState::Ready
-    };
-    Readiness {
-        state,
-        prerequisites,
     }
 }
 
-pub fn evidence(item: &LibraryItem, runs: &[CheckRun], fingerprint: &str) -> EvidenceSummary {
+pub fn readiness(root: &Path, item: &LibraryItem, applicable_modules: &[String]) -> Readiness {
+    readiness_for_clients(
+        root,
+        item,
+        applicable_modules,
+        &crate::clients::in_project(root),
+    )
+}
+
+/// Aggregate only the agents the user uses, while retaining per-agent facts
+/// for choosing another agent in the UI. With no chosen agent, mixed MCP
+/// configuration is unknown rather than universally ready.
+pub fn readiness_for_clients(
+    root: &Path,
+    item: &LibraryItem,
+    applicable_modules: &[String],
+    clients: &[ClientId],
+) -> Readiness {
+    let tools = tool_prerequisites(root, &item.tools, applicable_modules);
+    let supported: Vec<_> = ClientId::ALL
+        .into_iter()
+        .filter(|c| {
+            item.clients
+                .as_ref()
+                .is_none_or(|allowed| allowed.contains(c))
+        })
+        .collect();
+    let assessed_clients: Vec<_> = clients
+        .iter()
+        .copied()
+        .filter(|c| supported.contains(c))
+        .collect();
+    let by_client: Vec<_> = supported.into_iter().map(|client| {
+        let mut prerequisites = tools.clone();
+        for requirement in &item.mcp {
+            let file = mcp::config_path(client);
+            let configured = read_project_file(root, file).and_then(|bytes| {
+                mcp::is_configured(client, bytes.as_deref(), &requirement.name)
+            });
+            let (status, detail) = match configured {
+                Ok(true) => (PrerequisiteStatus::Configured,
+                    format!("Configured for {} ({file}). This only establishes an entry; server startup and authorization were not checked.", client.label())),
+                Ok(false) => (PrerequisiteStatus::NotConfigured,
+                    format!("Not configured for {} in {file}. User-level settings were not read.", client.label())),
+                Err(_) => (PrerequisiteStatus::Unknown,
+                    format!("Could not read {} configuration ({file}).", client.label())),
+            };
+            prerequisites.push(Prerequisite {
+                kind: PrerequisiteKind::Mcp,
+                name: requirement.name.clone(), status, detail,
+                purpose: requirement.purpose.clone(),
+                hint: requirement.server.as_ref().map(|_| "Habi can add the suggested configuration when you install this item.".into()),
+            });
+        }
+        ClientReadiness { client, state: readiness_state(&prerequisites), prerequisites }
+    }).collect();
+    let relevant: Vec<_> = by_client
+        .iter()
+        .filter(|r| assessed_clients.is_empty() || assessed_clients.contains(&r.client))
+        .collect();
+    let state = if assessed_clients.is_empty()
+        && relevant
+            .first()
+            .is_some_and(|first| relevant.iter().any(|r| r.state != first.state))
+    {
+        ReadinessState::Unknown
+    } else if relevant.iter().any(|r| r.state == ReadinessState::Missing) {
+        ReadinessState::Missing
+    } else if relevant.iter().any(|r| r.state == ReadinessState::Unknown) {
+        ReadinessState::Unknown
+    } else {
+        relevant
+            .first()
+            .map_or(readiness_state(&tools), |r| r.state)
+    };
+    // Prefer an agent that explains the aggregate status. The complete
+    // agent-specific lists remain available in by_client.
+    let representative = relevant
+        .iter()
+        .find(|r| r.state == state)
+        .or_else(|| relevant.iter().find(|r| r.state == ReadinessState::Missing))
+        .or_else(|| relevant.first());
+    let prerequisites = representative.map_or(tools, |r| r.prerequisites.clone());
+    Readiness {
+        state,
+        prerequisites,
+        by_client,
+        assessed_clients,
+    }
+}
+
+pub fn evidence(
+    item: &LibraryItem,
+    runs: &[CheckRun],
+    fingerprint: &str,
+    modules: &[String],
+    inputs_complete: bool,
+) -> EvidenceSummary {
     let latest = runs.first().cloned();
-    let state = match &latest {
-        Some(run) if run.status == CheckStatus::Passed => {
-            if run.item_digest == item.content_digest && run.project_fingerprint == fingerprint {
-                EvidenceState::LocallyChecked
-            } else {
-                EvidenceState::Stale
+    let mut coverage = CheckCoverage {
+        inputs_complete,
+        ..Default::default()
+    };
+    for check in &item.checks {
+        for module in modules {
+            // Cancellation does not erase the last completed result. Errors
+            // to start a command still count as a failed verification attempt.
+            let run = runs.iter().find(|r| {
+                r.check_id == check.id && r.module == *module && r.status != CheckStatus::Cancelled
+            });
+            match run {
+                Some(r)
+                    if r.item_digest != item.content_digest
+                        || r.project_fingerprint != fingerprint =>
+                {
+                    coverage.stale += 1
+                }
+                Some(r) if r.status == CheckStatus::Passed => coverage.passed += 1,
+                Some(_) => coverage.failed += 1,
+                None => coverage.unchecked += 1,
             }
         }
-        Some(run) if matches!(run.status, CheckStatus::Failed | CheckStatus::TimedOut) => {
-            EvidenceState::Failed
-        }
-        _ if !item.evidence.is_empty() => EvidenceState::AuthorDeclared,
-        _ => EvidenceState::NotEvaluated,
+    }
+    let state = if coverage.failed > 0 {
+        EvidenceState::Failed
+    } else if coverage.stale > 0 {
+        EvidenceState::Stale
+    } else if coverage.passed > 0 && (coverage.unchecked > 0 || !inputs_complete) {
+        EvidenceState::Partial
+    } else if coverage.passed > 0 {
+        EvidenceState::LocallyChecked
+    } else if !item.evidence.is_empty() {
+        EvidenceState::AuthorDeclared
+    } else {
+        EvidenceState::NotEvaluated
     };
     EvidenceSummary {
         state,
         declared: item.evidence.clone(),
         latest_run: latest,
+        coverage,
     }
 }
 
@@ -410,12 +512,21 @@ pub fn recommend(
             let modules: Vec<String> = applicability
                 .modules
                 .iter()
-                .filter(|m| m.applicability == Applicability::Applies)
+                .filter(|m| m.applicability == Applicability::Applies && m.module != "*")
                 .map(|m| m.module.clone())
                 .collect();
-            let readiness = readiness(root, item, &modules);
             let key = lock_key(c.source_identity, &item.id);
             let installation = installations.iter().find(|i| i.key == key).cloned();
+            let clients = installation
+                .as_ref()
+                .map(|i| i.clients.clone())
+                .unwrap_or_else(|| crate::clients::in_project(root));
+            let readiness = readiness_for_clients(root, item, &modules, &clients);
+            let check_modules: Vec<String> = if modules.is_empty() {
+                inspection.modules.iter().map(|m| m.id.clone()).collect()
+            } else {
+                modules.clone()
+            };
             let install_state = installation
                 .as_ref()
                 .map(|i| i.state)
@@ -452,7 +563,19 @@ pub fn recommend(
             Recommendation {
                 item: summarize(item, c.source_name, c.snapshot),
                 group,
-                evidence: evidence(item, &c.runs, &inspection.fingerprint),
+                evidence: evidence(
+                    item,
+                    &c.runs,
+                    &inspection.fingerprint,
+                    &check_modules,
+                    !inspection.scan.truncated
+                        && inspection.scan.unreadable.is_empty()
+                        && inspection
+                            .coverage
+                            .iter()
+                            .filter(|c| c.area == "files")
+                            .all(|c| c.status == crate::inspect::model::CoverageStatus::Complete),
+                ),
                 applicability,
                 basis,
                 readiness,

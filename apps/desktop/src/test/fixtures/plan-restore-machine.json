@@ -1,0 +1,920 @@
+{
+  "id": "3c1156b8-9f61-4b49-84b8-23de22743e1f",
+  "action": "restore",
+  "title": "Restore files changed by “Install for Claude Code on this machine”",
+  "project": "~",
+  "createdAt": "2026-10-04T13:45:13Z",
+  "items": [],
+  "changes": [
+    {
+      "path": ".claude/skills/liquibase-migration-review/habi.yaml",
+      "op": "delete",
+      "kind": "restore",
+      "items": [
+        "Install for Claude Code on this machine"
+      ],
+      "clients": [],
+      "before": "sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669",
+      "after": null,
+      "explanation": "Restores the version from before the operation.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,53 +1,0 @@",
+            "lines": [
+              {
+                "tag": "removed",
+                "oldLine": 1,
+                "newLine": null,
+                "text": "habi: 1"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 2,
+                "newLine": null,
+                "text": "title: Liquibase migration review"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 3,
+                "newLine": null,
+                "text": "kind: workflow"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 4,
+                "newLine": null,
+                "text": "owner: Platform Guild (example)"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 5,
+                "newLine": null,
+                "text": "priority: 20"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 6,
+                "newLine": null,
+                "text": "scope: module"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 7,
+                "newLine": null,
+                "text": "applies_when:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 8,
+                "newLine": null,
+                "text": "  all:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 9,
+                "newLine": null,
+                "text": "    - tag: framework:spring-boot"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 10,
+                "newLine": null,
+                "text": "    - any:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 11,
+                "newLine": null,
+                "text": "        - dependency: { name: \"org.liquibase:liquibase-core\", ecosystem: jvm }"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 12,
+                "newLine": null,
+                "text": "        - tag: db:liquibase"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 13,
+                "newLine": null,
+                "text": "requires:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 14,
+                "newLine": null,
+                "text": "  tools:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 15,
+                "newLine": null,
+                "text": "    - name: Maven or Gradle wrapper"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 16,
+                "newLine": null,
+                "text": "      commands: [./mvnw, mvn, ./gradlew, gradle]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 17,
+                "newLine": null,
+                "text": "      purpose: Runs Liquibase validation through the build."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 18,
+                "newLine": null,
+                "text": "  clients: [claude-code, cursor, codex]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 19,
+                "newLine": null,
+                "text": "workflow:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 20,
+                "newLine": null,
+                "text": "  steps:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 21,
+                "newLine": null,
+                "text": "    - title: Locate the master changelog"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 22,
+                "newLine": null,
+                "text": "      detail: Find db.changelog-master.* and confirm new changesets are included from it."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 23,
+                "newLine": null,
+                "text": "    - title: Review each new changeset"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 24,
+                "newLine": null,
+                "text": "      detail: Apply the checklist to every changeset added or modified by the change."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 25,
+                "newLine": null,
+                "text": "      references: [references/checklist.md]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 26,
+                "newLine": null,
+                "text": "    - title: Assess locking and rollback risk"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 27,
+                "newLine": null,
+                "text": "      detail: Flag NOT NULL additions without defaults, large index builds, renames and missing rollbacks."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 28,
+                "newLine": null,
+                "text": "    - title: Validate the changelog"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 29,
+                "newLine": null,
+                "text": "      detail: Run the validation check below when a database-independent validation is available."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 30,
+                "newLine": null,
+                "text": "      expected: The validate goal exits successfully."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 31,
+                "newLine": null,
+                "text": "  artifacts:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 32,
+                "newLine": null,
+                "text": "    - Review comment listing blocking issues, risks and suggestions with changeset ids"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 33,
+                "newLine": null,
+                "text": "bindings:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 34,
+                "newLine": null,
+                "text": "  - name: changelog"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 35,
+                "newLine": null,
+                "text": "    kind: file"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 36,
+                "newLine": null,
+                "text": "    glob: \"**/db/changelog/db.changelog-master.*\""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 37,
+                "newLine": null,
+                "text": "    description: The master changelog to validate."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 38,
+                "newLine": null,
+                "text": "checks:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 39,
+                "newLine": null,
+                "text": "  - id: changelog-is-wellformed"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 40,
+                "newLine": null,
+                "text": "    title: Changelog parses as XML/YAML"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 41,
+                "newLine": null,
+                "text": "    description: Confirms the master changelog is readable by Liquibase's parser via the Maven plugin (no database connection)."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 42,
+                "newLine": null,
+                "text": "    run: [\"./mvnw\", \"-q\", \"-DskipTests\", \"liquibase:validate\"]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 43,
+                "newLine": null,
+                "text": "    cwd: module"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 44,
+                "newLine": null,
+                "text": "    timeout_seconds: 600"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 45,
+                "newLine": null,
+                "text": "evidence:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 46,
+                "newLine": null,
+                "text": "  - date: 2026-08-14"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 47,
+                "newLine": null,
+                "text": "    result: passed"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 48,
+                "newLine": null,
+                "text": "    environment: Spring Boot 3.3, Liquibase 4.29, Claude Code"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 49,
+                "newLine": null,
+                "text": "    summary: Used on three billing-service migrations; caught one missing rollback."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 50,
+                "newLine": null,
+                "text": "    by: Platform Guild (example)"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 51,
+                "newLine": null,
+                "text": "examples:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 52,
+                "newLine": null,
+                "text": "  - title: Adding a nullable column with a backfill"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 53,
+                "newLine": null,
+                "text": "    description: Two changesets — add the column, then backfill in batches."
+              }
+            ]
+          }
+        ],
+        "added": 0,
+        "removed": 53,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    },
+    {
+      "path": ".claude/skills/liquibase-migration-review/references/checklist.md",
+      "op": "delete",
+      "kind": "restore",
+      "items": [
+        "Install for Claude Code on this machine"
+      ],
+      "clients": [],
+      "before": "sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e",
+      "after": null,
+      "explanation": "Restores the version from before the operation.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,9 +1,0 @@",
+            "lines": [
+              {
+                "tag": "removed",
+                "oldLine": 1,
+                "newLine": null,
+                "text": "# Changelog checklist"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 2,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 3,
+                "newLine": null,
+                "text": "- [ ] Changeset `id` and `author` are set and unique."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 4,
+                "newLine": null,
+                "text": "- [ ] The changeset is included from the master changelog."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 5,
+                "newLine": null,
+                "text": "- [ ] A rollback exists, or the comment explains why it is irreversible."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 6,
+                "newLine": null,
+                "text": "- [ ] New `NOT NULL` columns have a default or a backfill step."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 7,
+                "newLine": null,
+                "text": "- [ ] Large-table index creation will not lock writes."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 8,
+                "newLine": null,
+                "text": "- [ ] No previously released changeset was modified (checksum change)."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 9,
+                "newLine": null,
+                "text": "- [ ] Data migrations are idempotent."
+              }
+            ]
+          }
+        ],
+        "added": 0,
+        "removed": 9,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    },
+    {
+      "path": ".claude/skills/liquibase-migration-review/SKILL.md",
+      "op": "delete",
+      "kind": "restore",
+      "items": [
+        "Install for Claude Code on this machine"
+      ],
+      "clients": [],
+      "before": "sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15",
+      "after": null,
+      "explanation": "Restores the version from before the operation.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,26 +1,0 @@",
+            "lines": [
+              {
+                "tag": "removed",
+                "oldLine": 1,
+                "newLine": null,
+                "text": "---"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 2,
+                "newLine": null,
+                "text": "name: liquibase-migration-review"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 3,
+                "newLine": null,
+                "text": "description: Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 4,
+                "newLine": null,
+                "text": "license: Apache-2.0"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 5,
+                "newLine": null,
+                "text": "metadata:"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 6,
+                "newLine": null,
+                "text": "  maintainer: platform-guild"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 7,
+                "newLine": null,
+                "text": "---"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 8,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 9,
+                "newLine": null,
+                "text": "# Liquibase migration review"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 10,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 11,
+                "newLine": null,
+                "text": "Use this skill when a change touches Liquibase changelogs (`db/changelog/**`)."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 12,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 13,
+                "newLine": null,
+                "text": "## Procedure"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 14,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 15,
+                "newLine": null,
+                "text": "1. Find the master changelog and confirm every new changeset is included from it."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 16,
+                "newLine": null,
+                "text": "2. For each new changeset, check the items in [the checklist](references/checklist.md)."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 17,
+                "newLine": null,
+                "text": "3. Never edit a changeset that may already be applied. Add a new one instead."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 18,
+                "newLine": null,
+                "text": "4. Confirm each changeset has a `rollback` or is explicitly marked irreversible"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 19,
+                "newLine": null,
+                "text": "   with a reason in its `comment`."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 20,
+                "newLine": null,
+                "text": "5. Flag locking risks: adding `NOT NULL` columns without defaults, building"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 21,
+                "newLine": null,
+                "text": "   indexes on large tables without `CONCURRENTLY` (PostgreSQL), renames."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 22,
+                "newLine": null,
+                "text": "6. Summarize findings as: blocking issues, risks, suggestions."
+              },
+              {
+                "tag": "removed",
+                "oldLine": 23,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 24,
+                "newLine": null,
+                "text": "## Output"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 25,
+                "newLine": null,
+                "text": ""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 26,
+                "newLine": null,
+                "text": "A short review with file and changeset ids for every finding."
+              }
+            ]
+          }
+        ],
+        "added": 0,
+        "removed": 26,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    },
+    {
+      "path": ".habi/lock.json",
+      "op": "delete",
+      "kind": "lockFile",
+      "items": [],
+      "clients": [],
+      "before": "sha256:9a0e9160a34bcfbbb5f62a1f7e065142fdde4670eb98338c256bb58028e01107",
+      "after": null,
+      "explanation": "Records what Habi installed on this machine (sources, versions, file digests) so it can detect updates and local edits. Personal to this machine; contains no absolute paths or secrets.",
+      "diff": {
+        "hunks": [
+          {
+            "header": "@@ -1,46 +1,0 @@",
+            "lines": [
+              {
+                "tag": "removed",
+                "oldLine": 1,
+                "newLine": null,
+                "text": "{"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 2,
+                "newLine": null,
+                "text": "  \"habiLock\": 1,"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 3,
+                "newLine": null,
+                "text": "  \"items\": ["
+              },
+              {
+                "tag": "removed",
+                "oldLine": 4,
+                "newLine": null,
+                "text": "    {"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 5,
+                "newLine": null,
+                "text": "      \"source\": {"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 6,
+                "newLine": null,
+                "text": "        \"identity\": \"local:Example team library\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 7,
+                "newLine": null,
+                "text": "        \"name\": \"Example team library\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 8,
+                "newLine": null,
+                "text": "        \"subdir\": null"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 9,
+                "newLine": null,
+                "text": "      },"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 10,
+                "newLine": null,
+                "text": "      \"id\": \"liquibase-migration-review\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 11,
+                "newLine": null,
+                "text": "      \"kind\": \"workflow\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 12,
+                "newLine": null,
+                "text": "      \"title\": \"Liquibase migration review\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 13,
+                "newLine": null,
+                "text": "      \"snapshot\": \"d1087c10c67d06b784610b7203b9f4a0d15ca56e\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 14,
+                "newLine": null,
+                "text": "      \"contentDigest\": \"sha256:431ae89301dbbaf488a43de063705de2643c3d8b452484d9c3f5667cf1974b25\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 15,
+                "newLine": null,
+                "text": "      \"installedAt\": \"2026-10-04T13:45:13Z\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 16,
+                "newLine": null,
+                "text": "      \"clients\": ["
+              },
+              {
+                "tag": "removed",
+                "oldLine": 17,
+                "newLine": null,
+                "text": "        \"claude-code\""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 18,
+                "newLine": null,
+                "text": "      ],"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 19,
+                "newLine": null,
+                "text": "      \"files\": ["
+              },
+              {
+                "tag": "removed",
+                "oldLine": 20,
+                "newLine": null,
+                "text": "        {"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 21,
+                "newLine": null,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/SKILL.md\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 22,
+                "newLine": null,
+                "text": "          \"digest\": \"sha256:58b6a284140efb7c7cb3ce5ccb0ac607738a80182c99c8265e2148c9ed4e5f15\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 23,
+                "newLine": null,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "removed",
+                "oldLine": 24,
+                "newLine": null,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 25,
+                "newLine": null,
+                "text": "          ]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 26,
+                "newLine": null,
+                "text": "        },"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 27,
+                "newLine": null,
+                "text": "        {"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 28,
+                "newLine": null,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/habi.yaml\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 29,
+                "newLine": null,
+                "text": "          \"digest\": \"sha256:5e2bb538ef6cc495e4b3384836a2066050b7b7b3ad620dd4db478c752890e669\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 30,
+                "newLine": null,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "removed",
+                "oldLine": 31,
+                "newLine": null,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 32,
+                "newLine": null,
+                "text": "          ]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 33,
+                "newLine": null,
+                "text": "        },"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 34,
+                "newLine": null,
+                "text": "        {"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 35,
+                "newLine": null,
+                "text": "          \"path\": \".claude/skills/liquibase-migration-review/references/checklist.md\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 36,
+                "newLine": null,
+                "text": "          \"digest\": \"sha256:0317f28048bf8cc2aff682929e94d59b0201d59ed97db4d30a585bf3526c772e\","
+              },
+              {
+                "tag": "removed",
+                "oldLine": 37,
+                "newLine": null,
+                "text": "          \"clients\": ["
+              },
+              {
+                "tag": "removed",
+                "oldLine": 38,
+                "newLine": null,
+                "text": "            \"claude-code\""
+              },
+              {
+                "tag": "removed",
+                "oldLine": 39,
+                "newLine": null,
+                "text": "          ]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 40,
+                "newLine": null,
+                "text": "        }"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 41,
+                "newLine": null,
+                "text": "      ],"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 42,
+                "newLine": null,
+                "text": "      \"sections\": [],"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 43,
+                "newLine": null,
+                "text": "      \"mcp\": []"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 44,
+                "newLine": null,
+                "text": "    }"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 45,
+                "newLine": null,
+                "text": "  ]"
+              },
+              {
+                "tag": "removed",
+                "oldLine": 46,
+                "newLine": null,
+                "text": "}"
+              }
+            ]
+          }
+        ],
+        "added": 0,
+        "removed": 46,
+        "binary": false,
+        "truncated": false
+      },
+      "executable": null
+    }
+  ],
+  "conflicts": [],
+  "notes": [],
+  "mcpSuggestions": [],
+  "recovery": "Restoring is itself journaled and can be undone the same way."
+}

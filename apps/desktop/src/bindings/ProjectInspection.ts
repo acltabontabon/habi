@@ -12,6 +12,7 @@ export type ProjectInspection = { root: string, name: string,
  */
 description: string | null, repository: RepositoryInfo, modules: Array<Module>, facts: Array<Fact>, coverage: Array<Coverage>, scan: ScanReport, 
 /**
- * Changes when any manifest or recognized file changes.
+ * Manifest digests and the sizes and modification times of indexed files.
+ * Conservatively invalidates check results without reading source bodies.
  */
 fingerprint: string, inspectedAt: string, };

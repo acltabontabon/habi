@@ -12,6 +12,7 @@ import type { FileChange } from "../../bindings/FileChange";
 import type { InstallShadow } from "../../bindings/InstallShadow";
 import type { ItemRef } from "../../bindings/ItemRef";
 import type { Plan } from "../../bindings/Plan";
+import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Resolution } from "../../bindings/Resolution";
 import { Dialog } from "../../components/Dialog";
 import { DiffStat, DiffView } from "../../components/DiffView";
@@ -32,6 +33,7 @@ export type ReviewRequest =
       items: ItemRef[];
       title: string;
       includeMcp?: boolean;
+      clients?: ClientId[];
       /** The library is not the team's own: installing on this machine carries a warning. */
       unaudited?: boolean;
     }
@@ -313,7 +315,9 @@ export function ReviewDialog({
   const dyeOf = useDyes();
   const client = useQueryClient();
   const toast = useToast();
-  const [clients, setClients] = useState<ClientId[] | null>(null);
+  const [clients, setClients] = useState<ClientId[] | null>(
+    request.kind === "install" ? (request.clients ?? null) : null,
+  );
   const [includeMcp, setIncludeMcp] = useState(
     request.kind === "install" ? (request.includeMcp ?? false) : false,
   );
@@ -344,6 +348,37 @@ export function ReviewDialog({
 
   // The MCP option only does something for a skill that names a server it needs.
   const wanted = request.kind === "install" && !machine ? request.items : [];
+  const overview = useQuery<ProjectOverview>({
+    queryKey: keys.overview(projectId ?? ""),
+    queryFn: () => api.projectOverview(projectId ?? "", false),
+    enabled: wanted.length > 0,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const readinessWarnings = wanted.flatMap((ref) => {
+    const r = overview.data?.recommendations.find(
+      (r) => r.item.sourceId === ref.sourceId && r.item.id === ref.itemId,
+    );
+    return chosen.flatMap((agent) => {
+      const readiness = r?.readiness.byClient?.find((c) => c.client === agent);
+      if (!readiness) return [];
+      const missing = readiness.prerequisites.filter(
+        (p) =>
+          p.status === "missing" ||
+          p.status === "unknown" ||
+          (p.status === "notConfigured" && !(includeMcp && p.hint)),
+      );
+      return missing.length > 0
+        ? [
+            {
+              key: `${ref.sourceId}/${ref.itemId}/${agent}`,
+              title: `${r?.item.title} for ${clientLabel[agent]}`,
+              detail: missing.map((p) => `${p.name}: ${p.detail}`).join(" "),
+            },
+          ]
+        : [];
+    });
+  });
   const libraries = useQueries({
     queries: [...new Set(wanted.map((r) => r.sourceId))].map((sourceId) => ({
       queryKey: keys.library(sourceId),
@@ -413,7 +448,9 @@ export function ReviewDialog({
         // A skill on this machine can change what any project's agents read.
         invalidateSkills(client);
         invalidateProjectData(client);
-        toast.show(`${p.title}: done (${plural(op.files.length, "file")}).`);
+        toast.show(
+          `${p.title}: done (${plural(op.files.length, "file")}). Restore it from On this machine → History and restore.`,
+        );
       }
       onClose();
     } catch (e) {
@@ -504,6 +541,12 @@ export function ReviewDialog({
           </label>
         ) : null}
       </fieldset>
+
+      {readinessWarnings.map((w) => (
+        <Notice key={w.key} tone="warn" title={w.title}>
+          {w.detail} Installing still works, but the agent may not be able to follow every step.
+        </Notice>
+      ))}
 
       {unaudited ? <AuditWarning /> : null}
     </aside>

@@ -872,6 +872,12 @@ pub async fn machine_history(state: State<'_, AppState>) -> CmdResult<Vec<Operat
     blocking(habi, move |h| h.machine_history()).await
 }
 
+#[tauri::command]
+pub async fn machine_recover(state: State<'_, AppState>) -> CmdResult<Vec<OperationSummary>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.machine_recover()).await
+}
+
 /// Applies a plan computed earlier in this session. The UI passes only the id.
 #[tauri::command]
 pub async fn apply_plan(

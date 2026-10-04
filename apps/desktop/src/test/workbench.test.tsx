@@ -54,6 +54,7 @@ const billingOverview = billing as unknown as ProjectOverview;
 const monoOverview = monorepo as unknown as ProjectOverview;
 
 beforeEach(() => {
+  localStorage.clear();
   invoke.mockReset();
   invoke.mockImplementation(async (cmd: string) => {
     if (cmd === "get_settings") return { autoRefreshHours: 12 };
@@ -62,6 +63,32 @@ beforeEach(() => {
 });
 
 describe("workbench", () => {
+  it("filters by module and remembers the choice only for that project", async () => {
+    const user = userEvent.setup();
+    const first = wrap(<RoutedWorkbench overview={monoOverview} />, monoOverview.project.id);
+    await user.click(screen.getByText("Filter by module, library or agent"));
+    const frontend = monoOverview.inspection.modules.find((m) => m.id.includes("web"));
+    expect(frontend).toBeDefined();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Module" }), frontend?.id ?? "");
+    expect(screen.getByRole("button", { name: /React component review/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Liquibase migration review/ })).not.toBeInTheDocument();
+    first.unmount();
+    const second = wrap(<RoutedWorkbench overview={monoOverview} />, monoOverview.project.id);
+    expect(screen.getByRole("combobox", { name: "Module" })).toHaveValue(frontend?.id);
+    second.unmount();
+    wrap(<RoutedWorkbench overview={billingOverview} />, billingOverview.project.id);
+    expect(screen.getByRole("combobox", { name: "Module" })).toHaveValue("");
+  });
+
+  it("clears an empty attention filter and restores the list", async () => {
+    const user = userEvent.setup();
+    wrap(<RoutedWorkbench overview={billingOverview} />, billingOverview.project.id);
+    await user.click(screen.getByText("Filter by module, library or agent"));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Needs attention" }), "updates");
+    expect(screen.getByText("Nothing matches that filter.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(row("Liquibase migration review")).toBeInTheDocument();
+  });
   it("groups recommendations and keeps inapplicable items available but collapsed", () => {
     wrap(<RoutedWorkbench overview={billingOverview} />, billingOverview.project.id);
     const fits = screen.getByRole("heading", { name: /Fits this project/ });
@@ -180,6 +207,31 @@ describe("workbench", () => {
     // Listed under prerequisites, and named in the note next to the install button.
     expect(screen.getAllByText(/MCP server github/)).toHaveLength(2);
     expect(screen.getByText(/Installing can add the suggested MCP configuration/)).toBeInTheDocument();
+  });
+
+  it("shows the selected agent's readiness and keeps that choice for install review", async () => {
+    const overview = structuredClone(monoOverview);
+    const r = overview.recommendations.find((r) => r.item.id === "github-pr-summary");
+    expect(r).toBeDefined();
+    if (!r) return;
+    const cursor = r.readiness.byClient.find((a) => a.client === "cursor");
+    expect(cursor).toBeDefined();
+    if (!cursor) return;
+    cursor.state = "ready";
+    cursor.prerequisites = cursor.prerequisites.map((p) =>
+      p.kind === "mcp" ? { ...p, status: "configured", detail: "Configured for Cursor only." } : p,
+    );
+    const user = userEvent.setup();
+    wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+    await user.click(row("GitHub PR summary"));
+    await user.selectOptions(screen.getByRole("combobox", { name: /Readiness for/ }), "cursor");
+    expect(within(screen.getByLabelText("Status")).getByText("Ready")).toBeInTheDocument();
+    expect(screen.getByText("Configured for Cursor only.")).toBeInTheDocument();
+    expect(screen.queryByText(/Installing can add the suggested MCP configuration/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review and install…" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("checkbox", { name: "Cursor" })).toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: "Codex" })).not.toBeChecked();
   });
 
   it("moves through the list with the arrow keys", async () => {

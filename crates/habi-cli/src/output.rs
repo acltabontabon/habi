@@ -69,6 +69,7 @@ pub fn evidence(e: EvidenceState) -> &'static str {
     match e {
         EvidenceState::AuthorDeclared => "declared by author",
         EvidenceState::LocallyChecked => "checked here",
+        EvidenceState::Partial => "partially checked",
         EvidenceState::Failed => "check failed",
         EvidenceState::Stale => "check out of date",
         EvidenceState::NotEvaluated => "not evaluated",

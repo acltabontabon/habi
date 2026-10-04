@@ -3,7 +3,7 @@
  * operations a crash interrupted. Installs from a library that is no longer
  * connected live here too: they are not in the recommendations to manage.
  */
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Dialog } from "../../components/Dialog";
@@ -11,12 +11,15 @@ import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Status, Working } from "../../components/ui";
 import { api } from "../../lib/api";
 import { clientsPhrase, plural, relativeTime } from "../../lib/format";
-import { invalidateProjectData, useHistory } from "../../lib/queries";
+import { invalidateProjectData, invalidateSkills, keys } from "../../lib/queries";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 
-export function History({ overview, onClose }: { overview: ProjectOverview; onClose: () => void }) {
-  const projectId = overview.project.id;
-  const history = useHistory(projectId);
+export function History({ overview, onClose }: { overview: ProjectOverview | null; onClose: () => void }) {
+  const projectId = overview?.project.id ?? null;
+  const history = useQuery({
+    queryKey: projectId ? keys.history(projectId) : keys.machineHistory,
+    queryFn: () => (projectId ? api.history(projectId) : api.machineHistory()),
+  });
   const [review, setReview] = useState<ReviewRequest | null>(null);
   const [checking, setChecking] = useState(false);
   // A toast would sit behind this dialog, out of reach: a failure shows here instead.
@@ -28,8 +31,10 @@ export function History({ overview, onClose }: { overview: ProjectOverview; onCl
     setChecking(true);
     setFailure(null);
     try {
-      const ops = await api.recover(projectId);
-      invalidateProjectData(client, projectId);
+      const ops = await (projectId ? api.recover(projectId) : api.machineRecover());
+      invalidateProjectData(client, projectId ?? undefined);
+      if (!projectId) invalidateSkills(client);
+      void history.refetch();
       const attention = ops.filter((op) => op.state === "needsAttention").length;
       toast.show(
         ops.length === 0
@@ -54,7 +59,7 @@ export function History({ overview, onClose }: { overview: ProjectOverview; onCl
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title="History"
+      title={projectId ? "History" : "History on this machine"}
       description="Every change Habi made here. Installed skills are ordinary files; they keep working without Habi."
       footer={
         <>
@@ -65,7 +70,7 @@ export function History({ overview, onClose }: { overview: ProjectOverview; onCl
         </>
       }
     >
-      {overview.orphaned.length > 0 ? (
+      {overview && overview.orphaned.length > 0 ? (
         <section className="scan-section" aria-labelledby="history-orphaned">
           <h3 id="history-orphaned" className="field-label">
             From a library that is not connected

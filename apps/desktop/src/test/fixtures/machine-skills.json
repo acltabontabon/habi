@@ -1,0 +1,28 @@
+[
+  {
+    "id": "claude/liquibase-migration-review",
+    "folder": "liquibase-migration-review",
+    "name": "liquibase-migration-review",
+    "description": "Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration.",
+    "location": "~/.claude/skills/liquibase-migration-review",
+    "readers": [
+      "claude-code",
+      "cursor",
+      "copilot",
+      "opencode"
+    ],
+    "isLink": false,
+    "fileCount": 3,
+    "digest": "sha256:431ae89301dbbaf488a43de063705de2643c3d8b452484d9c3f5667cf1974b25",
+    "problems": [],
+    "complete": true,
+    "importedAs": null,
+    "mentionsHome": [],
+    "inProjects": [],
+    "managed": {
+      "key": "local:Example team library#liquibase-migration-review",
+      "library": "Example team library",
+      "state": "current"
+    }
+  }
+]
