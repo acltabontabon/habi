@@ -3,7 +3,7 @@ import demo from "../data/demo.json";
 import Icon from "./Icon.astro";
 
 /*
- * The film: a minute of the real app, staged like an ad
+ * The film: the real app, staged like an ad
  * (scripts/render-film.mjs makes it; scripts/film/ is its source), shown in a
  * cinema: a dialog over the page, opened from the filmstrip in the hero or
  * "Watch the film", at the chosen chapter and with sound (scripts/film.ts).
@@ -37,7 +37,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
           loop
           preload="none"
           poster={`${base}media/demo-poster.jpg`}
-          aria-label="A one-minute film of Habi finding, installing, writing and sharing agent skills, with music"
+          aria-label="A film of Habi finding, installing, writing and sharing agent skills, with music"
         >
           <source src={`${base}media/demo.mp4`} type="video/mp4" />
         </video>

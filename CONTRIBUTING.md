@@ -12,16 +12,20 @@ Habi's promise is *honest, local, previewed*. Changes are reviewed against the
   apply". No confidence percentages.
 - **Every change to a user's project is a previewed plan** that can be restored. Never
   overwrite a user's edit silently.
-- **Local first.** No telemetry, no accounts, no background network calls. Anything that
-  leaves the machine is shown first and happens only when the user asks.
+- **Local first.** No telemetry and no accounts. The only requests Habi makes on its own are
+  the ones the [security model](docs/project/security-model.md#network-requests-habi-makes-on-its-own)
+  lists, and none carries anything about the user. Everything else leaves the machine only
+  when the user asks, and is shown first.
 - **Plain words** in the interface. If a newcomer would need to ask what it means,
   rephrase it.
 
 ## Set up
 
-Install the prerequisites listed in the README under
-[Build from source](README.md#build-from-source) (Rust, Node.js 24+, Git and the Tauri
-prerequisites; Linux is not supported for the desktop app). Then:
+You need [Rust](https://rustup.rs) (the pinned version in `rust-toolchain.toml` installs
+itself), [Node.js](https://nodejs.org) 24 or later, Git, and the
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system: on macOS,
+`xcode-select --install`; on Windows, the Microsoft C++ Build Tools and WebView2. Linux is not
+supported for the desktop app. Then:
 
 ```sh
 git clone https://github.com/acltabontabon/habi.git
@@ -38,7 +42,8 @@ The first build takes a few minutes.
 `scripts/check.sh` runs, on your machine, what CI checks: Rust format, lint and tests, the
 TypeScript bindings, `cargo deny` (skipped with a note if
 [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) is not installed), frontend lint,
-type check, tests and build, third-party notices, documentation links and the website build.
+type check, tests and build, the script tests, third-party notices, documentation links and
+the website build.
 CI runs the Rust checks on macOS and Windows and the others once on Linux, each only when a
 change touches what it checks. Installers are built only for a release, from a `v*` tag.
 
@@ -55,8 +60,9 @@ to work on the UI in a browser against the real core or against fixture data. Th
 3. `cargo test` regenerates the TypeScript bindings in `apps/desktop/src/bindings` from
    Rust types. **Commit them** with your change.
 4. If you add or update a dependency, run `node scripts/third-party-notices.mjs` and commit
-   `THIRD_PARTY_NOTICES.md`. Dependencies must be under a permissive license (MIT,
-   Apache-2.0, BSD, ISC, Zlib, Unicode) — see `deny.toml`.
+   `THIRD_PARTY_NOTICES.md`. Dependencies must be under a permissive license (MIT, Apache-2.0,
+   BSD, ISC, Zlib, Unicode, CC0, Unlicense; MPL-2.0 only when used unmodified), as listed in
+   `deny.toml`.
 5. Fixtures must stay fictitious: no real company names, people, tokens or internal hosts.
    Use `example.com` / `example.invalid`.
 6. Add a line to `CHANGELOG.md` under "Unreleased" for anything a user would notice, written

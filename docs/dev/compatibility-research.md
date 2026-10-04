@@ -212,6 +212,11 @@ Record each run here before a release.
 | OpenCode | | | not run | not run | not run |
 | Junie | | | not run | not run | not run |
 
+0.1.0 shipped without these runs: what Habi writes follows each tool's own documentation
+(sections 1 to 5), and the automated tests check the files it produces. Run the smoke tests
+against current builds of all seven tools and record them here; a tool that does not pick the
+files up is a bug to fix in a patch release.
+
 ## 7. Tauri (Habi's own desktop shell)
 
 Versions checked on 2026-10-02 via `npm view` and the crates.io API (stable tags; 3.0.0-alpha builds are on `next`):

@@ -9,9 +9,9 @@ workflows, and evidence**—in standard YAML, easy to version in Git.
 
 ## Skills without metadata
 
-Skills stay listed and installable—shown as *not matched* (Habi doesn't guess from titles).
-Large community libraries won't bury applicable skills; `habi recommend --all` and *Show*
-reveal them.
+Skills stay listed and installable, under *Available to use manually* (Habi doesn't guess
+from titles). Large community libraries won't bury applicable skills: in a project that group
+is collapsed until you press *Show*.
 
 ## Licenses
 
@@ -39,7 +39,9 @@ requires:
       commands: [./mvnw, mvn]
 ```
 
-**Validate before sharing:** `habi validate path/to/library`
+**Validate before sharing:** connect the folder as a library in Habi; each item shows its
+problems. Contributors working from a clone can also run
+`cargo run -p habi-cli -- validate path/to/library`.
 
 See [example library](../../fixtures/libraries/example-team-library) (uses all features) and
 [valid](../../schema/examples/valid) / [invalid](../../schema/examples/invalid) examples.
@@ -154,7 +156,7 @@ install-path collisions.
 - `habi: 1` is the schema version. Additive, optional fields keep version 1.
 - A change that alters the meaning of existing fields, or makes something required, bumps
   the version. Habi then reads version *n* and *n−1* for at least one minor release and
-  explains how to migrate (`habi validate <folder>` reports outdated files).
+  explains how to migrate.
 - A file with a newer version than Habi understands is reported as invalid metadata and
   ignored — the skill itself stays usable.
 - The lock file (`habi_lock: 1`) follows the same policy; Habi refuses to rewrite a lock
@@ -162,8 +164,8 @@ install-path collisions.
 
 ## Validation
 
-`habi validate <folder>`, the library listing, My skills and contributions run the same
-checks on each skill package: the frontmatter and `habi.yaml` rules above, plus static checks
+The library listing, My skills and contributions run the same checks on each skill package:
+the frontmatter and `habi.yaml` rules above, plus static checks
 of the package's own files — relative links and images in Markdown (and inline code such as
 `scripts/check.py`) must name files in the skill, links must not climb out of it, and `.json`
 and `.yaml` files must parse. **Errors** block installing and sharing from My skills and
@@ -179,5 +181,5 @@ whether the guidance is right or the scripts are safe.
 - Prefer tags (`framework:spring-boot`) over raw dependency names where a tag exists: tags
   cover Maven, Gradle and npm declarations at once.
 - Use `excludes` for "does not fit if …" rules; they are reported separately.
-- Run `habi validate path/to/library` before publishing.
+- Connect the folder as a library and read each item's problems before publishing.
 - To have a public library suggested in Habi, see the [library catalog](catalog.md).

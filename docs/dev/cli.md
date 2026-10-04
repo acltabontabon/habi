@@ -3,8 +3,7 @@
 The `habi` command is an internal tool, not part of a release: it is not built into the
 installers or offered for download, and its output and exit codes carry no compatibility
 promise. It exists to drive `habi-core` without the desktop app, for the test data
-([test-data.md](test-data.md)), the website snapshot ([website.md](website.md)) and the CLI tests
-in `crates/habi-cli/tests`. It does what the desktop app does with libraries, projects, installs
+([test-data.md](test-data.md)) and the CLI tests in `crates/habi-cli/tests`. It does what the desktop app does with libraries, projects, installs
 and contributions. Both use the same core and the same data folder, and you can run them at the
 same time.
 

@@ -52,6 +52,6 @@ Habi finds skills that fit your repo, installs them for your agent tools, and ca
 | `README.md` (root) | What Habi is & how to build it |
 | `docs/guide/` | Using Habi—tasks, step-by-step |
 | `docs/library-authors/` | Writing & curating skill libraries |
-| `docs/project/` | Product promises, status, security |
+| `docs/project/` | Product promises, security model |
 | `docs/dev/` | Habi development (why, not what) |
 | `website/` | Published docs at [acltabontabon.com/habi/docs](https://acltabontabon.com/habi/docs) |

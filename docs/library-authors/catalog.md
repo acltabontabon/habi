@@ -1,6 +1,6 @@
 # Library catalog
 
-Habi suggests public libraries on the Libraries page and in `habi catalog list`.
+Habi suggests public libraries on the Libraries page.
 
 **To propose your library:** Open a PR adding an entry to `crates/habi-core/catalog/sources.yaml`.
 (Embedded in app, validated on load via `cargo test -p habi-core catalog`.)

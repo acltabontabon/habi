@@ -46,7 +46,8 @@ them, so existing skills are found.
 ## Instructions
 
 Go into a managed section of `AGENTS.md`. Most tools read it directly. Claude Code and Gemini
-CLI get a one-line import instead (`@AGENTS.md`), which Habi adds when installing instructions.
+CLI get a one-line import instead (`@AGENTS.md` in `CLAUDE.md`, `@./AGENTS.md` in `GEMINI.md`),
+which Habi adds when installing instructions.
 
 ## MCP servers (optional)
 

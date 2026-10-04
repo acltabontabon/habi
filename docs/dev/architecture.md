@@ -28,7 +28,7 @@
 | `apps/desktop/src` | React 19 + TypeScript (strict). Types in `src/bindings` are generated from Rust by `ts-rs`. |
 | `schema/` | JSON Schemas for Habi metadata (compiled into the core). |
 | `fixtures/` | Example libraries and repositories for tests, the sample workspace and UI fixtures ([test data](test-data.md)). |
-| `website/` | The project site at acltabontabon.com/habi (Astro). `pnpm dev` in `website/`; its data comes from `pnpm snapshot`. |
+| `website/` | The project site at acltabontabon.com/habi (Astro). `pnpm dev` in `website/`; it renders `docs/` and `docs/media/` ([website.md](website.md)). |
 
 ## Core modules
 

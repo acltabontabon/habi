@@ -45,14 +45,8 @@ case-insensitive filesystems (macOS, Windows default), where both names are the 
 
 An update adopts changed server definitions and removes servers the item no longer needs. A
 server the item suggests only now is never added unasked: the update preview lists it under
-*New MCP server* with *Add the suggested MCP configuration* (off by default; `habi update --mcp`
-in the CLI). Items installed without MCP configuration are not offered any.
-
-## Known limitations
-
-**Pre-release lock files** — Builds before 0.1.0 don't record file creation. Habi deletes
-`AGENTS.md`/`CLAUDE.md` only if empty; skips MCP file deletion. Shared sections/servers handled
-conservatively. Reinstall affected items to update the record.
+*New MCP server* with *Add the suggested MCP configuration* (off by default). Items
+installed without MCP configuration are not offered any.
 
 ## Libraries
 
@@ -83,7 +77,7 @@ conservatively. Reinstall affected items to update the record.
 
 Habi keeps each project's newest 20 operations, so they can be restored, and each library's
 newest 20 earlier snapshots, and tidies up after installs. **Settings → Storage → Free up
-space** (or `habi gc`) removes anything older at once, along with stored file versions nothing refers to.
+space** removes anything older at once, along with stored file versions nothing refers to.
 Unfinished operations and ones that need attention are always kept, and a project or library
 another operation is using is skipped until the next run.
 
@@ -97,7 +91,7 @@ safely at any time: installed project files are ordinary files and keep working.
 | Situation | What happens |
 |---|---|
 | A draft save fails (disk full, permissions) | The skill shows *Couldn’t save* with a retry and keeps the text on screen; the file on disk is the last successful write (writes are atomic). |
-| The app closes or crashes while editing | Edits are written within a second of a pause, on ⌘S, on window blur and when leaving the editor. At most the last moment of typing is lost; the draft reopens from disk. |
+| The app closes or crashes while editing | Edits are written within a second of a pause, on ⌘S (Ctrl+S on Windows), on window blur and when leaving the editor. At most the last moment of typing is lost; the draft reopens from disk. |
 | The draft's files were edited outside Habi | The next save pauses as a conflict. Choose *Show the other version* or *Keep mine*; nothing is overwritten until you do. |
 | `SKILL.md` no longer parses (hand-edited frontmatter) | The skill says so, overwrites nothing, and offers *Repair it as text*. |
 | A draft was moved to the trash by mistake | *My skills → Trash → Restore*. |
