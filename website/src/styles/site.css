@@ -406,20 +406,249 @@ em {
   text-wrap: balance;
 }
 
-.start-actions {
+/* ---------- Download: a chooser, not a button that shouts ---------- */
+
+.get {
+  position: relative;
+  width: min(640px, calc(100vw - 32px));
+  max-width: none;
+  margin: auto;
+  padding: clamp(24px, 4vw, 36px);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 20px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  overflow: hidden;
+  box-shadow:
+    0 40px 120px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.get::backdrop {
+  background: rgba(8, 8, 10, 0.76);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* A glow of saffron from the top edge, as if lit by the thread. */
+.get::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 190px;
+  background: radial-gradient(60% 100% at 50% 0, color-mix(in srgb, var(--thread) 20%, transparent), transparent);
+  pointer-events: none;
+}
+
+.get > * {
+  position: relative;
+}
+
+.get-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  transition:
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.get-close:hover,
+.get-close:focus-visible {
+  border-color: var(--thread);
+  color: var(--ink);
+}
+
+.get-kicker {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--thread-strong);
+}
+
+.get-title {
+  margin-top: 10px;
+  font-size: clamp(32px, 5vw, 46px);
+  font-weight: 650;
+  letter-spacing: -0.034em;
+  line-height: 1.02;
+}
+
+.get-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: clamp(24px, 4vw, 32px);
+}
+
+/* Each choice is a thread of its own: stitched along the top, drawn solid in saffron when you point at it, and already drawn on the one you are on. */
+.get-tile {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  margin-top: clamp(32px, 4vw, 48px);
+  flex-direction: column;
+  padding: 46px 20px 18px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    translate 300ms var(--ease);
 }
 
-.btn-big {
-  height: 52px;
-  padding: 0 24px;
-  font-size: 16.5px;
+.get-tile::before,
+.get-tile::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 21px;
+  height: 2px;
+  border-radius: 2px;
 }
 
+.get-tile::before {
+  background: repeating-linear-gradient(90deg, var(--hairline-strong) 0 6px, transparent 6px 12px);
+}
+
+.get-tile::after {
+  background: var(--thread);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 520ms var(--ease);
+}
+
+.get-tile:hover,
+.get-tile:focus-visible,
+.get-tile.is-yours {
+  border-color: color-mix(in srgb, var(--thread) 70%, transparent);
+}
+
+.get-tile:hover,
+.get-tile:focus-visible {
+  translate: 0 -2px;
+}
+
+.get-tile:hover::after,
+.get-tile:focus-visible::after,
+.get-tile.is-yours::after {
+  transform: scaleX(1);
+}
+
+.get-tile.is-yours {
+  background: linear-gradient(color-mix(in srgb, var(--thread) 9%, var(--paper)), var(--paper));
+}
+
+.get-flag {
+  position: absolute;
+  top: 34px;
+  right: 16px;
+  display: none;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: var(--thread);
+  color: #16161a;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.get-tile.is-yours .get-flag {
+  display: block;
+}
+
+.get-os {
+  font-size: clamp(30px, 4.4vw, 40px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.get-meta {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.get-file {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.get-note {
+  margin-top: 22px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+/* One line wherever there is room for it. */
+@media (min-width: 561px) {
+  .get-note {
+    white-space: nowrap;
+  }
+}
+
+.get-note a {
+  color: var(--ink-soft);
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.get-note a:hover {
+  color: var(--thread-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .get[open] {
+    animation: get-in 480ms var(--ease);
+  }
+  .get[open]::backdrop {
+    animation: get-fade 320ms var(--ease);
+  }
+  .get[open] .get-tile {
+    animation: get-tile-in 640ms var(--ease) both;
+    animation-delay: calc(140ms + var(--i, 0) * 90ms);
+  }
+  @keyframes get-in {
+    from {
+      opacity: 0;
+      translate: 0 16px;
+      scale: 0.975;
+    }
+  }
+  @keyframes get-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes get-tile-in {
+    from {
+      opacity: 0;
+      translate: 0 14px;
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .get-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 /* ---------- Foot: the name, woven ---------- */
 

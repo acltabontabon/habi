@@ -2,7 +2,6 @@
  * The page's only script, no framework. Everything reads without it; every
  * scene plays once (or follows the scroll), and nothing moves forever.
  */
-import { download } from "./download";
 import { hero } from "./hero";
 import { tour } from "./tour";
 
@@ -57,6 +56,3 @@ if (cut) hero(cut, reduce);
 
 const walk = document.querySelector<HTMLElement>("[data-tour]");
 if (walk) tour(walk, reduce);
-
-/* The Download buttons, pointed at the installer for this system. */
-void download();
