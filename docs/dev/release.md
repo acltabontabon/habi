@@ -58,6 +58,12 @@ Semantic versioning, separately for:
    is what offers it to people already running Habi: `latest.json` is fetched from the
    *latest published* release, so a draft, or a pre-release, is never offered.
 
+6. Publishing also runs the **Homebrew** workflow, which writes the cask for the release
+   (`scripts/homebrew-cask.mjs`) and commits it to the tap,
+   [acltabontabon/homebrew-tap](https://github.com/acltabontabon/homebrew-tap). Check that it
+   went green. A pre-release is skipped. To redo it, run *Actions → Homebrew → Run workflow*
+   with the tag.
+
 Anyone can check an artifact's provenance with
 `gh attestation verify <file> --repo acltabontabon/habi`.
 
@@ -95,6 +101,26 @@ Should that change, Tauri reads the Apple
 certificate and notarization credentials from `APPLE_*` environment variables during
 `tauri build`, and a Windows Authenticode certificate from `bundle.windows`; see Tauri's
 distribution guides. Never commit certificates or passwords.
+
+## Homebrew
+
+`brew install --cask acltabontabon/tap/habi` comes from a tap of our own, not the official
+`homebrew/cask`: Homebrew disables casks that fail Gatekeeper there, and Habi is not notarized
+(see above). The tap, [acltabontabon/homebrew-tap](https://github.com/acltabontabon/homebrew-tap),
+holds one file, `Casks/habi.rb`, written by `.github/workflows/homebrew.yml` from the published
+release's universal `.dmg` (its checksum is verified against `SHA256SUMS-macos.txt` first).
+
+The workflow pushes to the tap with a **deploy key**, so it can change that one repository and
+nothing else:
+
+| What | Where |
+|---|---|
+| Public key | Deploy key *habi release workflow* (write access) on the tap repository |
+| Private key | GitHub secret `HOMEBREW_TAP_DEPLOY_KEY` on this repository |
+
+To rotate it, generate a new key (`ssh-keygen -t ed25519 -N "" -f key`), replace the deploy key
+on the tap and the secret here, and delete the local copy. The tap needs no other upkeep. The
+cask leaves Habi's data folder alone on `brew uninstall --zap`.
 
 ## Updates
 

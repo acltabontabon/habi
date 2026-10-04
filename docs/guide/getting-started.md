@@ -10,6 +10,15 @@ Download the installer for your system from the
 [Releases page](https://github.com/acltabontabon/habi/releases): the `universal.dmg` for macOS
 (Apple Silicon and Intel), or the `.msi` or `-setup.exe` for Windows.
 
+On macOS you can also install with [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask acltabontabon/tap/habi
+```
+
+Homebrew does not get around the check below, so the first launch still asks you to confirm.
+Habi updates itself after that; `brew upgrade` is not needed.
+
 The installers are not signed by Apple or Microsoft, so the first launch asks you to confirm:
 
 - **macOS:** open Habi once. When macOS says it cannot check it, go to **System Settings →
