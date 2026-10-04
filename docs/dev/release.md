@@ -51,14 +51,36 @@ Semantic versioning, separately for:
    - signs the update packages with the updater key (see [Updates](#updates));
    - writes `SHA256SUMS-macos.txt` and `SHA256SUMS-windows.txt` and a build provenance
      attestation for every artifact;
-   - creates a **draft** release whose text is the changelog entry, with `latest.json`, the
-     manifest running copies of Habi ask for.
+   - creates a **draft** release named *Habi vX.Y.Z*, laid out by `scripts/release-notes.mjs`
+     (see [The release page](#the-release-page)), with `latest.json`, the manifest running
+     copies of Habi ask for.
 5. Install the draft's artifacts on macOS and Windows, then publish the release. Publishing
    is what offers it to people already running Habi: `latest.json` is fetched from the
    *latest published* release, so a draft, or a pre-release, is never offered.
 
 Anyone can check an artifact's provenance with
 `gh attestation verify <file> --repo acltabontabon/habi`.
+
+## The release page
+
+The text of a GitHub release is not written by hand. `scripts/release-notes.mjs` builds it from
+this version's section of `CHANGELOG.md` and the installers the build produced: a banner, the
+film, a download table (macOS and Windows, with sizes), *What's new*, a look inside the app,
+and the first-launch and verification notes. Its pictures are read from `docs/media/` at the
+tag, so a published page never changes under a release.
+
+- **Preview it** before tagging: `node scripts/release-notes.mjs --sample vX.Y.Z --ref main`
+  prints the page with typical file names. Pasting that into a draft release shows exactly what
+  GitHub makes of it. Release pages turn every line break into a hard one, which is why the
+  generator joins the changelog's wrapped lines.
+- **The banner** (`docs/media/release-banner.jpg`) is rendered from the app's own screenshots
+  by `node scripts/release-banner.mjs` (headless Chrome; `pnpm install` in `website/` first). It
+  carries no version, so retake it only when the app's look changes.
+- **The film** shown on the page is `docs/media/demo.gif`; GitHub does not play an attached
+  MP4 inline, so the GIF links to the full film on the site.
+- **The site's Download buttons** (`website/src/scripts/download.ts`) ask GitHub for the latest
+  published release and link the installer for the visitor's system, so they start working when
+  a release is published, with no site change.
 
 ## Signing and notarization
 
