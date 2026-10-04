@@ -1,0 +1,101 @@
+name: Homebrew
+
+# When a release is published (the draft the Release workflow makes, after you press Publish),
+# writes the cask for it and commits it to the tap, acltabontabon/homebrew-tap, so
+# `brew install --cask acltabontabon/tap/habi` installs it. Draft assets are not public, which is
+# why this waits for publishing. To redo a release by hand: Actions > Homebrew > Run workflow.
+# See docs/dev/release.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to write the cask for, such as v0.1.0"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew
+  cancel-in-progress: false
+
+jobs:
+  tap:
+    name: Update the tap
+    # A pre-release should not become what people get from `brew install`.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    timeout-minutes: 15
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Download the macOS installer
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "::error::'$TAG' is not a release tag"; exit 1 ;; esac
+          mkdir dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern "Habi_*_universal.dmg" --pattern "SHA256SUMS-macos.txt"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - name: The installer is the one the build wrote down
+        shell: bash
+        run: |
+          cd dist
+          dmg=$(ls Habi_*_universal.dmg)
+          if ! shasum -a 256 -c <(grep -F "$dmg" SHA256SUMS-macos.txt); then
+            echo "::error::$dmg does not match SHA256SUMS-macos.txt"; exit 1
+          fi
+      - name: Write the cask
+        shell: bash
+        run: |
+          mkdir -p tap-staging/Casks
+          node scripts/homebrew-cask.mjs "$TAG" dist/Habi_*_universal.dmg "$GITHUB_REPOSITORY" > tap-staging/Casks/habi.rb
+          cat tap-staging/Casks/habi.rb
+      - name: Check the cask with Homebrew
+        shell: bash
+        run: |
+          # `brew style` only treats a file as a cask when it is inside a tap.
+          git -C tap-staging init -q -b main
+          git -C tap-staging add -A
+          git -C tap-staging -c user.name=ci -c user.email=ci@example.invalid commit -q -m check
+          brew tap local/habi-check "$PWD/tap-staging"
+          brew style local/habi-check/habi
+          brew audit --cask local/habi-check/habi
+          brew untap local/habi-check
+      - name: Commit it to the tap
+        shell: bash
+        env:
+          # A deploy key with write access to the tap repository only, so this workflow can change
+          # nothing else; GITHUB_TOKEN cannot push to another repository.
+          TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          if [ -z "$TAP_DEPLOY_KEY" ]; then
+            echo "::error::HOMEBREW_TAP_DEPLOY_KEY is not set, so the tap was not updated. See docs/dev/release.md."
+            exit 1
+          fi
+          key="$RUNNER_TEMP/tap_key"
+          umask 077
+          printf '%s\n' "$TAP_DEPLOY_KEY" > "$key"
+          # GitHub's published ed25519 host key (https://api.github.com/meta), pinned.
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts -o StrictHostKeyChecking=yes"
+          git clone --depth 1 "git@github.com:${GITHUB_REPOSITORY_OWNER}/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          cp tap-staging/Casks/habi.rb tap/Casks/habi.rb
+          cd tap
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "The tap already has ${TAG#v}."; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/habi.rb
+          git commit -m "habi ${TAG#v}"
+          git push origin HEAD:main
