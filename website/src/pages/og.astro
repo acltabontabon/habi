@@ -9,6 +9,7 @@ import "@fontsource/ibm-plex-serif/500-italic.css";
 import Mark from "../components/Mark.astro";
 import "../styles/tokens.css";
 
+const shot = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/media/dark/project.jpg`;
 const lines = [
   { verb: "Find", rest: " what applies.", dye: "var(--dye-0)" },
   { verb: "Improve", rest: " what works.", dye: "var(--dye-1)" },
@@ -16,7 +17,7 @@ const lines = [
 ];
 ---
 
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="robots" content="noindex" />
@@ -24,37 +25,41 @@ const lines = [
     <style>
       body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: var(--paper); color: var(--ink);
         font-family: "IBM Plex Sans Variable", sans-serif; }
-      .og { position: relative; height: 100%; padding: 60px 80px 0; box-sizing: border-box; }
-      .top { display: flex; align-items: center; justify-content: space-between; }
-      .brand { display: flex; align-items: center; gap: 18px; font-size: 44px; font-weight: 650; letter-spacing: -0.035em; }
-      .tag { font-family: "IBM Plex Mono", monospace; font-size: 22px; color: var(--thread-strong); }
-      .cloth { position: relative; margin-top: 44px; padding-left: 52px; }
-      .w { position: absolute; left: 0; width: 9px; border-radius: 5px; background: var(--dye); }
-      h1 { margin: 0; font-size: 90px; font-weight: 650; letter-spacing: -0.05em; line-height: 1.06; }
+      .og { position: relative; width: 100%; height: 100%; overflow: hidden;
+        background:
+          radial-gradient(640px 520px at 800px 330px, rgba(242, 165, 65, 0.16), transparent 70%),
+          radial-gradient(520px 420px at 120px 640px, rgba(142, 170, 240, 0.08), transparent 70%),
+          var(--paper); }
+      .brand { position: absolute; left: 72px; top: 56px; display: flex; align-items: center; gap: 16px; font-size: 38px; font-weight: 650; letter-spacing: -0.035em; }
+      .copy { position: absolute; left: 72px; top: 168px; padding-left: 36px; }
+      .w { position: absolute; left: 0; width: 7px; border-radius: 4px; background: var(--dye); }
+      h1 { margin: 0; font-size: 56px; font-weight: 650; letter-spacing: -0.045em; line-height: 1.12; }
       h1 span { display: block; white-space: nowrap; }
-      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.03em; color: var(--dye); }
-      .weft { position: absolute; left: -80px; right: -80px; top: var(--weft); height: 8px; border-radius: 4px; background: var(--thread); box-shadow: 0 0 0 5px var(--paper); }
-      .purpose { position: absolute; left: 80px; right: 80px; bottom: 54px; }
-      .purpose p { margin: 0; font-size: 30px; white-space: nowrap; line-height: 1.3; color: var(--ink-soft); letter-spacing: -0.01em; }
+      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.025em; color: var(--dye); }
+      .purpose { position: absolute; left: 72px; top: 420px; margin: 0; white-space: nowrap; font-size: 24px; line-height: 1.4; color: var(--ink-muted); letter-spacing: -0.005em; }
       .purpose b { color: var(--ink); font-weight: 600; }
+      .url { position: absolute; left: 72px; bottom: 40px; font-family: "IBM Plex Mono", monospace; font-size: 20px; color: var(--thread-strong); }
+      .weft { position: absolute; left: 0; right: 0; top: 536px; height: 6px; border-radius: 3px; background: var(--thread); opacity: 0.9; }
+      .stage { position: absolute; left: 640px; top: 70px; width: 760px; height: 640px; perspective: 1800px; }
+      .win { position: absolute; inset: 0; border-radius: 16px; overflow: hidden; background-color: var(--paper-raised);
+        background-size: 1440px auto; background-position: -640px -216px; background-repeat: no-repeat;
+        transform: rotateY(-16deg) rotateX(5deg) rotateZ(-1.5deg); transform-origin: 0% 50%;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 40px 90px rgba(0, 0, 0, 0.7), 0 0 120px rgba(242, 165, 65, 0.14); }
     </style>
   </head>
   <body>
     <div class="og">
-      <div class="top">
-        <div class="brand"><Mark size={56} /> Habi</div>
-        <div class="tag">acltabontabon.com/habi</div>
-      </div>
-      <div class="cloth" style="--weft:318px">
-        {lines.map((l, i) => <i class="w" style={`--dye:${l.dye};top:${i * 95 + 8}px;height:${i === 2 ? 95 + 26 : 95}px`} />)}
+      <div class="weft"></div>
+      <div class="brand"><Mark size={50} /> Habi</div>
+      <div class="copy">
+        {lines.map((l, i) => <i class="w" style={`--dye:${l.dye};top:${i * 63 + 7}px;height:${i === 2 ? 52 : 63}px`} />)}
         <h1>
           {lines.map((l) => <span style={`--dye:${l.dye}`}><em>{l.verb}</em>{l.rest}</span>)}
         </h1>
-        <i class="weft"></i>
       </div>
-      <div class="purpose">
-        <p>The desktop app for the <b>skills &amp; instructions</b> you give AI coding agents.</p>
-      </div>
+      <p class="purpose">The desktop app for the <b>skills &amp; instructions</b><br />you give AI coding agents.</p>
+      <div class="url">acltabontabon.com/habi</div>
+      <div class="stage"><div class="win" style={`background-image:url(${shot})`}></div></div>
     </div>
   </body>
 </html>
