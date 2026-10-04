@@ -9,8 +9,8 @@ untrusted too, even though it renders Habi's own UI.
   commands from libraries or projects.
 - Habi never runs builds, package managers or Git inside a project during inspection.
 - Verification checks run only after the user previews the exact program, arguments,
-  folder and environment policy and clicks "Run". The preview says plainly that the command
-  executes repository code and is **not sandboxed**. The preview also reads the command line,
+  folder and environment policy and clicks *Run this command*. The preview says plainly that
+  the command executes repository code and is **not sandboxed**. The preview also reads the command line,
   and the one `./script` it runs if there is one, with the same patterns as signals (below),
   and lists what stands out: the command's own notices and cautions, and the script's
   cautions only (a project's build wrapper legitimately downloads and installs). These are

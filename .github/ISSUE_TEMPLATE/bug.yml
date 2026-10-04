@@ -50,6 +50,6 @@ body:
     attributes:
       label: Diagnostic report (optional)
       description: >
-        Settings → Diagnostics → Preview report (or `habi diagnostics`). It is redacted, but
-        please read it before pasting.
+        Settings → Diagnostics → Preview report. It is redacted, but please read it before
+        pasting.
       render: text

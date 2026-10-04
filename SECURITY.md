@@ -11,9 +11,8 @@ report.
 Please **do not open a public issue.** Report privately:
 
 1. Email **me@acltabontabon.com** with "Habi security" in the subject.
-2. Or use GitHub's private reporting, **Security → Report a vulnerability** on
-   [github.com/acltabontabon/habi](https://github.com/acltabontabon/habi/security/advisories/new),
-   once it is enabled for the repository.
+2. Or use GitHub's private reporting: **Security → Report a vulnerability** on
+   [github.com/acltabontabon/habi](https://github.com/acltabontabon/habi/security/advisories/new).
 
 Include what you found, how to reproduce it (a minimal library or repository helps), and
 the impact you expect. The maintainer aims to acknowledge a report within 3 working days
@@ -22,7 +21,7 @@ otherwise.
 
 ## Supported versions
 
-Habi is pre-release. Fixes go into the latest 0.x release only.
+Security fixes go into the latest release only. Habi is at 0.x, so there is no older supported line.
 
 ## In scope
 

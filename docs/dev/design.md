@@ -8,7 +8,7 @@ its one signature — used only where it carries meaning.
 
 - **Two themes.** *Daylight*: crisp neutral surfaces (`--paper #f6f5f1`) and near-black ink.
   *Graphite*: deep neutral dark (`#0f0f11`) where colored threads read clearly. Both follow
-  the system unless the user picks one.
+  the system; there is no in-app switch.
 - **Type with two voices.** IBM Plex Sans for reading, set tight and confident for titles.
   IBM Plex Mono is the machine voice: section labels, kickers, counts, paths, ids, stack
   tokens and CLI hints. Both fonts are bundled (OFL); there is no third face.
@@ -81,11 +81,12 @@ its one signature — used only where it carries meaning.
   is one field that proposes what Habi could look for, and what it saw in a project, each
   with why. *Any/all of these* appears only with two signals; *Check within* only with one.
   Signals hang on a saffron thread, as their reasons will in a project. Tools are said apart.
-  The YAML is a link away, with "Habi reads this as" under the editor.
+  The YAML is a link away.
 - **Materials** — kinds, not folders: a mono glyph, the name, and what it is for in the
   instructions' words. Habi places added, pasted and dropped files by type. *View package
   source* is the literal tree (SKILL.md and habi.yaml opened as written). A script shows the
-  command a person would run, to copy — there is no Run button anywhere.
+  command a person would run, to copy — there is no Run button for scripts (a check has
+  *Run this command*, after its preview).
 - **Add skills** — one list of where skills come from (a project, a folder, a Git repository,
   a connected library), each with what it needs in place. A Git address forks into two
   choices said apart: *Make my own copy* (read once, nothing connected) and *Connect as a
@@ -172,7 +173,7 @@ its one signature — used only where it carries meaning.
 
 Tokens: `apps/desktop/src/styles/tokens.css`. Components: `src/components` (Button, Facet,
 Status, Notice, Empty, Working, Dialog, DiffView, Markdown, Toasts, Icon/Mark, and the weave:
-Strand, Swatch, Selvedge). Layout and view styles: `src/styles/app.css` and
+Strand, Swatch). Layout and view styles: `src/styles/app.css` and
 `authoring.css`; the weave's own drawing: `src/styles/weave.css`. Library dyes:
 `src/lib/dye.ts`.
 

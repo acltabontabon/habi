@@ -32,7 +32,7 @@ seeded workspace, and the film is cut from the same screenshots (below).
 
 ## The film
 
-The landing page shows a film (`docs/media/demo.mp4`): a minute-long ad cut from the app's own dark
+The landing page shows a film (`docs/media/demo.mp4`): an ad cut from the app's own dark
 screenshots, set to a synthesized score. A filmstrip of its chapters runs under the hero (one still per
 chapter, at the `still` second `timeline.json` gives it, cut by `pnpm media`); a frame opens the film
 at that chapter, in a dialog over the page. Its source is `scripts/film/`, and like the screenshots it is

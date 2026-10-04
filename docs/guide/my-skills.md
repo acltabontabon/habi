@@ -77,8 +77,8 @@ Verdict is about rules only—not skill quality or agent behavior.
 
 ## Checks
 
-Habi runs the same checks on every package it reads: library items, My skills, contributions
-and `habi validate`. Each problem has a level:
+Habi runs the same checks on every package it reads: library items, My skills and
+contributions. Each problem has a level:
 
 - **Error.** Blocks installing, exporting and sharing a skill from My skills, and preparing a
   contribution. A library item with errors stays listed, with its problems shown.
