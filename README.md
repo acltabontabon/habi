@@ -12,13 +12,11 @@ Habi is a local desktop app for the skills and instructions you give AI coding a
 
 <br>
 
-<a href="https://github.com/acltabontabon/habi/releases/latest"><b>Download</b></a> &nbsp;·&nbsp; <a href="https://acltabontabon.com/habi/docs/">Documentation</a> &nbsp;·&nbsp; <a href="https://acltabontabon.com/habi/#demo">Watch the film</a>
+<a href="https://github.com/acltabontabon/habi/releases/latest"><b>Download</b></a> &nbsp;·&nbsp; <a href="https://acltabontabon.com/habi/docs/">Documentation</a> &nbsp;·&nbsp; <a href="https://acltabontabon.com/habi/">Website</a>
 
 <br>
 
 <a href="https://acltabontabon.com/habi/#demo"><img src="docs/media/demo.gif" alt="The Habi film: skills stuck on one laptop, fixes that never come back, no idea what fits; then Habi shows what fits a repo and why, gathers the builders', the community's and your team's libraries, installs for seven agents, sends fixes back as pull requests, and every project updates." width="86%"></a>
-
-<sub>The whole film, with sound, is <a href="https://acltabontabon.com/habi/#demo">on the site</a>.</sub>
 
 </div>
 
