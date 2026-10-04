@@ -1,96 +1,47 @@
 ---
 /*
- * The headline is cloth. Warp threads — one per library, each in its dye,
- * the community one stitched — hang through the type, passing over one line
- * and under the next, the way the weft passes through Habi's mark. Beneath
- * the type the saffron weft is thrown across them.
+ * A billboard, the way a streaming service opens: a still first, then, after
+ * a beat, the film eases in behind the words, muted and quiet, and when it
+ * ends the still comes back. It is only ever a backdrop; everything it is
+ * behind reads without it. A press on the sound button starts the chapter
+ * over with the music, and the small button beside it takes the film full
+ * screen. With reduced motion or data saver it never starts by itself
+ * (scripts/hero.ts).
  *
- * Two SVG layers draw the same threads: one behind the type, one in front
- * of it clipped to where each thread passes over. Without scripts the
- * threads hang straight behind the type; with them they can be plucked
- * (scripts/hero.ts). Under it all runs the film, as a strip of it (Reel).
+ * Nothing is written over it, and nothing under it: the film tells the problem
+ * itself. What the word means, and the button, are in the header.
  */
+import demo from "../data/demo.json";
 import Icon from "./Icon.astro";
-import Reel from "./Reel.astro";
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
-
 const repo = "https://github.com/acltabontabon/habi";
-const lines = ["What one developer", "learns, |every project|", "keeps."];
-const warps = [
-  { x: 5, dye: "var(--dye-0)" },
-  { x: 17, dye: "var(--dye-1)" },
-  { x: 31, dye: "var(--ink-soft)" },
-  { x: 46, dye: "var(--dye-4)" },
-  { x: 60, dye: "var(--dye-2)", stitched: true },
-  { x: 74, dye: "var(--dye-3)" },
-  { x: 88, dye: "var(--dye-5)" },
-];
 ---
 
-<section class="hero screen" aria-labelledby="hero-title">
-  <p class="hero-kicker mono">Skills &amp; instructions for AI coding agents</p>
-  <div class="hero-cloth" data-cloth data-warps={JSON.stringify(warps.map((w) => w.x))}>
-    <svg class="cloth cloth-back" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-      {
-        warps.map((w, i) => (
-          <path
-            data-thread={i}
-            class:list={["thread", { "is-stitched": w.stitched }]}
-            d={`M${w.x} 0 L${w.x} 100`}
-            stroke={w.dye}
-          />
-        ))
-      }
-      <path class="weft-halo" data-weft pathLength="1" d="M0 0"></path>
-      <path class="weft" data-weft pathLength="1" d="M0 0"></path>
-    </svg>
-
-    <h1 id="hero-title" class="hero-title">
-      {
-        lines.map((line) => (
-          <span class="hero-line">{line.split("|").map((part, k) => (k % 2 ? <em>{part}</em> : part))}</span>
-        ))
-      }
-    </h1>
-
-    <div class="hero-weft-space" data-weft-y></div>
-
-    <svg class="cloth cloth-front" aria-hidden="true">
-      <defs data-clips></defs>
-      {
-        warps.map((w, i) => (
-          <g data-front={i} class:list={{ "is-stitched": w.stitched }}>
-            <path class="thread-halo" d="M0 0" />
-            <path class="thread" d="M0 0" stroke={w.dye} />
-          </g>
-        ))
-      }
-    </svg>
-
-    <p class="pluck-hint mono" data-pluck-hint aria-hidden="true">go on — pluck a thread</p>
+<section class="bill" id="demo" data-hero aria-labelledby="hero-title">
+  <div class="bill-media" aria-hidden="true">
+    <img class="bill-still" src={`${base}media/demo-poster.jpg`} alt="" width="1440" height="900" fetchpriority="high" />
+    <video class="bill-video" data-hero-video muted playsinline preload="none" tabindex="-1">
+      <source src={`${base}media/demo.mp4`} type="video/mp4" />
+    </video>
   </div>
 
-  <div class="hero-foot">
-    <div class="hero-say">
-      <p class="hero-lead">
-        Every team is writing AI agent skills — in its own repo, on its own laptops. Habi is a desktop app that brings
-        them together: it shows which ones fit the repository you're in, and sends what you improve back to the team
-        that owns it.
-      </p>
-    </div>
-    <div class="hero-actions">
-      <span class="hero-download">
-        <a class="btn btn-primary" href={`${repo}/releases/latest`} data-download
-          ><span data-download-label>Download</span></a
-        >
-        <span class="hero-platforms mono"><span data-download-version></span> macOS · Windows</span>
-      </span>
-      <a class="btn btn-quiet" href={`${base}media/demo.mp4`} data-film-open data-at="0"
-        ><Icon name="play" size={13} class="btn-play" /> Watch the film</a
-      >
+  <svg class="bill-loom" viewBox="220 190 584 644" aria-hidden="true" focusable="false">
+    <path class="lm-warp" d="M660 236V788"></path>
+    <path class="lm-weft" d="M268 520H756" pathLength="1"></path>
+    <path class="lm-warp" d="M364 236V788"></path>
+  </svg>
+
+  <h1 id="hero-title" class="visually-hidden">Habi weaves your team's AI agent skills together</h1>
+
+  <div class="bill-inner">
+    <div class="bill-ctl" data-hero-ctl>
+      <button class="bill-btn" type="button" data-hero-sound aria-label="Play the film with sound">
+        <Icon name="mute" size={16} />
+      </button>
+      <button class="bill-btn" type="button" data-hero-full aria-label="Watch the film full screen">
+        <Icon name="layers" size={16} />
+      </button>
     </div>
   </div>
-
-  <Reel />
 </section>

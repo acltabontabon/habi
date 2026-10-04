@@ -1,12 +1,3 @@
-/* A metric-matched fallback, so the web font arriving does not move the page. */
-@font-face {
-  font-family: "Plex Fallback";
-  src: local("Helvetica Neue"), local("Arial");
-  size-adjust: 104%;
-  ascent-override: 98%;
-  descent-override: 26%;
-}
-
 *,
 *::before,
 *::after {
@@ -30,7 +21,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: "IBM Plex Sans Variable", "Plex Fallback", var(--font-ui);
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.55;
   font-optical-sizing: auto;
@@ -139,8 +130,10 @@ pre,
   padding: 0 18px;
   border: 1px solid transparent;
   border-radius: var(--radius);
-  font-size: 15px;
-  font-weight: 550;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
   transition:
@@ -160,12 +153,3 @@ pre,
   background: var(--button-ink-hover);
 }
 
-.btn-quiet {
-  border-color: var(--hairline-strong);
-  background: var(--paper-raised);
-  color: var(--ink);
-}
-
-.btn-quiet:hover {
-  border-color: var(--ink-faint);
-}

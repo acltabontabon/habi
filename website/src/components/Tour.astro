@@ -1,12 +1,17 @@
 ---
 /*
- * How it works, in the real app: six moves, each a screenshot of Habi
- * (docs/media and its dark twin, shrunk by `pnpm media`) with a few pins on what matters,
- * and the way it was done before, in one muttered line.
+ * How it works, in the real app, as a journey. Six moves, each a screenshot of
+ * Habi (docs/media and its dark twin, shrunk by `pnpm media`) with a few pins on
+ * what matters and the way it was done before, in one muttered line.
  *
- * The moves are a plain sequence that reads without scripts. With scripts, as
- * each move scrolls in its window swings flat like a shot in the film, the
- * pins land, and the thread down the side fills knot by knot (scripts/tour.ts).
+ * With scripts, the six screens are laid out on one large plane along a stitched
+ * path, and a camera flies from screen to screen as you scroll (scripts/tour.ts):
+ * it pulls back mid-flight to show the route, comes in on the next screen, and
+ * the saffron thread fills in behind it with a shuttle at its tip. At the end the
+ * camera stands back and the whole weave is in view. Without scripts, or with
+ * reduced motion, the moves are a plain list, each with its screen and pins.
+ * (That list is also what is read aloud; the plane is only to look at.)
+ *
  * The pins are positioned in percent of the picture, read off the screenshots.
  */
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
@@ -43,7 +48,7 @@ const steps: Step[] = [
   {
     id: "check",
     verb: "Check",
-    was: "grep -rli liquibase ~/work/*",
+    was: "five repos searched by hand, twice",
     title: ["Open a repository.", "Ask what applies."],
     body: "Habi reads the stack, from Java and Kotlin to TypeScript, Go, Rust, Python and PHP, monorepos module by module, and sorts every skill: required, fits, available. Each answer cites its file and line. Nothing is built or run, and when the files can't say, Habi asks.",
     shot: "project",
@@ -58,7 +63,7 @@ const steps: Step[] = [
   {
     id: "install",
     verb: "Install",
-    was: "cp -r ~/Downloads/skill-FINAL2 .claude/skills/",
+    was: "skill-FINAL2, copied in by hand",
     title: ["Every file,", "seen first."],
     body: "Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie, preselected from what the project already uses. Into the project, or onto your machine for every project. You read every line before it lands, and any change can be restored.",
     shot: "install-review",
@@ -90,12 +95,12 @@ const steps: Step[] = [
     verb: "Share",
     was: "“just keep it locally 🤷”",
     title: ["Send it back", "as a pull request."],
-    body: "Choose the files, see exactly what leaves your machine, and Habi prepares the branch and opens the pull or merge request through your own gh or glab. The reviewer's comments show up right there; revise on the same request.",
+    body: "Choose the files, see exactly what leaves your machine, and Habi prepares the branch and opens the pull or merge request on GitHub or GitLab for you. The reviewer's comments show up right there; revise on the same request.",
     shot: "share-review-status",
     alt: "A contribution after review: the GitHub pull request, a reviewer's comment, and the diff of the skill that was sent.",
     window: "Contributions / Review a pull request",
     pins: [
-      { x: 29, y: 3.6, text: "opened with your own gh", side: "r" },
+      { x: 29, y: 3.6, text: "opened for you", side: "r" },
       { x: 33, y: 15.5, text: "the review, in Habi", side: "r" },
       { x: 76, y: 52, text: "exactly what was sent", side: "t" },
     ],
@@ -116,6 +121,41 @@ const steps: Step[] = [
     ],
   },
 ];
+
+// The plane: each window is W wide and H tall (its bar and a 16:10 picture), laid
+// along a snake, left to right and then back again underneath; where each sits,
+// and how it is tilted, is by hand. The thread joins each to the next.
+const W = 920;
+const H = 34 + Math.round(W / 1.6);
+const place = [
+  { x: 360, y: 340, r: -1.2 },
+  { x: 1860, y: 280, r: 0.8 },
+  { x: 3360, y: 360, r: -0.6 },
+  { x: 3400, y: 1530, r: 0.9 },
+  { x: 1880, y: 1470, r: -0.8 },
+  { x: 340, y: 1550, r: 1.1 },
+];
+const PW = 4640;
+const PH = 2500;
+const at = (i: number) => place[i]!;
+const sides = {
+  right: (i: number) => [at(i).x + W, at(i).y + H / 2] as const,
+  left: (i: number) => [at(i).x, at(i).y + H / 2] as const,
+  top: (i: number) => [at(i).x + W / 2, at(i).y] as const,
+  bottom: (i: number) => [at(i).x + W / 2, at(i).y + H] as const,
+};
+const curve = (a: readonly [number, number], b: readonly [number, number], dx: number, dy: number) =>
+  `M${a[0]} ${a[1]}C${a[0] + dx} ${a[1] + dy} ${b[0] - dx} ${b[1] - dy} ${b[0]} ${b[1]}`;
+// [from, to, path] for each step to the next, and the two knots it ties.
+const joins = [
+  { d: curve(sides.right(0), sides.left(1), 330, 0), out: sides.right(0), into: sides.left(1) },
+  { d: curve(sides.right(1), sides.left(2), 330, 0), out: sides.right(1), into: sides.left(2) },
+  { d: curve(sides.bottom(2), sides.top(3), 0, 300), out: sides.bottom(2), into: sides.top(3) },
+  { d: curve(sides.left(3), sides.right(4), -330, 0), out: sides.left(3), into: sides.right(4) },
+  { d: curve(sides.left(4), sides.right(5), -330, 0), out: sides.left(4), into: sides.right(5) },
+];
+const N = steps.length;
+const pad = (n: number) => String(n).padStart(2, "0");
 ---
 
 <section class="tour" id="tour" aria-labelledby="tour-title" data-tour>
@@ -126,70 +166,129 @@ const steps: Step[] = [
     </h2>
     <p class="section-lead">
       From somebody else's library, into your repository, better, and back out to everyone. Six moves, on Habi's own
-      screens, in light or dark as your system has it.
+      screens.
     </p>
   </header>
 
-  <ol class="moves" data-moves>
-    <span class="moves-thread" aria-hidden="true"><i data-tour-fill></i></span>
+  <ol class="moves">
     {
       steps.map((s, i) => (
-        <li class:list={["move", { "is-flip": i % 2 === 1 }]} id={`tour-${s.id}`} data-move style={`--dye:var(--dye-${[0, 4, 1, 6, 3, 2][i]})`}>
-          <span class="move-knot" aria-hidden="true" />
+        <li class="move">
           <div class="move-say">
-            <p class="move-n mono" aria-hidden="true">
-              {String(i + 1).padStart(2, "0")}
-            </p>
-            <p class="move-verb mono">{s.verb}</p>
-            <h3 class="move-title">
-              {s.title[0]} <em>{s.title[1]}</em>
-            </h3>
+            <p class="move-n mono">{pad(i + 1)}</p>
+            <h3 class="move-verb"><em>{s.verb}</em></h3>
+            <p class="move-title">{s.title.join(" ")}</p>
             <p class="move-body">{s.body}</p>
             <p class="move-was mono">
               <span>before Habi</span>
               {s.was}
             </p>
           </div>
-
           <figure class="move-shot">
             <div class="win">
               <p class="win-bar mono" aria-hidden="true">
-                <span class="win-lights">
-                  <i />
-                  <i />
-                  <i />
-                </span>
+                <span class="win-lights"><i /><i /><i /></span>
                 <span class="win-title">Habi</span>
                 <span class="win-crumb">{s.window}</span>
               </p>
               <div class="shot">
-                <picture>
-                  <source media="(prefers-color-scheme: dark)" srcset={`${base}media/dark/${s.shot}.jpg`} />
-                  <img
-                    src={`${base}media/light/${s.shot}.jpg`}
-                    alt={s.alt}
-                    width="1800"
-                    height="1125"
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                  />
-                </picture>
+                <img src={`${base}media/dark/${s.shot}.jpg`} alt={s.alt} width="1800" height="1125" loading="lazy" decoding="async" />
                 <ul class="pins" aria-hidden="true">
-                  {
-                    s.pins.map((p, n) => (
-                      <li class={`pin pin-${p.side ?? "r"}`} style={`--x:${p.x}%;--y:${p.y}%;--n:${n}`}>
-                        <i />
-                        <span>{p.text}</span>
-                      </li>
-                    ))
-                  }
+                  {s.pins.map((p, n) => (
+                    <li class={`pin pin-${p.side ?? "r"}`} style={`--x:${p.x}%;--y:${p.y}%;--n:${n}`}>
+                      <i />
+                      <span>{p.text}</span>
+                    </li>
+                  ))}
                 </ul>
-                <span class="shot-sheen" aria-hidden="true" />
               </div>
             </div>
+            <figcaption class="move-desc">{s.alt}</figcaption>
           </figure>
         </li>
       ))
     }
   </ol>
+
+  <div class="rig" data-rig style={`--units:${N}`}>
+    <div class="rig-stage" data-rig-stage>
+      <div class="rig-plane" data-rig-plane data-pw={PW} data-ph={PH} data-w={W} data-h={H} style={`width:${PW}px;height:${PH}px`} aria-hidden="true">
+        <svg class="rig-threads" width={PW} height={PH} viewBox={`0 0 ${PW} ${PH}`} focusable="false">
+          {joins.map((j) => <path class="thread-base" d={j.d} />)}
+          {joins.map((j) => <path class="thread-live" d={j.d} pathLength="1" data-seg />)}
+        </svg>
+
+        {
+          steps.map((s, i) => (
+            <div
+              class="rig-win"
+              data-win
+              data-cx={at(i).x + W / 2}
+              data-cy={at(i).y + H / 2}
+              style={`left:${at(i).x}px;top:${at(i).y}px;--r:${at(i).r}deg`}
+            >
+              <div class="win">
+                <p class="win-bar mono">
+                  <span class="win-lights"><i /><i /><i /></span>
+                  <span class="win-title">Habi</span>
+                  <span class="win-crumb">{s.window}</span>
+                </p>
+                <div class="shot">
+                  <img src={`${base}media/dark/${s.shot}.jpg`} alt="" width="1800" height="1125" loading="eager" fetchpriority="low" decoding="async" />
+                  <ul class="pins">
+                    {s.pins.map((p, n) => (
+                      <li class={`pin pin-${p.side ?? "r"}`} style={`--x:${p.x}%;--y:${p.y}%;--n:${n}`}>
+                        <i />
+                        <span>{p.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          ))
+        }
+
+        <svg class="rig-knots" width={PW} height={PH} viewBox={`0 0 ${PW} ${PH}`} focusable="false">
+          {
+            joins.map((j, i) => (
+              <>
+                <circle class="knot" cx={j.out[0]} cy={j.out[1]} r="12" data-knot data-at={i} />
+                <circle class="knot" cx={j.into[0]} cy={j.into[1]} r="12" data-knot data-at={i + 0.78} />
+              </>
+            ))
+          }
+          <circle class="shuttle" cx={sides.right(0)[0]} cy={sides.right(0)[1]} r="17" data-shuttle />
+        </svg>
+      </div>
+
+      <div class="rig-caps" aria-hidden="true">
+        {
+          steps.map((s, i) => (
+            <article class="rig-cap" data-cap>
+              <p class="cap-n mono">{pad(i + 1)} / {pad(N)}</p>
+              <h3 class="cap-verb"><em>{s.verb}</em></h3>
+              <p class="cap-title">{s.title.join(" ")}</p>
+              <p class="cap-body">{s.body}</p>
+              <p class="cap-was mono"><span>before Habi</span> {s.was}</p>
+            </article>
+          ))
+        }
+        <article class="rig-cap rig-cap-end" data-cap>
+          <p class="cap-n mono">and round again</p>
+          <h3 class="cap-verb">What one developer learns, <em>every project keeps.</em></h3>
+        </article>
+      </div>
+
+      <nav class="rig-nav" aria-label="The six moves">
+        {
+          steps.map((s, i) => (
+            <button type="button" data-go={i} aria-label={`Go to move ${i + 1}: ${s.verb}`}>
+              <span class="mono">{s.verb}</span>
+            </button>
+          ))
+        }
+      </nav>
+    </div>
+  </div>
 </section>

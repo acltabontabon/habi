@@ -1,165 +1,170 @@
 /**
- * The hero's cloth: warp threads drawn behind the headline and, clipped to
- * the lines they pass over, in front of it — and a weft thrown beneath.
+ * The hero's film, a backdrop, the way a streaming service does it: the still
+ * is the page; a moment after it is ready the film fades in behind the words,
+ * muted, from its very beginning, and plays once. It pauses
+ * when scrolled away from, and when it ends the still comes back. Nothing
+ * depends on it. The sound button starts the whole film again, with the music;
+ * the other goes full screen. With reduced motion or data saver nothing
+ * starts by itself.
  *
- * Draw a pointer across a thread and it catches; let go (or pull too far)
- * and it rings like a string fixed at both ends, then rests. Frames run only
- * while a thread moves. With reduced motion the threads hang still.
+ * While the film is on its way (or stalls) the Habi mark is drawn over the still:
+ * its saffron weft is as long as what has really arrived (the seconds of film
+ * buffered ahead of where it starts), and is drawn and withdrawn until the first
+ * of it comes. CSS keeps it hidden for the first moment, so a fast
+ * connection never sees it.
  */
 
-const PULL = 48; // furthest a thread follows before it slips free
-const SAMPLES = 36;
+const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 
-type Thread = { x: number; d: number; v: number; yb: number; held: boolean };
+const MUTE = "M2.5 6.5h2.5L8.5 3.5v9L5 9.5H2.5zM10.8 6l3.4 4M14.2 6l-3.4 4";
+const VOLUME = "M2.5 6.5h2.5L8.5 3.5v9L5 9.5H2.5zM10.8 5.2a4 4 0 010 5.6M12.6 3.6a6.4 6.4 0 010 8.8";
+const REPLAY = "M12.5 6.5A4.6 4.6 0 004 5.2M3.5 9.5A4.6 4.6 0 0012 10.8M4 2.8v2.6h2.6M12 13.2v-2.6H9.4";
 
-export function cloth(root: HTMLElement, reduce: boolean) {
-  const xs: number[] = JSON.parse(root.dataset.warps ?? "[]");
-  const back = root.querySelector<SVGSVGElement>(".cloth-back");
-  const front = root.querySelector<SVGSVGElement>(".cloth-front");
-  const defs = front?.querySelector("defs");
-  const weftSpace = root.querySelector<HTMLElement>("[data-weft-y]");
-  if (!back || !front || !defs || !weftSpace) return;
-  const backPaths = [...back.querySelectorAll<SVGPathElement>("[data-thread]")];
-  const fronts = [...front.querySelectorAll<SVGGElement>("[data-front]")];
-  const wefts = [...back.querySelectorAll<SVGPathElement>("[data-weft]")];
-  const lines = [...root.querySelectorAll<HTMLElement>(".hero-line")];
-  const threads: Thread[] = xs.map(() => ({ x: 0, d: 0, v: 0, yb: 0, held: false }));
-  let W = 0;
-  let H = 0;
+const START = 0; // the film plays from its very beginning
+const DELAY = 2200; // ms the still is left alone before the film comes in
+const NEED = 5; // seconds of film loaded past where it starts before it plays; the loom fills toward this
 
-  /** A string fixed at top and bottom, pulled sideways at yb by d. */
-  const offset = (t: Thread, y: number) => {
-    if (t.d === 0) return 0;
-    const yb = Math.min(H - 1, Math.max(1, t.yb));
-    const s = y < yb ? y / yb : (H - y) / (H - yb);
-    return t.d * Math.sin((Math.PI / 2) * Math.max(0, s));
+export function hero(root: HTMLElement, reduce: boolean) {
+  const video = root.querySelector<HTMLVideoElement>("[data-hero-video]");
+  const sound = root.querySelector<HTMLButtonElement>("[data-hero-sound]");
+  const full = root.querySelector<HTMLButtonElement>("[data-hero-full]");
+  if (!video) return;
+
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  // The film is a backdrop: it does not start by itself where it would cost the visitor, or fight the page for a slow line.
+  const auto = !reduce && !conn?.saveData && !/^(slow-2g|2g|3g)$/.test(conn?.effectiveType ?? "");
+
+  let started = false;
+  let ended = false;
+  let shown = true;
+
+  /** The sound button says what it will do. */
+  const voice = () => {
+    if (!sound) return;
+    sound.querySelector("path")?.setAttribute("d", ended ? REPLAY : video.muted ? MUTE : VOLUME);
+    sound.classList.toggle("is-on", !video.muted && !ended);
+    sound.setAttribute("aria-label", ended ? "Play the film again" : video.muted ? "Play the film with sound" : "Mute the film");
   };
-  const shape = (t: Thread) => {
-    if (t.d === 0) return `M${t.x.toFixed(1)} 0 L${t.x.toFixed(1)} ${H.toFixed(1)}`;
-    let d = "";
-    for (let k = 0; k <= SAMPLES; k++) {
-      const y = (k / SAMPLES) * H;
-      d += `${k ? " L" : "M"}${(t.x + offset(t, y)).toFixed(1)} ${y.toFixed(1)}`;
+  video.addEventListener("volumechange", voice);
+
+  /* ---------- Loading ---------- */
+  let at = START;
+  let warm = false;
+
+  /** Seconds of film loaded from where it is to be, or is, playing. */
+  const ahead = () => {
+    const t = video.currentTime;
+    const b = video.buffered;
+    for (let i = 0; i < b.length; i++) {
+      if (b.start(i) <= t + 0.25 && b.end(i) >= t) return b.end(i) - t;
     }
-    return d;
+    return 0;
   };
-  const draw = () => {
-    threads.forEach((t, i) => {
-      const d = shape(t);
-      backPaths[i]?.setAttribute("d", d);
-      for (const p of fronts[i]?.querySelectorAll("path") ?? []) p.setAttribute("d", d);
-    });
+  const weave = () => {
+    const k = clamp(ahead() / NEED);
+    root.style.setProperty("--k", k.toFixed(3));
+    root.classList.toggle("is-idle", k === 0);
   };
+  for (const ev of ["progress", "loadeddata", "canplay", "seeked", "timeupdate"]) video.addEventListener(ev, weave);
 
-  const layout = () => {
-    const r = root.getBoundingClientRect();
-    W = r.width;
-    H = r.height;
-    for (const svg of [back, front]) {
-      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-      svg.removeAttribute("preserveAspectRatio");
-    }
-    threads.forEach((t, i) => {
-      t.x = ((xs[i] ?? 0) / 100) * W;
-    });
-    const w = weftSpace.getBoundingClientRect();
-    const weftY = w.top - r.top + w.height / 2;
-    // One band per line as it is drawn: a headline line that wraps is two lines of cloth.
-    const bands = lines.flatMap((l) => {
-      const range = document.createRange();
-      range.selectNodeContents(l);
-      const rows: [number, number][] = [];
-      for (const b of range.getClientRects()) {
-        if (b.width === 0 || b.height === 0) continue;
-        const row = rows.find(([top]) => Math.abs(top - b.top) < b.height / 2);
-        if (row) row[1] = Math.max(row[1], b.bottom);
-        else rows.push([b.top, b.bottom]);
-      }
-      return rows
-        .sort((a, b) => a[0] - b[0])
-        .map(([top, bottom]) => {
-          const h = bottom - top;
-          return [top - r.top + h * 0.12, bottom - r.top - h * 0.1] as const;
-        });
-    });
-    // Over one line and under the next; even threads also over the weft.
-    defs.innerHTML = threads
-      .map((_, i) => {
-        const rects = bands
-          .filter((_, li) => (i + li) % 2 === 0)
-          .map(([a, b]) => `<rect x="-60" y="${a.toFixed(1)}" width="${W + 120}" height="${(b - a).toFixed(1)}"/>`);
-        if (i % 2 === 0) rects.push(`<rect x="-60" y="${(weftY - 12).toFixed(1)}" width="${W + 120}" height="24"/>`);
-        return `<clipPath id="over-${i}" clipPathUnits="userSpaceOnUse">${rects.join("")}</clipPath>`;
-      })
-      .join("");
-    fronts.forEach((g, i) => g.setAttribute("clip-path", `url(#over-${i})`));
-    const weft = `M0 ${weftY.toFixed(1)} L${W.toFixed(1)} ${weftY.toFixed(1)}`;
-    for (const p of wefts) p.setAttribute("d", weft);
-    draw();
+  /** Asks for the film, and shows the loom until it plays. */
+  const fetchFilm = () => {
+    root.classList.add("is-loading");
+    if (warm) return;
+    warm = true;
+    video.preload = "auto";
+    video.load();
+    weave();
   };
-
-  layout();
-  new ResizeObserver(layout).observe(root);
-  void document.fonts?.ready.then(layout);
-  requestAnimationFrame(() => root.classList.add("is-woven"));
-  if (reduce) return;
-
-  // Plucking.
-  let raf = 0;
-  let prevX = Number.NaN;
-  const step = () => {
-    raf = 0;
-    let moving = false;
-    for (const t of threads) {
-      if (t.held) {
-        moving = true;
-        continue;
-      }
-      t.v += -0.07 * t.d - 0.085 * t.v;
-      t.d += t.v;
-      if (Math.abs(t.d) < 0.08 && Math.abs(t.v) < 0.08) {
-        t.d = 0;
-        t.v = 0;
-      } else moving = true;
-    }
-    draw();
-    if (moving) raf = requestAnimationFrame(step);
-  };
-  const kick = () => {
-    if (!raf) raf = requestAnimationFrame(step);
-  };
-  root.addEventListener("pointermove", (e) => {
-    const r = root.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    for (const t of threads) {
-      if (t.held) {
-        const pull = x - t.x;
-        t.yb = y;
-        if (Math.abs(pull) > PULL) {
-          t.held = false;
-          t.d = Math.sign(pull) * PULL;
-          t.v = 0;
-        } else t.d = pull;
-        continue;
-      }
-      const at = t.x + offset(t, y);
-      if (!Number.isNaN(prevX) && (prevX - at) * (x - at) <= 0 && Math.abs(x - prevX) < 160) {
-        t.held = true;
-        t.yb = y;
-        t.d = x - t.x;
-        t.v = 0;
-        root.classList.add("is-plucked");
-      }
-    }
-    prevX = x;
-    kick();
+  video.addEventListener("loadedmetadata", () => {
+    video.currentTime = at;
   });
-  const letGo = () => {
-    for (const t of threads) t.held = false;
-    prevX = Number.NaN;
-    kick();
+  video.addEventListener("waiting", () => {
+    root.classList.add("is-loading");
+    weave();
+  });
+  video.addEventListener("playing", () => root.classList.remove("is-loading"));
+
+  /* ---------- Starting, pausing, ending ---------- */
+  const play = () => {
+    video.preload = "auto";
+    void video.play().catch(() => {});
   };
-  root.addEventListener("pointerleave", letGo);
-  root.addEventListener("pointercancel", letGo);
+
+  const begin = (from: number, withSound: boolean) => {
+    started = true;
+    ended = false;
+    at = from;
+    root.classList.remove("is-ended");
+    video.muted = !withSound;
+    fetchFilm();
+    if (video.readyState >= 1) video.currentTime = from;
+    play();
+    voice();
+  };
+
+  video.addEventListener("playing", () => root.classList.add("is-playing"));
+  video.addEventListener("ended", () => {
+    ended = true;
+    root.classList.remove("is-playing");
+    root.classList.add("is-ended");
+    voice();
+  });
+
+  const settle = () => {
+    if (!started || ended) return;
+    if (shown && !document.hidden) play();
+    else video.pause();
+  };
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(
+      ([e]) => {
+        shown = Boolean(e?.isIntersecting);
+        settle();
+      },
+      { threshold: 0.1 },
+    ).observe(root);
+  }
+  document.addEventListener("visibilitychange", settle);
+
+  // The film is asked for as soon as the page is ready, and a beat later the still gives way.
+  if (auto) {
+    const arrive = () => {
+      fetchFilm();
+      window.setTimeout(() => {
+        if (shown && !document.hidden) {
+          begin(START, false);
+        } else {
+          // Out of view already: ready where it will start, for when it comes back.
+          started = true;
+        }
+      }, DELAY);
+    };
+    if (document.readyState === "complete") arrive();
+    else window.addEventListener("load", arrive, { once: true });
+  }
+
+  /* ---------- The two buttons ---------- */
+  sound?.addEventListener("click", () => {
+    if (!started || ended || video.muted) {
+      // With sound, the film again from its beginning.
+      begin(0, true);
+    } else {
+      video.muted = true;
+    }
+    voice();
+  });
+
+  full?.addEventListener("click", () => {
+    if (!started || ended) begin(0, true);
+    const v = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+    if (video.requestFullscreen) void video.requestFullscreen().catch(() => v.webkitEnterFullscreen?.());
+    else v.webkitEnterFullscreen?.();
+  });
+  document.addEventListener("fullscreenchange", () => {
+    video.controls = document.fullscreenElement === video;
+  });
+
+  root.classList.add("is-live");
+  voice();
 }
