@@ -11,3 +11,5 @@ coverage/
 /.claude/
 /.local/
 /website/.astro/
+scripts/film/shots/
+scripts/film/score.wav

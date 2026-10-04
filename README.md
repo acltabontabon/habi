@@ -10,6 +10,10 @@ coding agents. Open a repository and Habi shows which skills fit it, and why, do
 and line. Install them for the agent tools you already use, improve them as you work, and send
 the improvement back to your team's library as a pull request.
 
+[![Habi, in a minute: skills stuck on one laptop, fixes that never come back, no idea what fits; then Habi shows what fits a repo and why, gathers the builders', the community's and your team's libraries, installs for seven agents, sends fixes back as pull requests, and every project updates.](docs/media/demo.gif)](https://acltabontabon.com/habi/#demo)
+
+*Watch the whole film, with sound, [on the site](https://acltabontabon.com/habi/#demo).*
+
 ![Habi showing which team skills fit a Spring Boot service, and why, down to the file and line](docs/media/project.jpg)
 
 ## What it does
@@ -18,6 +22,7 @@ the improvement back to your team's library as a pull request.
 - **Install** for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode, Junie
 - **Edit** a copy locally—full package with instructions, scripts, references, assets
 - **Share** improvements back to libraries as a pull/merge request
+- **Update** what you installed, in a project or on your machine, after seeing exactly what changed
 
 Skills are ordinary [Agent Skills](https://agentskills.io) folders and shared instructions go
 into `AGENTS.md`, so everything keeps working without Habi. There is no account, telemetry,

@@ -8,8 +8,13 @@
  * Two SVG layers draw the same threads: one behind the type, one in front
  * of it clipped to where each thread passes over. Without scripts the
  * threads hang straight behind the type; with them they can be plucked
- * (scripts/hero.ts).
+ * (scripts/hero.ts). Under it all runs the film, as a strip of it (Reel).
  */
+import Icon from "./Icon.astro";
+import Reel from "./Reel.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+
 const repo = "https://github.com/acltabontabon/habi";
 const lines = ["What one developer", "learns, |every project|", "keeps."];
 const warps = [
@@ -73,11 +78,17 @@ const warps = [
         them together: it shows which ones fit the repository you're in, and sends what you improve back to the team
         that owns it.
       </p>
-      <p class="hero-meta mono">For macOS and Windows · works with Claude Code, Cursor, Codex, Gemini CLI, Copilot and more</p>
     </div>
     <div class="hero-actions">
-      <a class="btn btn-primary" href={`${repo}/releases`}>Download</a>
-      <a class="btn btn-quiet" href="#problem">Why Habi exists <span aria-hidden="true">↓</span></a>
+      <span class="hero-download">
+        <a class="btn btn-primary" href={`${repo}/releases`}>Download</a>
+        <span class="hero-platforms mono">macOS · Windows</span>
+      </span>
+      <a class="btn btn-quiet" href={`${base}media/demo.mp4`} data-film-open data-at="0"
+        ><Icon name="play" size={13} class="btn-play" /> Watch the film</a
+      >
     </div>
   </div>
+
+  <Reel />
 </section>

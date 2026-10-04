@@ -1,0 +1,949 @@
+/*
+ * What comes after the problem: the film, how it works in the real app, and
+ * what Habi will never do. Same tokens and the same voice as
+ * site.css; every motion plays once or follows the scroll, and each section
+ * reads without scripts.
+ */
+
+/* ---------- A window around a screen ---------- */
+
+.win {
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-dialog);
+}
+
+.win-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-sunken);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.win-lights {
+  display: flex;
+  gap: 6px;
+}
+
+.win-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--hairline-strong);
+}
+
+.win-title {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.win-crumb,
+.win-time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.tour {
+  max-width: var(--page);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---------- The film: a strip of it in the hero, and its cinema ---------- */
+
+/* A length of dark stock across the whole width, tilted a little, with sprocket holes and edge print. */
+.reel {
+  --stock: #0b0b0d;
+  --hole: #f6f5f1;
+  position: relative;
+  width: 100vw;
+  margin: clamp(40px, 6vh, 72px) calc(50% - 50vw) 0;
+  padding-block: 18px;
+  overflow: clip;
+}
+
+.reel-track {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  rotate: -1.6deg;
+  margin-inline: -2vw;
+  padding: 0;
+  background: var(--stock);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55);
+  cursor: grab;
+  outline: none;
+}
+
+.reel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.reel.is-dragging .reel-track {
+  cursor: grabbing;
+}
+
+.reel-strip {
+  display: flex;
+  flex: none;
+  margin: 0;
+  padding: 26px 0;
+  list-style: none;
+  /* Sprocket holes along both edges. */
+  background:
+    radial-gradient(closest-side, var(--hole) 0 92%, transparent) 0 7px / 26px 12px repeat-x,
+    radial-gradient(closest-side, var(--hole) 0 92%, transparent) 0 calc(100% - 7px) / 26px 12px repeat-x;
+}
+
+:root[data-theme="dark"] .reel,
+:root:not([data-theme="light"]) .reel {
+  --hole: #26262c;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .reel {
+    --hole: #f6f5f1;
+  }
+}
+
+.reel-cell {
+  flex: none;
+  width: clamp(240px, 24vw, 360px);
+  padding: 0 7px;
+}
+
+.reel-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #000;
+}
+
+.reel-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  filter: saturate(0.75) brightness(0.82);
+  transition:
+    filter 400ms var(--ease),
+    scale 600ms var(--ease);
+  user-select: none;
+}
+
+.reel-play {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f2a541;
+  color: #16161a;
+  opacity: 0;
+  translate: 0 6px;
+  transition:
+    opacity 300ms var(--ease),
+    translate 300ms var(--ease);
+}
+
+.reel-play .icon {
+  margin-left: 2px;
+  fill: currentColor;
+}
+
+.reel-frame:is(:hover, :focus-visible) img {
+  filter: none;
+  scale: 1.05;
+}
+
+.reel-frame:is(:hover, :focus-visible) .reel-play {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.reel-frame:focus-visible {
+  outline: 2px solid #f2a541;
+  outline-offset: 2px;
+}
+
+/* Edge print: the chapter, the way a lab prints the stock's name along it. */
+.reel-edge {
+  overflow: hidden;
+  margin: 7px 2px 0;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #8a8a94;
+}
+
+.reel-edge span:first-child {
+  margin-right: 6px;
+  color: #f2a541;
+}
+
+.reel-at {
+  margin-left: 6px;
+  color: #5c5c66;
+}
+
+/* The cinema: the film over a darkened page. */
+.cinema {
+  width: min(1180px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100svh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ececef;
+  overflow: visible;
+}
+
+.cinema::backdrop {
+  background: rgba(8, 8, 10, 0.86);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.cinema-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cinema-title {
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 620;
+  letter-spacing: -0.03em;
+}
+
+.cinema-title em {
+  color: #f2a541;
+}
+
+.cinema-close {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: transparent;
+  color: #ececef;
+  transition: border-color var(--duration) var(--ease);
+}
+
+.cinema-close:hover,
+.cinema-close:focus-visible {
+  border-color: #f2a541;
+}
+
+.cinema .film-screen {
+  max-height: calc(100svh - 200px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cinema[open] {
+    animation: cinema-in 420ms var(--ease);
+  }
+  @keyframes cinema-in {
+    from {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+}
+
+.film .win {
+  box-shadow:
+    var(--shadow-dialog),
+    0 0 0 8px color-mix(in srgb, var(--thread) 7%, transparent);
+}
+
+.film-screen {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #0f0f11;
+  cursor: pointer;
+}
+
+.film-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.film-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.32));
+  color: #16161a;
+  opacity: 1;
+  transition: opacity 260ms var(--ease);
+}
+
+.film-play-disc {
+  display: grid;
+  place-items: center;
+  width: clamp(60px, 8vw, 88px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow: 0 0 0 10px rgba(242, 165, 65, 0.22);
+  transition: transform 260ms var(--ease);
+}
+
+.film-play:hover .film-play-disc,
+.film-play:focus-visible .film-play-disc {
+  transform: scale(1.08);
+}
+
+.film-play .icon {
+  width: 32%;
+  height: 32%;
+  margin-left: 6%;
+  fill: currentColor;
+}
+
+.film.is-playing .film-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The progress bar is a thread: the weft, passing across as the film runs. */
+.film-thread {
+  position: relative;
+  height: 26px;
+  margin: 0;
+  cursor: pointer;
+  --p: 0;
+}
+
+.film-thread::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 50%;
+  border-top: 2px dashed var(--hairline-strong);
+  transform: translateY(-50%);
+}
+
+.film-thread-fill {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: calc((100% - 32px) * var(--p));
+  height: 4px;
+  border-radius: 4px;
+  background: var(--thread);
+  transform: translateY(-50%);
+}
+
+.film-thread-knot {
+  position: absolute;
+  top: 50%;
+  left: calc(16px + (100% - 32px) * var(--p));
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow: 0 0 0 4px var(--paper-raised);
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- How it works ---------- */
+
+.tour {
+  padding-top: var(--section);
+}
+
+.tour-head {
+  max-width: 760px;
+}
+
+/* Six moves down a thread: a knot for each, filled as far as you have read. */
+.moves {
+  --rail: 56px;
+  position: relative;
+  display: grid;
+  gap: clamp(120px, 14vw, 200px);
+  margin: clamp(64px, 9vw, 112px) 0 0;
+  padding: 0 0 0 var(--rail);
+  list-style: none;
+}
+
+.moves-thread {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 12px;
+  border-left: 2px dashed var(--hairline-strong);
+}
+
+.moves-thread i {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 4px;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--thread);
+  transform: scaleY(var(--fill, 1));
+  transform-origin: top;
+}
+
+.move {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+  gap: clamp(32px, 4.5vw, 72px);
+  align-items: center;
+  --swing: -14deg;
+}
+
+.move.is-flip {
+  grid-template-columns: minmax(0, 8fr) minmax(0, 5fr);
+  --swing: 14deg;
+}
+
+.move.is-flip .move-say {
+  order: 2;
+}
+
+.move-knot {
+  position: absolute;
+  top: 50%;
+  left: calc(13px - var(--rail));
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translate(-50%, -50%);
+  transition:
+    background 400ms var(--ease),
+    border-color 400ms var(--ease),
+    box-shadow 400ms var(--ease);
+}
+
+.move.is-past .move-knot,
+.tour:not(.is-live) .move-knot {
+  border-color: var(--dye);
+  background: var(--dye);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--dye) 22%, transparent);
+}
+
+.move-say {
+  position: relative;
+  z-index: 0;
+  padding-top: clamp(48px, 6vw, 96px);
+}
+
+/* The number is a ghost behind the words, drawn in the move's own dye. */
+.move-n {
+  position: absolute;
+  top: 0;
+  left: -0.04em;
+  z-index: -1;
+  margin: 0;
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-size: clamp(120px, 15vw, 220px);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.8;
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--dye) 60%, transparent);
+  user-select: none;
+}
+
+.move-verb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--thread-strong);
+}
+
+.move-verb::before {
+  content: "";
+  width: 22px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--dye);
+}
+
+.move-title {
+  font-size: clamp(30px, 3.2vw, 46px);
+  font-weight: 640;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.move-title em {
+  display: block;
+}
+
+.move-body {
+  max-width: 46ch;
+  margin-top: 18px;
+  font-size: clamp(15px, 1.15vw, 16.5px);
+  line-height: 1.58;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+/* How it used to go, muttered. */
+.move-was {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin-top: 22px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.move-was span {
+  padding: 2px 7px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 5px;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* The window, lit from behind in the move's dye. */
+.move-shot {
+  position: relative;
+  margin: 0;
+  perspective: 1800px;
+}
+
+.move-shot::before {
+  content: "";
+  position: absolute;
+  inset: -12% -8%;
+  z-index: -1;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--dye) 26%, transparent), transparent);
+  opacity: var(--p, 1);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.shot {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.shot img {
+  width: 100%;
+  height: auto;
+}
+
+.shot-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.16) 50%, transparent 62%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  pointer-events: none;
+}
+
+.pins {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.pin {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+}
+
+.pin i {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow:
+    0 0 0 2px var(--paper),
+    0 0 0 5px color-mix(in srgb, var(--thread) 34%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.pin span {
+  position: absolute;
+  padding: 5px 10px 6px;
+  border-radius: 7px;
+  background: var(--button-ink);
+  color: var(--button-ink-text);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+.pin-r span {
+  left: 17px;
+  top: 0;
+  transform: translateY(-50%);
+}
+.pin-l span {
+  right: 17px;
+  top: 0;
+  transform: translateY(-50%);
+}
+.pin-t span {
+  bottom: 17px;
+  left: 0;
+  transform: translateX(-50%);
+}
+.pin-b span {
+  top: 17px;
+  left: 0;
+  transform: translateX(-50%);
+}
+
+/* Followed by the scroll: the window swings flat, then the pins land and the light sweeps it once. */
+@media (prefers-reduced-motion: no-preference) {
+  .tour.is-live .win {
+    opacity: calc(0.2 + var(--p, 1) * 0.8);
+    transform: translateY(calc((1 - var(--p, 1)) * 70px)) rotateX(calc((1 - var(--p, 1)) * 24deg))
+      rotateY(calc((1 - var(--p, 1)) * var(--swing))) scale(calc(0.88 + var(--p, 1) * 0.12));
+    transform-origin: 50% 100%;
+    will-change: transform;
+  }
+
+  .tour.is-live .move-n {
+    transform: translateY(calc((1 - var(--p, 1)) * 60px));
+  }
+
+  .tour.is-live .pin {
+    opacity: 0;
+    translate: 0 8px;
+    transition:
+      opacity 420ms var(--ease),
+      translate 420ms var(--ease);
+  }
+
+  .tour.is-live .move.is-in .pin {
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: calc(150ms + var(--n) * 220ms);
+  }
+
+  .tour.is-live .move.is-in .shot-sheen {
+    animation: sheen 1.5s var(--ease) 1 both;
+  }
+
+  @keyframes sheen {
+    to {
+      background-position: -30% 0;
+    }
+  }
+
+  .pin i {
+    animation: pin-pulse 2.6s var(--ease) infinite;
+    animation-delay: calc(var(--n) * 400ms);
+  }
+
+  @keyframes pin-pulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 2px var(--paper),
+        0 0 0 5px color-mix(in srgb, var(--thread) 34%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px var(--paper),
+        0 0 0 9px color-mix(in srgb, var(--thread) 10%, transparent);
+    }
+  }
+}
+
+@media (max-width: 899px) {
+  .moves {
+    --rail: 30px;
+    gap: 96px;
+  }
+  .moves-thread {
+    left: 6px;
+  }
+  .move,
+  .move.is-flip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    --swing: 0deg;
+  }
+  .move.is-flip .move-say {
+    order: 0;
+  }
+  .move-knot {
+    top: clamp(48px, 6vw, 96px);
+    left: calc(7px - var(--rail));
+  }
+  .move-n {
+    font-size: clamp(96px, 26vw, 140px);
+  }
+  .pins {
+    display: none;
+  }
+}
+
+/* ---------- What it will never do ---------- */
+
+.promises {
+  --bg: #0f0f11;
+  --fg: #ececef;
+  --mut: #9a9aa5;
+  --line: #2a2a31;
+  --saffron: #f2a541;
+  margin-top: var(--section);
+  padding-block: clamp(72px, 10vw, 128px);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.promises-in {
+  max-width: var(--page);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.promises .kicker {
+  color: var(--saffron);
+}
+
+/* One sentence, every clause a promise. */
+.vow {
+  max-width: 29ch;
+  font-size: clamp(34px, 4.8vw, 72px);
+  font-weight: 640;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+  text-wrap: pretty;
+}
+
+.vow em {
+  color: var(--saffron);
+}
+
+.clause {
+  color: var(--fg);
+  text-decoration: none;
+  outline: none;
+  transition: color var(--duration) var(--ease);
+}
+
+.clause sup {
+  margin-left: 0.12em;
+  font-size: 0.26em;
+  font-weight: 500;
+  letter-spacing: 0;
+  vertical-align: 1.9em;
+  color: var(--saffron);
+}
+
+.joint {
+  color: #5d5d67;
+}
+
+/* The thread is stitched under the clause (under, not through: through would cross it out). */
+.stitch {
+  padding-bottom: 0.04em;
+  background: linear-gradient(var(--saffron), var(--saffron)) 0 100% / 100% clamp(3px, 0.32vw, 5px) no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-size 300ms var(--ease);
+}
+
+/* The receipts: what each clause means, small and dense. */
+.receipts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: clamp(40px, 5vw, 64px) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.receipt {
+  padding: 18px 20px 20px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transition:
+    background var(--duration) var(--ease),
+    opacity var(--duration) var(--ease);
+  scroll-margin-top: 120px;
+}
+
+.receipt-head {
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.receipt-head span {
+  margin-right: 8px;
+  color: var(--saffron);
+}
+
+.receipt-body {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--mut);
+  text-wrap: pretty;
+}
+
+/* Point at a clause and its receipt lights; point at a receipt and its clause does. */
+.promises:has(.clause:is(:hover, :focus-visible)) .receipt,
+.promises:has(.receipt:hover) .receipt {
+  opacity: 0.4;
+}
+.promises:has(.clause:is(:hover, :focus-visible)) .clause,
+.promises:has(.receipt:hover) .clause {
+  color: #6f6f79;
+}
+.receipt:target,
+.promises:has(.clause[data-n="1"]:is(:hover, :focus-visible)) .receipt[data-n="1"],
+.promises:has(.clause[data-n="2"]:is(:hover, :focus-visible)) .receipt[data-n="2"],
+.promises:has(.clause[data-n="3"]:is(:hover, :focus-visible)) .receipt[data-n="3"],
+.promises:has(.clause[data-n="4"]:is(:hover, :focus-visible)) .receipt[data-n="4"],
+.promises:has(.clause[data-n="5"]:is(:hover, :focus-visible)) .receipt[data-n="5"],
+.promises:has(.clause[data-n="6"]:is(:hover, :focus-visible)) .receipt[data-n="6"],
+.promises:has(.receipt) .receipt:hover {
+  opacity: 1;
+  background: rgba(242, 165, 65, 0.08);
+  box-shadow: inset 0 3px 0 var(--saffron);
+}
+.promises:has(.clause) .clause:is(:hover, :focus-visible),
+.promises:has(.receipt[data-n="1"]:hover) .clause[data-n="1"],
+.promises:has(.receipt[data-n="2"]:hover) .clause[data-n="2"],
+.promises:has(.receipt[data-n="3"]:hover) .clause[data-n="3"],
+.promises:has(.receipt[data-n="4"]:hover) .clause[data-n="4"],
+.promises:has(.receipt[data-n="5"]:hover) .clause[data-n="5"],
+.promises:has(.receipt[data-n="6"]:hover) .clause[data-n="6"] {
+  color: var(--saffron);
+}
+
+/* As it comes into view, the thread runs under each clause in turn, then the receipts settle in. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .vow[data-reveal] .stitch {
+    background-size: 0% clamp(3px, 0.32vw, 5px);
+    transition: background-size 700ms var(--ease) calc(250ms + var(--i) * 260ms);
+  }
+  .js .vow[data-reveal].is-in .stitch {
+    background-size: 100% clamp(3px, 0.32vw, 5px);
+  }
+  .js .vow[data-reveal] sup {
+    opacity: 0;
+    transition: opacity 400ms var(--ease) calc(600ms + var(--i) * 260ms);
+  }
+  .js .vow[data-reveal].is-in sup {
+    opacity: 1;
+  }
+  .js .receipts[data-reveal] .receipt > * {
+    opacity: 0;
+    translate: 0 10px;
+    transition:
+      opacity 500ms var(--ease) calc(300ms + var(--i) * 90ms),
+      translate 500ms var(--ease) calc(300ms + var(--i) * 90ms);
+  }
+  .js .receipts[data-reveal].is-in .receipt > * {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* ---------- Narrower ---------- */
+
+@media (max-width: 1000px) {
+  .receipts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .receipts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.btn-play {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* The sound, which a browser will not start for you. */
+.film-sound {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 99px;
+  background: rgba(15, 15, 17, 0.72);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #ececef;
+  font-size: 13.5px;
+  font-weight: 560;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.film-sound:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.film-sound.is-on {
+  border-color: #f2a541;
+  background: rgba(242, 165, 65, 0.9);
+  color: #16161a;
+}

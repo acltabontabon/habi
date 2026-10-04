@@ -23,13 +23,34 @@ cd website
 pnpm dev          # the site on http://localhost:4321/habi/, reloading as you edit
 pnpm build        # the static site in website/dist/, as Pages serves it
 pnpm preview      # that build, served locally
-pnpm snapshot     # src/data/recommendations.json, from the habi CLI and the fixtures
+pnpm media        # public/media/: the tour's screenshots (light and dark), the film and its chapter stills
 pnpm og           # public/og.png, from the /og/ page with headless Chrome (pnpm dev first)
 ```
 
-What the landing page shows of Habi's output is real: `pnpm snapshot` runs the `habi` command
-against the fixture repositories and libraries. The "Receipts" section draws the app's own views
-from that snapshot.
+What the landing page shows of Habi is real: every picture is a screenshot of the app on a
+seeded workspace, and the film is cut from the same screenshots (below).
+
+## The film
+
+The landing page shows a film (`docs/media/demo.mp4`): a minute-long ad cut from the app's own dark
+screenshots, set to a synthesized score. A filmstrip of its chapters runs under the hero (one still per
+chapter, at the `still` second `timeline.json` gives it, cut by `pnpm media`); a frame opens the film
+at that chapter, in a dialog over the page. Its source is `scripts/film/`, and like the screenshots it is
+remade by a script, so changing the app does not mean redrawing it.
+
+| Step | What it does |
+| --- | --- |
+| `scripts/film/seed.sh <dir>` | builds a workspace that reads like a real team's: two libraries, seven projects, a few skills installed, an update waiting |
+| `node scripts/docs-screenshots.mjs` (light, then `HABI_SHOTS_SCHEME=dark`) | photographs the app on it; the dark pictures go to `scripts/film/shots/dark/`, which Git ignores |
+| `node scripts/film/score.mjs` | synthesizes the music (`score.wav`), cut to `scripts/film/timeline.json` at its tempo |
+| `node scripts/render-film.mjs` | steps the film, one frame at a time, through headless Chrome, and encodes `demo.mp4`, a teaser `demo.gif` for the README, the poster and the chapter times |
+| `pnpm media` (in `website/`) | shrinks the pictures and copies the film for the page |
+
+The film is a function of time: `ad.js` stages the screenshots in 3D (windows that turn and
+rise, crops of the UI lifted off them, the type over them), `film.css` styles them, and
+`timeline.json` says where each scene starts. `node scripts/render-film.mjs
+--stills 3,9.6,20` renders single pictures at those seconds, which is the quick way to look at a
+change. It uses the site's fonts and tokens, so run `pnpm install` in `website/` first.
 
 ## The documentation
 
@@ -51,8 +72,9 @@ colors, instead of in a code repository.
   `scripts/check-links.mjs` uses, so an anchor that works on GitHub works here too.
 - **Images** live in `docs/media/` and are served from there, at `/habi/docs/media/`; a PNG or
   JPEG keeps its space before it loads. The screenshots are taken from the running app by
-  `node scripts/docs-screenshots.mjs`, which walks the sample workspace like a first-time user
-  (its header says how to start it), so retaking them after a change is one command. The pictures
+  `node scripts/docs-screenshots.mjs`, which walks a workspace that reads like a real team's
+  (`scripts/film/seed.sh` makes one; the script's header says how to start it), so retaking them
+  after a change is one command. It takes the dark ones too, for the landing page and the film. The pictures
   in the sharing guide come from `node scripts/docs-screenshots-sharing.mjs`, which needs a GitHub
   repository to open a pull request against (it closes the request when it finishes); both scripts
   drive Chrome through `scripts/lib/cdp.mjs`.

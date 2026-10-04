@@ -18,6 +18,11 @@ model needed. When ready, use in a project or on your machine. Share when it's w
 
 ## Creating a skill
 
+Before you have written one, My skills explains what a skill is, and offers a title, an idea or
+skills you already have.
+
+![My skills when it is empty: a skill is a note your agent can follow, kept as a file; write one, bring some in, or start from an idea.](../media/my-skills.jpg)
+
 **New skill** opens a blank page. Habi auto-names it from your content: the first heading
 becomes the title, and the title becomes the identifier (until you change it or install).
 *Use the opening line* sets the purpose from your opening sentence.

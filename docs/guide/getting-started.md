@@ -36,10 +36,18 @@ libraries and seven example projects—all isolated and labeled as samples.
 The home page shows your projects as rows, with library skills woven across them: solid lines
 show installed skills, faded lines show skills that fit but aren't installed yet.
 
-![The home page with the sample workspace: seven projects as rows crossing two libraries. billing-service has a solid float on the team library, where a skill is installed; the other opened projects show washed-out floats where skills fit.](../media/home.jpg)
+![The home page of a workspace with seven projects: each project is a row, each library and My skills a thread across them. A solid float marks where a library's skill is installed in a project, a washed-out one where a skill fits but is not installed yet.](../media/home.jpg)
 
 When you are done, choose **Remove sample workspace** on the banner in any sample project or
 library, in Settings → Storage, or in the command palette. It removes only the examples.
+
+## Where libraries come from
+
+The **Libraries** page lists what is connected (your team's Git repositories and folders), what
+the community publishes, and what the builders of the tools publish. Connecting any of them
+fetches a copy; Habi tells you when something newer exists and updates it only when you say so.
+
+![The Libraries page: two connected libraries, team-skills and security-guild, beside the catalog's libraries from the community and from the builders of the tools.](../media/explore.jpg)
 
 ## Your first project
 
@@ -55,6 +63,13 @@ library, in Settings → Storage, or in the command palette. It removes only the
 
 4. **Install:** Review preselected agent tools, check the files that will change, and confirm.
    You see every file before anything is written.
+
+5. **Keep it current.** When a library publishes something newer, the project says *Update
+   available*. **Review update…** shows what changed, file by file, before anything is written,
+   and keeps your own edits. Skills installed on your machine update the same way, from
+   [My skills](my-skills.md#on-this-machine).
+
+![Reviewing an update to Liquibase migration review in billing-service: the files that change for each agent tool, with the lines added and removed, before anything is written.](../media/update-review.jpg)
 
 Next: [My skills](my-skills.md) (write and edit skills) or [Sharing](sharing.md) (send improvements back).
 

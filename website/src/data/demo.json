@@ -1,0 +1,50 @@
+{
+  "seconds": 78,
+  "chapters": [
+    {
+      "title": "One laptop, old copies, no idea what fits",
+      "at": 0,
+      "still": 2.6
+    },
+    {
+      "title": "Meet Habi",
+      "at": 14,
+      "still": 16.6
+    },
+    {
+      "title": "Every project, every library",
+      "at": 18,
+      "still": 21.6
+    },
+    {
+      "title": "What fits, and why",
+      "at": 24,
+      "still": 27.0
+    },
+    {
+      "title": "The builders, the community, your team",
+      "at": 33,
+      "still": 35.8
+    },
+    {
+      "title": "Seven agents",
+      "at": 40,
+      "still": 45.6
+    },
+    {
+      "title": "The Skill Studio",
+      "at": 47,
+      "still": 49.6
+    },
+    {
+      "title": "Send it back; everyone updates",
+      "at": 54,
+      "still": 62.6
+    },
+    {
+      "title": "No strings",
+      "at": 65,
+      "still": 66.6
+    }
+  ]
+}

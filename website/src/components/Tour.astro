@@ -1,0 +1,195 @@
+---
+/*
+ * How it works, in the real app: six moves, each a screenshot of Habi
+ * (docs/media and its dark twin, shrunk by `pnpm media`) with a few pins on what matters,
+ * and the way it was done before, in one muttered line.
+ *
+ * The moves are a plain sequence that reads without scripts. With scripts, as
+ * each move scrolls in its window swings flat like a shot in the film, the
+ * pins land, and the thread down the side fills knot by knot (scripts/tour.ts).
+ * The pins are positioned in percent of the picture, read off the screenshots.
+ */
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+
+type Pin = { x: number; y: number; text: string; side?: "l" | "r" | "t" | "b" };
+type Step = {
+  id: string;
+  verb: string;
+  was: string;
+  title: [string, string];
+  body: string;
+  shot: string;
+  alt: string;
+  window: string;
+  pins: Pin[];
+};
+
+const steps: Step[] = [
+  {
+    id: "explore",
+    verb: "Explore",
+    was: "four repos, two wikis and a thread from last spring",
+    title: ["Skills from everywhere,", "in one place."],
+    body: "What the tools' own builders publish, what the community maintains, and your team's Git repositories or folders, side by side. Offline, marked when your team has not reviewed it, updated only when you say so.",
+    shot: "explore",
+    alt: "Habi's Libraries page, “Where your knowledge comes from”: two connected team libraries, libraries from the community, and libraries from the builders of the tools.",
+    window: "Libraries",
+    pins: [
+      { x: 26.5, y: 22.2, text: "your team's, connected", side: "r" },
+      { x: 71.5, y: 22.1, text: "from the builders", side: "r" },
+      { x: 30, y: 42.9, text: "from the community", side: "r" },
+    ],
+  },
+  {
+    id: "check",
+    verb: "Check",
+    was: "grep -rli liquibase ~/work/*",
+    title: ["Open a repository.", "Ask what applies."],
+    body: "Habi reads the stack, from Java and Kotlin to TypeScript, Go, Rust, Python and PHP, monorepos module by module, and sorts every skill: required, fits, available. Each answer cites its file and line. Nothing is built or run, and when the files can't say, Habi asks.",
+    shot: "project",
+    alt: "Habi on billing-service: skills sorted into installed, required by the team and fits this project, and for the open skill, the evidence from pom.xml.",
+    window: "billing-service",
+    pins: [
+      { x: 35.5, y: 48.8, text: "an update is waiting", side: "r" },
+      { x: 19, y: 61.9, text: "required by your team", side: "r" },
+      { x: 59, y: 89, text: "the receipt: pom.xml:31", side: "t" },
+    ],
+  },
+  {
+    id: "install",
+    verb: "Install",
+    was: "cp -r ~/Downloads/skill-FINAL2 .claude/skills/",
+    title: ["Every file,", "seen first."],
+    body: "Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie, preselected from what the project already uses. Into the project, or onto your machine for every project. You read every line before it lands, and any change can be restored.",
+    shot: "install-review",
+    alt: "The install review: seven agent tools to choose from, and the three files that would change, line by line.",
+    window: "Install JPA entity review",
+    pins: [
+      { x: 31, y: 41, text: "seven agents", side: "r" },
+      { x: 62, y: 27, text: "three files, line by line", side: "r" },
+      { x: 79.5, y: 55, text: "then, and only then", side: "t" },
+    ],
+  },
+  {
+    id: "improve",
+    verb: "Improve",
+    was: "# TODO: write this properly",
+    title: ["Fix it where", "you learned it."],
+    body: "The Skill Studio holds a skill as one document: its purpose, when Habi should suggest it, the instructions, scripts and references. Start from nothing, from part of an instruction file, or from skills you already have. No account, model or library needed.",
+    shot: "skill-studio",
+    alt: "The Skill Studio: a skill titled Review a pull request, with its purpose, when to use it and its instructions in one document.",
+    window: "My skills / Review a pull request",
+    pins: [
+      { x: 58, y: 20.3, text: "the one line agents read to decide", side: "b" },
+      { x: 36, y: 28.6, text: "when Habi suggests it", side: "r" },
+      { x: 86.5, y: 3.4, text: "share it, or use it", side: "b" },
+    ],
+  },
+  {
+    id: "share",
+    verb: "Share",
+    was: "“just keep it locally 🤷”",
+    title: ["Send it back", "as a pull request."],
+    body: "Choose the files, see exactly what leaves your machine, and Habi prepares the branch and opens the pull or merge request through your own gh or glab. The reviewer's comments show up right there; revise on the same request.",
+    shot: "share-review-status",
+    alt: "A contribution after review: the GitHub pull request, a reviewer's comment, and the diff of the skill that was sent.",
+    window: "Contributions / Review a pull request",
+    pins: [
+      { x: 29, y: 3.6, text: "opened with your own gh", side: "r" },
+      { x: 33, y: 15.5, text: "the review, in Habi", side: "r" },
+      { x: 76, y: 52, text: "exactly what was sent", side: "t" },
+    ],
+  },
+  {
+    id: "keep",
+    verb: "Update",
+    was: "“wait, which copy is the latest?”",
+    title: ["See what changed.", "Update when ready."],
+    body: "Merged, the fix shows up as an update wherever it is installed, in every project and on your machine. Review it line by line, keep your own edits, and adopt it when the project is ready. One way to check, for your team's skills, the community's and the builders'.",
+    shot: "update-review",
+    alt: "Reviewing an update to Liquibase migration review in billing-service: the version it moves from and to, and the new line in SKILL.md, before anything is written.",
+    window: "billing-service / Update",
+    pins: [
+      { x: 30, y: 26.5, text: "from the team's library, old → new", side: "r" },
+      { x: 47, y: 53.3, text: "the fix, line by line", side: "t" },
+      { x: 61.5, y: 74.7, text: "adopt it when you're ready", side: "l" },
+    ],
+  },
+];
+---
+
+<section class="tour" id="tour" aria-labelledby="tour-title" data-tour>
+  <header class="tour-head" data-reveal>
+    <p class="kicker">How it works</p>
+    <h2 id="tour-title" class="section-title">
+      One skill, <em>all the way around.</em>
+    </h2>
+    <p class="section-lead">
+      From somebody else's library, into your repository, better, and back out to everyone. Six moves, on Habi's own
+      screens, in light or dark as your system has it.
+    </p>
+  </header>
+
+  <ol class="moves" data-moves>
+    <span class="moves-thread" aria-hidden="true"><i data-tour-fill></i></span>
+    {
+      steps.map((s, i) => (
+        <li class:list={["move", { "is-flip": i % 2 === 1 }]} id={`tour-${s.id}`} data-move style={`--dye:var(--dye-${[0, 4, 1, 6, 3, 2][i]})`}>
+          <span class="move-knot" aria-hidden="true" />
+          <div class="move-say">
+            <p class="move-n mono" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </p>
+            <p class="move-verb mono">{s.verb}</p>
+            <h3 class="move-title">
+              {s.title[0]} <em>{s.title[1]}</em>
+            </h3>
+            <p class="move-body">{s.body}</p>
+            <p class="move-was mono">
+              <span>before Habi</span>
+              {s.was}
+            </p>
+          </div>
+
+          <figure class="move-shot">
+            <div class="win">
+              <p class="win-bar mono" aria-hidden="true">
+                <span class="win-lights">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <span class="win-title">Habi</span>
+                <span class="win-crumb">{s.window}</span>
+              </p>
+              <div class="shot">
+                <picture>
+                  <source media="(prefers-color-scheme: dark)" srcset={`${base}media/dark/${s.shot}.jpg`} />
+                  <img
+                    src={`${base}media/light/${s.shot}.jpg`}
+                    alt={s.alt}
+                    width="1800"
+                    height="1125"
+                    loading={i === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                </picture>
+                <ul class="pins" aria-hidden="true">
+                  {
+                    s.pins.map((p, n) => (
+                      <li class={`pin pin-${p.side ?? "r"}`} style={`--x:${p.x}%;--y:${p.y}%;--n:${n}`}>
+                        <i />
+                        <span>{p.text}</span>
+                      </li>
+                    ))
+                  }
+                </ul>
+                <span class="shot-sheen" aria-hidden="true" />
+              </div>
+            </div>
+          </figure>
+        </li>
+      ))
+    }
+  </ol>
+</section>

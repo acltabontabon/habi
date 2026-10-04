@@ -2,8 +2,8 @@
 /*
  * The problem, the way every developer has lived it: the two ways you try
  * to find a skill today — ask around, or search — played side by side, once,
- * as the section comes into view. Archetypes, not an incident: no names,
- * no numbers.
+ * as the section comes into view, then the three things that are actually
+ * wrong. Archetypes, not an incident: no names, no numbers.
  *
  * Every line carries its start time (--t, ms). Without scripts, or with
  * reduced motion, the whole exchange is simply shown.
@@ -48,7 +48,7 @@ const session: Line[] = [
   <div class="screen problem-ask">
   <p class="kicker">The problem</p>
   <h2 id="problem-title" class="problem-title">
-    Someone in your company already wrote this skill. <em>Good luck finding it.</em>
+    Your team's best skill lives on one laptop. <em>Everyone else has a copy of a copy.</em>
   </h2>
 
   <div class="play" data-reveal>
@@ -102,30 +102,24 @@ const session: Line[] = [
 
   </div>
   <div class="turn" data-reveal>
-    <p class="problem-turn">Stop asking around. <em>Ask your repository.</em></p>
-    <ol class="answers">
-      <li>
-        <p class="answer-label mono"><span>01</span> Explore</p>
-        <p>
-          Every library your teams already keep — and the community's — in one place. No more #engineering
-          archaeology.
-        </p>
+    <ol class="pains">
+      <li style="--dye:var(--dye-1)">
+        <p class="pain-label mono">01</p>
+        <h3 class="pain-title">One laptop.</h3>
+        <p>The skill that works lives in somebody's <code>~/.claude</code>. Everybody else asks around, and waits.</p>
       </li>
-      <li>
-        <p class="answer-label mono"><span>02</span> Check</p>
-        <p>
-          Habi reads the repository you're in and tells you which skills apply, and why — down to
-          <code>pom.xml:31</code>.
-        </p>
+      <li style="--dye:var(--dye-6)">
+        <p class="pain-label mono">02</p>
+        <h3 class="pain-title">Fixes never come back.</h3>
+        <p>Somebody improves their copy, and it stays on their machine. Everyone else keeps running the old one.</p>
       </li>
-      <li>
-        <p class="answer-label mono"><span>03</span> Pay it forward</p>
-        <p>
-          Fixed a step? Send it back to the team that owns it as one reviewed pull request. Everyone gets it on
-          refresh.
-        </p>
+      <li style="--dye:var(--dye-0)">
+        <p class="pain-label mono">03</p>
+        <h3 class="pain-title">No idea what fits.</h3>
+        <p>Global, or just this repository? Java, or the React app? You find out when the agent gets it wrong.</p>
       </li>
     </ol>
+    <p class="problem-turn">Three problems. <em>One home for all of them.</em></p>
   </div>
   </div>
 </section>
