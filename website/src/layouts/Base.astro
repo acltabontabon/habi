@@ -23,7 +23,7 @@ interface Props {
 const { title, description, path = "", type = "website" } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 const canonical = new URL(`${base}${path}`, Astro.site);
-const og = new URL(`${base}og.png`, Astro.site);
+const og = new URL(`${base}og-v2.png`, Astro.site);
 const repository = "https://github.com/acltabontabon/habi";
 const jsonLd = {
   "@context": "https://schema.org",

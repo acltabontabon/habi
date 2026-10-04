@@ -1,4 +1,4 @@
-// Renders the share image (public/og.png) from the /og/ page with headless Chrome.
+// Renders the share image (public/og-v2.png) from the /og/ page with headless Chrome.
 // Start `pnpm dev` first, then run `pnpm og`. Set CHROME_PATH to use another Chrome or
 // Chromium; OG_URL to render from another address.
 import { spawnSync } from "node:child_process";
@@ -28,7 +28,7 @@ const result = spawnSync(
     "--force-device-scale-factor=1",
     "--window-size=1200,630",
     "--virtual-time-budget=4000",
-    "--screenshot=public/og.png",
+    "--screenshot=public/og-v2.png",
     url,
   ],
   { stdio: "inherit" },

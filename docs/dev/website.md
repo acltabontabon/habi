@@ -10,7 +10,7 @@ as one GitHub Pages artifact.
 | `/habi/docs/` | The documentation index | `docs/README.md`, rendered by `website/src/lib/docs.ts` |
 | `/habi/docs/<page>/` | A guide, a library author's page or a project page | `docs/guide/`, `docs/library-authors/`, `docs/project/` |
 | `/habi/docs/media/…` | An image a published page shows | the file itself, in `docs/media/` |
-| `/habi/og.png` | The share image | `website/src/pages/og.astro`, rendered by `pnpm og` |
+| `/habi/og-v2.png` | The share image | `website/src/pages/og.astro`, rendered by `pnpm og` |
 
 ## The source
 
@@ -24,7 +24,7 @@ pnpm dev          # the site on http://localhost:4321/habi/, reloading as you ed
 pnpm build        # the static site in website/dist/, as Pages serves it
 pnpm preview      # that build, served locally
 pnpm media        # public/media/: the tour's screenshots (light and dark), the film and its chapter stills
-pnpm og           # public/og.png, from the /og/ page with headless Chrome (pnpm dev first)
+pnpm og           # public/og-v2.png, from the /og/ page with headless Chrome (pnpm dev first)
 ```
 
 What the landing page shows of Habi is real: every picture is a screenshot of the app on a

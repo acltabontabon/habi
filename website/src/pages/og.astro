@@ -1,6 +1,6 @@
 ---
 /*
- * The share image's source (1200 × 630). Rendered to public/og.png with
+ * The share image's source (1200 × 630). Rendered to public/og-v2.png with
  * `pnpm og` while `pnpm dev` runs. Not linked from the site.
  */
 import "@fontsource-variable/ibm-plex-sans/wght.css";
@@ -11,9 +11,9 @@ import "../styles/tokens.css";
 
 const shot = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/media/dark/project.jpg`;
 const lines = [
-  { verb: "Find", rest: " what applies.", dye: "var(--dye-0)" },
-  { verb: "Improve", rest: " what works.", dye: "var(--dye-1)" },
-  { verb: "Share", rest: " what you learn.", dye: "var(--dye-2)" },
+  { verb: "Find", rest: " what applies." },
+  { verb: "Improve", rest: " what works." },
+  { verb: "Share", rest: " what you learn." },
 ];
 ---
 
@@ -28,14 +28,12 @@ const lines = [
       .og { position: relative; width: 100%; height: 100%; overflow: hidden;
         background:
           radial-gradient(640px 520px at 800px 330px, rgba(242, 165, 65, 0.16), transparent 70%),
-          radial-gradient(520px 420px at 120px 640px, rgba(142, 170, 240, 0.08), transparent 70%),
           var(--paper); }
       .brand { position: absolute; left: 72px; top: 56px; display: flex; align-items: center; gap: 16px; font-size: 38px; font-weight: 650; letter-spacing: -0.035em; }
-      .copy { position: absolute; left: 72px; top: 168px; padding-left: 36px; }
-      .w { position: absolute; left: 0; width: 7px; border-radius: 4px; background: var(--dye); }
+      .copy { position: absolute; left: 72px; top: 168px; }
       h1 { margin: 0; font-size: 56px; font-weight: 650; letter-spacing: -0.045em; line-height: 1.12; }
       h1 span { display: block; white-space: nowrap; }
-      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.025em; color: var(--dye); }
+      h1 em { font-family: "IBM Plex Serif", serif; font-style: italic; font-weight: 500; letter-spacing: -0.025em; color: var(--thread-strong); }
       .purpose { position: absolute; left: 72px; top: 420px; margin: 0; white-space: nowrap; font-size: 24px; line-height: 1.4; color: var(--ink-muted); letter-spacing: -0.005em; }
       .purpose b { color: var(--ink); font-weight: 600; }
       .url { position: absolute; left: 72px; bottom: 40px; font-family: "IBM Plex Mono", monospace; font-size: 20px; color: var(--thread-strong); }
@@ -52,9 +50,8 @@ const lines = [
       <div class="weft"></div>
       <div class="brand"><Mark size={50} /> Habi</div>
       <div class="copy">
-        {lines.map((l, i) => <i class="w" style={`--dye:${l.dye};top:${i * 63 + 7}px;height:${i === 2 ? 52 : 63}px`} />)}
         <h1>
-          {lines.map((l) => <span style={`--dye:${l.dye}`}><em>{l.verb}</em>{l.rest}</span>)}
+          {lines.map((l) => <span><em>{l.verb}</em>{l.rest}</span>)}
         </h1>
       </div>
       <p class="purpose">The desktop app for the <b>skills &amp; instructions</b><br />you give AI coding agents.</p>
