@@ -13,7 +13,7 @@ test("the cask points at the universal installer on the tag, with its checksum",
   assert.match(cask, /version "0\.2\.0"/);
   assert.match(cask, new RegExp(`sha256 "${"a".repeat(64)}"`));
   assert.match(cask, /releases\/download\/v#\{version\}\/Habi_#\{version\}_universal\.dmg/);
-  assert.match(cask, /verified: "github\.com\/acltabontabon\/habi\/"/);
+  assert.doesNotMatch(cask, /verified:/);
 });
 
 test("the cask defers to Habi's own updater and says the app is unsigned", () => {
