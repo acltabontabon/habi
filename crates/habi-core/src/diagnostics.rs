@@ -45,7 +45,85 @@ fn log_tail(habi: &Habi, lines: usize) -> String {
     let text = read_end(latest, LOG_TAIL_BYTES).unwrap_or_default();
     let all: Vec<&str> = text.lines().collect();
     let start = all.len().saturating_sub(lines);
-    crate::redact::redact(&all.get(start..).unwrap_or_default().join("\n"))
+    let tail = all.get(start..).unwrap_or_default().join("\n");
+    scrub_paths(&crate::redact::redact(&tail), &known_paths(habi))
+}
+
+/// Folders the log may name, with what replaces each: this app's data folder,
+/// every registered project, and every library on this machine.
+fn known_paths(habi: &Habi) -> Vec<(String, &'static str)> {
+    let mut paths = vec![(
+        habi.paths.root.to_string_lossy().into_owned(),
+        "<habi-data>",
+    )];
+    if let Ok(conn) = habi.store.conn() {
+        if let Ok(mut stmt) = conn.prepare("SELECT path FROM projects") {
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0));
+            for path in rows.into_iter().flatten().flatten() {
+                paths.push((path, "<project>"));
+            }
+        }
+        if let Ok(mut stmt) = conn.prepare("SELECT location FROM sources") {
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0));
+            for location in rows.into_iter().flatten().flatten() {
+                if crate::source::is_local_location(&location) {
+                    let expanded = match location.strip_prefix("~/") {
+                        Some(rest) => directories::BaseDirs::new()
+                            .map(|b| b.home_dir().join(rest).to_string_lossy().into_owned())
+                            .unwrap_or(location),
+                        None => location,
+                    };
+                    paths.push((expanded, "<library>"));
+                }
+            }
+        }
+    }
+    paths
+}
+
+/// Replaces each of `known` (every spelling a log might use: as stored, with
+/// forward slashes, with doubled backslashes), then the home folder with `~`,
+/// then any other `/Users/<name>`, `/home/<name>` or `C:\Users\<name>`.
+fn scrub_paths(text: &str, known: &[(String, &'static str)]) -> String {
+    static USER_DIR: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(
+            r#"(?im)(^|[\s"'=(\[,])(?:[a-z]:[\\/]{1,2}users[\\/]{1,2}[^\\/\s"'<>|:]+|/(?:users|home)/[^/\s"'<>|:]+)"#,
+        )
+        .expect("user folder pattern compiles")
+    });
+    let mut roots: Vec<(String, &str)> = Vec::new();
+    for (path, with) in known {
+        for spelling in [
+            path.clone(),
+            path.replace('\\', "/"),
+            path.replace('\\', "\\\\"),
+        ] {
+            let spelling = spelling.trim_end_matches(['/', '\\']).to_string();
+            if spelling.len() > 1 && !roots.iter().any(|(p, _)| *p == spelling) {
+                roots.push((spelling, with));
+            }
+        }
+    }
+    if let Some(home) = directories::BaseDirs::new().map(|b| b.home_dir().to_path_buf()) {
+        let home = home.to_string_lossy().into_owned();
+        for spelling in [
+            home.clone(),
+            home.replace('\\', "/"),
+            home.replace('\\', "\\\\"),
+        ] {
+            let spelling = spelling.trim_end_matches(['/', '\\']).to_string();
+            if spelling.len() > 1 && !roots.iter().any(|(p, _)| *p == spelling) {
+                roots.push((spelling, "~"));
+            }
+        }
+    }
+    // Longest first: a project inside the home folder is a project, not `~/…`.
+    roots.sort_by_key(|(p, _)| std::cmp::Reverse(p.len()));
+    let mut out = text.to_string();
+    for (path, with) in &roots {
+        out = out.replace(path.as_str(), with);
+    }
+    USER_DIR.replace_all(&out, "${1}~").into_owned()
 }
 
 /// How much of the end of a log file is read for its last lines.
@@ -169,6 +247,38 @@ mod tests {
         let end = read_end(&log, 30).unwrap();
         assert!(end.starts_with("line 99"), "{end:?}");
         assert!(end.ends_with("line 999\n"));
+    }
+
+    #[test]
+    fn log_lines_do_not_name_folders() {
+        let known = vec![
+            ("/Users/ana/work/billing".to_string(), "<project>"),
+            ("/srv/skills".to_string(), "<library>"),
+            (r"C:\Users\bo\proj".to_string(), "<project>"),
+        ];
+        let out = scrub_paths(
+            "read /Users/ana/work/billing/.claude/x and /srv/skills/a; \
+             err at /Users/ana/Library/Logs/habi.log, /home/cy/.ssh/id; \
+             {\"path\":\"C:\\\\Users\\\\bo\\\\proj\\\\f\"} C:/Users/bo/proj/g \
+             D:\\Users\\di\\x https://example.com/home/page",
+            &known,
+        );
+        for leaked in [
+            "ana",
+            "/cy",
+            "Users/bo",
+            "Users\\bo",
+            "Users\\\\bo",
+            "Users\\di",
+            "/srv",
+        ] {
+            assert!(!out.contains(leaked), "{leaked} in {out}");
+        }
+        assert!(out.contains("<project>/.claude/x"), "{out}");
+        assert!(out.contains("<library>/a"), "{out}");
+        assert!(out.contains("~/Library/Logs/habi.log"), "{out}");
+        // Web addresses are not folders.
+        assert!(out.contains("https://example.com/home/page"), "{out}");
     }
 
     #[test]

@@ -517,6 +517,21 @@ fn conflict(
 impl<'a> Planner<'a> {
     fn new(root: &'a Path, decisions: &'a Decisions, scope: Scope) -> Result<Self> {
         let lock = read_lock(root)?;
+        if scope == Scope::Machine {
+            // The lock in the home folder is as editable as a project's, but
+            // Habi only ever records skill folders there. Instruction sections
+            // and MCP entries would send updates and removals into files
+            // outside the skill folders.
+            if let Some(item) = lock.items.iter().find(|i| {
+                i.kind == ItemKind::Instructions || !i.sections.is_empty() || !i.mcp.is_empty()
+            }) {
+                return Err(HabiError::Conflict(format!(
+                    "{} in your home folder lists `{}` with instruction or MCP entries, which Habi never installs on this machine. Fix or remove that lock file.",
+                    crate::brand::LOCK_FILE,
+                    item.id
+                )));
+            }
+        }
         Ok(Planner {
             scope,
             ws: Workspace::new(root),

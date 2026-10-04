@@ -430,30 +430,98 @@ pub fn run(
     Ok(run)
 }
 
+const RUN_COLUMNS: &str =
+    "id, item_key, item_digest, check_id, module, argv_json, cwd, project_fingerprint,
+                started_at, finished_at, exit_code, status, output_tail";
+
+fn run_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<CheckRun> {
+    let status: String = r.get(11)?;
+    Ok(CheckRun {
+        id: r.get(0)?,
+        item_key: r.get(1)?,
+        item_digest: r.get(2)?,
+        check_id: r.get(3)?,
+        module: r.get(4)?,
+        argv: serde_json::from_str(&r.get::<_, String>(5)?).unwrap_or_default(),
+        cwd: r.get(6)?,
+        project_fingerprint: r.get(7)?,
+        started_at: r.get(8)?,
+        finished_at: r.get(9)?,
+        exit_code: r.get(10)?,
+        status: serde_json::from_str(&format!("\"{status}\"")).unwrap_or(CheckStatus::Error),
+        output_tail: r.get::<_, Option<String>>(12)?.unwrap_or_default(),
+    })
+}
+
 pub fn runs(store: &Store, project_id: &str, item_key: &str) -> Result<Vec<CheckRun>> {
     let conn = store.conn()?;
-    let mut stmt = conn.prepare(
-        "SELECT id, item_key, item_digest, check_id, module, argv_json, cwd, project_fingerprint,
-                started_at, finished_at, exit_code, status, output_tail
-         FROM check_runs WHERE project_id = ?1 AND item_key = ?2 ORDER BY started_at DESC LIMIT 20",
-    )?;
-    let rows = stmt.query_map([project_id, item_key], |r| {
-        let status: String = r.get(11)?;
-        Ok(CheckRun {
-            id: r.get(0)?,
-            item_key: r.get(1)?,
-            item_digest: r.get(2)?,
-            check_id: r.get(3)?,
-            module: r.get(4)?,
-            argv: serde_json::from_str(&r.get::<_, String>(5)?).unwrap_or_default(),
-            cwd: r.get(6)?,
-            project_fingerprint: r.get(7)?,
-            started_at: r.get(8)?,
-            finished_at: r.get(9)?,
-            exit_code: r.get(10)?,
-            status: serde_json::from_str(&format!("\"{status}\"")).unwrap_or(CheckStatus::Error),
-            output_tail: r.get::<_, Option<String>>(12)?.unwrap_or_default(),
-        })
-    })?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {RUN_COLUMNS}
+         FROM check_runs WHERE project_id = ?1 AND item_key = ?2 ORDER BY started_at DESC LIMIT 20"
+    ))?;
+    let rows = stmt.query_map([project_id, item_key], run_from_row)?;
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
+/// `runs` for every item of a project at once, by item key: one query instead
+/// of one database connection per item.
+pub fn runs_by_item(
+    store: &Store,
+    project_id: &str,
+) -> Result<std::collections::HashMap<String, Vec<CheckRun>>> {
+    let conn = store.conn()?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {RUN_COLUMNS} FROM (
+             SELECT *, ROW_NUMBER() OVER (PARTITION BY item_key ORDER BY started_at DESC) AS n
+             FROM check_runs WHERE project_id = ?1
+         ) WHERE n <= 20 ORDER BY item_key, started_at DESC"
+    ))?;
+    let mut by_item: std::collections::HashMap<String, Vec<CheckRun>> =
+        std::collections::HashMap::new();
+    for run in stmt.query_map([project_id], run_from_row)? {
+        let run = run?;
+        by_item.entry(run.item_key.clone()).or_default().push(run);
+    }
+    Ok(by_item)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn runs_for_every_item_match_runs_item_by_item() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(&dir.path().join("habi.db")).unwrap();
+        let conn = store.conn().unwrap();
+        // Twenty-five runs of one item (only the newest 20 are kept), one of
+        // another, and one in another project.
+        let rows = (0..25)
+            .map(|i| ("p1", "a#x", i))
+            .chain([("p1", "b#y", 0), ("p2", "a#x", 0)]);
+        for (n, (project, key, i)) in rows.enumerate() {
+            conn.execute(
+                "INSERT INTO check_runs (id, project_id, item_key, item_digest, check_id, module,
+                 argv_json, cwd, project_fingerprint, started_at, status)
+                 VALUES (?1, ?2, ?3, 'd', 'c', 'm', '[]', '.', 'f', ?4, 'passed')",
+                params![
+                    format!("r{n}"),
+                    project,
+                    key,
+                    format!("2026-01-01T00:00:{i:02}Z")
+                ],
+            )
+            .unwrap();
+        }
+        let all = runs_by_item(&store, "p1").unwrap();
+        assert_eq!(all.len(), 2);
+        for key in ["a#x", "b#y"] {
+            let one = runs(&store, "p1", key).unwrap();
+            let ids = |v: &[CheckRun]| v.iter().map(|r| r.id.clone()).collect::<Vec<_>>();
+            assert_eq!(ids(&all[key]), ids(&one), "{key}");
+        }
+        assert_eq!(all["a#x"].len(), 20);
+        assert_eq!(all["a#x"][0].started_at, "2026-01-01T00:00:24Z");
+        assert!(runs_by_item(&store, "none").unwrap().is_empty());
+    }
 }
