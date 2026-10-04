@@ -22,8 +22,7 @@ export function buildCask({ version, sha256, repo }) {
   version "${version}"
   sha256 "${sha256}"
 
-  url "https://github.com/${repo}/releases/download/v#{version}/Habi_#{version}_universal.dmg",
-      verified: "github.com/${repo}/"
+  url "https://github.com/${repo}/releases/download/v#{version}/Habi_#{version}_universal.dmg"
   name "Habi"
   desc "Find which agent skills fit a repository, and install them after a preview"
   homepage "${SITE}"
@@ -35,7 +34,7 @@ export function buildCask({ version, sha256, repo }) {
 
   # Habi updates itself with updates signed by its own key; brew should not fight that.
   auto_updates true
-  depends_on macos: :big_sur
+  depends_on :macos
 
   app "Habi.app"
 
