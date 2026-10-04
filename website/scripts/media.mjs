@@ -5,8 +5,8 @@
  * The site is dark only. Its pictures are scripts/film/shots/dark/, which Git ignores, so take them
  * with `scripts/docs-screenshots.mjs` (HABI_SHOTS_SCHEME=dark) first; a picture with no dark twin
  * falls back to the docs' light one (docs/media/). They are shrunk to public/media/dark/ (width
- * 1800, JPEG). The film (docs/media/demo.mp4, from scripts/render-film.mjs) is re-encoded for the
- * web beside them, and its poster and chapter times are copied. Run this after retaking either. Needs ffmpeg.
+ * 1800, JPEG). The film (docs/media/demo.mp4, from scripts/render-film.mjs), its poster and its
+ * chapter times are copied beside them, unchanged. Run this after retaking either. Needs ffmpeg.
  *
  *   pnpm media
  */
@@ -43,13 +43,8 @@ mkdirSync(to, { recursive: true });
 copyFileSync(join(docs, "demo-poster.jpg"), join(to, "demo-poster.jpg"));
 console.log("public/media/demo-poster.jpg");
 
-// The film is re-encoded for the web: about a third of the master's size at the same picture, with its index
-// at the front so it can start before it has all arrived.
-execFileSync(
-  "ffmpeg",
-  ["-y", "-loglevel", "error", "-i", join(docs, "demo.mp4"), "-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p", "-profile:v", "high", "-movflags", "+faststart", "-c:a", "aac", "-b:a", "96k", join(to, "demo.mp4")],
-  { stdio: "inherit" },
-);
+// The film is served as it was made: its quality is the point, and the loom on the page covers the wait.
+copyFileSync(join(docs, "demo.mp4"), join(to, "demo.mp4"));
 console.log("public/media/demo.mp4");
 
 // The chapters of the film, which the page reads at build time.
