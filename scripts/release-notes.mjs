@@ -108,7 +108,7 @@ export function buildReleaseNotes({ version, date, repo, notes, files, previous,
 
 # Habi ${version}
 
-${lede}<br>No account, no telemetry, no model calls. Your repository is read, never run.
+${lede}<br>No account, no telemetry, no model calls. Your repository is inspected without executing its code.
 
 ${badge("macOS", "11+")} ${badge("Windows", "64-bit")} ${badge("agents", "7 tools")} ${badge("license", "Apache-2.0")}
 
@@ -152,7 +152,9 @@ ${gallery.join("\n")}
 <br>
 
 ## Before you install
-
+${previous ? `
+**Upgrading from ${previous}?** Back up your original drafts and contributions before installing. [Backup and recovery](https://github.com/${repo}/blob/${tag}/docs/guide/recovery.md#back-up-and-restore-all-local-data).
+` : ""}
 <details id="first-launch">
 <summary><b>First launch on macOS and Windows</b></summary>
 <br>
@@ -185,7 +187,7 @@ gh attestation verify <file> --repo ${repo}
 You need Rust (the pinned version installs itself), Node.js 24 or later, Git and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 \`\`\`sh
-git clone https://github.com/${repo}.git
+git clone --branch ${tag} --depth 1 https://github.com/${repo}.git
 cd habi/apps/desktop
 corepack enable
 pnpm install

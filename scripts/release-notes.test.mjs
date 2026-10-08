@@ -73,3 +73,12 @@ test("the links at the foot are one line, which a release page would otherwise b
   const foot = body.split("\n").find((l) => l.includes("Documentation</a>"));
   assert.match(foot, /Report an issue<\/a> · .*All changes since 0\.1\.0/);
 });
+
+
+test("upgrade guidance and source build instructions use this release's tag", () => {
+  const body = buildReleaseNotes(input);
+  assert.match(body, /Upgrading from 0\.1\.0/);
+  assert.match(body, /blob\/v0\.2\.0\/docs\/guide\/recovery\.md#back-up-and-restore-all-local-data/);
+  assert.match(body, /git clone --branch v0\.2\.0 --depth 1/);
+  assert.doesNotMatch(buildReleaseNotes({ ...input, previous: undefined }), /Upgrading from/);
+});
