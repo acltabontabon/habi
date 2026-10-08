@@ -1,0 +1,13 @@
+habi: 1
+name: Habi compatibility smoke library
+owner: Habi maintainers
+description: Test fixtures only. Never use this library in a real project.
+skills_root: skills
+instructions:
+  - id: habi-smoke-instructions
+    title: Habi smoke instructions
+    description: A marker used to prove an agent reads installed instructions.
+    path: instructions/smoke.md
+    scope: repository
+    applies_when:
+      file: README.md

@@ -169,8 +169,26 @@ These are **discovery tests**. They are separate from **file-format tests** (sch
 validation, JSON/TOML parsing, name/dir-match checks, which Habi runs offline in CI). For each
 client, install with Habi a skill named `habi-smoke-test` whose description is "Use when the
 user says 'habi ping'. Reply with HABI-PONG", plus a one-line AGENTS.md marker and a no-op MCP
-server. (The repository has no ready-made library for this yet; a scratch library with that
-one skill and instruction file is enough.) Then:
+server. A ready-made library and side-effect-free MCP server live in
+`scripts/fixtures/agent-smoke/`. Prepare a new scratch workspace through Habi's real CLI:
+
+```sh
+cargo build -p habi-cli --locked
+node scripts/prepare-agent-smoke.mjs /path/to/new-smoke-workspace /absolute/path/to/target/debug/habi
+```
+
+On Windows the binary is `target/debug/habi.exe`. The destination must not already exist;
+its parent must exist. The script keeps Habi data inside that workspace and writes install
+plans and status JSON beside `project/`. It configures all seven tools with absolute paths
+to a no-op MCP fixture, so there are no downloads, tokens or network services. Open the
+workspace's `project/` folder in each agent. The fixture uses the 2025-06-18 MCP handshake;
+a client with a newer protocol must negotiate that version. A negotiation failure is a
+failed compatibility result, not a pass.
+
+Do not tell the model the expected markers in your prompts. Ask `habi ping`, ask for the
+Habi instruction marker, and invoke the `habi_ping` MCP tool. Expected replies are
+`HABI-PONG`, `HABI-INSTRUCTIONS-LOADED` and `HABI-MCP-PONG`, respectively. Record skill
+listing as well: a guessed reply alone cannot prove discovery. Then:
 
 **Claude Code** (v2.1.277+ recommended)
 1. Start `claude` in the project root and accept the workspace trust dialog.
@@ -189,18 +207,23 @@ one skill and instruction file is enough.) Then:
 1. Mark the project as trusted (needed for `.codex/config.toml`). Run `codex` from the repo root.
 2. Run `/skills` (or type `$`). `habi-smoke-test` should be listed. Type "habi ping" and expect HABI-PONG.
 3. Run `codex --ask-for-approval never "Summarize the current instructions."` The output should quote the AGENTS.md marker.
-4. Run `/mcp` in the TUI, or `codex mcp list`. The project server should be listed.
+4. Run `/mcp` in the trusted project session. The project server should be listed.
+   `codex mcp list` can be used as a preliminary check, but do not count its output alone
+   as proof the project session loaded the server.
 5. Mark the project untrusted and repeat step 4. The server should now be absent, which confirms the trust gating.
 
 **Gemini CLI, GitHub Copilot, OpenCode and Junie**
 
 Repeat the same steps with the `habi-smoke-test` fixture: list the skills, say "habi ping" and
 expect HABI-PONG, check that the `AGENTS.md` marker (or, for Gemini CLI, the `GEMINI.md`
-import) is in effect, and check that the no-op MCP server is listed.
+import) is in effect, and check that the no-op MCP server is listed. Invoke `habi_ping` and verify
+`HABI-MCP-PONG` for every tool, after any required approvals.
 
 ### Smoke-test results
 
-Record each run here before a release.
+Record each run here before a release, and in the versioned
+[release evidence](release-validation.md). Fixture generation and the server protocol test
+do not establish agent discovery. Missing tools and credentials remain **not run**.
 
 | Agent tool | Version | Date | Skill found | Instructions read | MCP server listed |
 |---|---|---|---|---|---|

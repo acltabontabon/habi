@@ -106,8 +106,13 @@ pub enum Fault {
     None,
     /// Return an error before step `n` (rollback runs).
     FailBefore(usize),
+    /// Report a write/flush failure after replacement, before journal completion.
+    FailAfterWrite(usize),
     /// Stop before step `n` as if the process died (no rollback).
     CrashBefore(usize),
+    /// Terminate a test subprocess after writing step `n`, before saving its
+    /// completion in the journal. Must only be used in a disposable child.
+    ExitAfterWrite(usize),
 }
 
 /// Without the `testing` feature no failure can be injected.
@@ -230,8 +235,7 @@ fn load_unfinished(paths: &AppPaths, project_id: &str) -> Result<Vec<Journal>> {
     let index = unfinished_dir(paths, project_id);
     if !index.is_dir() {
         let all = load_all(paths, project_id);
-        std::fs::create_dir_all(&index)
-            .map_err(|e| HabiError::io("creating the unfinished-operation index", e))?;
+        crate::fsutil::create_dir_all_synced(&index)?;
         return Ok(all
             .into_iter()
             .filter(|j| j.state == JournalState::Applying)
@@ -313,7 +317,10 @@ fn write_step(
                 Err(e) => return Err(HabiError::io(format!("deleting {rel}"), e)),
             }
             if let Some(parent) = target.parent() {
-                sync_dir(parent);
+                // A target already absent may have no parent directory left.
+                if parent.exists() {
+                    sync_dir(parent)?;
+                }
             }
             prune_empty_parents(root, &rel);
         }
@@ -551,6 +558,23 @@ impl<'a> Applier<'a> {
             };
             if let Err(e) = write_step(root, &step, change.content.as_deref(), change.executable) {
                 return Err(self.roll_back(root, &mut journal, e));
+            }
+            #[cfg(any(test, feature = "testing"))]
+            if fault == Fault::FailAfterWrite(index) {
+                return Err(self.roll_back(
+                    root,
+                    &mut journal,
+                    HabiError::io(
+                        "flushing the replaced file",
+                        std::io::Error::other("simulated flush failure"),
+                    ),
+                ));
+            }
+            #[cfg(any(test, feature = "testing"))]
+            if fault == Fault::ExitAfterWrite(index) {
+                // Deliberately bypass destructors: exercise OS lock release and
+                // recovery of a write absent from the last saved journal.
+                std::process::exit(86);
             }
             produced.insert(change.path.to_lowercase(), change.after.clone());
             if let Some(step) = journal.steps.get_mut(index) {

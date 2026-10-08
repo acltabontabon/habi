@@ -1,0 +1,145 @@
+{
+  "version": "",
+  "revision": "",
+  "agents": [
+    {
+      "agent": "claude-code",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    },
+    {
+      "agent": "cursor",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    },
+    {
+      "agent": "codex",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    },
+    {
+      "agent": "gemini-cli",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    },
+    {
+      "agent": "copilot",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    },
+    {
+      "agent": "opencode",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    },
+    {
+      "agent": "junie",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": ""
+    }
+  ],
+  "platforms": [
+    {
+      "platform": "macos",
+      "osVersion": "",
+      "upgradedFrom": "",
+      "checkedAt": "",
+      "checks": {
+        "cleanInstall": false,
+        "launch": false,
+        "upgradePreservesData": false,
+        "updaterRejectsTampering": false,
+        "offlineEditing": false,
+        "interruptedInstallRecovery": false,
+        "diskFullRecovery": false,
+        "permissionFailureRecovery": false,
+        "concurrentOperations": false,
+        "backupRestore": false,
+        "largeRepository": false
+      },
+      "artifacts": [
+        {
+          "name": "",
+          "sha256": ""
+        },
+        {
+          "name": "",
+          "sha256": ""
+        }
+      ],
+      "evidence": ""
+    },
+    {
+      "platform": "windows",
+      "osVersion": "",
+      "upgradedFrom": "",
+      "checkedAt": "",
+      "checks": {
+        "cleanInstall": false,
+        "launch": false,
+        "upgradePreservesData": false,
+        "updaterRejectsTampering": false,
+        "offlineEditing": false,
+        "interruptedInstallRecovery": false,
+        "diskFullRecovery": false,
+        "permissionFailureRecovery": false,
+        "concurrentOperations": false,
+        "backupRestore": false,
+        "largeRepository": false
+      },
+      "artifacts": [
+        {
+          "name": "",
+          "sha256": ""
+        },
+        {
+          "name": "",
+          "sha256": ""
+        }
+      ],
+      "evidence": ""
+    }
+  ]
+}

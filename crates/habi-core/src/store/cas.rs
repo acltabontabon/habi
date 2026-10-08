@@ -126,8 +126,10 @@ fn reuse(path: &Path, bytes: &[u8], durable: bool) -> bool {
         if file.sync_all().is_err() {
             return false;
         }
-        if let Some(dir) = path.parent() {
-            sync_dir(dir);
+        if let Some(dir) = path.parent()
+            && sync_dir(dir).is_err()
+        {
+            return false;
         }
     }
     true

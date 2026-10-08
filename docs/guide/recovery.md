@@ -20,7 +20,7 @@ Habi uses a write-ahead journal (`<data>/journal/`) for safety:
 2. Rollback any crashed operations
 3. Verify preconditions (if changed → `stalePlan`, abort)
 4. Backup files in blob store, journal state = `applying`
-5. Apply changes atomically
+5. Apply changes with atomic file replacement
 6. Journal state = `committed`
 
 **Failure scenarios:**
@@ -33,7 +33,12 @@ Habi uses a write-ahead journal (`<data>/journal/`) for safety:
 | You restore a completed operation | Built as new plan; conflicts appear if files changed |
 | Only file's executable bit changed | Restore puts the bit back (tracked in journal) |
 
-Lock file written last → interrupted applies never record unwritten files.
+The lock file is written last, so interrupted applies never record unwritten files.
+Files are flushed before replacement. On Unix, directory flush failures are reported too,
+including the entries for newly created parent directories. Windows does not flush directory
+entries here, so survival across sudden power loss is not guaranteed. Filesystems, hardware
+and storage failures can limit these guarantees on every platform. Keep a separate backup
+of original work; a journal on the same disk is not a backup against disk failure.
 
 ## Restoring & the lock file
 
@@ -89,8 +94,58 @@ another operation is using is skipped until the next run.
 
 ## No destructive resets
 
-No recovery path in Habi asks the user to delete their data. The data folder can be removed
-safely at any time: installed project files are ordinary files and keep working.
+Do not delete Habi's data folder as a troubleshooting step. Installed project files keep
+working independently, but the data folder contains original drafts, imported editable
+skills, contribution staging, history and backups. Some of those may be the only copies.
+Preserve the whole folder before attempting recovery.
+
+## Back up and restore all local data
+
+An operation restore only undoes project or personal installs. A complete data backup also
+keeps My skills, trash, contribution drafts, the database, blobs and journals together.
+Before upgrading or repairing Habi:
+
+1. In **Settings → This machine → Data folder**, find the data folder. Quit Habi and stop
+   every Habi CLI command. Keep them closed during backup and restore.
+2. Copy the **entire** data folder to a separate location, preferably on a different disk.
+   Do not copy just `habi.db` from a running application: SQLite's WAL sidecar can hold
+   committed work that is not yet in that file. Never delete sidecars to make a backup work.
+3. Keep project files in Git or another backup, and separately back up personal installations
+   (`~/.agents/skills`, `~/.claude/skills` and `~/.habi/lock.json`). They live outside the data
+   folder and are not included in its backup.
+
+For a verified backup, the source checkout includes a tool requiring Node.js 24 or newer.
+From the checkout, supply your actual data folder and a **new** backup folder whose parent
+already exists:
+
+```sh
+node scripts/data-backup.mjs backup "/path/to/Habi/data" "/path/to/backups/habi-backup" --closed
+node scripts/data-backup.mjs verify "/path/to/backups/habi-backup"
+```
+
+The tool verifies SQLite integrity and each file's SHA-256, includes empty directories and
+executable permissions, refuses links and special files, and checks that the source still
+matches after copying. It refuses SQLite sidecars: if they remain after a crash, first open
+and close Habi cleanly to let SQLite recover and checkpoint them. If Habi cannot open, keep
+all files untouched for diagnosis instead of deleting them. `--closed` records your
+acknowledgement that Habi is stopped; it cannot prevent another process being started.
+
+Restore first into a **new** folder:
+
+```sh
+node scripts/data-backup.mjs restore "/path/to/backups/habi-backup" "/path/to/habi-restored" --closed
+```
+
+The tool verifies the backup before restoring, checks the copied files again, and refuses
+an existing destination. While Habi remains closed, rename the current data folder to keep
+it, and move the restored folder to the original data location. Launch the same Habi version
+that created the backup, or a newer compatible version. Check My skills, contribution
+drafts and History before discarding any previous folder. A backup of a newer database cannot
+be opened by an older Habi.
+
+Backups contain private local content and are not encrypted by this tool. Store them with
+the same care as your projects. Checksums detect accidental damage; they do not establish
+who made a backup. Use backups you created and keep their original manifest.
 
 ## My skills
 

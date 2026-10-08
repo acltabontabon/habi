@@ -81,8 +81,7 @@ impl AppPaths {
             self.logs(),
             self.empty_dir(),
         ] {
-            std::fs::create_dir_all(&dir)
-                .map_err(|e| HabiError::io(format!("creating {}", dir.display()), e))?;
+            crate::fsutil::create_dir_all_synced(&dir)?;
             private(&dir, 0o700)?;
         }
         // Log files written by an earlier run, before they were private.

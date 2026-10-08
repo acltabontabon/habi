@@ -7,8 +7,15 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-08
+
+Find the right skill faster, see what has actually been checked, and keep a way back—from personal installs to your original drafts and contributions.
+
 ### Added
 
+- **Back up original work.** A verified offline backup and restore tool preserves your local
+  drafts, contributions and history together. Follow the recovery guide before upgrading;
+  the tool requires Node.js 24 or later and a copy of the source checkout.
 - **Focus recommendations on your work.** Filter by module, library, compatible agent, or
   items needing attention. Habi remembers the filters separately for each project, and a
   scan-gap notice links directly to what could not be inspected.
@@ -30,12 +37,11 @@ All notable changes to Habi are listed here. The format follows
 
 ### Fixed
 
-- Source and script edits that keep the same file size now invalidate cached inspection and
-  passing check evidence when their modification time changes. Source bodies remain unread
-  during inspection.
-- Opening install review in the browser design preview no longer crashes on outdated fixture
-  data. The preview now includes real machine install, history and restore fixtures, with
-  tests that open those flows through the preview bridge.
+- **Storage failures are reported.** A failed storage flush on macOS no longer looks like
+  a successful change. Installation recovery handles a failed flush after a file is replaced.
+- **Checks notice more edits.** Source and script edits that keep the same file size now
+  invalidate earlier inspection and passing check evidence when their modification time
+  changes, so those results are shown as out of date.
 
 ## 0.1.0 - 2026-10-04
 

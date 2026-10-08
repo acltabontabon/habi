@@ -55,7 +55,7 @@ jobs:
           fi
           touches() { grep -Eq "$1" <<< "$files" && echo true || echo false; }
           {
-            echo "rust=$(touches '^(crates/|apps/desktop/src-tauri/|apps/desktop/src/bindings/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|\.cargo/|schema/|fixtures/|deny\.toml$)')"
+            echo "rust=$(touches '^(crates/|apps/desktop/src-tauri/|apps/desktop/src/bindings/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|\.cargo/|schema/|fixtures/|scripts/(prepare-agent-smoke\.mjs|agent-smoke\.test\.mjs|fixtures/agent-smoke/)|deny\.toml$)')"
             echo "frontend=$(touches '^(apps/desktop/(src/|public/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|vite\.config\.ts$|tsconfig\.json$|biome\.json$|index\.html$|node-shims\.d\.ts$)|CHANGELOG\.md$|scripts/changelog\.mjs$)')"
             echo "dependencies=$(touches '(^|/)(Cargo\.(toml|lock)|package\.json|pnpm-lock\.yaml)$|^deny\.toml$|^THIRD_PARTY_NOTICES\.md$|^scripts/third-party-notices\.mjs$')"
             echo "website=$(touches '^(website/|docs/|README\.md$|CHANGELOG\.md$)')"
@@ -91,6 +91,15 @@ jobs:
         shell: bash
         run: rm -rf apps/desktop/src/bindings
       - run: cargo test --workspace --no-fail-fast
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Prepare agent discovery fixture through the real CLI
+        shell: bash
+        run: |
+          cargo build -p habi-cli --locked
+          cli="$(node -e 'console.log(require("node:path").resolve("target/debug", process.platform === "win32" ? "habi.exe" : "habi"))')"
+          HABI_SMOKE_CLI="$cli" node --test scripts/agent-smoke.test.mjs
       - name: TypeScript bindings are up to date
         if: runner.os != 'Windows'
         shell: bash
@@ -192,3 +201,20 @@ jobs:
       - run: node scripts/check-links.mjs
       # CHANGELOG.md's format, and the update manifest the release publishes.
       - run: node --test scripts/*.test.mjs
+
+  recovery-tools:
+    name: Backup and release tools (${{ matrix.os }})
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Offline backup, restore and release evidence tests
+        shell: bash
+        run: node --test scripts/*.test.mjs
