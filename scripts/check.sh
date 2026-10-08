@@ -32,6 +32,10 @@ cd ../..
 echo "== Third-party notices are up to date"; node scripts/third-party-notices.mjs --check
 echo "== Documentation links";                node scripts/check-links.mjs
 echo "== Script tests";                       node --test scripts/*.test.mjs
+echo "== Agent smoke fixture through the real CLI"
+cargo build -p habi-cli --locked
+habi_test_cli="$(node -e 'console.log(require("node:path").resolve("target/debug", process.platform === "win32" ? "habi.exe" : "habi"))')"
+HABI_SMOKE_CLI="$habi_test_cli" node --test scripts/agent-smoke.test.mjs
 
 cd website
 echo "== Website install"; pnpm install --frozen-lockfile

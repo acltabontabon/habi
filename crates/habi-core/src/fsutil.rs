@@ -115,10 +115,11 @@ pub fn read_prefix(path: &Path, limit: usize) -> std::io::Result<Vec<u8>> {
 /// see either the old or the new content, never a torn write. An existing
 /// file keeps its permissions; a new file gets ordinary (0644) permissions.
 ///
-/// When this returns the content is durable: the file and its directory entry
-/// have been flushed, so it survives a crash or power loss. That costs a disk
-/// flush or two per file (a full drive-cache flush on macOS); see
-/// `atomic_write_unsynced` for content that can be rebuilt.
+/// Flushes the file before replacing the target. On Unix, also flushes the
+/// directory entry and newly created parent directories, reporting failures.
+/// Windows has no directory flush here, so rename durability across power loss
+/// is not guaranteed. Hardware and filesystems can also limit flush guarantees.
+/// See `atomic_write_unsynced` for content that can be rebuilt.
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     write_replacing(path, bytes, None, true)
 }
@@ -148,20 +149,12 @@ fn write_replacing(
     let dir = path
         .parent()
         .ok_or_else(|| HabiError::invalid(format!("{} has no parent", path.display())))?;
-    std::fs::create_dir_all(dir)
-        .map_err(|e| HabiError::io(format!("creating {}", dir.display()), e))?;
+    create_parents(dir, durable)?;
     let mut tmp = tempfile::Builder::new()
         .prefix(".habi-tmp-")
         .tempfile_in(dir)
         .map_err(|e| HabiError::io(format!("writing in {}", dir.display()), e))?;
     tmp.write_all(bytes)
-        .and_then(|_| {
-            if durable {
-                tmp.as_file().sync_all()
-            } else {
-                Ok(())
-            }
-        })
         .map_err(|e| HabiError::io(format!("writing {}", path.display()), e))?;
     #[cfg(unix)]
     {
@@ -182,9 +175,15 @@ fn write_replacing(
     }
     #[cfg(not(unix))]
     let _ = executable;
+    // Flush after setting permissions too, so executable modes are included.
+    if durable {
+        tmp.as_file()
+            .sync_all()
+            .map_err(|e| HabiError::io(format!("flushing {}", path.display()), e))?;
+    }
     persist(tmp, path).map_err(|e| HabiError::io(format!("replacing {}", path.display()), e))?;
     if durable {
-        sync_dir(dir);
+        sync_dir(dir)?;
     }
     Ok(())
 }
@@ -255,6 +254,9 @@ pub fn set_executable(path: &Path, executable: bool) -> Result<()> {
         }
         std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
             .map_err(|e| HabiError::io(format!("setting permissions on {}", path.display()), e))?;
+        std::fs::File::open(path)
+            .and_then(|f| f.sync_all())
+            .map_err(|e| HabiError::io(format!("flushing permissions on {}", path.display()), e))?;
     }
     #[cfg(not(unix))]
     let _ = (path, executable);
@@ -277,14 +279,54 @@ pub fn is_executable(path: &Path) -> bool {
     }
 }
 
-/// Best-effort directory fsync so a rename survives power loss (Unix only).
-pub fn sync_dir(dir: &Path) {
+/// Creates directories and flushes each newly created entry on Unix. Use for
+/// application data and journal directories that hold original content.
+pub fn create_dir_all_synced(dir: &Path) -> Result<()> {
+    create_parents(dir, true)
+}
+
+/// Creates missing parent directories and, for durable writes on Unix, flushes
+/// each new directory's entry in its parent before any content is written.
+fn create_parents(dir: &Path, durable: bool) -> Result<()> {
+    let mut missing = Vec::new();
+    let mut cursor = dir;
+    while !cursor.exists() && !cursor.as_os_str().is_empty() {
+        missing.push(cursor.to_path_buf());
+        let Some(parent) = cursor.parent() else { break };
+        cursor = parent;
+    }
+    std::fs::create_dir_all(dir)
+        .map_err(|e| HabiError::io(format!("creating {}", dir.display()), e))?;
+    if durable {
+        for created in missing.iter().rev() {
+            if let Some(parent) = created.parent() {
+                let parent = if parent.as_os_str().is_empty() {
+                    Path::new(".")
+                } else {
+                    parent
+                };
+                sync_dir(parent)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Flushes a directory entry on Unix. Errors must reach the caller: a failed
+/// flush cannot be reported as a completed durable write. Windows does not
+/// support this operation here; callers must not promise power-loss durability.
+pub fn sync_dir(dir: &Path) -> Result<()> {
     #[cfg(unix)]
-    if let Ok(f) = std::fs::File::open(dir) {
-        let _ = f.sync_all();
+    {
+        let f = std::fs::File::open(dir).map_err(|e| {
+            HabiError::io(format!("opening directory {} to flush", dir.display()), e)
+        })?;
+        f.sync_all()
+            .map_err(|e| HabiError::io(format!("flushing directory {}", dir.display()), e))?;
     }
     #[cfg(not(unix))]
     let _ = dir;
+    Ok(())
 }
 
 /// Is this byte buffer probably text? Used to decide whether to show a diff.
@@ -364,6 +406,14 @@ mod tests {
             "existing mode kept"
         );
         assert!(is_executable(&p));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_flush_errors_are_reported() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(sync_dir(&dir.path().join("missing")).is_err());
+        sync_dir(dir.path()).unwrap();
     }
 
     #[test]

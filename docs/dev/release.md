@@ -40,9 +40,10 @@ Semantic versioning, separately for:
    dependencies, internals and file names. Sections are Keep a Changelog's: Added, Changed,
    Deprecated, Removed, Fixed, Security.
 2. Make sure CI is green on `main` (macOS and Windows).
-3. Run the client [smoke tests](compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it)
-   with current builds of all seven agent tools, and record the versions and date in
-   [the results](compatibility-research.md#smoke-test-results).
+3. Prepare the client [smoke tests](compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it)
+   with current builds of all seven agent tools. Record completed runs in
+   [the results](compatibility-research.md#smoke-test-results); pending runs may remain
+   pending while building a draft, but must pass before publication in step 5.
 4. Tag `vX.Y.Z` and push the tag. The release workflow:
    - runs the same checks as CI, including `cargo deny`;
    - checks that the tag matches the four manifests and that `CHANGELOG.md` has its entry;
@@ -54,7 +55,14 @@ Semantic versioning, separately for:
    - creates a **draft** release named *Habi vX.Y.Z*, laid out by `scripts/release-notes.mjs`
      (see [The release page](#the-release-page)), with `latest.json`, the manifest running
      copies of Habi ask for.
-5. Install the draft's artifacts on macOS and Windows, then publish the release. Publishing
+5. Install the draft's exact artifacts on macOS and Windows and complete
+   [release validation](release-validation.md). Record the tagged revision, artifact hashes,
+   tool and OS versions, timestamps and results in a copy of
+   `docs/dev/release-evidence.template.json`. Run the **Release readiness** workflow with the
+   tag and that committed evidence file. It downloads the actual artifacts and refuses
+   missing, failed, stale or mismatched evidence. Only after it passes, publish the release.
+   This is a validation workflow, not an automatic publish operation; direct publication in
+   GitHub's UI can bypass it, so maintainers must follow this procedure. Publishing
    is what offers it to people already running Habi: `latest.json` is fetched from the
    *latest published* release, so a draft, or a pre-release, is never offered.
 

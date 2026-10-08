@@ -1,0 +1,44 @@
+name: Release readiness
+
+# Read-only validation of a built draft. This never publishes or installs it.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable release tag to validate (vX.Y.Z)
+        required: true
+        type: string
+      evidence:
+        description: Committed evidence JSON path, relative to the repository
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Download the candidate and verify recorded checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          EVIDENCE: ${{ inputs.evidence }}
+        shell: bash
+        run: |
+          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::A stable vX.Y.Z tag is required"
+            exit 1
+          fi
+          # Inputs are data, never interpolated into shell code.
+          mkdir -p "$RUNNER_TEMP/candidate"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/candidate"
+          node scripts/release-readiness.mjs "$RELEASE_TAG" "$EVIDENCE" "$RUNNER_TEMP/candidate"

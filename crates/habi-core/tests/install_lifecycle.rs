@@ -582,6 +582,16 @@ fn failures_and_crashes_roll_back() {
     assert!(err.to_string().contains("rolled back"), "{err}");
     assert_eq!(tree(&env.project), before);
 
+    // A directory flush can fail after the file was replaced but before the
+    // journal recorded it as done. Undo must inspect the actual content.
+    for index in 0..plan.changes.len() {
+        let err = applier
+            .apply_with(&plan, Fault::FailAfterWrite(index))
+            .unwrap_err();
+        assert!(err.to_string().contains("simulated flush failure"), "{err}");
+        assert_eq!(tree(&env.project), before, "flush failure at step {index}");
+    }
+
     // A crash leaves an `applying` journal; recovery restores the project.
     assert!(applier.apply_with(&plan, Fault::CrashBefore(2)).is_err());
     assert_ne!(tree(&env.project), before, "crash left partial changes");
@@ -891,4 +901,86 @@ fn case_only_renames_executable_bits_and_user_deletions() {
         again.changes.iter().map(|c| &c.path).collect::<Vec<_>>()
     );
     assert!(again.conflicts[0].message.contains("deleted"));
+}
+
+/// Entry point for the disposable process used by the recovery test below.
+#[test]
+fn interrupted_install_child() {
+    let Ok(data) = std::env::var("HABI_RECOVERY_TEST_DATA") else {
+        return;
+    };
+    let habi = Habi::open(AppPaths::at(PathBuf::from(data))).unwrap();
+    let project = std::env::var("HABI_RECOVERY_TEST_PROJECT").unwrap();
+    let source = std::env::var("HABI_RECOVERY_TEST_SOURCE").unwrap();
+    let index: usize = std::env::var("HABI_RECOVERY_TEST_STEP")
+        .unwrap()
+        .parse()
+        .unwrap();
+    let plan = habi
+        .plan_install(
+            &project,
+            &[ItemRef {
+                source_id: source,
+                item_id: "react-component-review".into(),
+            }],
+            &[ClientId::Cursor],
+            false,
+            &Decisions::new(),
+        )
+        .unwrap();
+    Applier {
+        paths: &habi.paths,
+        store: &habi.store,
+    }
+    .apply_with(&plan, Fault::ExitAfterWrite(index))
+    .unwrap();
+    panic!("the child should have terminated during apply");
+}
+
+#[test]
+fn a_terminated_process_recovers_every_write_boundary() {
+    let env = setup("repos/storefront-web");
+    let before = tree(&env.project);
+    let plan = env
+        .habi
+        .plan_install(
+            &env.project_id,
+            &[item(&env, "react-component-review")],
+            &[ClientId::Cursor],
+            false,
+            &Decisions::new(),
+        )
+        .unwrap();
+    for index in 0..plan.changes.len() {
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "interrupted_install_child", "--nocapture"])
+            .env("HABI_RECOVERY_TEST_DATA", &env.habi.paths.root)
+            .env("HABI_RECOVERY_TEST_PROJECT", &env.project_id)
+            .env("HABI_RECOVERY_TEST_SOURCE", &env.source_id)
+            .env("HABI_RECOVERY_TEST_STEP", index.to_string())
+            .output()
+            .unwrap();
+        assert_eq!(
+            status.status.code(),
+            Some(86),
+            "{}",
+            String::from_utf8_lossy(&status.stderr)
+        );
+        assert_ne!(
+            tree(&env.project),
+            before,
+            "step {index} must have reached disk"
+        );
+        // Open a fresh service, so recovery cannot rely on the child's memory.
+        let restarted = Habi::open(env.habi.paths.clone()).unwrap();
+        let recovered = restarted.recover(&env.project_id).unwrap();
+        assert_eq!(recovered.len(), 1);
+        assert_eq!(recovered[0].state, JournalState::RolledBack, "step {index}");
+        assert_eq!(tree(&env.project), before, "step {index}");
+        assert!(
+            restarted.recover(&env.project_id).unwrap().is_empty(),
+            "recovery must be idempotent"
+        );
+    }
+    env.habi.apply(&plan.id).unwrap();
 }
