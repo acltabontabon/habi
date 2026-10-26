@@ -9,6 +9,12 @@ All notable changes to Habi are listed here. The format follows
 
 ### Fixed
 
+- **Global skill badges reflect your choices.** Skills Habi installed highlight only the
+  selected agents. Other agents that can read the same folders are explained separately.
+- **Reach global skills without scrolling past the creation guide.** My skills has
+  Drafts & copies and On this machine collections, with counts and global skill search.
+  History adds restore and attention filters, expandable file paths, and recovery results
+  inside the dialog.
 - **See skills already installed on this machine.** Library lists and skill pages mark
   machine installations, show the agent tools that read them, and link to their management
   controls. The status refreshes after installing, removing, or updating a library.

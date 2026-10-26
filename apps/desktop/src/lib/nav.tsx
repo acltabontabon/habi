@@ -10,7 +10,7 @@ export type ProjectTab = "recommendations" | "history";
 export type Route =
   | { name: "welcome" }
   | { name: "project"; projectId: string; tab: ProjectTab; itemKey?: string }
-  | { name: "skills"; skillId?: string }
+  | { name: "skills"; skillId?: string; tab?: "collection" | "machine" }
   | {
       name: "sources";
       /** A connected library. */

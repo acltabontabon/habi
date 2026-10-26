@@ -9,7 +9,7 @@ import type { MachineSkill } from "../bindings/MachineSkill";
 import type { ProjectCopy } from "../bindings/ProjectCopy";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
-import { copyState, precedenceNote } from "../lib/machine";
+import { copyState, installedClients, precedenceNote } from "../lib/machine";
 import { NavProvider } from "../lib/nav";
 import { AlreadyHere } from "../views/project/AlreadyHere";
 import { OnThisMachine } from "../views/skills/OnThisMachine";
@@ -152,6 +152,7 @@ beforeEach(() => {
     switch (cmd) {
       case "machine_skills":
         return machine;
+      case "machine_history":
       case "recent_projects":
       case "list_skills":
       case "list_sources":
@@ -245,6 +246,7 @@ describe("On this machine", () => {
     const managed = {
       key: "machine:mattpocock/code-review",
       library: "Matt Pocock",
+      clients: ["claude-code", "cursor", "codex"] as MachineSkill["readers"],
       libraryItemKey: "lib/code-review",
       state: "current" as const,
     };
@@ -265,7 +267,10 @@ describe("On this machine", () => {
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(1);
     const row = rows[0] as HTMLElement;
-    const reach = within(row).getByRole("img", { name: "Read by Claude Code, Cursor, Codex and Junie" });
+    const reach = within(row).getByRole("img", { name: "Installed for Claude Code, Cursor and Codex" });
+    expect(within(reach).getByText("Junie")).not.toHaveClass("is-on");
+    expect(within(reach).getByText("Codex")).toHaveClass("is-on");
+    expect(within(row).getByText(/Shared folders also make this available to Junie/)).toBeTruthy();
     // Cursor reads both folders, so its tooltip names both.
     const cursor = within(reach).getByText("Cursor").getAttribute("data-tip") ?? "";
     expect(cursor).toContain("~/.claude/skills/alpha");
@@ -382,26 +387,77 @@ describe("On this machine", () => {
 });
 
 describe("My skills page", () => {
+  it("opens machine management directly even when drafts exist", async () => {
+    machine = [machineSkill()];
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "machine_skills") return machine;
+      if (cmd === "list_skills") return [localSkill().summary];
+      return [];
+    });
+    wrap(<SkillsView tab="machine" />);
+    expect(await screen.findByRole("tab", { name: /On this machine/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(await screen.findByRole("list", { name: "Skills on this machine" })).toBeVisible();
+    await userEvent.type(screen.getByRole("searchbox", { name: "Find a global skill" }), "absent");
+    const globals = screen.getByRole("list", { name: "Skills on this machine" });
+    expect(within(globals).queryByText("alpha")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(within(globals).getByText("alpha")).toBeVisible();
+  });
+
+  it("does not light a selected agent whose readable copy is missing", () => {
+    const copy = machineSkill({
+      managed: {
+        key: "lib#alpha",
+        library: "Team library",
+        libraryItemKey: null,
+        clients: ["claude-code", "codex"],
+        state: "locallyModified",
+      },
+    });
+    expect(installedClients([copy])).toEqual(["claude-code"]);
+  });
+
   it("shows the section even before the person has any skills of their own", async () => {
     machine = [machineSkill()];
     wrap(<SkillsView />);
-    expect(await screen.findByText("On this machine")).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: /On this machine/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByRole("button", { name: /Create a skill/ })).toBeNull();
     expect(screen.getByRole("list", { name: "Skills on this machine" })).toHaveTextContent("alpha");
   });
 
-  it("shows it below the skills Habi owns", async () => {
+  it("keeps both collections directly reachable with keyboard tabs", async () => {
     machine = [machineSkill()];
     const own = localSkill().summary;
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return machine;
       if (cmd === "list_skills") return [own];
-      if (cmd === "skills_overview" || cmd === "list_sources" || cmd === "recent_projects") return [];
+      if (
+        cmd === "machine_history" ||
+        cmd === "skills_overview" ||
+        cmd === "list_sources" ||
+        cmd === "recent_projects"
+      )
+        return [];
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
     wrap(<SkillsView />);
     const mine = await screen.findByRole("list", { name: "Skills" });
-    const here = await screen.findByRole("list", { name: "Skills on this machine" });
-    expect(mine.compareDocumentPosition(here) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mine).toBeVisible();
+    const tab = await screen.findByRole("tab", { name: /Drafts & copies/ });
+    tab.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: /On this machine/ })).toHaveFocus();
+    expect(screen.getByRole("list", { name: "Skills on this machine" })).toBeVisible();
+    expect(mine).not.toBeVisible();
+    await userEvent.keyboard("{Home}");
+    expect(tab).toHaveFocus();
+    expect(mine).toBeVisible();
   });
 });
 

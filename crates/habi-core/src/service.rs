@@ -1988,6 +1988,7 @@ impl Habi {
                         machine::ManagedInstall {
                             key: i.key.clone(),
                             library: i.source_name.clone(),
+                            clients: i.clients.clone(),
                             library_item_key: libraries.iter().find_map(|(source, index)| {
                                 (portable_identity(source) == owner.source.identity)
                                     .then(|| index.items.iter().find(|item| item.id == owner.id))
