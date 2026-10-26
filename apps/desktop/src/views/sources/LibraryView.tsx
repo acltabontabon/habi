@@ -573,7 +573,11 @@ function SkillHead({
           {installed.some((s) => ["locallyModified", "conflict"].includes(s.managed?.state ?? "")) ? (
             <span>Edited here</span>
           ) : null}
-          <button type="button" className="link-quiet" onClick={() => navigate({ name: "skills" })}>
+          <button
+            type="button"
+            className="link-quiet"
+            onClick={() => navigate({ name: "skills", tab: "machine" })}
+          >
             Manage installation
           </button>
         </div>

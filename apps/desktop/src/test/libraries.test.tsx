@@ -786,6 +786,7 @@ describe("machine installations in a library", () => {
   const item = library.items.find((i) => i.id === "migrations");
   if (!item) throw new Error("missing migrations fixture");
   const managed = {
+    clients: ["claude-code", "codex"] as MachineSkill["readers"],
     key: "remote#migrations",
     library: "Acme",
     libraryItemKey: item.key,

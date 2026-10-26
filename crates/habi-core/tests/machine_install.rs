@@ -156,6 +156,8 @@ fn a_machine_install_writes_only_the_chosen_folders_and_records_them() {
         .as_ref()
         .expect("recorded as installed by Habi");
     assert_eq!(managed.library, "Team library");
+    assert_eq!(managed.clients, vec![ClientId::ClaudeCode]);
+    assert!(ours.readers.contains(&ClientId::Cursor));
     assert_eq!(
         managed.library_item_key.as_deref(),
         Some(format!("{}/{SKILL}", env.source_id).as_str())
