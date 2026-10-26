@@ -23,9 +23,9 @@ const SITE = "https://acltabontabon.com/habi/";
 /** What a first look at the app shows, in the order a person meets it. Pictures are in docs/media. */
 export const GALLERY = [
   ["project.jpg", "Fits, and why", "Every skill matched to the repository, with the files and lines behind it."],
-  ["explore.jpg", "Every library in one place", "Your team's, the community's and the tool builders'."],
+  ["pr-library-status/after.jpg", "Know what is installed", "See machine installations in your library and check for updates whenever you need to."],
+  ["my-skills-refresh/after-skills.jpg", "Your skills, across projects", "Search global skills, see your chosen agents, and reach history and restore directly."],
   ["install-review.jpg", "See every file first", "Install for seven agent tools; nothing is written until you say so."],
-  ["update-review.jpg", "Updates you choose", "Review exactly what changes, per agent tool, before it is written."],
   ["skill-studio.jpg", "The Skill Studio", "Write a skill as one document and test when it would be suggested."],
   ["share-review.jpg", "Send it back", "Preview what leaves your machine, then open a pull request."],
 ];
