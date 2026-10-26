@@ -7,20 +7,30 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-26
+
+Find the skills already on your machine, check your libraries when you need to, and reach personal installs and recovery history more easily.
+
+### Added
+
+- **Check a library for updates whenever you need to.** A visible **Check for updates**
+  button reports progress, results, and failures without waiting for the automatic check.
+  Folder libraries offer **Refresh library** to read their latest contents.
+- **See skills already installed on this machine.** Library lists and skill pages mark
+  machine installations, show the agent tools that read them, and link to their management
+  controls. The status refreshes after installing, removing, or updating a library.
+
+### Changed
+
+- **Reach global skills without scrolling past the creation guide.** My skills has
+  Drafts & copies and On this machine collections, with counts and global skill search.
+- **Find the history you need.** Restore and attention filters narrow the list, file paths
+  expand when you need them, and recovery results stay inside the dialog.
+
 ### Fixed
 
 - **Global skill badges reflect your choices.** Skills Habi installed highlight only the
   selected agents. Other agents that can read the same folders are explained separately.
-- **Reach global skills without scrolling past the creation guide.** My skills has
-  Drafts & copies and On this machine collections, with counts and global skill search.
-  History adds restore and attention filters, expandable file paths, and recovery results
-  inside the dialog.
-- **See skills already installed on this machine.** Library lists and skill pages mark
-  machine installations, show the agent tools that read them, and link to their management
-  controls. The status refreshes after installing, removing, or updating a library.
-- **Check a library for updates whenever you need to.** A visible **Check for updates**
-  button reports progress, results, and failures without waiting for the automatic check.
-  Folder libraries offer **Refresh library** to read their latest contents.
 
 ## 0.2.0 - 2026-10-08
 

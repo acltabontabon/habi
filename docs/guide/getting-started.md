@@ -98,6 +98,12 @@ When an update is available, **Update** fetches the library's latest contents an
 changed. Installed skills are updated separately through their reviewed plans. For a folder
 library, **Refresh library** reads its current contents directly.
 
+The library also marks skills **on this machine**. Open one to see the agent tools that
+can read it, then choose **Manage installation** to reach its controls in
+[My skills → On this machine](my-skills.md#on-this-machine).
+
+![A connected library showing a manual update check, an available update, and a skill installed on this machine with a link to manage it.](../media/pr-library-status/after.jpg)
+
 ### Focus the recommendations
 
 Below the search field, **Filter by module, library or agent** opens filters for a module,
