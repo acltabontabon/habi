@@ -16,6 +16,11 @@ procedure.
 Build and check commands are in [CONTRIBUTING.md](../../CONTRIBUTING.md#set-up). Installers
 for the current platform: `pnpm tauri build` in `apps/desktop`.
 
+`deny.toml` audits dependencies for all three shipped targets: Apple Silicon and Intel
+macOS, and 64-bit Windows MSVC. Keep that list in sync with the release build matrix.
+Updater packages use the macOS `.app.tar.gz` and raw Windows `-setup.exe`; legacy
+ZIP-wrapped updates are not enabled.
+
 ## Versioning
 
 Semantic versioning, separately for:

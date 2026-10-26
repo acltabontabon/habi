@@ -1,16 +1,12 @@
 # cargo-deny: dependency licenses, advisories and sources. Run `cargo deny check`.
 [graph]
+# Audit every architecture we ship: universal macOS and 64-bit Windows.
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
 all-features = true
 
 [advisories]
 version = 2
 yanked = "deny"
-ignore = [
-  # proc-macro-error is unmaintained (not a vulnerability). It is a compile-time
-  # macro crate reached only through Tauri's Linux GTK bindings (gtk-rs 0.18);
-  # it goes away when Tauri moves to newer bindings.
-  { id = "RUSTSEC-2024-0370", reason = "unmaintained build-time macro via tauri -> gtk 0.18; no fix available downstream" },
-]
 
 [licenses]
 version = 2
