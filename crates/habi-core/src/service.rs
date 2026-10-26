@@ -1967,14 +1967,15 @@ impl Habi {
             .collect();
         // What Habi itself installed here, from its record under the home folder.
         let lock = read_lock(&self.user_home).unwrap_or_default();
+        let libraries = if lock.items.is_empty() {
+            Vec::new()
+        } else {
+            self.libraries().unwrap_or_default()
+        };
         let installs = if lock.items.is_empty() {
             Vec::new()
         } else {
-            self.installations(
-                &self.user_home,
-                &lock,
-                &self.libraries().unwrap_or_default(),
-            )
+            self.installations(&self.user_home, &lock, &libraries)
         };
         for skill in &mut found {
             skill.imported_as = intake::already_imported(&skill.digest, &local, &digests);
@@ -1987,6 +1988,12 @@ impl Habi {
                         machine::ManagedInstall {
                             key: i.key.clone(),
                             library: i.source_name.clone(),
+                            library_item_key: libraries.iter().find_map(|(source, index)| {
+                                (portable_identity(source) == owner.source.identity)
+                                    .then(|| index.items.iter().find(|item| item.id == owner.id))
+                                    .flatten()
+                                    .map(|item| item.key.clone())
+                            }),
                             state: i.state,
                         }
                     })

@@ -59,6 +59,8 @@ pub struct ManagedInstall {
     pub key: String,
     /// The library it came from.
     pub library: String,
+    /// The connected library item's key, when its source is available.
+    pub library_item_key: Option<String>,
     pub state: InstallState,
 }
 
