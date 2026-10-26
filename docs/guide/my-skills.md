@@ -192,7 +192,13 @@ it in a project. The original is never touched.
 
 To install a skill there on purpose, choose *Add to this machine…* on a library skill, or **Use
 → On this machine…** on one of yours. The review lists every file under your home folder
-before anything is written. Skills Habi installed say so and name their library, with
+before anything is written. Back in the library, its index marks the skill *on this machine*
+and the reader shows **Installed on this machine**, the tools that read it, and **Manage
+installation** to open My skills. **More → Add for more agents…** lets you review an install
+for additional tools. These marks identify the library item Habi installed; a skill with the
+same name from elsewhere is not marked as that library's installation.
+
+Skills Habi installed say so and name their library in My skills, with
 *Update…* and *Remove from this machine…*. Each of these is journaled like a project install,
 and **History and restore…** previews undoing any completed change. It also checks for
 interrupted operations, and remains available when no skills are left.

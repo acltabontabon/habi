@@ -245,6 +245,7 @@ describe("On this machine", () => {
     const managed = {
       key: "machine:mattpocock/code-review",
       library: "Matt Pocock",
+      libraryItemKey: "lib/code-review",
       state: "current" as const,
     };
     machine = [

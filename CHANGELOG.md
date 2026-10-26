@@ -7,6 +7,15 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Fixed
+
+- **See skills already installed on this machine.** Library lists and skill pages mark
+  machine installations, show the agent tools that read them, and link to their management
+  controls. The status refreshes after installing, removing, or updating a library.
+- **Check a library for updates whenever you need to.** A visible **Check for updates**
+  button reports progress, results, and failures without waiting for the automatic check.
+  Folder libraries offer **Refresh library** to read their latest contents.
+
 ## 0.2.0 - 2026-10-08
 
 Find the right skill faster, see what has actually been checked, and keep a way back—from personal installs to your original drafts and contributions.
