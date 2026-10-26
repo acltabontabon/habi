@@ -1,0 +1,145 @@
+{
+  "version": "0.3.0",
+  "revision": "4c991c010d3226994fd0598e0355138336a14898",
+  "agents": [
+    {
+      "agent": "claude-code",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    },
+    {
+      "agent": "cursor",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    },
+    {
+      "agent": "codex",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    },
+    {
+      "agent": "gemini-cli",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    },
+    {
+      "agent": "copilot",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    },
+    {
+      "agent": "opencode",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    },
+    {
+      "agent": "junie",
+      "version": "",
+      "checkedAt": "",
+      "skillFound": false,
+      "skillInvoked": false,
+      "instructionsRead": false,
+      "mcpListed": false,
+      "mcpResponds": false,
+      "evidence": "Not run against the packaged v0.3.0 candidate."
+    }
+  ],
+  "platforms": [
+    {
+      "platform": "macos",
+      "osVersion": "",
+      "upgradedFrom": "",
+      "checkedAt": "",
+      "checks": {
+        "cleanInstall": false,
+        "launch": false,
+        "upgradePreservesData": false,
+        "updaterRejectsTampering": false,
+        "offlineEditing": false,
+        "interruptedInstallRecovery": false,
+        "diskFullRecovery": false,
+        "permissionFailureRecovery": false,
+        "concurrentOperations": false,
+        "backupRestore": false,
+        "largeRepository": false
+      },
+      "artifacts": [
+        {
+          "name": "Habi_0.3.0_universal.dmg",
+          "sha256": "d8d11461313bdb8efd4330f63078f5051ee02dee993accfacebf6e4637fac373"
+        },
+        {
+          "name": "Habi_0.3.0_universal.app.tar.gz",
+          "sha256": "41ad683664ee91704fa048f15476adcc0a5a3d9699d2b555a1c72a6f8f9d6523"
+        }
+      ],
+      "evidence": "Artifact-only verification at 2026-10-26T04:47:58.632167Z: all platform SHA-256 entries match; GitHub provenance verifies source revision 4c991c010d3226994fd0598e0355138336a14898, refs/tags/v0.3.0 and .github/workflows/release.yml; the updater signature verifies with the configured public key and signs version 0.3.0. Workflow: https://github.com/acltabontabon/habi/actions/runs/40268012185. Packaged-app runtime validation has not been run; every runtime check remains false. The archive metadata reports 0.3.0 and its executable contains x86_64 and arm64."
+    },
+    {
+      "platform": "windows",
+      "osVersion": "",
+      "upgradedFrom": "",
+      "checkedAt": "",
+      "checks": {
+        "cleanInstall": false,
+        "launch": false,
+        "upgradePreservesData": false,
+        "updaterRejectsTampering": false,
+        "offlineEditing": false,
+        "interruptedInstallRecovery": false,
+        "diskFullRecovery": false,
+        "permissionFailureRecovery": false,
+        "concurrentOperations": false,
+        "backupRestore": false,
+        "largeRepository": false
+      },
+      "artifacts": [
+        {
+          "name": "Habi_0.3.0_x64_en-US.msi",
+          "sha256": "405ff371931bb5538a5a79ec729b49827021a4e611eb5148649d66bc16084ed3"
+        },
+        {
+          "name": "Habi_0.3.0_x64-setup.exe",
+          "sha256": "275879dd06f6626bfd46bcfcf3aa2e9052a22d536551a048b3da8c6102b5a72d"
+        }
+      ],
+      "evidence": "Artifact-only verification at 2026-10-26T04:47:58.632167Z: all platform SHA-256 entries match; GitHub provenance verifies source revision 4c991c010d3226994fd0598e0355138336a14898, refs/tags/v0.3.0 and .github/workflows/release.yml; the updater signature verifies with the configured public key and signs version 0.3.0. Workflow: https://github.com/acltabontabon/habi/actions/runs/40268012185. Packaged-app runtime validation has not been run; every runtime check remains false."
+    }
+  ]
+}
