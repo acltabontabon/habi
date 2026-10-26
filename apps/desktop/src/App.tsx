@@ -344,7 +344,7 @@ function Shell() {
                   itemKey={route.itemKey}
                 />
               )}
-              {route.name === "skills" && <SkillsView skillId={route.skillId} />}
+              {route.name === "skills" && <SkillsView skillId={route.skillId} tab={route.tab} />}
               {route.name === "sources" && (
                 <SourcesView
                   sourceId={route.sourceId}

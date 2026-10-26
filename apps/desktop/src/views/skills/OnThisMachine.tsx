@@ -13,9 +13,10 @@ import type { ImportFrom } from "../../bindings/ImportFrom";
 import type { LocalSkill } from "../../bindings/LocalSkill";
 import { AgentReach } from "../../components/AgentReach";
 import { Dialog } from "../../components/Dialog";
+import { Icon } from "../../components/Icon";
 import { Loom } from "../../components/Loom";
 import { Menu } from "../../components/Menu";
-import { Button, ErrorNotice, Status } from "../../components/ui";
+import { Button, ErrorNotice, Status, Working } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import { clientLabel, plural } from "../../lib/format";
@@ -23,6 +24,7 @@ import {
   copyState,
   groupMachineSkills,
   homeMention,
+  installedClients,
   type MachineGroup,
   precedenceNote,
 } from "../../lib/machine";
@@ -43,16 +45,29 @@ const managedState: Record<string, string> = {
 
 /** Which agent tools see the skill; hovering one names the folder it reads. */
 function Reach({ group }: { group: MachineGroup }) {
+  const managed = group.copies.some((s) => s.managed);
+  const selected = managed ? installedClients(group.copies) : group.readers;
+  const shared = group.readers.filter((c) => !selected.includes(c));
   return (
-    <AgentReach
-      lit={group.readers}
-      tip={(c, on) => {
-        const from = group.copies.filter((s) => s.readers.includes(c)).map((s) => s.location);
-        return on
-          ? `${clientLabel[c]} reads ${from.join(" and ")}`
-          : `${clientLabel[c]} does not read these folders`;
-      }}
-    />
+    <>
+      <AgentReach
+        lit={selected}
+        label={managed ? "Installed for" : "Read by"}
+        tip={(c, on) => {
+          const from = group.copies.filter((s) => s.readers.includes(c)).map((s) => s.location);
+          return on
+            ? `${managed ? "Installed for" : "Read by"} ${clientLabel[c]} · ${from.join(" and ")}`
+            : from.length > 0
+              ? `Not selected for installation. ${clientLabel[c]} can also read ${from.join(" and ")}`
+              : `${clientLabel[c]} does not read these folders`;
+        }}
+      />
+      {shared.length > 0 ? (
+        <p className="mach-shared">
+          Shared folders also make this available to {shared.map((c) => clientLabel[c]).join(", ")}.
+        </p>
+      ) : null}
+    </>
   );
 }
 
@@ -78,10 +93,10 @@ function Row({
   const managed = group.copies.find((c) => c.managed)?.managed ?? null;
   return (
     <li className="mach-item">
-      <span className="mach-main">
+      <div className="mach-main">
         <span className="mach-title">
           {s.name}
-          <span className="mach-tag">Global</span>
+          <span className="mach-tag">{managed ? "Installed by Habi" : "Global"}</span>
           {group.isLink ? <span className="mach-tag">Link</span> : null}
           {managed && managedState[managed.state] ? (
             <span className="mach-tag is-state">{managedState[managed.state]}</span>
@@ -91,6 +106,17 @@ function Row({
           {s.description ? purpose(s.description) : <span className="mys-none">No purpose yet</span>}
         </span>
         <Reach group={group} />
+        <details className="mach-locations">
+          <summary>
+            {managed ? `From ${managed.library} · ` : ""}
+            {plural(group.copies.length, "folder")}
+          </summary>
+          {group.copies.map((copy) => (
+            <div className="mono" key={copy.id}>
+              {copy.location}
+            </div>
+          ))}
+        </details>
         {copies.map((c) => (
           <span key={`${c.projectId}:${c.path}`} className="mach-note">
             <span>
@@ -110,7 +136,7 @@ function Row({
             Some of its files cannot be copied (links or oversized files), so Habi will not import it.
           </span>
         ) : null}
-      </span>
+      </div>
       {/* One quiet control per row: the list is what is here, and what to do with it is a click away. */}
       <span className="mach-acts">
         {busy ? (
@@ -168,10 +194,11 @@ function Row({
   );
 }
 
-export function OnThisMachine() {
+export function OnThisMachine({ alwaysShow = false }: { alwaysShow?: boolean }) {
   const machine = useMachineSkills();
   const operations = useMachineHistory();
   const [history, setHistory] = useState(false);
+  const [query, setQuery] = useState("");
   const { navigate } = useNav();
   const { addSkills } = useActions();
   const client = useQueryClient();
@@ -185,7 +212,15 @@ export function OnThisMachine() {
 
   // A folder Habi cannot read is not worth a broken page: show nothing.
   const found = groupMachineSkills(machine.data ?? []);
-  if (found.length === 0 && !operations.data?.length && !operations.isError) return null;
+  const q = query.trim().toLowerCase();
+  const shown = found.filter(
+    (g) =>
+      !q ||
+      `${g.skill.name} ${g.skill.description} ${g.copies.find((s) => s.managed)?.managed?.library ?? ""}`
+        .toLowerCase()
+        .includes(q),
+  );
+  if (!alwaysShow && found.length === 0 && !operations.data?.length && !operations.isError) return null;
 
   /** Puts the skill in My skills if it is not there, then opens the dialog that chooses the project. */
   const bringToProject = async (group: MachineGroup) => {
@@ -224,23 +259,52 @@ export function OnThisMachine() {
   return (
     <section className="mach" aria-labelledby="on-this-machine">
       <header className="mach-head">
-        <p className="kicker" id="on-this-machine">
+        <h2 className="mach-heading" id="on-this-machine">
           On this machine
-        </p>
+          <span className="mach-total">{found.length}</span>
+        </h2>
         <Button size="sm" icon="history" onClick={() => setHistory(true)}>
           History and restore…
         </Button>
         <p className="mach-lead">
-          {plural(found.length, "skill")} in your own folders. Copy one into My skills or a project. Skills
-          Habi installed here can be updated, removed, or restored from history.
+          {plural(found.length, "skill")} in your own folders, available across projects. Highlighted agents
+          are the ones chosen for Habi installations; other skills show which agents can read them.
         </p>
       </header>
       {error ? <ErrorNotice error={error} /> : null}
+      {alwaysShow && machine.isPending ? <Working>Reading global skills…</Working> : null}
+      {alwaysShow && machine.isError ? (
+        <ErrorNotice error={machine.error} title="Could not read machine skills" />
+      ) : null}
       {operations.isError ? (
         <ErrorNotice error={operations.error} title="Could not load machine history" />
       ) : null}
+      {found.length > 0 ? (
+        <label className="mys-search mach-search">
+          <Icon name="search" size={14} />
+          <input
+            id="machine-skill-search"
+            type="search"
+            aria-label="Find a global skill"
+            placeholder="Find a global skill"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <span className="mys-kbd" aria-hidden="true">
+            /
+          </span>
+        </label>
+      ) : null}
+      {q && shown.length === 0 ? (
+        <p className="mys-empty">
+          No global skill matches “{query}”.{" "}
+          <button type="button" className="link-btn" onClick={() => setQuery("")}>
+            Clear search
+          </button>
+        </p>
+      ) : null}
       <ul className="mach-rows" aria-label="Skills on this machine">
-        {found.map((g) => (
+        {shown.map((g) => (
           <Row
             key={g.key}
             group={g}
@@ -252,6 +316,12 @@ export function OnThisMachine() {
           />
         ))}
       </ul>
+      {alwaysShow && found.length === 0 && !machine.isPending && !machine.isError ? (
+        <p className="mys-empty">
+          No global skills found. Use a skill’s <strong>On this machine</strong> action to review an
+          installation here. Previous changes remain in history.
+        </p>
+      ) : null}
 
       {warning ? (
         <Dialog
