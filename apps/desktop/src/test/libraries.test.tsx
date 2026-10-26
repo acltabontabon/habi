@@ -5,6 +5,7 @@ import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogEntry } from "../bindings/CatalogEntry";
 import type { LibraryIndex } from "../bindings/LibraryIndex";
+import type { MachineSkill } from "../bindings/MachineSkill";
 import type { RepoFacts } from "../bindings/RepoFacts";
 import type { Source } from "../bindings/Source";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
@@ -13,11 +14,13 @@ import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { setInspectorOpen } from "../lib/inspector";
 import { NavProvider, type Route, useNav } from "../lib/nav";
+import { invalidateSkills } from "../lib/queries";
 import { SourcesView } from "../views/sources/SourcesView";
 import catalogFixture from "./fixtures/catalog.json";
 import previewedEntry from "./fixtures/catalog-entry-previewed.json";
 import previewLibrary from "./fixtures/catalog-library-preview.json";
 import previewSource from "./fixtures/catalog-source-preview.json";
+import machineFixture from "./fixtures/machine-skills.json";
 
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
@@ -74,8 +77,10 @@ function Host() {
   );
 }
 
-function wrap(initial: Route = { name: "sources" }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function wrap(
+  initial: Route = { name: "sources" },
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
@@ -110,6 +115,10 @@ type World = {
   report?: UpdateReport | null;
   /** The report an update leaves behind. */
   afterUpdate?: UpdateReport;
+  machine?: MachineSkill[];
+  checkError?: boolean;
+  holdCheck?: boolean;
+  releaseCheck?: () => void;
 };
 
 /** A stand-in for the core: what the catalog says changes as libraries are previewed and connected. */
@@ -154,7 +163,14 @@ function world(initial: World) {
       case "source_updates":
         return state.update ? [state.update] : [];
       case "check_source_update":
+        if (state.holdCheck)
+          await new Promise<void>((resolve) => {
+            state.releaseCheck = resolve;
+          });
+        if (state.checkError) throw { code: "gitNetwork", message: "Network unavailable" };
         return state.update ?? null;
+      case "machine_skills":
+        return state.machine ?? [];
       case "refresh_source":
         if (state.update) state.update = { ...state.update, available: false };
         state.report = state.afterUpdate ?? null;
@@ -631,6 +647,56 @@ const changed: UpdateReport = {
 };
 
 describe("updating a library is the user's choice", () => {
+  it("checks on demand even within the automatic check interval, without refreshing", async () => {
+    const state = world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      update: { ...newer, available: false },
+      holdCheck: true,
+    });
+    wrap(inLibrary());
+    await userEvent.click(await screen.findByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByRole("button", { name: "Checking…" })).toBeDisabled();
+    await waitFor(() => expect(state.releaseCheck).toBeTypeOf("function"));
+    state.releaseCheck?.();
+    expect(await screen.findByText("Library is up to date")).toBeInTheDocument();
+    expect(calls("check_source_update")).toHaveLength(1);
+    expect(calls("refresh_source")).toHaveLength(0);
+
+    state.update = newer;
+    await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    state.releaseCheck?.();
+    expect(await screen.findByText("Update available")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Update" })).toBeInTheDocument();
+    expect(calls("refresh_source")).toHaveLength(0);
+  });
+
+  it("shows manual check failures, keeps the cached skills, and allows retry", async () => {
+    const state = world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      update: { ...newer, available: false },
+      checkError: true,
+    });
+    wrap(inLibrary());
+    await userEvent.click(await screen.findByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText("Could not check for updates — try again")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: /Skills in/ })).toBeInTheDocument();
+    state.checkError = false;
+    await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText("Library is up to date")).toBeInTheDocument();
+    expect(screen.queryByText("Could not check for updates — try again")).toBeNull();
+  });
+
+  it("refreshes a folder library directly without a remote update check", async () => {
+    world({ entry: entryConnected, sources: [{ ...sourceConnected, kind: "directory" }] });
+    wrap(inLibrary());
+    await userEvent.click(await screen.findByRole("button", { name: "Refresh library" }));
+    expect(await screen.findByText("Library refreshed")).toBeInTheDocument();
+    expect(calls("refresh_source")).toHaveLength(1);
+    expect(calls("check_source_update")).toHaveLength(0);
+  });
+
   it("offers a newer release, and moves nothing until asked", async () => {
     const user = userEvent.setup();
     world({ entry: entryConnected, sources: [sourceConnected], update: newer, afterUpdate: changed });
@@ -713,5 +779,83 @@ describe("updating a library is the user's choice", () => {
     wrap();
     const connected = await screen.findByRole("region", { name: /Connected/ });
     expect(await within(connected).findByText("v1.1.0 available")).toBeInTheDocument();
+  });
+});
+
+describe("machine installations in a library", () => {
+  const item = library.items.find((i) => i.id === "migrations");
+  if (!item) throw new Error("missing migrations fixture");
+  const managed = {
+    key: "remote#migrations",
+    library: "Acme",
+    libraryItemKey: item.key,
+    state: "current" as const,
+  };
+  const installed: MachineSkill = {
+    ...(machineFixture[0] as MachineSkill),
+    managed,
+  };
+
+  it("marks the installed skill in the index and reader, with its agents and management link", async () => {
+    world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      machine: [installed, { ...installed, id: "agents/migrations", readers: ["codex"] }],
+    });
+    wrap(inLibrary({ itemId: "migrations" }));
+    expect(await screen.findByText("Installed on this machine")).toBeInTheDocument();
+    const index = screen.getByRole("list", { name: /Skills in/ });
+    expect(within(index).getByRole("button", { name: /Migrations.*on this machine/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Available to .*Codex/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^More$/ }));
+    expect(await screen.findByRole("menuitem", { name: /Add for more agents/ })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Manage installation" }));
+    expect(await screen.findByText("elsewhere: skills")).toBeInTheDocument();
+  });
+
+  it("uses item identity, never a matching library or skill name", async () => {
+    world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      machine: [
+        { ...installed, managed: { ...managed, libraryItemKey: "other/migrations" } },
+        { ...installed, managed: null },
+      ],
+    });
+    wrap(inLibrary({ itemId: "migrations" }));
+    await screen.findByRole("heading", { name: "Migrations", level: 2 });
+    await waitFor(() => expect(calls("machine_skills")).toHaveLength(1));
+    expect(screen.queryByText("Installed on this machine")).toBeNull();
+    expect(screen.queryByText("on this machine")).toBeNull();
+  });
+
+  it("updates the marks after install or removal without reopening the library", async () => {
+    const state = world({ entry: entryConnected, sources: [sourceConnected] });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    wrap(inLibrary({ itemId: "migrations" }), client);
+    await screen.findByRole("heading", { name: "Migrations", level: 2 });
+    state.machine = [installed];
+    invalidateSkills(client);
+    expect(await screen.findByText("Installed on this machine")).toBeInTheDocument();
+    state.machine = [];
+    invalidateSkills(client);
+    await waitFor(() => expect(screen.queryByText("Installed on this machine")).toBeNull());
+    expect(screen.queryByText("on this machine")).toBeNull();
+  });
+
+  it("rechecks installation state after refreshing the library", async () => {
+    const state = world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      machine: [installed],
+      update: newer,
+    });
+    wrap(inLibrary({ itemId: "migrations" }));
+    await screen.findByText("Installed on this machine");
+    state.machine = [{ ...installed, managed: { ...managed, state: "updateAvailable" } }];
+    await userEvent.click(await screen.findByRole("button", { name: "Update" }));
+    expect(await screen.findByText("Update available")).toBeInTheDocument();
+    expect(calls("machine_skills").length).toBeGreaterThan(1);
   });
 });

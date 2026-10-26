@@ -87,6 +87,17 @@ fetches a copy; Habi tells you when something newer exists and updates it only w
 
 Next: [My skills](my-skills.md) (write and edit skills) or [Sharing](sharing.md) (send improvements back).
 
+### Check a library for updates
+
+Open a connected library and choose **Check for updates** above the skill reader. You can
+check again at any time, even if Habi checked recently. The button shows progress, then says
+whether an update is available or the library is up to date. If the check fails, the cached
+skills stay readable and you can try again.
+
+When an update is available, **Update** fetches the library's latest contents and shows what
+changed. Installed skills are updated separately through their reviewed plans. For a folder
+library, **Refresh library** reads its current contents directly.
+
 ### Focus the recommendations
 
 Below the search field, **Filter by module, library or agent** opens filters for a module,

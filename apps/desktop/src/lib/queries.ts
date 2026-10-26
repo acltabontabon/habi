@@ -273,6 +273,8 @@ export function useCheckRuns(projectId: string, itemKey: string) {
 
 /** After anything that may change recommendations, refresh the dependent views. */
 export function invalidateProjectData(client: QueryClient, projectId?: string) {
+  void client.invalidateQueries({ queryKey: keys.machineSkills });
+  void client.invalidateQueries({ queryKey: keys.skillsOverview });
   void client.invalidateQueries({ queryKey: keys.sources });
   void client.invalidateQueries({ queryKey: keys.catalog });
   void client.invalidateQueries({ queryKey: keys.sourceUpdates });

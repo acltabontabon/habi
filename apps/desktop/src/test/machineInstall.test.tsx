@@ -357,7 +357,7 @@ function managedSkill(state: NonNullable<MachineSkill["managed"]>["state"]) {
     importedAs: null,
     mentionsHome: [],
     inProjects: [],
-    managed: { key: "lib#liquibase", library: "Team library", state },
+    managed: { key: "lib#liquibase", library: "Team library", libraryItemKey: "lib/liquibase", state },
   };
   return skill;
 }

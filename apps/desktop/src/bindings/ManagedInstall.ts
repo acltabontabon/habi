@@ -12,4 +12,8 @@ key: string,
 /**
  * The library it came from.
  */
-library: string, state: InstallState, };
+library: string, 
+/**
+ * The connected library item's key, when its source is available.
+ */
+libraryItemKey: string | null, state: InstallState, };
