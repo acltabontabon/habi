@@ -231,10 +231,16 @@ function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
                   <Icon name="layers" /> <span>On this machine</span>
                 </Command.Item>
                 <Command.Item
-                  value="libraries browse connect discover community"
+                  value="your libraries connected manage updates"
                   onSelect={() => run(() => navigate({ name: "sources" }))}
                 >
-                  <Icon name="library" /> <span>Browse & connect libraries…</span>
+                  <Icon name="library" /> <span>Your libraries</span>
+                </Command.Item>
+                <Command.Item
+                  value="explore libraries browse connect discover catalog community builders"
+                  onSelect={() => run(() => navigate({ name: "sources", view: "explore" }))}
+                >
+                  <Icon name="library" /> <span>Explore libraries</span>
                 </Command.Item>
                 <Command.Item
                   value="connect git repository library team url"

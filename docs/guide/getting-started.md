@@ -50,11 +50,17 @@ show installed skills, faded lines show skills that fit but aren't installed yet
 
 ## Where libraries come from
 
-The **Libraries** page lists what is connected (your team's Git repositories and folders), what
-the community publishes, and what the builders of the tools publish. Connecting any of them
-fetches a copy; Habi tells you when something newer exists and updates it only when you say so.
+**Libraries** lists every library you have connected, one line each: your team's Git
+repositories and folders, and the public libraries you picked. Those that need you (an update
+waiting, offline, a failed fetch) come first. **Add a library** connects a Git repository, a
+folder, or one from the catalog.
 
-![The Libraries page: two connected libraries, team-skills and security-guild, beside the catalog's libraries from the community and from the builders of the tools.](../media/explore.jpg)
+**Explore** is the catalog: public libraries from the builders of the tools and from the
+community, filtered by either. Opening one shows what is inside before you connect it.
+Connecting fetches a copy; Habi tells you when something newer exists and updates it only when
+you say so.
+
+![Explore: the catalog's libraries from the builders of the tools and from the community, as cards, with a filter for each.](../media/explore.jpg)
 
 ## Your first project
 

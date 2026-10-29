@@ -34,7 +34,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const recent = useRecentProjects();
   const sources = useSources();
   const contributions = useContributions();
-  const overview = useSkillsOverview();
+  const skillsOverview = useSkillsOverview();
   const machine = useMachineSkills();
   const info = useAppInfo();
   const { state: update } = useUpdates();
@@ -42,6 +42,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const unseen = useNewVersionMark(version);
   const offered = update.phase === "available" || update.phase === "installing" || update.phase === "ready";
   const [allProjects, setAllProjects] = useState(false);
+  const [allLibraries, setAllLibraries] = useState(false);
   const client = useQueryClient();
   const toast = useToast();
 
@@ -50,7 +51,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   ).length;
   const hasSharing = (contributions.data ?? []).length > 0;
   // Skills whose library has a newer version, so they are seen without opening each page.
-  const draftUpdates = (overview.data ?? []).filter((s) => s.upstream === "changed").length;
+  const draftUpdates = (skillsOverview.data ?? []).filter((s) => s.upstream === "changed").length;
   const machineUpdates = groupMachineSkills(machine.data ?? []).filter(hasUpdate).length;
   const skillsArea =
     route.name === "skills" ? (route.tab === "machine" && !route.skillId ? "machine" : "collection") : null;
@@ -73,9 +74,16 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const community = libraries.filter((l) => l.role === "community");
   const dyes = useDyes();
   const activeLibrary = route.name === "sources" ? route.sourceId : undefined;
-  // Looking around (the overview, a catalog preview, connecting your own).
-  const connecting = route.name === "sources" && !route.sourceId;
+  // Your libraries, the overview; looking around is the catalog, a preview of one, or connecting your own.
+  const overview = route.name === "sources" && !route.sourceId && !route.view && !route.entry;
+  const connecting = route.name === "sources" && !route.sourceId && !overview;
   const openLibrary = (id: string) => navigate({ name: "sources", sourceId: id });
+  // As many as projects show; the one open stays in view, and the rest are a click away.
+  const LIBRARIES_SHOWN = 8;
+  const ordered = [...team, ...community];
+  const shownLibraries = allLibraries
+    ? ordered
+    : ordered.filter((s, i) => i < LIBRARIES_SHOWN || s.id === activeLibrary);
 
   return (
     <nav className="sidebar" aria-label="Habi">
@@ -227,7 +235,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           <button
             type="button"
             className="sidebar-heading-link"
-            aria-current={route.name === "sources" && !route.sourceId ? "page" : undefined}
+            aria-current={overview ? "page" : undefined}
             onClick={() => navigate({ name: "sources" })}
           >
             Libraries
@@ -237,7 +245,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
             "Explore libraries". Provenance is in each thread (stitched for
             community) and in the tooltip, not in headings. */}
         <ul className="sidebar-list sidebar-spine">
-          {[...team, ...community].map((s) => (
+          {shownLibraries.map((s) => (
             <LibraryItem
               key={s.id}
               source={s}
@@ -247,12 +255,29 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               onOpen={openLibrary}
             />
           ))}
+          {ordered.length > LIBRARIES_SHOWN ? (
+            <li>
+              <button
+                type="button"
+                className="sidebar-item sidebar-item-quiet"
+                aria-expanded={allLibraries}
+                onClick={() => setAllLibraries((v) => !v)}
+              >
+                <Icon name={allLibraries ? "chevronDown" : "chevronRight"} />
+                <span className="sidebar-item-text">
+                  {allLibraries ? "Show fewer libraries" : `Show all ${ordered.length} libraries`}
+                </span>
+              </button>
+            </li>
+          ) : null}
           <li>
             <button
               type="button"
               className={`sidebar-explore${connecting ? " is-here" : ""}`}
               aria-current={connecting ? "page" : undefined}
-              onClick={() => navigate({ name: "sources" })}
+              onClick={() =>
+                navigate(libraries.length === 0 ? { name: "sources" } : { name: "sources", view: "explore" })
+              }
             >
               <span className="sidebar-knot" aria-hidden="true" />
               <span className="sidebar-item-text">
