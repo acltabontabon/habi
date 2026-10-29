@@ -160,7 +160,6 @@ describe("applicability preview", () => {
     exists: true,
     lastOpenedAt: "2026-10-02T00:00:00Z",
     exclusions: [],
-    sample: false,
     summary: null,
   });
   const result = (applicability: "applies" | "doesNotApply" | "needsInformation", reason: string) => ({
@@ -389,8 +388,8 @@ describe("welcome", () => {
     expect(screen.queryByRole("button", { name: /Create a skill/ })).toBeNull();
     expect(screen.getByText("new skill")).toBeInTheDocument();
     expect(screen.getByText("read-only")).toBeInTheDocument();
-    // First run: the labeled sample workspace is the one alternative.
-    expect(screen.getByRole("button", { name: "try the sample workspace" })).toHaveClass("link-quiet");
+    // First run: connecting a library is the one alternative.
+    expect(screen.getByRole("button", { name: "connect a library" })).toHaveClass("link-quiet");
     const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });

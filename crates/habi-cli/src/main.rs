@@ -1804,7 +1804,7 @@ fn contribute_inner(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
             emit(ctx, &r, || {
                 if r.text.is_empty() {
                     println!(
-                        "No projects to check against (sample projects are not counted). Run `habi recommend -C <project>` or `habi install` in your projects first."
+                        "No projects to check against. Run `habi recommend -C <project>` or `habi install` in your projects first."
                     );
                 } else {
                     println!("{}", r.text);

@@ -184,9 +184,6 @@ pub struct Source {
     /// Integrity warnings such as a moved tag or rewritten history.
     pub warning: Option<String>,
     pub freshness: Freshness,
-    /// Part of the explicitly labeled sample workspace. Sample libraries are
-    /// matched only against sample projects.
-    pub sample: bool,
     /// Items (skills, workflows, instructions) in the cached snapshot; 0
     /// before the first fetch.
     pub skill_count: u32,
@@ -630,7 +627,6 @@ fn row_to_source(row: &Row) -> rusqlite::Result<Source> {
         last_attempt_at: attempt,
         last_error,
         warning: row.get("warning")?,
-        sample: row.get::<_, i64>("sample")? != 0,
         skill_count: row
             .get::<_, Option<i64>>("item_count")?
             .and_then(|n| u32::try_from(n).ok())
@@ -746,28 +742,22 @@ impl Sources {
         Ok(())
     }
 
-    /// Marks a library as part of the sample workspace.
-    pub(crate) fn mark_sample(&self, id: &str) -> Result<()> {
-        self.store
-            .conn()?
-            .execute("UPDATE sources SET sample = 1 WHERE id = ?1", [id])?;
-        Ok(())
-    }
-
-    /// Marks libraries stored under `dir` as sample libraries: the sample
-    /// workspace's own, created before libraries carried the flag.
-    pub(crate) fn mark_samples_under(&self, dir: &Path) -> Result<()> {
+    /// Libraries of the former sample workspace: flagged `sample`, or
+    /// stored under `dir` (created before libraries carried the flag).
+    pub(crate) fn sample_ids(&self, dir: &Path) -> Result<Vec<String>> {
         let conn = self.store.conn()?;
-        let mut stmt = conn.prepare("SELECT id, location FROM sources WHERE sample = 0")?;
-        let rows: Vec<(String, String)> = stmt
-            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        let mut stmt = conn.prepare("SELECT id, location, sample FROM sources")?;
+        let rows: Vec<(String, String, i64)> = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
             .collect::<rusqlite::Result<_>>()?;
-        for (id, location) in rows {
-            if is_local_location(&location) && Path::new(&location).starts_with(dir) {
-                self.mark_sample(&id)?;
-            }
-        }
-        Ok(())
+        Ok(rows
+            .into_iter()
+            .filter(|(_, location, sample)| {
+                *sample != 0
+                    || (is_local_location(location) && Path::new(location).starts_with(dir))
+            })
+            .map(|(id, _, _)| id)
+            .collect())
     }
 
     /// Records whether a library is the team's own or a community one.
@@ -1946,7 +1936,6 @@ mod tests {
             last_error: None,
             warning: None,
             freshness: Freshness::NeverFetched,
-            sample: false,
             skill_count: 0,
             preview: false,
             catalog_id: None,

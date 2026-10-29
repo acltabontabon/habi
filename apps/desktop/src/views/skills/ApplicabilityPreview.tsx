@@ -158,10 +158,7 @@ export function ProjectRow({ preview }: { preview: ProjectPreview }) {
         onClick={() => setOpen((o) => !o)}
       >
         <Status tone={applicabilityTone[result.applicability]}>{verdict[result.applicability]}</Status>
-        <span className="preview-project">
-          {project.name}
-          {project.sample ? <span className="sidebar-tag">sample</span> : null}
-        </span>
+        <span className="preview-project">{project.name}</span>
         <Icon name={open ? "chevronDown" : "chevronRight"} size={14} />
       </button>
       <p className="preview-reason">{result.reason}</p>

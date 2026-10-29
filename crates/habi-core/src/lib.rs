@@ -39,7 +39,7 @@ pub mod process;
 pub mod recommend;
 pub mod redact;
 pub mod review;
-pub mod sample;
+mod sample;
 pub mod service;
 pub mod skills;
 pub mod source;

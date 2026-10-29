@@ -53,7 +53,6 @@ import type { RefreshOutcome } from "../bindings/RefreshOutcome";
 import type { Rehearsal } from "../bindings/Rehearsal";
 import type { RepoFacts } from "../bindings/RepoFacts";
 import type { Resolution } from "../bindings/Resolution";
-import type { SampleWorkspace } from "../bindings/SampleWorkspace";
 import type { Settings } from "../bindings/Settings";
 import type { ShareForm } from "../bindings/ShareForm";
 import type { SkillDocument } from "../bindings/SkillDocument";
@@ -322,9 +321,6 @@ export const api = {
 
   diagnosticsPreview: () => call<DiagnosticBundle>("diagnostics_preview"),
   diagnosticsSave: () => call<string | null>("diagnostics_save"),
-  createSampleWorkspace: () => call<SampleWorkspace>("create_sample_workspace"),
-  /** Removes the sample libraries, the sample projects and their folder; nothing else. */
-  removeSampleWorkspace: () => call<void>("remove_sample_workspace"),
   /** Removes old operation records and library snapshots, and stored file versions nothing refers to. */
   freeUpSpace: () => call<PruneReport>("free_up_space"),
 };

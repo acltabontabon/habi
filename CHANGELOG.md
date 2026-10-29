@@ -7,6 +7,12 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Removed
+
+- **The sample workspace.** Habi no longer offers example libraries and projects; open one of
+  your own projects and connect a library instead. A sample workspace made by an earlier
+  version is removed on startup, with nothing of your own touched.
+
 ## 0.3.0 - 2026-10-26
 
 Find the skills already on your machine, check your libraries when you need to, and reach personal installs and recovery history more easily.

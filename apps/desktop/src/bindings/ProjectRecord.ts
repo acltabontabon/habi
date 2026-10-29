@@ -7,10 +7,6 @@ export type ProjectRecord = { id: string, name: string,
  */
 path: string, exists: boolean, lastOpenedAt: string, exclusions: Array<string>, 
 /**
- * Part of the explicitly labeled sample workspace.
- */
-sample: boolean, 
-/**
  * What fit when the project was last looked at; `None` until then.
  */
 summary: ProjectSummary | null, };

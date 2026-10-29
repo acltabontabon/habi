@@ -149,7 +149,6 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                   >
                     <ProjectMark name={p.name} languages={p.summary?.languages ?? []} />
                     <span className="sidebar-item-text">{p.name}</span>
-                    {p.sample ? <span className="sidebar-tag">sample</span> : null}
                     {!p.exists ? <span className="sidebar-tag">missing</span> : null}
                   </button>
                   {/* A missing folder cannot be opened, so its row is the only place to let it go;
@@ -376,7 +375,6 @@ function LibraryItem({
       >
         <Strand dye={dye} />
         <span className="sidebar-item-text">{source.name}</span>
-        {source.sample ? <span className="sidebar-tag">sample</span> : null}
         {fresh.tone !== "muted" ? (
           <span className={`sidebar-dot tone-${fresh.tone}`}>
             <span className="visually-hidden">{fresh.text}</span>

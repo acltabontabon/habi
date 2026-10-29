@@ -778,11 +778,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
     act("rehearse", async () => {
       const r = await api.contributionRehearsal(id, newJobId());
       if (!r.text) {
-        setRehearsalNote(
-          r.samplesSkipped > 0
-            ? "Only sample projects are open, and they are not counted. Open your own projects to check against them."
-            : "No projects are open in Habi yet, so there is nothing to check against.",
-        );
+        setRehearsalNote("No projects are open in Habi yet, so there is nothing to check against.");
         return;
       }
       const marker = r.text.split("\n")[0] ?? "";
@@ -791,9 +787,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         : message.trimEnd();
       setMessage(without ? `${without}\n\n${r.text}` : r.text);
       setRehearsalNote(
-        `Added from ${plural(r.projects, "project")}${
-          r.samplesSkipped > 0 ? ` (${r.samplesSkipped} sample projects not counted)` : ""
-        }. Edit or remove it before preparing the branch.`,
+        `Added from ${plural(r.projects, "project")}. Edit or remove it before preparing the branch.`,
       );
     });
 

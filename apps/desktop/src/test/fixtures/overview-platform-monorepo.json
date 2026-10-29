@@ -6,7 +6,6 @@
     "exists": true,
     "lastOpenedAt": "2026-10-04T13:45:13Z",
     "exclusions": [],
-    "sample": false,
     "summary": {
       "fits": 7,
       "needsInformation": 0,
@@ -3396,7 +3395,6 @@
       "lastError": null,
       "warning": null,
       "freshness": "current",
-      "sample": false,
       "skillCount": 10,
       "preview": false,
       "catalogId": null,

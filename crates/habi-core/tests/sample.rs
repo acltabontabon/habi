@@ -1,4 +1,5 @@
-//! The sample workspace is real, local and clearly labeled.
+//! The sample workspace earlier versions could create is removed on startup,
+//! and nothing of the user's goes with it.
 
 mod common;
 
@@ -8,154 +9,88 @@ use habi_core::service::Habi;
 use habi_core::source::{NewSource, TrackedRef};
 use habi_core::store::AppPaths;
 
-#[test]
-fn sample_workspace_is_created_labeled_and_recreatable() {
-    let home = tempfile::tempdir().unwrap();
-    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
-    let sample = habi_core::sample::create(&habi, &fixture("")).unwrap();
-    assert_eq!(
-        sample.sources[0].name,
-        habi_core::sample::SAMPLE_SOURCE_NAME
-    );
-    assert_eq!(sample.sources.len(), 2);
-    assert_eq!(sample.projects.len(), 7);
-    assert!(
-        sample.projects.iter().all(|p| p.sample),
-        "sample projects are labeled"
-    );
-    let overview = habi
-        .overview(&sample.projects[0].id, true, &CancelToken::new())
-        .unwrap();
-    assert!(!overview.recommendations.is_empty());
-
-    // Recreating replaces the previous sample without touching anything else.
-    let again = habi_core::sample::create(&habi, &fixture("")).unwrap();
-    assert_eq!(habi.sources().list().unwrap().len(), 2);
-    assert_ne!(again.sources[0].id, sample.sources[0].id);
-    assert!(again.sources.iter().all(|s| s.sample), "flagged as sample");
-}
-
-/// A Habi home with the sample workspace, one library of the user's (named
-/// like the sample's) and one project of the user's.
-struct Workspace {
-    _dirs: Vec<tempfile::TempDir>,
-    habi: Habi,
-    own_library: String,
-    own_project: String,
-}
-
-fn workspace() -> Workspace {
-    let home = tempfile::tempdir().unwrap();
-    let lib = tempfile::tempdir().unwrap();
-    let proj = tempfile::tempdir().unwrap();
-    copy_tree(&fixture("libraries/example-team-library"), lib.path());
-    copy_tree(&fixture("repos/billing-service"), proj.path());
-    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
-    let own = habi
+fn library(habi: &Habi, name: &str, location: &std::path::Path) -> String {
+    let source = habi
         .sources()
         .add(&NewSource {
-            name: habi_core::sample::SAMPLE_SOURCE_NAME.into(),
-            location: lib.path().to_string_lossy().into(),
+            name: name.into(),
+            location: location.to_string_lossy().into(),
             subdir: None,
             tracked: TrackedRef::Default,
         })
         .unwrap();
     habi.sources()
-        .refresh(&own.id, &CancelToken::new())
+        .refresh(&source.id, &CancelToken::new())
         .unwrap();
-    let project = habi.open_project(proj.path()).unwrap();
-    habi_core::sample::create(&habi, &fixture("")).unwrap();
-    Workspace {
-        _dirs: vec![home, lib, proj],
-        habi,
-        own_library: own.id,
-        own_project: project.id,
-    }
+    source.id
 }
 
 #[test]
-fn sample_libraries_stay_out_of_the_users_projects() {
-    let w = workspace();
-    let samples: Vec<String> = w
-        .habi
-        .sources()
-        .list()
-        .unwrap()
-        .into_iter()
-        .filter(|s| s.sample)
-        .map(|s| s.id)
-        .collect();
-    assert_eq!(samples.len(), 2);
-    assert!(
-        !samples.contains(&w.own_library),
-        "a shared name is not a flag"
-    );
+fn a_leftover_sample_workspace_is_removed_and_the_users_data_kept() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    copy_tree(&fixture("libraries/example-team-library"), lib.path());
+    copy_tree(&fixture("repos/billing-service"), proj.path());
+    let paths = AppPaths::at(home.path().to_path_buf());
+    let (own_library, own_project) = {
+        let habi = Habi::open(paths.clone()).unwrap();
+        // The user's own library, named like the sample's, and project.
+        let own_library = library(&habi, "Sample team library", lib.path());
+        let own_project = habi.open_project(proj.path()).unwrap().id;
 
-    let own = w
-        .habi
-        .overview(&w.own_project, true, &CancelToken::new())
-        .unwrap();
-    assert!(!own.recommendations.is_empty());
-    assert!(
-        own.recommendations
-            .iter()
-            .all(|r| !samples.contains(&r.item.source_id)),
-        "no sample items in the user's project"
-    );
-    assert!(own.sources.iter().all(|s| !s.sample));
+        // What the sample workspace left under `<data>/sample`: a flagged
+        // library, one from before the flag, and a sample project.
+        let sample = home.path().join("sample");
+        copy_tree(
+            &fixture("libraries/example-team-library"),
+            &sample.join("team-library"),
+        );
+        copy_tree(
+            &fixture("libraries/security-guild-library"),
+            &sample.join("security-library"),
+        );
+        copy_tree(
+            &fixture("repos/orders-api"),
+            &sample.join("projects/orders-api"),
+        );
+        let flagged = library(
+            &habi,
+            "Sample team library (sample)",
+            &sample.join("team-library"),
+        );
+        habi.store
+            .conn()
+            .unwrap()
+            .execute("UPDATE sources SET sample = 1 WHERE id = ?1", [&flagged])
+            .unwrap();
+        library(
+            &habi,
+            "Sample security library",
+            &sample.join("security-library"),
+        );
+        habi.open_project(&sample.join("projects/orders-api"))
+            .unwrap();
+        assert_eq!(habi.sources().list().unwrap().len(), 3);
+        assert_eq!(habi.recent_projects().unwrap().len(), 2);
+        (own_library, own_project)
+    };
 
-    let sample_project = w
-        .habi
-        .recent_projects()
-        .unwrap()
-        .into_iter()
-        .find(|p| p.sample)
-        .unwrap();
-    let sample = w
-        .habi
-        .overview(&sample_project.id, true, &CancelToken::new())
-        .unwrap();
-    assert!(
-        sample
-            .recommendations
-            .iter()
-            .any(|r| samples.contains(&r.item.source_id))
-    );
-}
-
-#[test]
-fn removing_the_sample_workspace_keeps_the_users_own_data() {
-    let w = workspace();
-    habi_core::sample::remove(&w.habi).unwrap();
-    let sources = w.habi.sources().list().unwrap();
-    assert_eq!(sources.len(), 1);
-    assert_eq!(sources[0].id, w.own_library);
-    let projects = w.habi.recent_projects().unwrap();
+    let habi = Habi::open(paths.clone()).unwrap();
+    let sources = habi.sources().list().unwrap();
+    assert_eq!(sources.len(), 1, "a shared name is not a sample");
+    assert_eq!(sources[0].id, own_library);
+    let projects = habi.recent_projects().unwrap();
     assert_eq!(projects.len(), 1);
-    assert_eq!(projects[0].id, w.own_project);
-    assert!(!w.habi.paths.root.join("sample").exists());
-    // Removing again is a no-op; creating again works.
-    habi_core::sample::remove(&w.habi).unwrap();
-    habi_core::sample::create(&w.habi, &fixture("")).unwrap();
-}
+    assert_eq!(projects[0].id, own_project);
+    assert!(!home.path().join("sample").exists());
+    assert!(
+        lib.path().read_dir().unwrap().next().is_some(),
+        "the user's library folder is untouched"
+    );
 
-#[test]
-fn sample_libraries_from_before_the_flag_are_recognized() {
-    let w = workspace();
-    w.habi
-        .store
-        .conn()
-        .unwrap()
-        .execute("UPDATE sources SET sample = 0", [])
-        .unwrap();
-    let reopened = Habi::open(w.habi.paths.clone()).unwrap();
-    let flagged: Vec<_> = reopened
-        .sources()
-        .list()
-        .unwrap()
-        .into_iter()
-        .filter(|s| s.sample)
-        .collect();
-    assert_eq!(flagged.len(), 2);
-    assert!(flagged.iter().all(|s| s.id != w.own_library));
+    // Opening again is a no-op.
+    let again = Habi::open(paths).unwrap();
+    assert_eq!(again.sources().list().unwrap().len(), 1);
+    assert_eq!(again.recent_projects().unwrap().len(), 1);
 }

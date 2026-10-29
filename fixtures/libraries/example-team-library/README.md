@@ -1,7 +1,7 @@
 # Example team library
 
-A fictitious engineering team's shared skills, used by Habi's tests, the
-acceptance scenario and the sample workspace. It contains no real company
+A fictitious engineering team's shared skills, used by Habi's tests and
+the acceptance scenario. It contains no real company
 information.
 
 - `skills/*/SKILL.md` — standard Agent Skills, usable without Habi.

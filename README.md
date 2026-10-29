@@ -111,8 +111,7 @@ limitations are in the [security model](docs/project/security-model.md#known-lim
 
 ## Documentation
 
-[Getting started](docs/guide/getting-started.md) walks you through the sample workspace and
-your first project. Read the docs on the site at [acltabontabon.com/habi/docs](https://acltabontabon.com/habi/docs/), or
+[Getting started](docs/guide/getting-started.md) walks you through your first project. Read the docs on the site at [acltabontabon.com/habi/docs](https://acltabontabon.com/habi/docs/), or
 here in [`docs/`](docs/README.md); both are the same pages.
 
 <table>
