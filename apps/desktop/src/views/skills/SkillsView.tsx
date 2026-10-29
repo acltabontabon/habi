@@ -1,12 +1,14 @@
 /**
- * My skills: the knowledge this person keeps — written here or brought in
- * and made their own — as an index rather than a wall of cards. Each row
+ * Skills, one page per sidebar item. My skills: the knowledge this
+ * person keeps — written here or brought in and made their own — as an index
+ * rather than a wall of cards. Each row
  * says what the skill is for, its thread (where it came from, in its
  * library's dye, and whether it was changed here), and one word for where it
  * stands: Ready, or Draft and what is missing. Quiet facets narrow the list;
  * "/" searches; ↑/↓ or j/k move and Enter opens. Grouped by when it was last
  * touched, or by letter when sorted by title, so three skills and three
- * hundred both read well.
+ * hundred both read well. On this machine: the agents' own skill folders
+ * (see OnThisMachine).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { Fragment, type KeyboardEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -21,16 +23,8 @@ import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import { type Dye, dyeMap } from "../../lib/dye";
 import { plural, relativeTime } from "../../lib/format";
-import { groupMachineSkills } from "../../lib/machine";
 import { useNav } from "../../lib/nav";
-import {
-  invalidateSkills,
-  useMachineHistory,
-  useMachineSkills,
-  useSkills,
-  useSkillsOverview,
-  useSources,
-} from "../../lib/queries";
+import { invalidateSkills, useSkills, useSkillsOverview, useSources } from "../../lib/queries";
 import { purpose } from "../../lib/skills";
 import { OnThisMachine } from "./OnThisMachine";
 import { ShareSkillDialog } from "./ShareSkillDialog";
@@ -227,16 +221,11 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
   const skills = useSkills();
   const overview = useSkillsOverview(!skillId);
   const sources = useSources();
-  const machine = useMachineSkills();
-  const machineHistory = useMachineHistory();
-  const [area, setArea] = useState<"collection" | "machine" | null>(tab ?? null);
+  const area = tab ?? "collection";
   const { navigate } = useNav();
   const { newSkill, addSkills } = useActions();
   const client = useQueryClient();
   const toast = useToast();
-  useEffect(() => {
-    if (tab && !skillId) setArea(tab);
-  }, [tab, skillId]);
   const [query, setQuery] = useState("");
   const [facet, setFacet] = useState<Facet>("all");
   const [sort, setSort] = useState<Sort>("recent");
@@ -253,12 +242,6 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
 
   const all = skills.data ?? [];
   const live = useMemo(() => all.filter((s) => s.deletedAt === null), [all]);
-  const machineCount = groupMachineSkills(machine.data ?? []).length;
-  const activeArea =
-    area ??
-    (live.length === 0 && (machineCount > 0 || (machineHistory.data?.length ?? 0) > 0)
-      ? "machine"
-      : "collection");
   const trash = all.filter((s) => s.deletedAt !== null);
   const standing = useMemo(() => new Map((overview.data ?? []).map((s) => [s.skillId, s])), [overview.data]);
   const dyes = useMemo(() => {
@@ -325,17 +308,24 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
       if (e.key !== "/" || e.metaKey || e.ctrlKey || t?.closest("input, textarea, [contenteditable]")) return;
       if (document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
-      (activeArea === "machine" ? document.getElementById("machine-skill-search") : search.current)?.focus();
+      (area === "machine" ? document.getElementById("machine-skill-search") : search.current)?.focus();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [skillId, activeArea]);
+  }, [skillId, area]);
 
   if (skillId) {
     return (
       <Suspense fallback={<Working>Opening the skill…</Working>}>
         <SkillStudio key={skillId} id={skillId} />
       </Suspense>
+    );
+  }
+  if (area === "machine") {
+    return (
+      <div className="page mys">
+        <OnThisMachine page />
+      </div>
     );
   }
   if (skills.isPending) return <Working>Loading your skills…</Working>;
@@ -383,7 +373,6 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
 
   const moveToTrash = async (s: LocalSkillSummary) => {
     setError(null);
-    setArea("collection");
     setRefocus({ id: s.id, from: "list", at: shown.indexOf(s) });
     try {
       await api.trashSkill(s.id);
@@ -476,21 +465,6 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
       </section>
     ) : null;
 
-  const onAreaKey = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-    e.preventDefault();
-    const next =
-      e.key === "Home"
-        ? "collection"
-        : e.key === "End"
-          ? "machine"
-          : activeArea === "collection"
-            ? "machine"
-            : "collection";
-    setArea(next);
-    document.getElementById(`${next}-tab`)?.focus();
-  };
-
   // Landmarks: letters when sorted by title, time when sorted by edit.
   let previous: string | null = null;
   const groupOf = (s: LocalSkillSummary) => (sort === "title" ? initial(s.title) : when(s.updatedAt));
@@ -501,7 +475,7 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
         <div className="mys-intro">
           <h1 className="page-title">My skills</h1>
           <p className="mys-lead">Your skills, from first draft to everyday use.</p>
-          {live.length > 0 && activeArea === "collection" ? <Composition skills={live} dyes={dyes} /> : null}
+          {live.length > 0 ? <Composition skills={live} dyes={dyes} /> : null}
         </div>
         <div className="mys-actions">
           <Button icon="plus" onClick={() => addSkills()}>
@@ -514,156 +488,115 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
       </header>
       {error ? <ErrorNotice error={error} /> : null}
 
-      <div className="mys-areas" role="tablist" aria-label="Skill collections">
-        <button
-          type="button"
-          role="tab"
-          id="collection-tab"
-          aria-controls="collection-panel"
-          aria-selected={activeArea === "collection"}
-          tabIndex={activeArea === "collection" ? 0 : -1}
-          onClick={() => setArea("collection")}
-          onKeyDown={onAreaKey}
-        >
-          <Icon name="pencil" /> Drafts &amp; copies <span>{live.length}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="machine-tab"
-          aria-controls="machine-panel"
-          aria-selected={activeArea === "machine"}
-          tabIndex={activeArea === "machine" ? 0 : -1}
-          onClick={() => setArea("machine")}
-          onKeyDown={onAreaKey}
-        >
-          <Icon name="layers" /> On this machine <span>{machine.isPending ? "…" : machineCount}</span>
-        </button>
-      </div>
-      <section
-        role="tabpanel"
-        id="collection-panel"
-        aria-labelledby="collection-tab"
-        hidden={activeArea !== "collection"}
-      >
-        {live.length === 0 ? (
-          <SkillsEmpty />
-        ) : (
-          <>
-            <div className="mys-tools">
-              <label className="mys-search">
-                <Icon name="search" size={14} />
-                <input
-                  ref={search}
-                  type="search"
-                  aria-label="Find a skill"
-                  value={query}
-                  placeholder="Find a skill"
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      rows()[0]?.focus();
-                    } else if (e.key === "Escape" && query) {
-                      e.preventDefault();
-                      setQuery("");
-                    }
-                  }}
-                />
-                <span className="mys-kbd" aria-hidden="true">
-                  /
-                </span>
-              </label>
-              <fieldset className="mys-facets">
-                <legend className="visually-hidden">Show</legend>
-                {FACETS.filter((f) => f.id === "all" || counts[f.id] > 0 || facet === f.id).map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    aria-pressed={facet === f.id}
-                    className={facet === f.id ? "is-on" : undefined}
-                    onClick={() => setFacet(f.id)}
-                  >
-                    {f.label}
-                    <span className="mys-count">{counts[f.id]}</span>
-                  </button>
-                ))}
-              </fieldset>
-              <fieldset className="studio-switch mys-sort">
-                <legend className="visually-hidden">Order</legend>
-                <button
-                  type="button"
-                  aria-pressed={sort === "recent"}
-                  className={sort === "recent" ? "is-on" : undefined}
-                  onClick={() => setSort("recent")}
-                >
-                  Recent
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={sort === "title"}
-                  className={sort === "title" ? "is-on" : undefined}
-                  onClick={() => setSort("title")}
-                >
-                  A–Z
-                </button>
-              </fieldset>
-            </div>
-
-            {shown.length === 0 ? (
-              <p className="mys-empty">
-                No skill matches{query ? ` “${query}”` : ""}.{" "}
-                <button
-                  type="button"
-                  className="link-btn"
-                  onClick={() => {
+      {live.length === 0 ? (
+        <SkillsEmpty />
+      ) : (
+        <>
+          <div className="mys-tools">
+            <label className="mys-search">
+              <Icon name="search" size={14} />
+              <input
+                ref={search}
+                type="search"
+                aria-label="Find a skill"
+                value={query}
+                placeholder="Find a skill"
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    rows()[0]?.focus();
+                  } else if (e.key === "Escape" && query) {
+                    e.preventDefault();
                     setQuery("");
-                    setFacet("all");
-                  }}
+                  }
+                }}
+              />
+              <span className="mys-kbd" aria-hidden="true">
+                /
+              </span>
+            </label>
+            <fieldset className="mys-facets">
+              <legend className="visually-hidden">Show</legend>
+              {FACETS.filter((f) => f.id === "all" || counts[f.id] > 0 || facet === f.id).map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={facet === f.id}
+                  className={facet === f.id ? "is-on" : undefined}
+                  onClick={() => setFacet(f.id)}
                 >
-                  Show all
+                  {f.label}
+                  <span className="mys-count">{counts[f.id]}</span>
                 </button>
-              </p>
-            ) : null}
-            <ol className="mys-rows" ref={list} aria-label="Skills">
-              {shown.map((s) => {
-                const group = groupOf(s);
-                const fresh = group !== previous;
-                previous = group;
-                return (
-                  <Fragment key={s.id}>
-                    {fresh && sort === "recent" && !query ? (
-                      <li className="mys-group" aria-hidden="true">
-                        <span className="kicker">{group}</span>
-                      </li>
-                    ) : null}
-                    <Row
-                      s={s}
-                      standing={standing.get(s.id)}
-                      letter={sort === "title" && fresh && !query ? group : null}
-                      onOpen={() => navigate({ name: "skills", skillId: s.id })}
-                      onKeyDown={onRowKey}
-                      onUse={() => void use(s.id)}
-                      onShare={() => void share(s.id)}
-                      onExport={() => void exportZip(s.id)}
-                      onTrash={() => void moveToTrash(s)}
-                    />
-                  </Fragment>
-                );
-              })}
-            </ol>
-          </>
-        )}
-        {trashSection}
-      </section>
-      <section
-        role="tabpanel"
-        id="machine-panel"
-        aria-labelledby="machine-tab"
-        hidden={activeArea !== "machine"}
-      >
-        <OnThisMachine alwaysShow />
-      </section>
+              ))}
+            </fieldset>
+            <fieldset className="studio-switch mys-sort">
+              <legend className="visually-hidden">Order</legend>
+              <button
+                type="button"
+                aria-pressed={sort === "recent"}
+                className={sort === "recent" ? "is-on" : undefined}
+                onClick={() => setSort("recent")}
+              >
+                Recent
+              </button>
+              <button
+                type="button"
+                aria-pressed={sort === "title"}
+                className={sort === "title" ? "is-on" : undefined}
+                onClick={() => setSort("title")}
+              >
+                A–Z
+              </button>
+            </fieldset>
+          </div>
+
+          {shown.length === 0 ? (
+            <p className="mys-empty">
+              No skill matches{query ? ` “${query}”` : ""}.{" "}
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  setQuery("");
+                  setFacet("all");
+                }}
+              >
+                Show all
+              </button>
+            </p>
+          ) : null}
+          <ol className="mys-rows" ref={list} aria-label="Skills">
+            {shown.map((s) => {
+              const group = groupOf(s);
+              const fresh = group !== previous;
+              previous = group;
+              return (
+                <Fragment key={s.id}>
+                  {fresh && sort === "recent" && !query ? (
+                    <li className="mys-group" aria-hidden="true">
+                      <span className="kicker">{group}</span>
+                    </li>
+                  ) : null}
+                  <Row
+                    s={s}
+                    standing={standing.get(s.id)}
+                    letter={sort === "title" && fresh && !query ? group : null}
+                    onOpen={() => navigate({ name: "skills", skillId: s.id })}
+                    onKeyDown={onRowKey}
+                    onUse={() => void use(s.id)}
+                    onShare={() => void share(s.id)}
+                    onExport={() => void exportZip(s.id)}
+                    onTrash={() => void moveToTrash(s)}
+                  />
+                </Fragment>
+              );
+            })}
+          </ol>
+        </>
+      )}
+      {trashSection}
       {sharing ? (
         <ShareSkillDialog
           skill={sharing}

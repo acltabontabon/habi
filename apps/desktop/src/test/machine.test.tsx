@@ -387,7 +387,7 @@ describe("On this machine", () => {
 });
 
 describe("My skills page", () => {
-  it("opens machine management directly even when drafts exist", async () => {
+  it("opens machine management as its own page even when drafts exist", async () => {
     machine = [machineSkill()];
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return machine;
@@ -395,16 +395,41 @@ describe("My skills page", () => {
       return [];
     });
     wrap(<SkillsView tab="machine" />);
-    expect(await screen.findByRole("tab", { name: /On this machine/ })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(await screen.findByRole("heading", { level: 1, name: "On this machine" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).toBeNull();
     expect(await screen.findByRole("list", { name: "Skills on this machine" })).toBeVisible();
     await userEvent.type(screen.getByRole("searchbox", { name: "Find a global skill" }), "absent");
     const globals = screen.getByRole("list", { name: "Skills on this machine" });
     expect(within(globals).queryByText("alpha")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
     expect(within(globals).getByText("alpha")).toBeVisible();
+  });
+
+  it("lists skills with a newer version first, and can show only those", async () => {
+    const managed = (state: "current" | "updateAvailable") => ({
+      key: `lib#${state}`,
+      library: "Team library",
+      libraryItemKey: null,
+      clients: ["claude-code" as const],
+      state,
+    });
+    machine = [
+      machineSkill({ id: "m-alpha", name: "alpha", managed: managed("current") }),
+      machineSkill({ id: "m-beta", name: "beta", digest: "beta", managed: managed("updateAvailable") }),
+    ];
+    wrap(<SkillsView tab="machine" />);
+    const globals = await screen.findByRole("list", { name: "Skills on this machine" });
+    const names = () =>
+      within(globals)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent ?? "");
+    await waitFor(() => expect(names()).toHaveLength(2));
+    expect(names()[0]).toMatch(/^beta/);
+    await userEvent.click(screen.getByRole("button", { name: /^Updates/ }));
+    expect(names()).toHaveLength(1);
+    expect(names()[0]).toMatch(/update available/);
+    await userEvent.click(screen.getByRole("button", { name: /^All/ }));
+    expect(names()).toHaveLength(2);
   });
 
   it("does not light a selected agent whose readable copy is missing", () => {
@@ -420,44 +445,11 @@ describe("My skills page", () => {
     expect(installedClients([copy])).toEqual(["claude-code"]);
   });
 
-  it("shows the section even before the person has any skills of their own", async () => {
+  it("opens My skills by default, with the creation guide when there are no drafts", async () => {
     machine = [machineSkill()];
     wrap(<SkillsView />);
-    expect(await screen.findByRole("tab", { name: /On this machine/ })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.queryByRole("button", { name: /Create a skill/ })).toBeNull();
-    expect(screen.getByRole("list", { name: "Skills on this machine" })).toHaveTextContent("alpha");
-  });
-
-  it("keeps both collections directly reachable with keyboard tabs", async () => {
-    machine = [machineSkill()];
-    const own = localSkill().summary;
-    invoke.mockImplementation(async (cmd: string) => {
-      if (cmd === "machine_skills") return machine;
-      if (cmd === "list_skills") return [own];
-      if (
-        cmd === "machine_history" ||
-        cmd === "skills_overview" ||
-        cmd === "list_sources" ||
-        cmd === "recent_projects"
-      )
-        return [];
-      throw { code: "notFound", message: `no mock for ${cmd}` };
-    });
-    wrap(<SkillsView />);
-    const mine = await screen.findByRole("list", { name: "Skills" });
-    expect(mine).toBeVisible();
-    const tab = await screen.findByRole("tab", { name: /Drafts & copies/ });
-    tab.focus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: /On this machine/ })).toHaveFocus();
-    expect(screen.getByRole("list", { name: "Skills on this machine" })).toBeVisible();
-    expect(mine).not.toBeVisible();
-    await userEvent.keyboard("{Home}");
-    expect(tab).toHaveFocus();
-    expect(mine).toBeVisible();
+    expect(await screen.findByRole("heading", { level: 1, name: "My skills" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Skills on this machine" })).toBeNull();
   });
 });
 
@@ -469,7 +461,6 @@ describe("the project page", () => {
     exists: true,
     lastOpenedAt: "2026-10-02T00:00:00Z",
     exclusions: [],
-    sample: false,
     summary: null,
   };
   const found = (path: string) => ({

@@ -18,10 +18,8 @@ import { NavProvider, type Route, useNav } from "../lib/nav";
 import { useOverview } from "../lib/queries";
 import { initTheme } from "../lib/theme";
 import { flushAutosaves, useAutosave } from "../lib/useAutosave";
-import { CommandPalette } from "../views/CommandPalette";
 import { History } from "../views/project/History";
 import { ProjectSettings } from "../views/project/ProjectSettings";
-import { ProjectView } from "../views/project/ProjectView";
 import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
 import { SkillStudio } from "../views/skills/studio/SkillStudio";
@@ -460,7 +458,6 @@ const project = {
   exists: true,
   lastOpenedAt: "2026-10-01T00:00:00Z",
   exclusions: [],
-  sample: false,
   summary: null,
 } satisfies ProjectRecord;
 
@@ -481,7 +478,6 @@ function library(overrides: Partial<Source> = {}): Source {
     lastError: null,
     warning: null,
     freshness: "current",
-    sample: false,
     skillCount: 12,
     preview: false,
     catalogId: null,
@@ -505,7 +501,7 @@ describe("the start screen", () => {
     expect(screen.getByTitle("Team skills · team · 12 skills")).toBeInTheDocument();
     expect(invoke.mock.calls.some(([cmd]) => cmd === "library")).toBe(false);
     // With projects, the first-run choices step aside.
-    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "connect a library" })).toBeNull();
   });
 
   it("waits for the projects instead of flashing the first-run screen", async () => {
@@ -513,11 +509,11 @@ describe("the start screen", () => {
     handlers.recent_projects = () => new Promise((resolve) => (answer = resolve));
     wrap(<Welcome />);
     expect(screen.getByText("Loading your projects…")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "connect a library" })).toBeNull();
 
     await act(async () => answer([project]));
     expect(await screen.findByText("billing-service")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "connect a library" })).toBeNull();
   });
 
   it("says when the projects cannot be listed, and tries again", async () => {
@@ -528,7 +524,7 @@ describe("the start screen", () => {
     };
     wrap(<Welcome />);
     expect(await screen.findByText("Habi could not list your projects")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "try the sample workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "connect a library" })).toBeNull();
     fail = false;
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("billing-service")).toBeInTheDocument();
@@ -574,56 +570,6 @@ describe("the project list", () => {
     expect(handlers.forget_project).toHaveBeenCalledWith({ projectId: billing.project.id });
     expect(await screen.findByText(/removed from Habi. Nothing on disk/)).toBeInTheDocument();
     expect(screen.getByText("on welcome")).toBeInTheDocument();
-  });
-});
-
-describe("the sample workspace", () => {
-  function Where() {
-    const { route } = useNav();
-    return <p>on {route.name}</p>;
-  }
-
-  it("is labeled in its projects, and removed only after confirming", async () => {
-    const sampleProject = { ...billing.project, sample: true };
-    handlers.project_overview = () => ({ ...billing, project: sampleProject });
-    handlers.watch_project = () => null;
-    handlers.unwatch_project = () => null;
-    handlers.remove_sample_workspace = vi.fn(() => null);
-    wrap(
-      <>
-        <ProjectView projectId={sampleProject.id} tab="recommendations" />
-        <Where />
-      </>,
-      { name: "project", projectId: sampleProject.id, tab: "recommendations" },
-    );
-    expect(await screen.findByText("You're looking at sample data.")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Remove sample workspace" }));
-    const dialog = screen.getByRole("dialog", { name: "Remove the sample workspace?" });
-    expect(dialog).toHaveAccessibleDescription(/Your own projects, libraries and skills are not touched/);
-    expect(handlers.remove_sample_workspace).not.toHaveBeenCalled();
-
-    await userEvent.click(within(dialog).getByRole("button", { name: "Remove sample workspace" }));
-    expect(handlers.remove_sample_workspace).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText(/Sample workspace removed/)).toBeInTheDocument();
-    expect(screen.getByText("on welcome")).toBeInTheDocument();
-  });
-
-  it("is offered in the palette, and its removal only while it exists", async () => {
-    Element.prototype.scrollIntoView = () => {};
-    globalThis.ResizeObserver ??= class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    };
-    const view = wrap(<CommandPalette open onOpenChange={() => {}} />);
-    expect(await screen.findByRole("option", { name: "Try the sample workspace" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Remove sample workspace…" })).toBeNull();
-    view.unmount();
-
-    handlers.list_sources = () => [library({ sample: true })];
-    wrap(<CommandPalette open onOpenChange={() => {}} />);
-    expect(await screen.findByRole("option", { name: "Remove sample workspace…" })).toBeInTheDocument();
   });
 });
 
@@ -674,8 +620,6 @@ describe("free up space", () => {
         "Removed 2 old library snapshots and 12 stored file versions, freed 3.4 MB. 1 project or library was in use and skipped; try again later.",
       ),
     ).toBeInTheDocument();
-    // Without a sample workspace, there is nothing to remove.
-    expect(screen.queryByRole("button", { name: "Remove sample workspace…" })).toBeNull();
   });
 });
 

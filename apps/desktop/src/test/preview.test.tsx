@@ -42,7 +42,7 @@ it("opens machine history and previews restore through the real preview bridge",
   const user = userEvent.setup();
   render(<App />);
   await user.click(await screen.findByRole("button", { name: "Get started" }));
-  await user.click(await screen.findByRole("button", { name: "My skills" }));
+  await user.click(await screen.findByRole("button", { name: /^On this machine/ }));
   await user.click(await screen.findByRole("button", { name: "History and restore…" }));
   expect(await screen.findByRole("heading", { name: "History on this machine" })).toBeInTheDocument();
   await user.click(await screen.findByRole("button", { name: "Restore…" }));

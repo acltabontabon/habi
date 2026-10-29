@@ -59,7 +59,6 @@ async function run() {
 
   // My skills, empty: the page that says what a skill is.
   await click("My skills", ".sidebar-item");
-  await click("Drafts & copies", "[role=tab]");
   await until(`document.querySelector(".skills-idea")`, "the starter ideas");
   await shot("my-skills.jpg");
 

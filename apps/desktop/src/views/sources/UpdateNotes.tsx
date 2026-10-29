@@ -222,7 +222,7 @@ export function LibraryUpdates({
   const update = updates.data?.find((u) => u.sourceId === source.id);
   const asked = useRef<string | null>(null);
 
-  const visible = !source.preview && !source.sample && source.snapshot !== null;
+  const visible = !source.preview && source.snapshot !== null;
   const eligible = source.kind === "git" && visible;
   const checkedAt = update ? Date.parse(update.checkedAt) : 0;
   const { mutate } = check;

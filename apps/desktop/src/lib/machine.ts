@@ -104,6 +104,11 @@ export function groupMachineSkills(skills: MachineSkill[]): MachineGroup[] {
   });
 }
 
+/** Whether a skill Habi installed here has a newer version in its library (edited here or not). */
+export function hasUpdate(group: MachineGroup): boolean {
+  return group.copies.some((c) => c.managed?.state === "updateAvailable" || c.managed?.state === "conflict");
+}
+
 /** The files of a skill whose text points into a home folder, for the warning before it is shared. */
 export function homeMention(skill: Pick<MachineSkill, "mentionsHome">): string | null {
   if (skill.mentionsHome.length === 0) return null;

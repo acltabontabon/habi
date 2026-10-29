@@ -12,7 +12,6 @@ import { api } from "../lib/api";
 import { pruneSummary } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { isFound, TOOLS } from "../lib/tools";
-import { RemoveSampleDialog, useHasSample } from "./SampleWorkspace";
 
 const UPDATE_CHOICES = [
   { value: "manual", label: "Manual", description: "Only when I ask" },
@@ -39,8 +38,6 @@ export function SettingsView() {
   const [bundle, setBundle] = useState<DiagnosticBundle | null>(null);
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const hasSample = useHasSample();
-  const [removingSample, setRemovingSample] = useState(false);
   const [freeing, setFreeing] = useState(false);
   // Writes go one after another, each built on the latest settings, so two
   // quick toggles cannot overwrite each other with a stale copy.
@@ -141,11 +138,6 @@ export function SettingsView() {
               Free up space
             </SettingAction>
           </Setting>
-          {hasSample ? (
-            <Setting label="Sample workspace" hint="Example libraries and projects, labeled “sample”.">
-              <SettingAction onClick={() => setRemovingSample(true)}>Remove sample</SettingAction>
-            </Setting>
-          ) : null}
         </SettingGroup>
 
         <SettingGroup title="This machine" id="machine">
@@ -201,8 +193,6 @@ export function SettingsView() {
           </Setting>
         </SettingGroup>
       </div>
-
-      <RemoveSampleDialog open={removingSample} onOpenChange={setRemovingSample} />
 
       <Dialog
         open={bundle !== null}

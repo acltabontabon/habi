@@ -1,6 +1,6 @@
 # Habi documentation
 
-**New here?** Start with [Getting started](guide/getting-started.md)—sample workspace included, takes ~5 minutes.
+**New here?** Start with [Getting started](guide/getting-started.md)—takes ~5 minutes.
 
 Habi finds skills that fit your repo, installs them for your agent tools, and carries improvements back to your library. Local, no account or telemetry.
 
@@ -10,7 +10,7 @@ Habi finds skills that fit your repo, installs them for your agent tools, and ca
 
 | Guide | Read it to |
 | --- | --- |
-| [Getting started](guide/getting-started.md) | Try the sample workspace, open your first project, and know what Habi changes |
+| [Getting started](guide/getting-started.md) | Open your first project, connect a library, and know what Habi changes |
 | [My skills](guide/my-skills.md) | Write a skill in the Skill Studio, bring in the ones you have, test where it applies, and use it |
 | [Sharing](guide/sharing.md) | Send an improved skill to a library as a pull or merge request, follow the review, and revise it |
 | [Agent tools](guide/agent-tools.md) | See what Habi writes for Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, OpenCode and Junie |
@@ -39,7 +39,7 @@ Habi finds skills that fit your repo, installs them for your agent tools, and ca
 | [Architecture](dev/architecture.md) | Find your way around the crates and modules, install scopes, data locations, and the UI in a browser |
 | [Release](dev/release.md) | Learn the toolchain, versioning, signing and updates, and follow the release checklist |
 | [Release validation](dev/release-validation.md) | Prove agent discovery, packaged upgrades, failure recovery and backups before publishing |
-| [Test data](dev/test-data.md) | Use the fixtures, the sample workspace and the seed script |
+| [Test data](dev/test-data.md) | Use the fixtures and the seed script |
 | [Design](dev/design.md) | Keep to the visual direction, the key screens and the accessibility rules |
 | [Compatibility research](dev/compatibility-research.md) | Check each agent tool's documented paths, and run the smoke tests |
 | [Reuse assessment](dev/reuse-assessment.md) | See which dependencies Habi uses, and why some logic is its own |

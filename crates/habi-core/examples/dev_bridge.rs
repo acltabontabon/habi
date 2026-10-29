@@ -28,7 +28,6 @@ use std::sync::{Arc, Mutex};
 struct Bridge {
     habi: Habi,
     jobs: Mutex<HashMap<String, CancelToken>>,
-    samples: PathBuf,
 }
 
 fn arg<T: DeserializeOwned>(args: &Value, key: &str) -> Result<T> {
@@ -380,8 +379,6 @@ impl Bridge {
 
             "diagnostics_preview" => out(habi_core::diagnostics::bundle(h, version)?),
             "diagnostics_save" => Ok(Value::Null),
-            "create_sample_workspace" => out(habi_core::sample::create(h, &self.samples)?),
-            "remove_sample_workspace" => out(habi_core::sample::remove(h)?),
             "free_up_space" => out(h.prune()?),
             other => Err(HabiError::Unsupported(format!(
                 "“{other}” is not available through the development bridge"
@@ -454,7 +451,6 @@ fn main() {
         Some(home) => habi.with_user_home(home.into()),
         None => habi,
     };
-    let samples = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
     println!(
         "Habi development bridge on http://127.0.0.1:{port} — data in {}",
         habi.paths.root.display()
@@ -462,7 +458,6 @@ fn main() {
     let bridge = Arc::new(Bridge {
         habi,
         jobs: Mutex::new(HashMap::new()),
-        samples,
     });
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).expect("could not bind");
     for stream in listener.incoming().flatten() {

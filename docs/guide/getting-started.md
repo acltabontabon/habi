@@ -41,19 +41,12 @@ never does.
 
 ![The welcome: a headline beside the three threads, find, improve and share, and a card of what Habi works with: Git found, the project stacks it reads, and the seven agent tools.](../media/welcome.jpg)
 
-## Try the sample workspace
-
-Try the sample workspace to explore without touching your repos. Habi creates two example
-libraries and seven example projects—all isolated and labeled as samples.
+## The home page
 
 The home page shows your projects as rows, with library skills woven across them: solid lines
 show installed skills, faded lines show skills that fit but aren't installed yet.
 
 ![The home page of a workspace with seven projects: each project is a row, each library and My skills a thread across them. A solid float marks where a library's skill is installed in a project, a washed-out one where a skill fits but is not installed yet.](../media/home.jpg)
-
-When you are done, choose **Remove sample workspace** on the banner in any sample project or
-library, with **Remove sample** in Settings → Storage, or in the command palette. It
-removes only the examples.
 
 ## Where libraries come from
 
@@ -100,7 +93,7 @@ library, **Refresh library** reads its current contents directly.
 
 The library also marks skills **on this machine**. Open one to see the agent tools that
 can read it, then choose **Manage installation** to reach its controls in
-[My skills → On this machine](my-skills.md#on-this-machine).
+[Skills → On this machine](my-skills.md#on-this-machine).
 
 ![A connected library showing a manual update check, an available update, and a skill installed on this machine with a link to manage it.](../media/pr-library-status/after.jpg)
 

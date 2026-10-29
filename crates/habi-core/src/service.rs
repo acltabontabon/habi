@@ -89,8 +89,6 @@ pub struct ProjectRecord {
     pub exists: bool,
     pub last_opened_at: String,
     pub exclusions: Vec<String>,
-    /// Part of the explicitly labeled sample workspace.
-    pub sample: bool,
     /// What fit when the project was last looked at; `None` until then.
     pub summary: Option<ProjectSummary>,
     #[serde(skip)]
@@ -404,7 +402,7 @@ pub enum SuggestionKind {
 }
 
 /// For reviewers: where a contribution's rules apply among the author's own
-/// projects (sample projects are not counted). Plain text, inserted into the
+/// projects. Plain text, inserted into the
 /// message only when the author chooses; it names projects, never paths.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -414,7 +412,6 @@ pub struct Rehearsal {
     pub text: String,
     /// Projects the rules were evaluated against.
     pub projects: u32,
-    pub samples_skipped: u32,
 }
 
 /// A fact observed in a project that could become a condition. Suggestions
@@ -471,10 +468,6 @@ impl Habi {
         paths.ensure()?;
         let store = Store::open(&paths.db())?;
         let sources = Sources::new(&paths, &store);
-        // Sample libraries created before libraries carried a sample flag.
-        if let Err(e) = sources.mark_samples_under(&crate::sample::root(&paths)) {
-            tracing::warn!(error = %e, "could not mark the sample libraries");
-        }
         // Snapshots fetched before item counts were recorded.
         if let Err(e) = sources.count_uncounted() {
             tracing::warn!(error = %e, "could not count library items");
@@ -485,7 +478,7 @@ impl Habi {
             cwd: Some(paths.empty_dir()),
             ..ReviewTools::from_path()
         };
-        Ok(Habi {
+        let habi = Habi {
             paths,
             store,
             sources,
@@ -497,7 +490,12 @@ impl Habi {
             user_home: directories::BaseDirs::new()
                 .map(|b| b.home_dir().to_path_buf())
                 .unwrap_or_default(),
-        })
+        };
+        // The sample workspace earlier versions could create.
+        if let Err(e) = crate::sample::remove_leftovers(&habi) {
+            tracing::warn!(error = %e, "could not remove the sample workspace");
+        }
+        Ok(habi)
     }
 
     /// Reads the person's own skill folders under `home` instead of the real
@@ -577,7 +575,6 @@ impl Habi {
 
     pub fn project(&self, id: &str) -> Result<ProjectRecord> {
         let conn = self.store.conn()?;
-        let sample_root = crate::sample::root(&self.paths);
         let (mut record, exclusions) = conn
             .query_row(
                 "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
@@ -588,7 +585,6 @@ impl Habi {
                     Ok((
                         ProjectRecord {
                             summary: None,
-                            sample: root.starts_with(&sample_root),
                             id: r.get(0)?,
                             name: r.get(2)?,
                             path: crate::paths::display_path(&root),
@@ -910,9 +906,6 @@ impl Habi {
         cancel: &CancelToken,
     ) -> Result<Vec<crate::catalog::CatalogFit>> {
         let project = self.existing_project(project_id)?;
-        if project.sample {
-            return Ok(Vec::new());
-        }
         let inspection = self.inspect(project_id, false, cancel)?;
         let declarations = self.declarations(project_id)?;
         let lock = read_lock(&project.root)?;
@@ -996,7 +989,6 @@ impl Habi {
             last_error: None,
             warning: None,
             freshness: Freshness::Current,
-            sample: false,
             skill_count: u32::try_from(items).unwrap_or(u32::MAX),
             preview: false,
             catalog_id: None,
@@ -1183,10 +1175,7 @@ impl Habi {
         let inspection = self.inspect(id, rescan, cancel)?;
         let declarations = self.declarations(id)?;
         let lock = read_lock(&project.root)?;
-        let mut libraries = self.libraries()?;
-        // The sample workspace's libraries are for its sample projects only;
-        // they never show up in the user's own projects.
-        libraries.retain(|(source, _)| project.sample || !source.sample);
+        let libraries = self.libraries()?;
         let installations = self.installations(&project.root, &lock, &libraries);
         let mut candidates = Vec::new();
         let identities: Vec<String> = libraries
@@ -2403,7 +2392,6 @@ impl Habi {
             Rehearsal {
             text: "Where it applies: no applicability rules are declared, so Habi does not match this skill to projects; teams use it deliberately.".into(),
             projects: 0,
-            samples_skipped: 0,
         }
         };
         let Some(text) = self.contributions().staged_metadata(id)? else {
@@ -2427,12 +2415,8 @@ impl Habi {
             return Ok(no_rules());
         }
         let (mut applies, mut needs) = (Vec::new(), Vec::new());
-        let (mut not, mut unreadable, mut samples) = (0u32, 0u32, 0u32);
+        let (mut not, mut unreadable) = (0u32, 0u32);
         for p in &preview.projects {
-            if p.project.sample {
-                samples += 1;
-                continue;
-            }
             match p.result.as_ref().map(|r| r.applicability) {
                 Some(Applicability::Applies) => applies.push(p.project.name.clone()),
                 Some(Applicability::NeedsInformation) => needs.push(p.project.name.clone()),
@@ -2446,7 +2430,6 @@ impl Habi {
             return Ok(Rehearsal {
                 text: String::new(),
                 projects: 0,
-                samples_skipped: samples,
             });
         }
         let projects = |n: u32| format!("{n} project{}", if n == 1 { "" } else { "s" });
@@ -2475,7 +2458,6 @@ impl Habi {
         Ok(Rehearsal {
             text: lines.join("\n"),
             projects: total,
-            samples_skipped: samples,
         })
     }
 

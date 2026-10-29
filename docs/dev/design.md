@@ -56,7 +56,7 @@ its one signature — used only where it carries meaning.
   source columns, seven rows, "+N more") and stays composed when empty: faint rows keep the
   cloth's texture, and a first run shows undyed threads with a faint twill. Creating and
   adding skills live in the sidebar, palette and project views; their shortcuts sit at the
-  foot with the labeled sample workspace on a first run.
+  foot with a link to connect a library on a first run.
 - **Already here** — skills and instruction files already in the repository, read-only,
   with real next actions (read, edit a copy, turn part into a skill). Shown in place of
   recommendations when there is nothing to recommend yet.

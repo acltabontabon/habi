@@ -19,7 +19,6 @@ function source(id: string, createdAt: string): Source {
     lastError: null,
     warning: null,
     freshness: "current",
-    sample: false,
     skillCount: 0,
     preview: false,
     catalogId: null,

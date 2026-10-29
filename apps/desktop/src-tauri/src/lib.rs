@@ -352,8 +352,6 @@ pub fn run() {
             commands::apply_upstream_sync,
             commands::diagnostics_preview,
             commands::diagnostics_save,
-            commands::create_sample_workspace,
-            commands::remove_sample_workspace,
             commands::free_up_space,
         ])
         .run(tauri::generate_context!())

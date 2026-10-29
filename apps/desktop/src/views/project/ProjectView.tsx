@@ -5,7 +5,7 @@ import type { Ecosystem } from "../../bindings/Ecosystem";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
 import { tip } from "../../components/Tooltips";
-import { Button, ErrorNotice, Label, Notice, Working } from "../../components/ui";
+import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { initialsOf, Strand, Swatch } from "../../components/Weave";
 import { api } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
@@ -18,7 +18,6 @@ export { tagLabel };
 
 import { useOverview } from "../../lib/queries";
 import { stackDye, stackDyes } from "../../lib/stackDye";
-import { SampleBanner } from "../SampleWorkspace";
 import { NothingFits } from "./AlreadyHere";
 import { History } from "./History";
 import { ProjectSettings } from "./ProjectSettings";
@@ -228,10 +227,7 @@ export function ProjectView({
           }
         />
         <div className="project-identity">
-          <p className="kicker">
-            {inspection.repository.isMonorepo ? "Monorepo" : "Project"}
-            {project.sample ? " · sample" : ""}
-          </p>
+          <p className="kicker">{inspection.repository.isMonorepo ? "Monorepo" : "Project"}</p>
           <div className="project-title-row">
             <h1 className="project-title" title={project.path}>
               {project.name}
@@ -241,7 +237,6 @@ export function ProjectView({
                 <Icon name="branch" size={12} /> {inspection.repository.branch}
               </span>
             ) : null}
-            {project.sample ? <Label tone="thread">Sample project</Label> : null}
           </div>
           {inspection.description ? (
             <p className="project-description" title={inspection.description}>
@@ -315,7 +310,6 @@ export function ProjectView({
 
       {settings ? <ProjectSettings overview={data} onClose={() => setSettings(false)} /> : null}
       {history ? <History overview={data} onClose={() => setHistory(false)} /> : null}
-      {project.sample ? <SampleBanner /> : null}
 
       {weave.length > 0 ? (
         <section className="composition" aria-label="What fits, by library">

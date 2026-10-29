@@ -61,7 +61,6 @@ import {
 import { useMedia } from "../../lib/useMedia";
 import { ContentsToggle, SkillReader, usePackage } from "../reader/SkillReader";
 import { ReviewDialog } from "../review/ReviewDialog";
-import { SampleBanner } from "../SampleWorkspace";
 import { AddToProjectDialog } from "./AddToProjectDialog";
 import { DisconnectButton } from "./DisconnectButton";
 import { LibraryStrip } from "./LibraryStrip";
@@ -888,12 +887,11 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
       </aside>
 
       <section className="library-reader" ref={readerBox}>
-        {source.sample ? <SampleBanner /> : null}
         {/* A catalog library carries its back link in its header; others get one of their own. */}
         {(entry && library.data) || (entry && library.isPending) ? null : (
           <div className="library-back">
             <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
-            {source.sample ? null : <DisconnectButton source={source} />}
+            <DisconnectButton source={source} />
           </div>
         )}
         {entry && library.data ? (

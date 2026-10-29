@@ -27,7 +27,7 @@
 | `apps/desktop/src-tauri` | Tauri 2 shell: commands, file watcher, native dialogs, updater, logging. |
 | `apps/desktop/src` | React 19 + TypeScript (strict). Types in `src/bindings` are generated from Rust by `ts-rs`. |
 | `schema/` | JSON Schemas for Habi metadata (compiled into the core). |
-| `fixtures/` | Example libraries and repositories for tests, the sample workspace and UI fixtures ([test data](test-data.md)). |
+| `fixtures/` | Example libraries and repositories for tests and UI fixtures ([test data](test-data.md)). |
 | `website/` | The project site at acltabontabon.com/habi (Astro). `pnpm dev` in `website/`; it renders `docs/` and `docs/media/` ([website.md](website.md)). |
 
 ## Core modules
@@ -71,7 +71,7 @@
   reading its state and comments as untrusted text.
 - **`checks`**: previewed, user-run verification commands; recorded results.
 - **`browse`**: the project chooser's read-only look at likely repository folders.
-- **`sample`**: the labeled sample workspace.
+- **`sample`**: removes what is left of the sample workspace earlier versions could create.
 - **`maintenance`**: pruning old journals, snapshots and unreferenced blobs (`habi gc`).
 - **`service`**: the facade; projects, declarations, plans by id, overview.
 
@@ -123,7 +123,6 @@ where `ErrorInfo { code, message }` has a stable code the UI maps to guidance.
 | Bare Git caches | `<data>/sources/<id>/repo.git` | machine-local cache |
 | Operation journals | `<data>/journal/<id>/*.json` (one folder per project, one for this machine) | machine-local |
 | Contribution staging | `<data>/contributions/` | machine-local |
-| Sample workspace | `<data>/sample/` | machine-local |
 | Logs (desktop app) | `<data>/logs/habi.*.log`, one per day, the last 7 kept | machine-local |
 
 `<data>` is the platform data directory from `directories::ProjectDirs` with the qualifier in
