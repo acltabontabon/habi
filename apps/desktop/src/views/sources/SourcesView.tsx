@@ -237,7 +237,6 @@ function OwnRow({
         <span className="lr-main">
           <span className="lr-head">
             <span className="library-row-name">{source.name}</span>
-            {source.sample ? <span className="sidebar-tag">sample</span> : null}
             <span className="library-row-repo">{repositoryLabel(source.location)}</span>
             <span className="lr-go" aria-hidden="true">
               →

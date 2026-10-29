@@ -1,9 +1,9 @@
 /**
  * Home: the question, its one-line answer, and the loom —
  * your libraries across your projects, with the next project as an unwoven
- * row. One next step leads: open a project. On first run the sample
- * workspace and connecting a library are quiet links beneath; the rest lives
- * in the sidebar, the palette and the project views.
+ * row. One next step leads: open a project. On first run connecting a
+ * library is a quiet link beneath; the rest lives in the sidebar, the
+ * palette and the project views.
  */
 import { useMemo } from "react";
 import { Button, ErrorNotice, Kbd, Notice, Working } from "../components/ui";
@@ -14,7 +14,6 @@ import { useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
 import { useAppInfo, useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
 import { Loom, type LoomProject, type LoomSource } from "./Loom";
-import { useCreateSample } from "./SampleWorkspace";
 
 const LOCAL = "local";
 const SHOWN = 7;
@@ -28,7 +27,6 @@ export function Welcome() {
   const sources = useSources();
   const contributions = useContributions();
   const dyes = useDyes();
-  const sample = useCreateSample();
 
   const projects = (recent.data ?? []).filter((p) => p.exists);
   const drafts = (skills.data ?? []).filter((s) => s.deletedAt === null);
@@ -135,16 +133,6 @@ export function Welcome() {
           {projects.length === 0 ? (
             <p className="home-more">
               Or{" "}
-              <button
-                type="button"
-                className="link-quiet"
-                disabled={sample.busy}
-                title="Example libraries and projects, all labeled. Everything stays on this machine."
-                onClick={() => void sample.create()}
-              >
-                {sample.busy ? "Setting up the sample…" : "try the sample workspace"}
-              </button>{" "}
-              ·{" "}
               <button type="button" className="link-quiet" onClick={() => navigate({ name: "sources" })}>
                 connect a library
               </button>

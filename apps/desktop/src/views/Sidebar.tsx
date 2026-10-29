@@ -11,6 +11,7 @@ import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
 import { type Dye, useDyes } from "../lib/dye";
 import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
+import { groupMachineSkills, hasUpdate } from "../lib/machine";
 import { lastProject, useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
 import {
@@ -18,8 +19,10 @@ import {
   useAppInfo,
   useCatalog,
   useContributions,
+  useMachineSkills,
   useRecentProjects,
   useRepoFacts,
+  useSkillsOverview,
   useSources,
 } from "../lib/queries";
 import { useNewVersionMark, useUpdates } from "../lib/updates";
@@ -31,6 +34,8 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const recent = useRecentProjects();
   const sources = useSources();
   const contributions = useContributions();
+  const overview = useSkillsOverview();
+  const machine = useMachineSkills();
   const info = useAppInfo();
   const { state: update } = useUpdates();
   const version = info.data?.version;
@@ -44,6 +49,11 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     (c) => c.state === "draft" || c.state === "committed",
   ).length;
   const hasSharing = (contributions.data ?? []).length > 0;
+  // Skills whose library has a newer version, so they are seen without opening each page.
+  const draftUpdates = (overview.data ?? []).filter((s) => s.upstream === "changed").length;
+  const machineUpdates = groupMachineSkills(machine.data ?? []).filter(hasUpdate).length;
+  const skillsArea =
+    route.name === "skills" ? (route.tab === "machine" && !route.skillId ? "machine" : "collection") : null;
   const PROJECTS_SHOWN = 8;
   const allRecent = recent.data ?? [];
   const projects = allProjects ? allRecent : allRecent.slice(0, PROJECTS_SHOWN);
@@ -149,7 +159,6 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                   >
                     <ProjectMark name={p.name} languages={p.summary?.languages ?? []} />
                     <span className="sidebar-item-text">{p.name}</span>
-                    {p.sample ? <span className="sidebar-tag">sample</span> : null}
                     {!p.exists ? <span className="sidebar-tag">missing</span> : null}
                   </button>
                   {/* A missing folder cannot be opened, so its row is the only place to let it go;
@@ -188,15 +197,29 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
       </div>
 
       <div className="sidebar-group">
-        <button
-          type="button"
-          className={`sidebar-item${route.name === "skills" ? " is-active" : ""}`}
-          aria-current={route.name === "skills" ? "page" : undefined}
-          onClick={() => navigate({ name: "skills" })}
-        >
-          <Icon name="pencil" />
-          <span className="sidebar-item-text">My skills</span>
-        </button>
+        <div className="sidebar-heading">
+          <span>Skills</span>
+        </div>
+        <ul className="sidebar-list">
+          <li>
+            <SkillsItem
+              icon="pencil"
+              label="My skills"
+              active={skillsArea === "collection"}
+              updates={draftUpdates}
+              onOpen={() => navigate({ name: "skills", tab: "collection" })}
+            />
+          </li>
+          <li>
+            <SkillsItem
+              icon="layers"
+              label="On this machine"
+              active={skillsArea === "machine"}
+              updates={machineUpdates}
+              onOpen={() => navigate({ name: "skills", tab: "machine" })}
+            />
+          </li>
+        </ul>
       </div>
 
       <div className="sidebar-group">
@@ -376,7 +399,6 @@ function LibraryItem({
       >
         <Strand dye={dye} />
         <span className="sidebar-item-text">{source.name}</span>
-        {source.sample ? <span className="sidebar-tag">sample</span> : null}
         {fresh.tone !== "muted" ? (
           <span className={`sidebar-dot tone-${fresh.tone}`}>
             <span className="visually-hidden">{fresh.text}</span>
@@ -384,5 +406,38 @@ function LibraryItem({
         ) : null}
       </button>
     </li>
+  );
+}
+
+function SkillsItem({
+  icon,
+  label,
+  active,
+  updates,
+  onOpen,
+}: {
+  icon: "pencil" | "layers";
+  label: string;
+  active: boolean;
+  updates: number;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`sidebar-item${active ? " is-active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      title={updates > 0 ? `${label} · ${plural(updates, "update")} available` : undefined}
+      onClick={onOpen}
+    >
+      <Icon name={icon} />
+      <span className="sidebar-item-text">{label}</span>
+      {updates > 0 ? (
+        <span className="sidebar-count">
+          {updates}
+          <span className="visually-hidden"> {updates === 1 ? "update" : "updates"} available</span>
+        </span>
+      ) : null}
+    </button>
   );
 }

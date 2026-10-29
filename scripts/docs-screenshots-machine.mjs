@@ -77,9 +77,9 @@ const { send, page, until, click, type, shot, close } = await openBrowser({
 try {
   await send("Page.navigate", { url });
   await until(`document.querySelector(".sidebar-item")`, "sidebar");
-  await click("My skills", ".sidebar-item");
+  await click("On this machine", ".sidebar-item");
   await until(`document.querySelectorAll(".mach-item").length === 3`, "three machine skills");
-  assert.equal(await page(`document.querySelector('[role=tab][aria-selected=true]').textContent.includes('On this machine')`), true);
+  assert.equal(await page(`document.querySelector('h1').textContent.includes('On this machine')`), true);
   assert.equal(await page(`document.querySelectorAll('.mach-shared').length`), 3);
   await page(`document.querySelector('[aria-label="Find a global skill"]').focus()`);
   await type("liquibase");

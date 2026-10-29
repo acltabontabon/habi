@@ -63,8 +63,6 @@
       "certificateThumbprint": null
     },
     "resources": {
-      "../../../fixtures/libraries/": "samples/libraries/",
-      "../../../fixtures/repos/": "samples/repos/",
       "../../../LICENSE": "LICENSE",
       "../../../NOTICE": "NOTICE",
       "../../../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"

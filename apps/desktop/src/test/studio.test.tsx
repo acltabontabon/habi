@@ -122,7 +122,6 @@ const billing = {
   exists: true,
   lastOpenedAt: "2026-10-02T00:00:00Z",
   exclusions: [],
-  sample: false,
   summary: null,
 };
 

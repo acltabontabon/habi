@@ -1,7 +1,7 @@
 # Test data
 
 All test data is fictitious and lives in `fixtures/`. It is used by the automated tests, the
-in-app sample workspace, the seed script and the UI design preview.
+seed script and the UI design preview.
 
 ## Libraries
 
@@ -27,8 +27,6 @@ Automated expectations for these live in `crates/habi-core/tests/matching_fixtur
 
 ## Ways to use it
 
-- **In the app:** the sample workspace on the start screen. Creates both libraries and all seven
-  projects under Habi's data folder (labeled as samples). Nothing is installed yet.
 - **Seeded workspace with every state:** `scripts/seed-test-data.sh [dir]` (default
   `./habi-test-data`, ignored by Git) builds the CLI, creates Git repositories for both
   libraries and the projects, installs items, publishes upstream updates, makes local edits

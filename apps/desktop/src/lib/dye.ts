@@ -1,10 +1,9 @@
 /**
  * Each library has its own dye: the color of its warp thread wherever its
  * items appear. The color comes from the library's id, so it stays put when
- * other libraries are added or removed, or the sample workspace is made
- * again. When two ids land on the same color, the later library takes the
- * next free one; only a library that had to step aside can move. My skills
- * are spun from plain ink.
+ * other libraries are added or removed. When two ids land on the same color,
+ * the later library takes the next free one; only a library that had to step
+ * aside can move. My skills are spun from plain ink.
  */
 import { useCallback, useMemo } from "react";
 import type { Source } from "../bindings/Source";

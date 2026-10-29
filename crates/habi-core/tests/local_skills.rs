@@ -1160,8 +1160,7 @@ fn upgrading_the_database_keeps_existing_state() {
         habi.sources().get("s1").unwrap().role,
         habi_core::source::SourceRole::Team
     );
-    // Nor is a library from then a sample one; never fetched, it has no items.
-    assert!(!habi.sources().get("s1").unwrap().sample);
+    // Never fetched, a library from then has no items.
     assert_eq!(habi.sources().get("s1").unwrap().skill_count, 0);
     // Nor a catalog preview: it is listed, and reads the whole repository.
     let old = habi.sources().get("s1").unwrap();

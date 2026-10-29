@@ -7,6 +7,20 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- **Skills have their own place in the sidebar.** **My skills** and **On this machine** sit
+  under a Skills heading instead of tabs, each with a count of skills that have a newer version
+  in their library. On this machine lists those first and can show only them.
+- **A quieter My skills page before your first skill.** Starter ideas are simple rows, and the
+  decorative threads beneath them are gone.
+
+### Removed
+
+- **The sample workspace.** Habi no longer offers example libraries and projects; open one of
+  your own projects and connect a library instead. A sample workspace made by an earlier
+  version is removed on startup, with nothing of your own touched.
+
 ## 0.3.0 - 2026-10-26
 
 Find the skills already on your machine, check your libraries when you need to, and reach personal installs and recovery history more easily.
