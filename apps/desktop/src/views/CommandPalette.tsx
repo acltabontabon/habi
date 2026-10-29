@@ -219,10 +219,16 @@ function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
                   <Icon name="plus" /> <span>Add existing skills…</span>
                 </Command.Item>
                 <Command.Item
-                  value="my skills drafts"
-                  onSelect={() => run(() => navigate({ name: "skills" }))}
+                  value="my skills drafts copies"
+                  onSelect={() => run(() => navigate({ name: "skills", tab: "collection" }))}
                 >
                   <Icon name="pencil" /> <span>My skills</span>
+                </Command.Item>
+                <Command.Item
+                  value="on this machine global skills agent folders updates"
+                  onSelect={() => run(() => navigate({ name: "skills", tab: "machine" }))}
+                >
+                  <Icon name="layers" /> <span>On this machine</span>
                 </Command.Item>
                 <Command.Item
                   value="libraries browse connect discover community"

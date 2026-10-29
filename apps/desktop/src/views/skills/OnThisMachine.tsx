@@ -5,7 +5,9 @@
  * edited or removed. The two ways out are copies — into My skills, or into a
  * project through the usual reviewed install — and the original is never
  * touched. Where a project holds a copy too, the row says which one a client
- * will use. Nothing is shown when there are no such skills.
+ * will use. Skills whose library has a newer version come first, with a
+ * filter to see only those. As its own page it always shows; elsewhere,
+ * nothing is shown when there are no such skills.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -23,6 +25,7 @@ import { clientLabel, plural } from "../../lib/format";
 import {
   copyState,
   groupMachineSkills,
+  hasUpdate,
   homeMention,
   installedClients,
   type MachineGroup,
@@ -194,11 +197,13 @@ function Row({
   );
 }
 
-export function OnThisMachine({ alwaysShow = false }: { alwaysShow?: boolean }) {
+export function OnThisMachine({ page = false }: { page?: boolean }) {
+  const alwaysShow = page;
   const machine = useMachineSkills();
   const operations = useMachineHistory();
   const [history, setHistory] = useState(false);
   const [query, setQuery] = useState("");
+  const [onlyUpdates, setOnlyUpdates] = useState(false);
   const { navigate } = useNav();
   const { addSkills } = useActions();
   const client = useQueryClient();
@@ -212,14 +217,18 @@ export function OnThisMachine({ alwaysShow = false }: { alwaysShow?: boolean }) 
 
   // A folder Habi cannot read is not worth a broken page: show nothing.
   const found = groupMachineSkills(machine.data ?? []);
+  const updates = found.filter(hasUpdate).length;
   const q = query.trim().toLowerCase();
-  const shown = found.filter(
-    (g) =>
-      !q ||
-      `${g.skill.name} ${g.skill.description} ${g.copies.find((s) => s.managed)?.managed?.library ?? ""}`
-        .toLowerCase()
-        .includes(q),
-  );
+  const shown = found
+    .filter((g) => !(onlyUpdates && updates > 0) || hasUpdate(g))
+    .filter(
+      (g) =>
+        !q ||
+        `${g.skill.name} ${g.skill.description} ${g.copies.find((s) => s.managed)?.managed?.library ?? ""}`
+          .toLowerCase()
+          .includes(q),
+    )
+    .sort((a, b) => Number(hasUpdate(b)) - Number(hasUpdate(a)));
   if (!alwaysShow && found.length === 0 && !operations.data?.length && !operations.isError) return null;
 
   /** Puts the skill in My skills if it is not there, then opens the dialog that chooses the project. */
@@ -256,21 +265,35 @@ export function OnThisMachine({ alwaysShow = false }: { alwaysShow?: boolean }) 
     }
   };
 
+  const lead = `${plural(found.length, "skill")} in your own folders, available across projects. Highlighted agents are the ones chosen for Habi installations; other skills show which agents can read them.`;
   return (
-    <section className="mach" aria-labelledby="on-this-machine">
-      <header className="mach-head">
-        <h2 className="mach-heading" id="on-this-machine">
-          On this machine
-          <span className="mach-total">{found.length}</span>
-        </h2>
-        <Button size="sm" icon="history" onClick={() => setHistory(true)}>
-          History and restore…
-        </Button>
-        <p className="mach-lead">
-          {plural(found.length, "skill")} in your own folders, available across projects. Highlighted agents
-          are the ones chosen for Habi installations; other skills show which agents can read them.
-        </p>
-      </header>
+    <section className={page ? "mach is-page" : "mach"} aria-labelledby="on-this-machine">
+      {page ? (
+        <header className="mys-head">
+          <div className="mys-intro">
+            <h1 className="page-title" id="on-this-machine">
+              On this machine
+            </h1>
+            <p className="mys-lead mach-lead">{machine.isPending ? "Reading your skill folders…" : lead}</p>
+          </div>
+          <div className="mys-actions">
+            <Button icon="history" onClick={() => setHistory(true)}>
+              History and restore…
+            </Button>
+          </div>
+        </header>
+      ) : (
+        <header className="mach-head">
+          <h2 className="mach-heading" id="on-this-machine">
+            On this machine
+            <span className="mach-total">{found.length}</span>
+          </h2>
+          <Button size="sm" icon="history" onClick={() => setHistory(true)}>
+            History and restore…
+          </Button>
+          <p className="mach-lead">{lead}</p>
+        </header>
+      )}
       {error ? <ErrorNotice error={error} /> : null}
       {alwaysShow && machine.isPending ? <Working>Reading global skills…</Working> : null}
       {alwaysShow && machine.isError ? (
@@ -280,20 +303,43 @@ export function OnThisMachine({ alwaysShow = false }: { alwaysShow?: boolean }) 
         <ErrorNotice error={operations.error} title="Could not load machine history" />
       ) : null}
       {found.length > 0 ? (
-        <label className="mys-search mach-search">
-          <Icon name="search" size={14} />
-          <input
-            id="machine-skill-search"
-            type="search"
-            aria-label="Find a global skill"
-            placeholder="Find a global skill"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <span className="mys-kbd" aria-hidden="true">
-            /
-          </span>
-        </label>
+        <div className="mys-tools mach-tools">
+          <label className="mys-search mach-search">
+            <Icon name="search" size={14} />
+            <input
+              id="machine-skill-search"
+              type="search"
+              aria-label="Find a global skill"
+              placeholder="Find a global skill"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <span className="mys-kbd" aria-hidden="true">
+              /
+            </span>
+          </label>
+          {updates > 0 ? (
+            <fieldset className="mys-facets">
+              <legend className="visually-hidden">Show</legend>
+              <button
+                type="button"
+                aria-pressed={!onlyUpdates}
+                className={onlyUpdates ? undefined : "is-on"}
+                onClick={() => setOnlyUpdates(false)}
+              >
+                All<span className="mys-count">{found.length}</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={onlyUpdates}
+                className={onlyUpdates ? "is-on" : undefined}
+                onClick={() => setOnlyUpdates(true)}
+              >
+                Updates<span className="mys-count">{updates}</span>
+              </button>
+            </fieldset>
+          ) : null}
+        </div>
       ) : null}
       {q && shown.length === 0 ? (
         <p className="mys-empty">

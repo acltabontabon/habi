@@ -544,7 +544,7 @@ export function AlreadyHere({ project }: { project: ProjectRecord }) {
 }
 
 const SCOPE_TIP =
-  "Only this repository. Skills in your own agent folders are listed in My skills under On this machine; a copy of one found here is noted on its row";
+  "Only this repository. Skills in your own agent folders are listed under Skills → On this machine; a copy of one found here is noted on its row";
 
 /** Something already in the project, as the workbench lists it beside the recommendations. */
 export type HereItem =

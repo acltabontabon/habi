@@ -93,7 +93,7 @@ library, **Refresh library** reads its current contents directly.
 
 The library also marks skills **on this machine**. Open one to see the agent tools that
 can read it, then choose **Manage installation** to reach its controls in
-[My skills → On this machine](my-skills.md#on-this-machine).
+[Skills → On this machine](my-skills.md#on-this-machine).
 
 ![A connected library showing a manual update check, an available update, and a skill installed on this machine with a link to manage it.](../media/pr-library-status/after.jpg)
 

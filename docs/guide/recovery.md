@@ -3,7 +3,7 @@
 Every change to projects and personal skill folders is journaled and can be undone.
 Interrupted changes roll back automatically before the next operation.
 
-Open a project's **History**, or **My skills → On this machine → History and restore…**
+Open a project's **History**, or **Skills → On this machine → History and restore…**
 for personal skill installs (`~/.claude/skills`, `~/.agents/skills`). Choose **Restore…** to
 review the files before anything changes. History remains available after the last personal
 skill is removed. Both screens offer **Check for interrupted operations**.

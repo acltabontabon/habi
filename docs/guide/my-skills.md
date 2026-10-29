@@ -18,15 +18,14 @@ model needed. When ready, use in a project or on your machine. Share when it's w
 
 ## Creating a skill
 
-My skills has two collections at the top: **Drafts & copies** for editable skills you keep
-in Habi, and **On this machine** for global skills in your agent folders. Each shows its
-skill count. When you have global skills or machine history and no drafts, the machine
-collection opens first; the creation guide stays in Drafts & copies.
+The sidebar's **Skills** section has two pages: **My skills** for editable skills you keep
+in Habi, and **On this machine** for global skills in your agent folders. A count next to
+either one shows how many of its skills have a newer version in their library.
 
-Before you have written one, Drafts & copies explains what a skill is, and offers a title,
+Before you have written one, My skills explains what a skill is, and offers a title,
 an idea or skills you already have.
 
-![Drafts & copies before your first skill: a skill is a note your agent can follow, kept as a file; write one, bring some in, or start from an idea.](../media/my-skills.jpg)
+![My skills before your first skill: a skill is a note your agent can follow, kept as a file; write one, bring some in, or start from an idea.](../media/my-skills.jpg)
 
 **New skill** opens a blank page. Habi auto-names it from your content: the first heading
 becomes the title, and the title becomes the identifier (until you change it or install).
@@ -186,7 +185,7 @@ followed them.
 
 ## On this machine
 
-**On this machine**, at the top of My skills, lists the skills in your own skill folders (`~/.claude/skills`,
+**On this machine**, under Skills in the sidebar, lists the skills in your own skill folders (`~/.claude/skills`,
 `~/.agents/skills`, and each tool's own folder such as `~/.cursor/skills`), with which tools
 read each one and, where a project holds a copy too, which copy a tool uses. A skill in
 several of those folders (installed for Claude Code and Codex, say, it is in both
@@ -197,8 +196,9 @@ that access. This is a record of your installation choices, not a way to block a
 reading a shared folder. For skills installed outside Habi, the badges show which tools can
 read the folders, since Habi has no record of your choices.
 
+Skills whose library has a newer version are listed first; **Updates** shows only those.
 Use **Find a global skill** to search by name, description or library; **/** focuses the
-search in the collection you are viewing. Expand the folder line on a skill to see its
+search. Expand the folder line on a skill to see its
 locations and, for managed installs, its library. Habi only reads
 skills it did not install: *Add to My skills* copies one in, and *Use in a project…* installs
 it in a project. The original is never touched.
