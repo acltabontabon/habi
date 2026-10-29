@@ -7,6 +7,12 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Added
+
+- **Three more community libraries in the catalog.** Trail of Bits' security and audit skills,
+  UI/UX Pro Max's design skills, and Impeccable's design vocabulary can be previewed and
+  connected from Libraries.
+
 ### Changed
 
 - **Skills have their own place in the sidebar.** **My skills** and **On this machine** sit

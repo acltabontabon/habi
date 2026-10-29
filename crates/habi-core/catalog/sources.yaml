@@ -36,8 +36,9 @@
 #                    features, in the same condition language as habi.yaml.
 #                    A skill with no hint is never called relevant.
 #
-# Verified 2026-10-03 against GitHub: each repository exists, is public, is
-# not archived, and the paths below hold the skills.
+# Verified 2026-10-03 against GitHub (Trail of Bits, UI/UX Pro Max and
+# Impeccable on 2026-10-30): each repository exists, is public, is not
+# archived, and the paths below hold the skills.
 
 version: 1
 
@@ -207,3 +208,39 @@ sources:
       # Unfinished skills, by the author's own label.
       exclude: ["skills/in-progress/**"]
       group: 1
+
+  - id: trailofbits
+    name: Trail of Bits
+    url: https://github.com/trailofbits/skills
+    summary: "Security research, vulnerability detection and audit workflows, grouped by plugin."
+    publisher: { name: Trail of Bits, kind: community, owner: trailofbits }
+    discovery:
+      include: ["plugins/*/skills/**"]
+      group: 1
+    notes:
+      - "Licensed CC BY-SA 4.0: an adapted copy you share must keep that licence."
+      - "Mostly security and testing; a few plugins are general tooling."
+
+  - id: ui-ux-pro-max
+    name: UI/UX Pro Max
+    url: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+    summary: "Design intelligence for building UI: styles, palettes, type pairings, design systems and slides."
+    publisher: { name: nextlevelbuilder, kind: community, owner: nextlevelbuilder }
+    discovery:
+      track: latest-release
+      # The same skills are bundled again under cli/assets for its installer.
+      include: [".claude/skills/**"]
+    notes:
+      - "The skills carry large data files (font and icon catalogs), about 10 MB in all."
+
+  - id: impeccable
+    name: Impeccable
+    url: https://github.com/pbakaus/impeccable
+    summary: "A design vocabulary for coding agents: shape, critique, audit and polish frontend work."
+    publisher: { name: Paul Bakaus, kind: community, owner: pbakaus }
+    discovery:
+      # One skill, built for each agent's folder; the .agents copy finds its scripts wherever it is installed.
+      include: [".agents/skills/**"]
+    notes:
+      - "Its launcher downloads a binary the first time the skill runs it."
+      - "Releases are tagged skill-v4.8.0 and the like, which are not plain versions, so the default branch is read."

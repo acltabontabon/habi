@@ -176,7 +176,7 @@ fn a_fresh_catalog_lists_every_entry_without_inventing_anything() {
     let home = tempfile::tempdir().unwrap();
     let habi = habi_at(home.path());
     let entries = habi.catalog().entries().unwrap();
-    assert_eq!(entries.len(), 12);
+    assert_eq!(entries.len(), 15);
     for e in &entries {
         assert_eq!(e.availability, CatalogAvailability::NotFetched, "{}", e.id);
         assert!(e.source_id.is_none());
@@ -194,7 +194,12 @@ fn a_fresh_catalog_lists_every_entry_without_inventing_anything() {
         .map(|e| e.id.as_str())
         .collect();
     assert_eq!(official.len(), 8);
-    assert!(!official.contains(&"superpowers"));
+    for community in ["superpowers", "trailofbits", "ui-ux-pro-max", "impeccable"] {
+        assert!(
+            !official.contains(&community),
+            "{community} claims no ownership"
+        );
+    }
     let cloudflare = entries.iter().find(|e| e.id == "cloudflare").unwrap();
     assert!(
         cloudflare

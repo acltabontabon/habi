@@ -193,10 +193,10 @@ fn webview_contract_end_to_end() {
     .unwrap();
     assert_eq!(declared["present"], true);
 
-    // The catalog: twelve entries, and nothing known that was not read.
+    // The catalog: fifteen entries, and nothing known that was not read.
     let catalog = call(&webview, "catalog", json!({})).unwrap();
     let entries = catalog.as_array().unwrap();
-    assert_eq!(entries.len(), 12);
+    assert_eq!(entries.len(), 15);
     assert!(entries.iter().all(|e| e["availability"] == "notFetched"
         && e["contents"].is_null()
         && e["review"].is_null()));
