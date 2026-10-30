@@ -5,6 +5,7 @@
 //! something applies.
 
 pub mod condition;
+pub mod described;
 pub mod eval;
 pub mod version;
 

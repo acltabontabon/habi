@@ -13,6 +13,7 @@ use crate::install::plan::read_project_file;
 use crate::install::status::{InstallState, Installation};
 use crate::library::model::{DeclaredEvidence, ItemKind, LibraryItem, MetadataStatus, Requirement};
 use crate::matching::condition::Condition;
+use crate::matching::described::described_rule;
 use crate::matching::eval::Declaration;
 use crate::matching::{Applicability, ApplicabilityResult, Views, assess_in};
 use crate::paths::display_path;
@@ -155,6 +156,24 @@ pub enum Basis {
     /// skill from a well-known library. It is Habi's judgement, not the
     /// author's, and says so wherever it is shown.
     CatalogHint,
+    /// The author declared nothing and the catalog has no rule; the skill's
+    /// own name and description name technologies Habi can detect, and the
+    /// rule asks for those (`matching::described`). A reading of the
+    /// author's words, said as such wherever it is shown.
+    Described,
+}
+
+/// Habi stands behind this skill: one of the catalog's picks.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PickNote {
+    /// What Habi calls it.
+    pub title: String,
+    /// Habi's reason, as a short phrase ("Any project with tests").
+    pub why: String,
+    /// What it does, in Habi's words.
+    pub gist: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -211,6 +230,9 @@ pub struct Recommendation {
     pub next_action: NextAction,
     /// Copies of this skill in the project that Habi does not manage.
     pub unmanaged_copies: Vec<String>,
+    /// Set when the skill is one of Habi's picks.
+    #[serde(default)]
+    pub pick: Option<PickNote>,
 }
 
 pub fn summarize(item: &LibraryItem, source_name: &str, snapshot: &str) -> ItemSummary {
@@ -486,6 +508,8 @@ pub struct Candidate<'a> {
     /// A rule suggested by Habi's catalog for an item whose author declared
     /// none. Used only when the item has no `applies_when` of its own.
     pub hint: Option<&'a Condition>,
+    /// The catalog's pick for this skill, if it is one.
+    pub pick: Option<&'a crate::catalog::registry::Pick>,
 }
 
 pub fn recommend(
@@ -501,12 +525,23 @@ pub fn recommend(
         .iter()
         .map(|c| {
             let item = c.item;
+            let undeclared = item.metadata_status == MetadataStatus::Undeclared;
+            // With no rule from the author or the catalog, what the skill says it is for.
+            // A pick without a rule fits any codebase by Habi's word; its text is not read.
+            let described = (item.applies_when.is_none()
+                && c.hint.is_none()
+                && c.pick.is_none()
+                && undeclared
+                && item.kind != ItemKind::Instructions)
+                .then(|| described_rule(&item.name, &item.description))
+                .flatten();
             let (applies_when, basis) = match (item.applies_when.as_ref(), c.hint) {
                 (Some(own), _) => (Some(own), Basis::Declared),
-                (None, Some(hint)) if item.metadata_status == MetadataStatus::Undeclared => {
-                    (Some(hint), Basis::CatalogHint)
-                }
-                (None, _) => (None, Basis::Declared),
+                (None, Some(hint)) if undeclared => (Some(hint), Basis::CatalogHint),
+                (None, _) => match described.as_ref() {
+                    Some(rule) => (Some(rule), Basis::Described),
+                    None => (None, Basis::Declared),
+                },
             };
             let applicability = assess_in(applies_when, item.excludes.as_ref(), item.scope, &views);
             let modules: Vec<String> = applicability
@@ -583,6 +618,11 @@ pub fn recommend(
                 installation,
                 next_action,
                 unmanaged_copies,
+                pick: c.pick.map(|p| PickNote {
+                    title: p.title.clone(),
+                    why: p.why.clone(),
+                    gist: p.gist.clone(),
+                }),
             }
         })
         .collect();
@@ -591,10 +631,13 @@ pub fn recommend(
         ReadinessState::Unknown => 1,
         ReadinessState::Missing => 2,
     };
+    // A rule read from the skill's own words is the weakest claim.
+    let basis_rank = |b: Basis| u8::from(b == Basis::Described);
     out.sort_by(|a, b| {
         a.group
             .cmp(&b.group)
             .then(b.item.priority.cmp(&a.item.priority))
+            .then(basis_rank(a.basis).cmp(&basis_rank(b.basis)))
             .then(
                 b.applicability
                     .specificity

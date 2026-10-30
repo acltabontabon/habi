@@ -29,7 +29,121 @@
     ],
     "exclude": [],
     "followsReleases": false,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "uses React"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Vue"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Angular"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Svelte"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Next.js"
+      },
+      {
+        "kind": "dependency",
+        "text": "@modelcontextprotocol/sdk"
+      },
+      {
+        "kind": "dependency",
+        "text": "@modelcontextprotocol/server"
+      },
+      {
+        "kind": "dependency",
+        "text": "mcp"
+      },
+      {
+        "kind": "dependency",
+        "text": "fastmcp"
+      },
+      {
+        "kind": "file",
+        "text": "skills/*/SKILL.md"
+      },
+      {
+        "kind": "file",
+        "text": "skills/*/*/SKILL.md"
+      },
+      {
+        "kind": "file",
+        "text": "plugins/*/skills/*/SKILL.md"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Playwright"
+      },
+      {
+        "kind": "dependency",
+        "text": "@anthropic-ai/sdk"
+      },
+      {
+        "kind": "dependency",
+        "text": "@anthropic-ai/claude-agent-sdk"
+      },
+      {
+        "kind": "dependency",
+        "text": "anthropic"
+      },
+      {
+        "kind": "dependency",
+        "text": "claude-agent-sdk"
+      },
+      {
+        "kind": "dependency",
+        "text": "com.anthropic:*"
+      },
+      {
+        "kind": "dependency",
+        "text": "github.com/anthropics/anthropic-sdk-go"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/frontend-design",
+        "title": "Frontend design",
+        "gist": "Commit to a clear visual direction instead of default-looking UI.",
+        "why": "Web frontends that need a point of view",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/mcp-builder",
+        "title": "MCP server builder",
+        "gist": "Design MCP tools an agent can use well, then test them with real questions.",
+        "why": "MCP server projects",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/skill-creator",
+        "title": "Skill creator",
+        "gist": "Draft a skill, run it on test prompts, and tighten when it triggers.",
+        "why": "Repositories that publish agent skills",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/webapp-testing",
+        "title": "Web app testing",
+        "gist": "Drive the running app in a real browser to check behaviour and read logs.",
+        "why": "Web frontends you can run locally",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/claude-api",
+        "title": "Claude API",
+        "gist": "Up-to-date model names and SDK usage for code that calls Claude.",
+        "why": "Code that calls the Claude API",
+        "anywhere": false
+      }
+    ],
     "groupSegment": null,
     "availability": "notFetched",
     "sourceId": null,
@@ -71,7 +185,82 @@
       "plugins/plugin-eval/fixtures/**"
     ],
     "followsReleases": false,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "dependency",
+        "text": "ai"
+      },
+      {
+        "kind": "dependency",
+        "text": "@ai-sdk/*"
+      },
+      {
+        "kind": "dependency",
+        "text": "@supabase/*"
+      },
+      {
+        "kind": "dependency",
+        "text": "supabase"
+      },
+      {
+        "kind": "file",
+        "text": "supabase/config.toml"
+      },
+      {
+        "kind": "dependency",
+        "text": "temporalio"
+      },
+      {
+        "kind": "dependency",
+        "text": "@temporalio/*"
+      },
+      {
+        "kind": "dependency",
+        "text": "go.temporal.io/sdk"
+      },
+      {
+        "kind": "dependency",
+        "text": "io.temporal:*"
+      },
+      {
+        "kind": "file",
+        "text": "vercel.json"
+      },
+      {
+        "kind": "dependency",
+        "text": "@vercel/*"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "plugins/vercel/skills/ai-sdk",
+        "title": "AI SDK",
+        "gist": "Use today's AI SDK APIs for chat UIs, agents and typed model output.",
+        "why": "Apps built on the AI SDK",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/supabase/skills/supabase",
+        "title": "Supabase",
+        "gist": "Set up Supabase clients, auth and row-level security without common mistakes.",
+        "why": "Projects built on Supabase",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/temporal/skills/temporal-developer",
+        "title": "Temporal workflows",
+        "gist": "Write deterministic workflows and activities; debug stuck or failing runs.",
+        "why": "Projects using a Temporal SDK",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/vercel/skills/vercel-cli",
+        "title": "Vercel CLI",
+        "gist": "Work with Vercel from the terminal instead of the dashboard.",
+        "why": "Projects deployed on Vercel",
+        "anywhere": false
+      }
+    ],
     "groupSegment": 1,
     "availability": "notFetched",
     "sourceId": null,
@@ -116,6 +305,33 @@
       {
         "kind": "dependency",
         "text": "@azure/*"
+      },
+      {
+        "kind": "dependency",
+        "text": "azure-*"
+      }
+    ],
+    "picks": [
+      {
+        "skill": ".github/plugins/azure-sdk-typescript/skills/azure-identity-ts",
+        "title": "Azure Identity for JavaScript",
+        "gist": "Authenticate Azure SDK clients with DefaultAzureCredential and managed identity.",
+        "why": "JavaScript code using Azure SDKs",
+        "anywhere": false
+      },
+      {
+        "skill": ".github/plugins/azure-sdk-python/skills/azure-identity-py",
+        "title": "Azure Identity for Python",
+        "gist": "Pick the right Azure credential for local dev, CI and managed identity.",
+        "why": "Python code using Azure SDKs",
+        "anywhere": false
+      },
+      {
+        "skill": ".github/plugins/azure-sdk-java/skills/azure-identity-java",
+        "title": "Azure Identity for Java",
+        "gist": "Credential chains, managed identity and service principals for Azure in Java.",
+        "why": "Java code using Azure SDKs",
+        "anywhere": false
       }
     ],
     "groupSegment": 2,
@@ -163,8 +379,67 @@
         "text": "com.google.cloud:google-cloud-bigquery"
       },
       {
+        "kind": "dependency",
+        "text": "google-cloud-bigquery"
+      },
+      {
         "kind": "file",
         "text": "cloudbuild.{yaml,yml,json}"
+      },
+      {
+        "kind": "dependency",
+        "text": "@google-cloud/*"
+      },
+      {
+        "kind": "dependency",
+        "text": "google-cloud-*"
+      },
+      {
+        "kind": "dependency",
+        "text": "com.google.cloud:*"
+      },
+      {
+        "kind": "dependency",
+        "text": "cloud.google.com/go*"
+      },
+      {
+        "kind": "dependency",
+        "text": "google-cloud-aiplatform"
+      },
+      {
+        "kind": "dependency",
+        "text": "@google-cloud/vertexai"
+      },
+      {
+        "kind": "dependency",
+        "text": "com.google.cloud:google-cloud-vertexai"
+      },
+      {
+        "kind": "dependency",
+        "text": "cloud.google.com/go/vertexai"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/cloud/gcloud",
+        "title": "gcloud CLI",
+        "gist": "Check real gcloud syntax before running a command, and keep output small.",
+        "why": "Projects deployed on Google Cloud",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/cloud/bigquery-basics",
+        "title": "BigQuery basics",
+        "gist": "Run and manage BigQuery work from the bq tool and client libraries.",
+        "why": "Code that talks to BigQuery",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/cloud/gemini-api",
+        "title": "Gemini on Google Cloud",
+        "gist": "Call Gemini through the Gen AI SDK on Google Cloud, not legacy Vertex SDKs.",
+        "why": "Code using the Vertex AI SDK",
+        "anywhere": false
       }
     ],
     "groupSegment": 1,
@@ -205,7 +480,69 @@
     ],
     "exclude": [],
     "followsReleases": false,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "uses Spring Boot"
+      },
+      {
+        "kind": "tag",
+        "text": "contains Kotlin code"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Docker"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Vue"
+      },
+      {
+        "kind": "dependency",
+        "text": "pinia"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Cypress"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/spring-boot-testing",
+        "title": "Spring Boot testing",
+        "gist": "Test Spring Boot with focused slices, not a full context for every test.",
+        "why": "Spring Boot services",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/kotlin-springboot",
+        "title": "Spring Boot with Kotlin",
+        "gist": "Idiomatic Kotlin for Spring: constructor injection, data classes, null safety.",
+        "why": "Spring Boot written in Kotlin",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/multi-stage-dockerfile",
+        "title": "Multi-stage Dockerfiles",
+        "gist": "Build in one stage, ship only the runtime in another, and run as non-root.",
+        "why": "Projects with a Dockerfile",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/unit-test-vue-pinia",
+        "title": "Vue and Pinia unit tests",
+        "gist": "Test Vue components and Pinia stores through what users see, not internals.",
+        "why": "Vue apps using Pinia",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/cypress-flake-fixer",
+        "title": "Cypress flake fixer",
+        "gist": "Scan a Cypress suite for the habits that make tests flaky, and remove them.",
+        "why": "Projects with Cypress tests",
+        "anywhere": false
+      }
+    ],
     "groupSegment": null,
     "availability": "notFetched",
     "sourceId": null,
@@ -253,6 +590,26 @@
       {
         "kind": "tag",
         "text": "uses Next.js"
+      },
+      {
+        "kind": "dependency",
+        "text": "@opennextjs/cloudflare"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/workers-best-practices",
+        "title": "Workers best practices",
+        "gist": "Production patterns for Workers: bindings, streaming, limits and config.",
+        "why": "Cloudflare Workers projects",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/wrangler",
+        "title": "Wrangler",
+        "gist": "Get Wrangler commands right the first time, from local dev to deploy.",
+        "why": "Projects with a Wrangler config",
+        "anywhere": false
       }
     ],
     "groupSegment": null,
@@ -310,6 +667,22 @@
         "text": "@vercel/*"
       }
     ],
+    "picks": [
+      {
+        "skill": "skills/react-best-practices",
+        "title": "React best practices",
+        "gist": "Performance rules for React and Next.js: waterfalls, bundles, re-renders.",
+        "why": "React and Next.js apps",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/react-native-skills",
+        "title": "React Native best practices",
+        "gist": "Keep React Native screens fast on real devices, from lists to animations.",
+        "why": "React Native and Expo apps",
+        "anywhere": false
+      }
+    ],
     "groupSegment": null,
     "availability": "notFetched",
     "sourceId": null,
@@ -353,6 +726,112 @@
       {
         "kind": "tag",
         "text": "uses GitHub Actions"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Express"
+      },
+      {
+        "kind": "tag",
+        "text": "uses NestJS"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Next.js"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Django"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Flask"
+      },
+      {
+        "kind": "tag",
+        "text": "uses FastAPI"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Spring Boot"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Quarkus"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Micronaut"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Laravel"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Symfony"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Gin"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Echo"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Fiber"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Axum"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Actix Web"
+      },
+      {
+        "kind": "file",
+        "text": "skills/*/SKILL.md"
+      },
+      {
+        "kind": "file",
+        "text": "skills/*/*/SKILL.md"
+      },
+      {
+        "kind": "file",
+        "text": "plugins/*/skills/*/SKILL.md"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/security-review",
+        "title": "Security review",
+        "gist": "Trace untrusted input through the code and report flaws it can back up.",
+        "why": "Web apps that handle untrusted input",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/gha-security-review",
+        "title": "GitHub Actions security review",
+        "gist": "Check workflows for ways a fork's pull request could run code or read secrets.",
+        "why": "Repositories with GitHub Actions",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/django-perf-review",
+        "title": "Django performance review",
+        "gist": "Find N+1 queries and slow querysets in Django code before they ship.",
+        "why": "Django projects",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/skill-scanner",
+        "title": "Skill scanner",
+        "gist": "Vet a skill before it runs: injected prompts, risky scripts, leaked keys.",
+        "why": "Repositories that publish agent skills",
+        "anywhere": false
       }
     ],
     "groupSegment": null,
@@ -388,7 +867,64 @@
     ],
     "exclude": [],
     "followsReleases": true,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "uses Jest"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Vitest"
+      },
+      {
+        "kind": "tag",
+        "text": "uses pytest"
+      },
+      {
+        "kind": "tag",
+        "text": "uses JUnit"
+      },
+      {
+        "kind": "tag",
+        "text": "uses PHPUnit"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Playwright"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Cypress"
+      },
+      {
+        "kind": "file",
+        "text": "*_test.go"
+      },
+      {
+        "kind": "file",
+        "text": "tests/*.rs"
+      },
+      {
+        "kind": "file",
+        "text": "*Tests.csproj"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/test-driven-development",
+        "title": "Test-driven development",
+        "gist": "Write the failing test first, then the code that makes it pass.",
+        "why": "Any project with tests",
+        "anywhere": false
+      },
+      {
+        "skill": "skills/verification-before-completion",
+        "title": "Verification before completion",
+        "gist": "Run the checks and read their output before calling the work done.",
+        "why": "Any codebase: evidence before claims",
+        "anywhere": true
+      }
+    ],
     "groupSegment": null,
     "availability": "notFetched",
     "sourceId": null,
@@ -420,7 +956,36 @@
     ],
     "exclude": [],
     "followsReleases": true,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "has an OpenAPI specification"
+      },
+      {
+        "kind": "tag",
+        "text": "uses springdoc (generated OpenAPI)"
+      },
+      {
+        "kind": "file",
+        "text": "*.graphql"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/code-review-and-quality",
+        "title": "Code review",
+        "gist": "Read a diff the way a careful senior reviewer would, before it merges.",
+        "why": "Any codebase, before merging",
+        "anywhere": true
+      },
+      {
+        "skill": "skills/api-and-interface-design",
+        "title": "API and interface design",
+        "gist": "Design endpoints and module contracts that stay stable and are hard to misuse.",
+        "why": "Projects that define an API",
+        "anywhere": false
+      }
+    ],
     "groupSegment": null,
     "availability": "notFetched",
     "sourceId": null,
@@ -454,7 +1019,81 @@
     ],
     "exclude": [],
     "followsReleases": false,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "uses Express"
+      },
+      {
+        "kind": "tag",
+        "text": "uses NestJS"
+      },
+      {
+        "kind": "dependency",
+        "text": "fastify"
+      },
+      {
+        "kind": "dependency",
+        "text": "koa"
+      },
+      {
+        "kind": "tag",
+        "text": "contains C# code"
+      },
+      {
+        "kind": "file",
+        "text": "appsettings.json"
+      },
+      {
+        "kind": "tag",
+        "text": "contains Go code"
+      },
+      {
+        "kind": "tag",
+        "text": "uses dbt"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Airflow"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "plugins/javascript-typescript/skills/nodejs-backend-patterns",
+        "title": "Node.js backend patterns",
+        "gist": "Lay out a Node.js service so errors, auth and data access each have a home.",
+        "why": "Node.js API servers",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/dotnet-contribution/skills/dotnet-backend-patterns",
+        "title": ".NET backend patterns",
+        "gist": "Structure a C# API so data access, DI and tests stay simple.",
+        "why": "ASP.NET Core services",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/systems-programming/skills/go-concurrency-patterns",
+        "title": "Go concurrency",
+        "gist": "Worker pools, cancellation and shutdown in Go without leaks or data races.",
+        "why": "Go code",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/data-engineering/skills/dbt-transformation-patterns",
+        "title": "dbt model patterns",
+        "gist": "Layer models from staging to marts, test them, and build big ones incrementally.",
+        "why": "dbt projects",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/data-engineering/skills/airflow-dag-patterns",
+        "title": "Airflow DAG patterns",
+        "gist": "DAGs that rerun safely, with tasks small enough to retry and test.",
+        "why": "Airflow pipelines",
+        "anywhere": false
+      }
+    ],
     "groupSegment": 1,
     "availability": "notFetched",
     "sourceId": null,
@@ -488,8 +1127,202 @@
       "skills/in-progress/**"
     ],
     "followsReleases": true,
-    "fitsWhen": [],
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "has AGENTS.md instructions"
+      },
+      {
+        "kind": "tag",
+        "text": "has CLAUDE.md instructions"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "skills/engineering/diagnosing-bugs",
+        "title": "Diagnosing bugs",
+        "gist": "Build a fast pass/fail loop for the bug first; the fix follows from it.",
+        "why": "Any codebase, when something breaks",
+        "anywhere": true
+      },
+      {
+        "skill": "skills/productivity/grilling",
+        "title": "Grill the plan",
+        "gist": "Question a plan decision by decision until nothing is left assumed.",
+        "why": "Any codebase, before building",
+        "anywhere": true
+      },
+      {
+        "skill": "skills/productivity/writing-for-agents",
+        "title": "Writing for agents",
+        "gist": "Keep AGENTS.md, CLAUDE.md and skills short, well-pointed and cheap on context.",
+        "why": "Repositories with agent instructions",
+        "anywhere": false
+      }
+    ],
     "groupSegment": 1,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "trailofbits",
+    "name": "Trail of Bits",
+    "url": "https://github.com/trailofbits/skills",
+    "repo": "trailofbits/skills",
+    "summary": "Security research, vulnerability detection and audit workflows, grouped by plugin.",
+    "notes": [
+      "Licensed CC BY-SA 4.0: an adapted copy you share must keep that licence.",
+      "Mostly security and testing; a few plugins are general tooling."
+    ],
+    "publisher": {
+      "name": "Trail of Bits",
+      "kind": "community",
+      "owner": "trailofbits"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      "plugins/*/skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [
+      {
+        "kind": "tag",
+        "text": "contains Python code"
+      },
+      {
+        "kind": "dependency",
+        "text": "hypothesis"
+      },
+      {
+        "kind": "dependency",
+        "text": "fast-check"
+      },
+      {
+        "kind": "dependency",
+        "text": "proptest"
+      },
+      {
+        "kind": "dependency",
+        "text": "quickcheck"
+      },
+      {
+        "kind": "dependency",
+        "text": "net.jqwik:*"
+      },
+      {
+        "kind": "dependency",
+        "text": "pgregory.net/rapid"
+      },
+      {
+        "kind": "tag",
+        "text": "contains Rust code"
+      }
+    ],
+    "picks": [
+      {
+        "skill": "plugins/modern-python/skills/modern-python",
+        "title": "Modern Python tooling",
+        "gist": "One fast Python toolchain: uv for packages, ruff for lint, ty for types.",
+        "why": "Python projects",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/property-based-testing/skills/property-based-testing",
+        "title": "Property-based testing",
+        "gist": "Let generated inputs find the edge cases hand-written examples miss.",
+        "why": "Projects with a property-testing library",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/rust-review/skills/rust-review",
+        "title": "Rust security review",
+        "gist": "A security pass where Rust's guarantees stop: unsafe, FFI, panics.",
+        "why": "Rust crates",
+        "anywhere": false
+      }
+    ],
+    "groupSegment": 1,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "ui-ux-pro-max",
+    "name": "UI/UX Pro Max",
+    "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+    "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
+    "summary": "Design intelligence for building UI: styles, palettes, type pairings, design systems and slides.",
+    "notes": [
+      "The skills carry large data files (font and icon catalogs), about 10 MB in all."
+    ],
+    "publisher": {
+      "name": "nextlevelbuilder",
+      "kind": "community",
+      "owner": "nextlevelbuilder"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      ".claude/skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": true,
+    "fitsWhen": [],
+    "picks": [],
+    "groupSegment": null,
+    "availability": "notFetched",
+    "sourceId": null,
+    "fetched": null,
+    "contents": null,
+    "problem": null
+  },
+  {
+    "id": "impeccable",
+    "name": "Impeccable",
+    "url": "https://github.com/pbakaus/impeccable",
+    "repo": "pbakaus/impeccable",
+    "summary": "A design vocabulary for coding agents: shape, critique, audit and polish frontend work.",
+    "notes": [
+      "Its launcher downloads a binary the first time the skill runs it.",
+      "Releases are tagged skill-v4.8.0 and the like, which are not plain versions, so the default branch is read."
+    ],
+    "publisher": {
+      "name": "Paul Bakaus",
+      "kind": "community",
+      "owner": "pbakaus"
+    },
+    "ownership": null,
+    "review": null,
+    "status": {
+      "state": "active",
+      "note": null,
+      "successor": null
+    },
+    "include": [
+      ".agents/skills/**"
+    ],
+    "exclude": [],
+    "followsReleases": false,
+    "fitsWhen": [],
+    "picks": [],
+    "groupSegment": null,
     "availability": "notFetched",
     "sourceId": null,
     "fetched": null,

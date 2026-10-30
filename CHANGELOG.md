@@ -7,6 +7,29 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+Every project gets Habi's answer to "what should my agents have here?", before a library is connected.
+
+### Added
+
+- **Suggested, for every project.** A project opens on a short, opinionated list of skills for
+  it: the team's requirements, skills for its stack, and a few practices for any codebase, each
+  with the reason it fits (*Uses React · package.json:5*) and whose word that is. **Add N
+  skills…** connects the libraries they come from (read only, nothing runs) and opens the usual
+  review. **All skills** keeps the full workbench one tab away.
+- **Habi's picks.** The catalog names the skills Habi stands behind in each library, with when
+  each fits, so suggestions work before anything is connected. A catalog library's page lists
+  its picks; Explore puts the libraries with something for your projects first and says which.
+- **Matching by what a skill says it is for.** A skill with no rules of its own fits a project
+  when its description names a technology the project uses (*From its description*). It is
+  listed under All skills, said as Habi's reading; the team's own libraries also feed Suggested.
+
+### Fixed
+
+- **Installed skills no longer change what a project is.** Scripts and instruction files inside
+  a skill folder no longer count as the project's languages or agent instructions.
+- **Next.js on Cloudflare** fits Next.js apps deployed with Wrangler, not every Next.js app, and
+  **BigQuery basics** also fits Python code using the BigQuery client.
+
 ## 0.4.0 - 2026-10-30
 
 Explore the catalog on a page of its own, keep many libraries in view at a glance, and reach your skills from their own place in the sidebar.

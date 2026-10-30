@@ -9,7 +9,7 @@ import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { initialsOf, Strand, Swatch } from "../../components/Weave";
 import { api } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
-import type { ProjectTab } from "../../lib/nav";
+import { type ProjectTab, useNav } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
 import { useSafeInvoke } from "../../lib/safeInvoke";
 import { tagLabel } from "../../lib/tags";
@@ -20,6 +20,7 @@ import { useOverview } from "../../lib/queries";
 import { stackDye, stackDyes } from "../../lib/stackDye";
 import { NothingFits } from "./AlreadyHere";
 import { History } from "./History";
+import { Kit } from "./Kit";
 import { ProjectSettings } from "./ProjectSettings";
 import { fitsProject, Workbench } from "./Workbench";
 
@@ -121,6 +122,7 @@ export function ProjectView({
   itemKey?: string;
 }) {
   const overview = useOverview(projectId);
+  const { navigate } = useNav();
   const client = useQueryClient();
   const safely = useSafeInvoke();
   const changed = useQuery<string[] | null>({
@@ -134,6 +136,9 @@ export function ProjectView({
   const [watchError, setWatchError] = useState<unknown>(null);
   // Nothing fits, and the person asked to see the skills to use by hand.
   const [browsing, setBrowsing] = useState(false);
+  // How the project first showed: the kit while nothing from Habi is in it, else every skill. Kept
+  // while the project is open, so adding from the kit does not swap the page underneath.
+  const [opened, setOpened] = useState<{ projectId: string; view: "kit" | "all" } | null>(null);
   const [settings, setSettings] = useState(false);
   // "history" opens the project with its history showing.
   const [history, setHistory] = useState(tab === "history");
@@ -155,6 +160,12 @@ export function ProjectView({
   };
 
   const data = overview.data;
+  useEffect(() => {
+    if (!data || data.project.id !== projectId || opened?.projectId === projectId) return;
+    const fresh =
+      !data.recommendations.some((r) => r.installation) && data.kit.suggestions.some((s) => !s.installed);
+    setOpened({ projectId, view: fresh ? "kit" : "all" });
+  }, [data, projectId, opened]);
   const byHand = (data?.recommendations ?? []).filter(
     (r) => r.group === "available" && r.installState === "notInstalled",
   ).length;
@@ -205,6 +216,19 @@ export function ProjectView({
   }
 
   const { project, inspection } = data;
+  const view: "kit" | "all" =
+    tab === "suggested"
+      ? "kit"
+      : tab === "workbench" || itemKey
+        ? "all"
+        : opened?.projectId === projectId
+          ? opened.view
+          : "all";
+  const toAdd = data.kit.suggestions.filter((s) => !s.installed).length;
+  const show = (next: "kit" | "all") => {
+    setOpened({ projectId, view: next });
+    navigate({ name: "project", projectId, tab: next === "kit" ? "suggested" : "workbench" });
+  };
   const coverageGaps = inspection.coverage.filter((c) => c.status !== "complete");
   const gapModules = new Set(coverageGaps.map((c) => c.module)).size;
   // What it is written in, then what it is built on, then the tooling around it.
@@ -378,8 +402,37 @@ export function ProjectView({
         </Notice>
       ) : null}
 
+      <div className="project-views" role="tablist" aria-label="Show">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "kit"}
+          className={`project-view${view === "kit" ? " is-active" : ""}`}
+          onClick={() => show("kit")}
+        >
+          Suggested
+          {toAdd > 0 && view !== "kit" ? (
+            <>
+              <span className="project-view-knot" aria-hidden="true" />
+              <span className="visually-hidden">, new suggestions</span>
+            </>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "all"}
+          className={`project-view${view === "all" ? " is-active" : ""}`}
+          onClick={() => show("all")}
+        >
+          All skills
+        </button>
+      </div>
+
       <div className="project-body">
-        {!itemKey && !browsing && !data.recommendations.some(fitsProject) ? (
+        {view === "kit" ? (
+          <Kit key={project.id} overview={data} onAll={() => show("all")} />
+        ) : !itemKey && !browsing && !data.recommendations.some(fitsProject) ? (
           // Nothing fits: say so, offer what can be done with only this
           // project and what is already here, and the skills to use by hand.
           <NothingFits
@@ -387,6 +440,7 @@ export function ProjectView({
             byHand={byHand}
             ruled={data.recommendations.filter((r) => r.group === "notApplicable").length}
             onBrowse={() => setBrowsing(true)}
+            onSuggested={toAdd > 0 ? () => show("kit") : undefined}
           />
         ) : (
           <Workbench key={project.id} overview={data} itemKey={itemKey} openAvailable={browsing} />

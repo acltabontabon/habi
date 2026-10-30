@@ -92,6 +92,18 @@ its one signature — used only where it carries meaning.
   choices said apart: *Make my own copy* (read once, nothing connected) and *Connect as a
   library* (nothing copied). Then an inspection list with origin, problems and duplicate
   handling before anything is copied.
+- **Suggested** — a project opens here while nothing from Habi is in it (else on *All skills*;
+  both are tabs under the header, and Suggested carries a saffron knot while it has something to
+  add). A headline with the real count ("7 skills for django-shop"), then three short groups —
+  *Your team requires*, *For this stack*, *For how you work* — each a run of knots on one
+  thread. A knot is a checkbox: saffron when chosen, hollow when left out, ink once the project
+  has it (*Added*). Each row: title, the library's strand (an undyed loose thread until it is
+  connected), the gist in Habi's words, and the reason on a short saffron weft with its
+  file:line; a quiet chip says whose word it is only when it is not Habi's pick (*Team
+  requirement*, *Author's rule*, *Habi's rule*, *From its description*). Beside the list, a
+  sticky card names what will be added and which libraries are connected first; its one button
+  ("Add 7 skills…") weaves while they connect, then opens the usual review. Below 760 px the card
+  docks at the foot. Everything is chosen to start with: they are suggestions, not a menu.
 - **Project home** — below 1020 px the header compacts (icon actions on the title row) and the
   workbench shows the list or one item with "← Recommendations", never both squeezed. The
   wide layout: the project's swatch, identity (name, path, branch), the recognized
@@ -132,7 +144,11 @@ its one signature — used only where it carries meaning.
   knots on one thread (*Connect a library → Put skills to work*) say what to do and light up
   only for what is true on this machine; until something is connected the first knot breathes
   and an arrow bobs toward the list. `/` filters, ↑/↓ or j/k move, Enter opens.
-  Choosing a library opens its page (what the catalog knows, one **Connect library** button);
+  On Explore, libraries with picks for your projects come first, with a saffron knot and the
+  projects' names ("For nextshop").
+  Choosing a library opens its page (what the catalog knows — Habi's picks first, each on a
+  saffron thread with its gist and why, and which of your projects they are suggested for — one
+  **Connect library** button);
   pressing it reads the library while a loom weaves (cancel, stopped and failed states stay
   inside the weaving), then opens the connected library. Nothing is installed, copied or run.
   **A library moves forward when the user says so.** Opening a Git library (and the scheduled

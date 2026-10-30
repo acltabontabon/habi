@@ -26,6 +26,12 @@ in the registry). Nothing is fetched until preview.
   hints:
     - path: "skills/wrangler"
       applies_when: { file: "**/wrangler.{toml,json,jsonc}" }
+  picks:
+    - skill: skills/wrangler                 # one skill folder, exact
+      title: Wrangler
+      gist: "Configure, run and deploy Workers with Wrangler."   # Habi's words, 100 characters at most
+      why: "Projects with a Wrangler config"                    # 60 characters at most
+      applies_when: { file: "**/wrangler.{toml,json,jsonc}" }  # omit for a practice that fits any codebase
   status: { state: deprecated, successor: "org/new-lib" }
 ```
 
@@ -40,4 +46,5 @@ in the registry). Nothing is fetched until preview.
 | `track: latest-release` | Reads newest semantic version tag (`v1.4.0`, `0.6.11`); skips pre-releases, dates, commit hashes. Falls back to default branch. Users choose when to update. |
 | `review` | Absent for all entries (official/popular ≠ reviewed). Records inspection only if present. |
 | `hints` | Author-declared skills use them as default. Habi's judgment; never override author rules. |
+| `picks` | Skills Habi stands behind, offered in a project's **Suggested** list before the library is connected, so the catalog carries the title and gist. A pick's `applies_when` is also its rule once connected (taking precedence over `hints`); without one it is a practice for any codebase. Keep them few: at most five per library, and verify each folder at the revision Habi reads. |
 | `status` | Marks `deprecated` or `archived`; includes `successor`. Habi can't auto-detect. |

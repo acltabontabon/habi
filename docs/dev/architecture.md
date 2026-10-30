@@ -12,6 +12,7 @@
                  ├──────────┬──────────┬───────────┬──────────┬────────────┤
                  │ inspect  │ matching │ library   │ source   │ install    │
                  │ recommend│ checks   │ contribute│ review   │ clients    │
+                 │ suggest  │          │           │          │            │
                  │ skills   │ catalog  │ browse    │ sample   │ maintenance│
                  ├──────────┴──────────┴───────────┴──────────┴────────────┤
                  │ store (SQLite, blobs, locks) · paths · process · redact │
@@ -38,7 +39,9 @@
   report and a fingerprint. What each detector reads is in
   [Detectors](../library-authors/detectors.md).
 - **`matching`**: `Condition` (all/any/not + dependency/file/tag), three-valued evaluation
-  with explanation trees, user `Declaration`s, per-module assessment.
+  with explanation trees, user `Declaration`s, per-module assessment. `described` reads a rule
+  from a skill's name and description (a fixed lexicon of the technologies Habi detects) for
+  skills with no rule from their author or the catalog.
 - **`library`**: reads a snapshot into a `LibraryIndex`: `SKILL.md` frontmatter, optional
   `habi.yaml`, `habi-library.yaml` instructions, diagnostics, provenance and the static
   `signals` read from a skill's files.
@@ -59,6 +62,10 @@
   Readiness includes each compatible agent's project prerequisites and the agents assessed
   for the aggregate. Evidence summarizes the latest completed check/module pairs. Indexed
   file timestamps participate in freshness without reading source bodies.
+- **`suggest`**: a project's *Suggested* list: team requirements, skills for its stack and a
+  few practices, capped and ordered by stated rules, from connected libraries' recommendations
+  and from the catalog's picks for libraries not connected (evaluated against the inspection;
+  nothing is fetched).
 - **`skills`**: My skills. Package storage, document and applicability saving with
   external-edit detection, validation, zip export (`archive`), lineage and three-way library
   updates (`lineage`, `upstream`), the skills in your home folder (`machine`), and `intake`,

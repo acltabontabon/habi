@@ -101,7 +101,7 @@ export function Workbench({
   // Narrow windows show the list or one item, not both squeezed side by side.
   const narrow = useMedia("(max-width: 1020px)");
   const mode = narrow ? (itemKey ? " is-narrow is-detail" : " is-narrow is-list") : "";
-  const toList = () => navigate({ name: "project", projectId, tab: "recommendations" });
+  const toList = () => navigate({ name: "project", projectId, tab: "workbench" });
   useEffect(() => {
     if (!narrow || !itemKey) return;
     let later: number | undefined;
@@ -113,7 +113,7 @@ export function Workbench({
       // marks the key as used: back to the list only once every listener has had its turn.
       window.clearTimeout(later);
       later = window.setTimeout(() => {
-        if (!e.defaultPrevented) navigate({ name: "project", projectId, tab: "recommendations" });
+        if (!e.defaultPrevented) navigate({ name: "project", projectId, tab: "workbench" });
       }, 0);
     };
     window.addEventListener("keydown", onKey);
@@ -194,8 +194,7 @@ export function Workbench({
     else setShowAvailable(true);
   }, [chosen]);
 
-  const open = (key: string) =>
-    navigate({ name: "project", projectId, tab: "recommendations", itemKey: key });
+  const open = (key: string) => navigate({ name: "project", projectId, tab: "workbench", itemKey: key });
   const select = (r: Recommendation) => open(r.item.key);
 
   const order = [...navigable.map((r) => r.item.key), ...here.map((h) => h.key)];
@@ -244,6 +243,12 @@ export function Workbench({
             {/* A plain skill is the default; only the other kinds are worth saying. */}
             {r.item.kind !== "skill" ? <span>{kindLabel[r.item.kind]}</span> : null}
             {r.item.requirement === "required" ? <span>required</span> : null}
+            {/* Whose rule it is, when it is not the author's. */}
+            {r.pick ? (
+              <span>Habi's pick</span>
+            ) : r.basis === "described" && r.applicability.applicability !== "undeclared" ? (
+              <span>from its description</span>
+            ) : null}
           </span>
         </button>
       </li>

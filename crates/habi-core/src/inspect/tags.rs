@@ -612,7 +612,11 @@ pub fn derive(out: &mut Collector, files: &[(String, u64)], module_of: &dyn Fn(&
     // Languages: count source files per module.
     let mut first: std::collections::BTreeMap<(String, &'static str), (String, u32)> =
         Default::default();
-    for (path, _) in files {
+    // A skill's scripts are not the project's code.
+    for (path, _) in files
+        .iter()
+        .filter(|(p, _)| !super::files::inside_skill_package(p))
+    {
         if let Some(lang) = super::files::language_of(path) {
             let entry = first
                 .entry((module_of(path), lang))

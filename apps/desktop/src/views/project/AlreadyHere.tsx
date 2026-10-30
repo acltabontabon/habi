@@ -446,6 +446,7 @@ export function NothingFits({
   byHand,
   ruled,
   onBrowse,
+  onSuggested,
 }: {
   project: ProjectRecord;
   /** Library skills without rules, not installed here: Habi cannot tell if they fit. */
@@ -453,6 +454,8 @@ export function NothingFits({
   /** Library skills with rules that do not hold here. */
   ruled: number;
   onBrowse: () => void;
+  /** Habi has suggestions for the project: show them. */
+  onSuggested?: () => void;
 }) {
   const sources = useSources();
   const { newSkill, addSkills } = useActions();
@@ -466,8 +469,13 @@ export function NothingFits({
           <h2 className="found-headline">No recommendations yet</h2>
           <p className="lead-sm">{whyNothing(libraries, project.name, byHand, ruled)}</p>
           <div className="found-lead-actions">
+            {onSuggested ? (
+              <Button variant="primary" icon="thread" onClick={onSuggested}>
+                See what Habi suggests
+              </Button>
+            ) : null}
             <Button
-              variant="primary"
+              variant={onSuggested ? "secondary" : "primary"}
               icon="pencil"
               onClick={() => newSkill({ projectId: project.id, projectName: project.name })}
             >
@@ -669,9 +677,9 @@ function whyNothing(libraries: string[], project: string, byHand: number, ruled:
   if (ruled === 0) {
     const they =
       libraries.length === 1 ? "doesn't say when its skills apply" : "don't say when their skills apply";
-    return `${listPhrase(libraries, "and")} ${they}, so Habi can't match them to ${project}.`;
+    return `${listPhrase(libraries, "and")} ${they}, and their descriptions name nothing Habi found in ${project}.`;
   }
-  return `None of the ${plural(ruled, "skill")} that say when they apply fit ${project}. The other ${byHand} don't say, so Habi can't match them.`;
+  return `None of the ${plural(ruled, "skill")} with a rule or a named technology fit ${project}. The other ${byHand} name none, so Habi can't match them.`;
 }
 
 /** "Local", "Local or OpenAI", "Local, OpenAI or 2 more". */
