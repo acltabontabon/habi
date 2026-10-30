@@ -1170,7 +1170,7 @@ impl Habi {
             .rsplit_once('#')
             .ok_or_else(|| HabiError::invalid(format!("invalid item key {key}")))?;
         for (source, index) in libraries {
-            if portable_identity(source) == identity
+            if crate::source::same_repository(&portable_identity(source), identity)
                 && let Some(item) = index.items.iter().find(|i| i.id == id)
             {
                 return self.payload(source, index, item);
@@ -1194,7 +1194,7 @@ impl Habi {
             .filter(|i| i.source.identity != "habi:internal")
             .map(|locked| {
                 let upstream = libraries.iter().find_map(|(s, idx)| {
-                    (portable_identity(s) == locked.source.identity)
+                    crate::source::same_repository(&portable_identity(s), &locked.source.identity)
                         .then(|| {
                             idx.items
                                 .iter()
