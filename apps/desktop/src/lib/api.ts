@@ -59,6 +59,7 @@ import type { SkillDocument } from "../bindings/SkillDocument";
 import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
 import type { SkillStanding } from "../bindings/SkillStanding";
+import type { SkillUsageReport } from "../bindings/SkillUsageReport";
 import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
@@ -280,6 +281,8 @@ export const api = {
   suggestConditions: (projectId: string) => call<ConditionSuggestion[]>("suggest_conditions", { projectId }),
   discoverProject: (projectId: string, jobId?: string) =>
     call<ProjectKnowledge>("discover_project", { projectId, jobId: jobId ?? null }),
+  skillUsage: (projectId: string, jobId: string) =>
+    call<SkillUsageReport>("skill_usage", { projectId, jobId }),
   readInstructions: (projectId: string, path: string) =>
     call<InstructionDocument>("read_instructions", { projectId, path }),
   createSkillFromInstructions: (

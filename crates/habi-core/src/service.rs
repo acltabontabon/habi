@@ -37,6 +37,7 @@ use crate::skills::{
 };
 use crate::source::{Freshness, Source, SourceKind, Sources, TrackedRef, portable_identity};
 use crate::store::{AppPaths, Store};
+use crate::usage::{self, SkillUsageReport};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -1649,6 +1650,26 @@ impl Habi {
             &skills.list()?,
             &skills.origin_digests()?,
         ))
+    }
+
+    /// Whether a project's skills get used, from Claude Code's session
+    /// transcripts on this machine, and what each costs in context. The
+    /// transcripts are read when this is called, and nothing is kept.
+    pub fn skill_usage(&self, project: &str, cancel: &CancelToken) -> Result<SkillUsageReport> {
+        let p = self.existing_project(project)?;
+        let knowledge = self.discover(project, cancel)?;
+        // No home folder is no history: an empty path reads as a missing folder.
+        let transcripts = self
+            .machine_root()
+            .map_or_else(|_| PathBuf::new(), |home| home.join(usage::TRANSCRIPTS_DIR));
+        usage::read_usage(
+            &transcripts,
+            &p.root,
+            &knowledge.skills,
+            time::OffsetDateTime::now_utc(),
+            &usage::UsageLimits::DEFAULT,
+            cancel,
+        )
     }
 
     pub fn read_instructions(&self, project: &str, path: &str) -> Result<InstructionDocument> {

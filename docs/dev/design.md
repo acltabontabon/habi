@@ -116,7 +116,10 @@ its one signature — used only where it carries meaning.
   stack as mono tokens, the composition strip (which libraries fit, how much), and a
   list-and-detail workbench grouped by *Team requirements → Fits this project → Needs
   information → Available → Does not apply*. *Available* (no applicability rules) and *Does
-  not apply* are collapsed, never hidden; installed items always stay listed.
+  not apply* are collapsed, never hidden; installed items always stay listed. An installed
+  skill's meta line says *Used 12× in Claude Code here in 30 days* or *Not used in Claude Code here
+  in 30 days · ~40 tokens*, in the same quiet type as its library, and says nothing when the session
+  history gives nothing to go on: no badge, no warning color, no score.
 - **Item header** — kicker, title and every action on one line: the actions sit at the top
   right, the primary one last, rarer ones (*Remove from this project…*) behind "⋯". Once
   installed, an *Installed for* strip shows the agent tools (all seven, the chosen ones lit)
