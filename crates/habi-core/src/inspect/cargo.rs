@@ -5,8 +5,8 @@
 //! and a member's `dep = { workspace = true }` takes its requirement from
 //! the root's `[workspace.dependencies]`.
 
-use super::Collector;
 use super::model::{CoverageStatus, Ecosystem, Evidence, FactOrigin, VersionInfo, VersionState};
+use super::{Collector, is_within};
 use std::collections::HashMap;
 
 const DETECTOR: &str = "cargo";
@@ -40,15 +40,20 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<CargoToml, String> 
         .and_then(|p| p.get("name"))
         .and_then(|n| n.as_str())
         .map(str::to_string);
-    let line_of = |dep: &str| {
-        text.lines()
-            .position(|l| {
-                let t = l.trim_start();
-                t.strip_prefix(dep)
-                    .is_some_and(|rest| rest.trim_start().starts_with(['=', '.']))
-            })
-            .map(|i| i as u32 + 1)
-    };
+    // The first line that sets each key (`serde = ...`, `serde.workspace = ...`),
+    // found once: a manifest can list 100,000 dependencies.
+    let mut key_lines: HashMap<&str, u32> = HashMap::new();
+    for (i, line) in text.lines().enumerate() {
+        let line = line.trim_start();
+        let end = line
+            .find(|c: char| c.is_whitespace() || c == '=' || c == '.')
+            .unwrap_or(line.len());
+        let (key, rest) = line.split_at(end);
+        if !key.is_empty() && rest.trim_start().starts_with(['=', '.']) {
+            key_lines.entry(key).or_insert(i as u32 + 1);
+        }
+    }
+    let line_of = |dep: &str| key_lines.get(dep).copied();
     let mut dependencies = Vec::new();
     let mut push_section = |table: Option<&toml::Value>, section: &'static str| {
         let Some(table) = table.and_then(|t| t.as_table()) else {
@@ -136,11 +141,7 @@ pub fn collect(crates: &[CargoToml], locks: &[CargoLock], out: &mut Collector) {
         crates
             .iter()
             .filter(|c| !c.workspace_dependencies.is_empty())
-            .filter(|c| {
-                c.module == "."
-                    || module == c.module
-                    || module.starts_with(&format!("{}/", c.module))
-            })
+            .filter(|c| is_within(module, &c.module))
             .max_by_key(|c| c.module.len())
     };
     let lock_of = |module: &str| {
@@ -148,20 +149,21 @@ pub fn collect(crates: &[CargoToml], locks: &[CargoLock], out: &mut Collector) {
             .iter()
             .filter(|l| {
                 let dir = l.path.rsplit_once('/').map(|(d, _)| d).unwrap_or(".");
-                dir == "." || module == dir || module.starts_with(&format!("{dir}/"))
+                is_within(module, dir)
             })
             .max_by_key(|l| l.path.len())
     };
     for c in crates {
         let lock = lock_of(&c.module);
+        let workspace = root_of(&c.module);
         let mut notes = Vec::new();
         if lock.is_none() && !c.dependencies.is_empty() {
             notes.push("No Cargo.lock was found; built versions are not established.".into());
         }
         for (name, req, section, line) in &c.dependencies {
-            let declared = req.clone().or_else(|| {
-                root_of(&c.module).and_then(|r| r.workspace_dependencies.get(name).cloned())
-            });
+            let declared = req
+                .clone()
+                .or_else(|| workspace.and_then(|r| r.workspace_dependencies.get(name).cloned()));
             let locked =
                 lock.and_then(|l| l.versions.get(name).map(|v| (v.clone(), l.path.clone())));
             let version = match (locked, &declared) {

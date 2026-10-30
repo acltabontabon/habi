@@ -6,8 +6,8 @@
 //! case, runs of `-`, `_` and `.` as one `-`. A requirement pinned with `==`
 //! is a resolved version; anything else is a range until a lockfile pins it.
 
-use super::Collector;
 use super::model::{CoverageStatus, Ecosystem, Evidence, FactOrigin, VersionInfo, VersionState};
+use super::{Collector, is_within};
 use std::collections::HashMap;
 
 const DETECTOR: &str = "python";
@@ -77,27 +77,44 @@ pub fn requirement(text: &str) -> Option<(String, Option<String>)> {
     ))
 }
 
-fn line_of(text: &str, needle: &str) -> Option<u32> {
-    let needle = needle.to_lowercase();
-    text.lines()
-        .position(|l| l.to_lowercase().contains(&needle))
-        .map(|i| i as u32 + 1)
+/// A package name's characters. A line is split at everything else.
+fn name_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '-' || c == '_'
+}
+
+/// The first line each lower-case word of a manifest appears on, found once: a
+/// manifest can list 100,000 dependencies, some of them on a single line.
+struct WordLines(HashMap<String, u32>);
+
+impl WordLines {
+    fn new(text: &str) -> Self {
+        let mut first = HashMap::new();
+        for (i, line) in text.lines().enumerate() {
+            for word in line.split(|c| !name_char(c)).filter(|w| !w.is_empty()) {
+                first
+                    .entry(word.to_ascii_lowercase())
+                    .or_insert(i as u32 + 1);
+            }
+        }
+        WordLines(first)
+    }
+
+    /// Where the name that starts `text` first appears.
+    fn line_of(&self, text: &str) -> Option<u32> {
+        let word = text.split(|c| !name_char(c)).next()?;
+        self.0.get(&word.to_ascii_lowercase()).copied()
+    }
 }
 
 pub fn parse_pyproject(path: &str, module: &str, text: &str) -> Result<PythonManifest, String> {
     let doc: toml::Table = text
         .parse()
         .map_err(|e| format!("{path} could not be read: {e}"))?;
+    let lines = WordLines::new(text);
     let mut deps = Vec::new();
     let mut add = |raw: &str, section: &str| {
         if let Some((name, spec)) = requirement(raw) {
-            let line = line_of(
-                text,
-                raw.split(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')
-                    .next()
-                    .unwrap_or(raw),
-            );
-            deps.push((name, spec, section.to_string(), line));
+            deps.push((name, spec, section.to_string(), lines.line_of(raw)));
         }
     };
     let project = doc.get("project");
@@ -152,7 +169,7 @@ pub fn parse_pyproject(path: &str, module: &str, text: &str) -> Result<PythonMan
                 normalize(name),
                 spec.filter(|s| s != "*"),
                 section.to_string(),
-                line_of(text, name),
+                lines.line_of(name),
             ));
         }
     };
@@ -208,6 +225,7 @@ pub fn parse_pipfile(path: &str, module: &str, text: &str) -> Result<PythonManif
     let doc: toml::Table = text
         .parse()
         .map_err(|e| format!("{path} could not be read: {e}"))?;
+    let lines = WordLines::new(text);
     let mut dependencies = Vec::new();
     for (table, section) in [("packages", "dependencies"), ("dev-packages", "dev")] {
         for (name, spec) in doc
@@ -228,7 +246,7 @@ pub fn parse_pipfile(path: &str, module: &str, text: &str) -> Result<PythonManif
                 normalize(name),
                 spec.filter(|s| s != "*"),
                 section.to_string(),
-                line_of(text, name),
+                lines.line_of(name),
             ));
         }
     }
@@ -290,7 +308,7 @@ pub fn collect(manifests: &[PythonManifest], locks: &[PythonLock], out: &mut Col
             .iter()
             .filter(|l| {
                 let dir = l.path.rsplit_once('/').map(|(d, _)| d).unwrap_or(".");
-                dir == "." || m.module == dir || m.module.starts_with(&format!("{dir}/"))
+                is_within(&m.module, dir)
             })
             .max_by_key(|l| l.path.len());
         let mut notes = Vec::new();

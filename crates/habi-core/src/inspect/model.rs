@@ -274,7 +274,10 @@ pub struct ProjectInspection {
 
 impl ProjectInspection {
     pub fn module(&self, id: &str) -> Option<&Module> {
-        self.modules.iter().find(|m| m.id == id)
+        self.index()
+            .modules
+            .get(id)
+            .and_then(|&i| self.modules.get(i as usize))
     }
 
     pub fn fact(&self, id: &str) -> Option<&Fact> {
@@ -307,6 +310,16 @@ impl ProjectInspection {
     pub fn module_facts(&self, id: &str) -> impl Iterator<Item = &Fact> {
         self.index()
             .facts
+            .get(id)
+            .into_iter()
+            .flatten()
+            .filter_map(|&i| self.facts.get(i as usize))
+    }
+
+    /// Facts of module `id` that speak for the modules inside it too.
+    pub fn repository_level_facts(&self, id: &str) -> impl Iterator<Item = &Fact> {
+        self.index()
+            .repository_level
             .get(id)
             .into_iter()
             .flatten()
@@ -376,6 +389,14 @@ impl ModuleLookup {
             }
         }
     }
+
+    /// The deepest module enclosing module `id`, not `id` itself.
+    pub fn parent<'p>(&self, id: &'p str) -> &'p str {
+        match id.rsplit_once('/') {
+            Some((dir, _)) => self.owner(dir),
+            None => ".",
+        }
+    }
 }
 
 /// Facts, coverage and files of an inspection grouped by module id (as
@@ -383,8 +404,12 @@ impl ModuleLookup {
 #[derive(Debug, Default)]
 pub struct ModuleIndex {
     lookup: ModuleLookup,
+    modules: HashMap<String, u32>,
     files: HashMap<String, Vec<u32>>,
     facts: HashMap<String, Vec<u32>>,
+    /// Facts every enclosed module inherits, kept apart so that a module's view
+    /// does not go through all the facts of its ancestors.
+    repository_level: HashMap<String, Vec<u32>>,
     coverage: HashMap<String, Vec<u32>>,
 }
 
@@ -401,9 +426,22 @@ impl ModuleIndex {
                 }
             }
         }
+        let modules = inspection
+            .modules
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (m.id.clone(), i as u32))
+            .collect();
         let mut facts: HashMap<String, Vec<u32>> = HashMap::new();
+        let mut repository_level: HashMap<String, Vec<u32>> = HashMap::new();
         for (i, f) in inspection.facts.iter().enumerate() {
             facts.entry(f.module.clone()).or_default().push(i as u32);
+            if crate::matching::eval::repository_level(f) {
+                repository_level
+                    .entry(f.module.clone())
+                    .or_default()
+                    .push(i as u32);
+            }
         }
         let mut coverage: HashMap<String, Vec<u32>> = HashMap::new();
         for (i, c) in inspection.coverage.iter().enumerate() {
@@ -411,8 +449,10 @@ impl ModuleIndex {
         }
         ModuleIndex {
             lookup,
+            modules,
             files,
             facts,
+            repository_level,
             coverage,
         }
     }
@@ -478,8 +518,4 @@ impl Freshness {
             .iter()
             .any(|(rel, stamp)| Stamp::of(&Self::full(&self.root, rel)) != *stamp)
     }
-}
-
-pub(crate) fn owning_module<'a>(modules: impl Iterator<Item = &'a str>, path: &str) -> String {
-    ModuleLookup::new(modules).owner(path).to_string()
 }
