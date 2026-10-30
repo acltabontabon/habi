@@ -7,11 +7,15 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+## 0.4.0 - 2026-10-30
+
+Explore the catalog on a page of its own, keep many libraries in view at a glance, and reach your skills from their own place in the sidebar.
+
 ### Added
 
 - **Three more community libraries in the catalog.** Trail of Bits' security and audit skills,
   UI/UX Pro Max's design skills, and Impeccable's design vocabulary can be previewed and
-  connected from Libraries.
+  connected from Explore.
 
 ### Changed
 
@@ -31,6 +35,15 @@ All notable changes to Habi are listed here. The format follows
 - **The sample workspace.** Habi no longer offers example libraries and projects; open one of
   your own projects and connect a library instead. A sample workspace made by an earlier
   version is removed on startup, with nothing of your own touched.
+
+### Fixed
+
+- **Back says where it goes.** From Explore, a catalog library, the pages for connecting your own,
+  or a skill opened from On this machine, the Back link names the page it returns to.
+- **Builder libraries are called builders.** Hovering a library from Anthropic, Google, Sentry
+  and the other tool builders in the sidebar no longer labels it community.
+- **Clearer Libraries pages when nothing matches.** A filter with no results offers a way to clear
+  it, and Explore with every catalog library connected says so without an empty filter bar.
 
 ## 0.3.0 - 2026-10-26
 
