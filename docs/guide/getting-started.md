@@ -81,7 +81,8 @@ you say so.
    **Libraries**: a Git repository, a folder, or a public library from the catalog. If you use
    Claude Code here, an installed skill also says whether it gets used (*Used 12× in Claude Code
    here in 30 days*, *Not used in Claude Code here in 30 days*), so you can remove what you no longer
-   need: [what Habi reads for that](../project/security-model.md#claude-code-session-history).
+   need: [what Habi reads for that](../project/security-model.md#claude-code-session-history). A
+   skill in a `.claude` folder your repository ignores gets no such line yet.
 
 4. **Install:** Review preselected agent tools, check the files that will change, and confirm.
    You see every file before anything is written.
