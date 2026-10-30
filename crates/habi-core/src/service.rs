@@ -136,6 +136,9 @@ pub struct ProjectSummary {
     /// thread solid where something from it is installed, and loose where it only fits.
     #[serde(default)]
     pub tally: Vec<SourceTally>,
+    /// Catalog libraries, not connected, that Habi's suggestions for the project come from.
+    #[serde(default)]
+    pub suggested: Vec<String>,
     pub at: String,
 }
 
@@ -174,6 +177,8 @@ pub struct ProjectOverview {
     pub sources: Vec<Source>,
     /// Installed items whose source or item is not available on this machine.
     pub orphaned: Vec<Installation>,
+    /// Habi's short answer to "what should my agents have here?"
+    pub kit: crate::suggest::Kit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -899,7 +904,8 @@ impl Habi {
 
     /// Skills of catalog libraries that fit a project, from libraries already
     /// fetched or connected (nothing is downloaded). Only skills with a rule
-    /// to evaluate are considered: their author's, or the catalog's hint.
+    /// to evaluate can fit: their author's, the catalog's, or one read from
+    /// what the skill says it is for.
     pub fn catalog_fits(
         &self,
         project_id: &str,
@@ -918,18 +924,25 @@ impl Habi {
             let index = self.sources.index(source_id)?;
             let hints = crate::catalog::hints_for_source(&source);
             let identity = portable_identity(&source);
+            // Only what has a rule can fit: the author's, the catalog's, or its own words.
+            let ruled = |item: &&crate::library::model::LibraryItem| {
+                item.applies_when.is_some()
+                    || hints.as_ref().is_some_and(|h| h.find(&item.path).is_some())
+                    || crate::matching::described::described_rule(&item.name, &item.description)
+                        .is_some()
+            };
             let candidates: Vec<Candidate> = index
                 .items
                 .iter()
-                .map(|item| (item, hints.as_ref().and_then(|h| h.find(&item.path))))
-                .filter(|(item, hint)| item.applies_when.is_some() || hint.is_some())
-                .map(|(item, hint)| Candidate {
+                .filter(ruled)
+                .map(|item| Candidate {
                     item,
                     source_name: &source.name,
                     source_identity: &identity,
                     snapshot: &index.snapshot,
                     runs: Vec::new(),
-                    hint,
+                    hint: hints.as_ref().and_then(|h| h.find(&item.path)),
+                    pick: hints.as_ref().and_then(|h| h.pick(&item.path)),
                 })
                 .collect();
             if candidates.is_empty() {
@@ -958,6 +971,28 @@ impl Habi {
             }
         }
         Ok(out)
+    }
+
+    /// What Habi installed in the person's other projects, by lock key, with
+    /// those projects' names: read from each project's own record, so what
+    /// one project adopts can be offered to the next.
+    fn installed_elsewhere(&self, except: &str) -> HashMap<String, Vec<String>> {
+        let mut out: HashMap<String, Vec<String>> = HashMap::new();
+        for project in self.recent_projects().unwrap_or_default() {
+            if project.id == except || !project.exists {
+                continue;
+            }
+            let Ok(lock) = read_lock(&project.root) else {
+                continue;
+            };
+            for item in &lock.items {
+                let names = out.entry(item.key()).or_default();
+                if !names.contains(&project.name) {
+                    names.push(project.name.clone());
+                }
+            }
+        }
+        out
     }
 
     /// The catalog of public libraries Habi suggests.
@@ -1199,6 +1234,7 @@ impl Habi {
                     snapshot: &index.snapshot,
                     runs: runs.get(&item.key).cloned().unwrap_or_default(),
                     hint: hints.as_ref().and_then(|h| h.find(&item.path)),
+                    pick: hints.as_ref().and_then(|h| h.pick(&item.path)),
                 });
             }
         }
@@ -1210,6 +1246,29 @@ impl Habi {
             &installations,
             &candidates,
         );
+        let kit = {
+            let connected: Vec<crate::suggest::Connected> = libraries
+                .iter()
+                .map(|(source, index)| crate::suggest::Connected {
+                    source,
+                    index,
+                    entry: crate::catalog::entry_for_source(source),
+                })
+                .collect();
+            let views = crate::matching::Views::new(&inspection, &declarations);
+            let catalog = crate::catalog::registry::Registry::embedded()
+                .map(|r| r.entries.as_slice())
+                .unwrap_or_default();
+            crate::suggest::kit(&crate::suggest::KitInput {
+                root: &project.root,
+                folders: &crate::install::status::SkillFolders::of(&project.root),
+                views: &views,
+                recommendations: &recommendations,
+                connected: &connected,
+                catalog,
+                elsewhere: &self.installed_elsewhere(&project.id),
+            })
+        };
         let orphaned = installations
             .iter()
             .filter(|i| {
@@ -1297,6 +1356,7 @@ impl Habi {
                     languages
                 },
                 tally,
+                suggested: kit.unconnected_entries(),
                 at: crate::time::now(),
             }
         };
@@ -1314,6 +1374,7 @@ impl Habi {
             recommendations,
             sources: libraries.into_iter().map(|(s, _)| s).collect(),
             orphaned,
+            kit,
         })
     }
 

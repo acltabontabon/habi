@@ -255,7 +255,7 @@ describe("your libraries, one line each", () => {
     ]);
     // The catalog is its own page; this one lists only what is connected.
     expect(screen.queryByRole("button", { name: /OpenAI/ })).toBeNull();
-    expect(screen.getByRole("button", { name: /^Explore/ })).toHaveTextContent("11");
+    expect(screen.getByRole("button", { name: /^Explore/ })).toHaveTextContent("14");
     // Your own library, and one from the catalog, are one menu away.
     await userEvent.click(screen.getByRole("button", { name: /Add a library/ }));
     const menu = screen.getByRole("menu", { name: "Add a library" });

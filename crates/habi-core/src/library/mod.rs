@@ -61,6 +61,60 @@ pub fn parse_yaml(text: &str) -> Result<Value, String> {
     })
 }
 
+/// A skill calling on more than this many others is an index of them
+/// (`using-superpowers`), not something that needs them all.
+const MAX_CALLS: usize = 5;
+
+/// The names written as `plugin:skill` in a skill's instructions, the way
+/// skills in one plugin call each other (`superpowers:writing-plans`). Only
+/// this form counts: a name in backticks is usually a "see also", and works
+/// without it.
+fn called_names(body: &str) -> Vec<String> {
+    static CALL: std::sync::LazyLock<Option<regex::Regex>> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(r"\b[a-z][a-z0-9-]*:([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\b").ok()
+    });
+    let mut names: Vec<String> = Vec::new();
+    if let Some(call) = CALL.as_ref() {
+        for caps in call.captures_iter(body) {
+            if let Some(name) = caps.get(1).map(|m| m.as_str())
+                && !names.iter().any(|n| n == name)
+            {
+                names.push(name.to_string());
+            }
+        }
+    }
+    names
+}
+
+/// Turns called names into sibling ids: skills in the same folder as the
+/// caller (one plugin, or a library's `skills/`), by their SKILL.md name.
+fn resolve_calls(items: &mut [LibraryItem], called: &HashMap<String, Vec<String>>) {
+    let siblings: Vec<(String, String, String)> = items
+        .iter()
+        .filter(|i| i.kind != ItemKind::Instructions)
+        .map(|i| (dir_of(&i.path).to_string(), i.name.clone(), i.id.clone()))
+        .collect();
+    for item in items.iter_mut() {
+        let Some(names) = called.get(&item.path) else {
+            continue;
+        };
+        let parent = dir_of(&item.path);
+        let calls: Vec<String> = names
+            .iter()
+            .filter(|n| **n != item.name)
+            .filter_map(|n| {
+                siblings
+                    .iter()
+                    .find(|(dir, name, _)| dir == parent && name == n)
+                    .map(|(_, _, id)| id.clone())
+            })
+            .collect();
+        if calls.len() <= MAX_CALLS {
+            item.calls = calls;
+        }
+    }
+}
+
 /// Splits `---\n<yaml>\n---\n<body>` into the YAML text and the body,
 /// without parsing the YAML.
 #[allow(
@@ -558,6 +612,8 @@ pub fn build_index(
     }
 
     let mut seen_ids: HashMap<String, String> = HashMap::new();
+    // Names each skill's instructions call as `plugin:skill`, by skill folder.
+    let mut called: HashMap<String, Vec<String>> = HashMap::new();
     for dir in &accepted {
         let skill_md = join(dir, SKILL_FILE);
         let mut diags = Vec::new();
@@ -569,7 +625,10 @@ pub fn build_index(
 
         let (front, body_len) = match read_text(&skill_md) {
             Ok(text) => match parse_frontmatter(&text) {
-                Ok((fm, body)) => (fm, body.len()),
+                Ok((fm, body)) => {
+                    called.insert(dir.clone(), called_names(body));
+                    (fm, body.len())
+                }
                 Err(e) => {
                     diags.push(Diagnostic::error(e, Some(&skill_md)));
                     (Frontmatter::default(), 0)
@@ -774,6 +833,7 @@ pub fn build_index(
             metadata_status: status,
             diagnostics: diags,
             signals,
+            calls: Vec::new(),
             complete: true,
         });
     }
@@ -858,9 +918,12 @@ pub fn build_index(
             metadata_status,
             diagnostics: diags,
             signals: Vec::new(),
+            calls: Vec::new(),
             complete: true,
         });
     }
+
+    resolve_calls(&mut index.items, &called);
 
     // Name collisions matter at install time (same directory name).
     let mut by_name: BTreeMap<&str, Vec<&str>> = BTreeMap::new();

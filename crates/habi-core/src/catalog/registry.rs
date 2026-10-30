@@ -131,6 +131,56 @@ pub struct Hint {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct RawPick {
+    skill: String,
+    /// The SKILL.md `name`, when it is not the folder's.
+    name: Option<String>,
+    title: String,
+    gist: String,
+    why: String,
+    tokens: u32,
+    #[serde(default)]
+    scripts: bool,
+    caution: Option<String>,
+    applies_when: Option<Value>,
+}
+
+/// A skill Habi stands behind: offered to a project before its library is
+/// connected, so the catalog carries what to call it and why.
+#[derive(Debug, Clone)]
+pub struct Pick {
+    /// Library-relative skill folder (exact, not a glob).
+    pub skill: String,
+    /// The SKILL.md `name` when it differs from the folder's; the name it is
+    /// installed under.
+    pub skill_name: Option<String>,
+    pub title: String,
+    /// What it does, in Habi's words.
+    pub gist: String,
+    /// Habi's reason to suggest it, as a short phrase ("Any project with tests").
+    pub why: String,
+    /// What its name and description cost in every agent session, in tokens
+    /// (`suggest::tokens_of`), at the revision checked.
+    pub tokens: u32,
+    /// It comes with code an agent could run, at the revision checked.
+    pub scripts: bool,
+    /// What Habi's scan of its files flags as caution, at the revision checked.
+    pub caution: Option<String>,
+    /// Where it fits; `None` for a practice that fits any codebase.
+    pub applies_when: Option<Condition>,
+}
+
+impl Pick {
+    /// The skill's name: what it is installed under in a project.
+    pub fn name(&self) -> &str {
+        self.skill_name
+            .as_deref()
+            .unwrap_or_else(|| self.skill.rsplit('/').next().unwrap_or(&self.skill))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RawEntry {
     id: String,
     name: String,
@@ -147,6 +197,8 @@ struct RawEntry {
     notes: Vec<String>,
     #[serde(default)]
     hints: Vec<RawHint>,
+    #[serde(default)]
+    picks: Vec<RawPick>,
 }
 
 #[derive(Debug, Clone)]
@@ -162,6 +214,7 @@ pub struct Entry {
     pub review: Option<Review>,
     pub notes: Vec<String>,
     pub hints: Vec<Hint>,
+    pub picks: Vec<Pick>,
 }
 
 impl Entry {
@@ -367,6 +420,67 @@ fn validate(raw: RawEntry, strict: bool) -> Result<Entry> {
             applies_when,
         });
     }
+    let mut picks: Vec<Pick> = Vec::new();
+    for pick in raw.picks {
+        let skill = pick.skill.trim_end_matches('/').to_string();
+        let exact = !skill.is_empty()
+            && !skill.ends_with("SKILL.md")
+            && !skill.contains(['*', '?', '[', '{'])
+            && !skill
+                .split('/')
+                .any(|s| s.is_empty() || s == "." || s == "..");
+        if !exact {
+            return Err(bad(
+                &id,
+                format!("pick `{skill}` must be one skill folder, not a pattern"),
+            ));
+        }
+        if picks.iter().any(|p| p.skill == skill) {
+            return Err(bad(&id, format!("pick `{skill}` is listed twice")));
+        }
+        let words = |s: &str, most: usize| !s.trim().is_empty() && s.chars().count() <= most;
+        if pick.tokens == 0 {
+            return Err(bad(
+                &id,
+                format!("pick `{skill}` needs its measured `tokens`"),
+            ));
+        }
+        if !words(&pick.title, 60) || !words(&pick.gist, 100) || !words(&pick.why, 60) {
+            return Err(bad(
+                &id,
+                format!(
+                    "pick `{skill}` needs a title, a gist (100 characters at most) and a why (60)"
+                ),
+            ));
+        }
+        let applies_when = pick
+            .applies_when
+            .as_ref()
+            .map(Condition::parse)
+            .transpose()
+            .map_err(|e| bad(&id, format!("pick `{skill}`: {e}")))?;
+        if pick
+            .name
+            .as_deref()
+            .is_some_and(|n| crate::library::check_skill_name(n).is_err())
+        {
+            return Err(bad(
+                &id,
+                format!("pick `{skill}` has a name agents cannot use"),
+            ));
+        }
+        picks.push(Pick {
+            skill,
+            skill_name: pick.name,
+            title: pick.title,
+            gist: pick.gist,
+            why: pick.why,
+            tokens: pick.tokens,
+            scripts: pick.scripts,
+            caution: pick.caution,
+            applies_when,
+        });
+    }
     Ok(Entry {
         id: raw.id,
         name: raw.name,
@@ -379,6 +493,7 @@ fn validate(raw: RawEntry, strict: bool) -> Result<Entry> {
         review: raw.review,
         notes: raw.notes,
         hints,
+        picks,
     })
 }
 
@@ -553,6 +668,27 @@ mod tests {
             "version: 1\nsources:\n{one}    status: {{ state: deprecated, successor: nope }}\n"
         );
         assert!(Registry::parse(&dangling).is_err());
+    }
+
+    #[test]
+    fn picks_are_single_folders_with_words_and_rules_that_compile() {
+        let pick = |p: &str| {
+            entry_yaml(&format!(
+                "{BUILDER}    picks:\n      - {{ skill: \"{p}\", title: T, gist: G, why: W, tokens: 40 }}\n"
+            ))
+        };
+        assert!(Registry::parse(&pick("skills/tdd")).is_ok());
+        assert!(Registry::parse(&pick("skills/*")).is_err());
+        assert!(Registry::parse(&pick("skills/../x")).is_err());
+        assert!(Registry::parse(&pick("skills/tdd/SKILL.md")).is_err());
+        let bad_rule = entry_yaml(&format!(
+            "{BUILDER}    picks:\n      - {{ skill: skills/a, title: T, gist: G, why: W, tokens: 40, applies_when: {{ script: x }} }}\n"
+        ));
+        assert!(Registry::parse(&bad_rule).is_err());
+        let wordless = entry_yaml(&format!(
+            "{BUILDER}    picks:\n      - {{ skill: skills/a, title: T, gist: \"\", why: W, tokens: 40 }}\n"
+        ));
+        assert!(Registry::parse(&wordless).is_err());
     }
 
     #[test]

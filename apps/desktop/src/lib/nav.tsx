@@ -4,8 +4,12 @@ import { Dialog } from "../components/Dialog";
 import { Button } from "../components/ui";
 import { flushAutosaves, hasPendingEdits, hasUnsavedEdits } from "./useAutosave";
 
-/** How a project opens: its recommendations, or with its history showing. */
-export type ProjectTab = "recommendations" | "history";
+/**
+ * How a project opens: as it suits the project ("recommendations": the kit
+ * while nothing from Habi is there yet, else every skill), on the kit, on
+ * every skill, or with its history showing.
+ */
+export type ProjectTab = "recommendations" | "suggested" | "workbench" | "history";
 
 export type Route =
   | { name: "welcome" }

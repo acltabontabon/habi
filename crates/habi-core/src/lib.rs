@@ -44,4 +44,5 @@ pub mod service;
 pub mod skills;
 pub mod source;
 pub mod store;
+pub mod suggest;
 pub mod time;

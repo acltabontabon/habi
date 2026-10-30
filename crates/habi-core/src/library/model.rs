@@ -252,6 +252,23 @@ pub struct ItemFile {
     pub executable: bool,
 }
 
+impl ItemFile {
+    /// A file an agent could run: marked executable, or source code. Schemas,
+    /// templates and data under `scripts/` are not code. The same reading as
+    /// `isCode` in the desktop app's `lib/skillFacts.ts`.
+    pub fn is_code(&self) -> bool {
+        const CODE: &[&str] = &[
+            "py", "sh", "bash", "zsh", "fish", "js", "mjs", "cjs", "ts", "mts", "rb", "pl", "php",
+            "ps1", "lua", "go", "rs", "swift", "kt", "kts",
+        ];
+        self.executable
+            || self
+                .path
+                .rsplit_once('.')
+                .is_some_and(|(_, ext)| CODE.iter().any(|c| ext.eq_ignore_ascii_case(c)))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -307,6 +324,10 @@ pub struct LibraryItem {
     /// as data. A static reading: not a guarantee either way.
     #[serde(default)]
     pub signals: Vec<super::signals::Signal>,
+    /// Ids of sibling skills this one calls by name in its instructions
+    /// (`superpowers:writing-plans`). Without them those steps do not work.
+    #[serde(default)]
+    pub calls: Vec<String>,
     /// False if some of the item's files were skipped while reading the
     /// library (too large, symbolic links). Incomplete items are not installable.
     pub complete: bool,

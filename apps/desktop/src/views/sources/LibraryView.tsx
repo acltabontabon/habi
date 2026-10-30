@@ -418,7 +418,9 @@ function SkillHead({
         `${projectName ?? "Your project"}: ${fit.applicability.reason}. ${
           fit.basis === "catalogHint"
             ? "Suggested by Habi's catalog; the author declared no rules."
-            : "From the author's own rules."
+            : fit.basis === "described"
+              ? "Read from the skill's description; the author declared no rules."
+              : "From the author's own rules."
         }`,
     )
     .join("\n");

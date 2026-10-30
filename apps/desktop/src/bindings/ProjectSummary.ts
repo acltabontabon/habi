@@ -30,4 +30,8 @@ languages: Array<string>,
  * Per library, what it brings to the project: the home page's weave draws a library's
  * thread solid where something from it is installed, and loose where it only fits.
  */
-tally: Array<SourceTally>, at: string, };
+tally: Array<SourceTally>, 
+/**
+ * Catalog libraries, not connected, that Habi's suggestions for the project come from.
+ */
+suggested: Array<string>, at: string, };

@@ -2,6 +2,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ClientId } from "../../bindings/ClientId";
+import type { Condition } from "../../bindings/Condition";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Recommendation } from "../../bindings/Recommendation";
 import { AgentReach } from "../../components/AgentReach";
@@ -22,7 +23,6 @@ import {
   installLabel,
   installTone,
   kindLabel,
-  NO_RULES_PHRASE,
   prerequisiteLabel,
   prerequisiteTone,
   readinessLabel,
@@ -33,6 +33,7 @@ import {
 import { useNav } from "../../lib/nav";
 import { useSkills } from "../../lib/queries";
 import { tabKeyHandler } from "../../lib/tabs";
+import { tagLabel } from "../../lib/tags";
 import { SkillReader } from "../reader/SkillReader";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { ChecksPanel } from "./ChecksPanel";
@@ -40,6 +41,17 @@ import { answerable, DeclareQuestion, MatchedReasons, ModuleExplanation, sentenc
 import { WorkflowPanel } from "./WorkflowPanel";
 
 type Panel = "why" | "workflow" | "content" | "checks";
+
+/** The technologies a rule read from a skill's description names, as people say them. */
+function describedTags(a: Recommendation["applicability"]): string[] {
+  const out: string[] = [];
+  const walk = (c: Condition) => {
+    if (c.op === "all" || c.op === "any") c.items.forEach(walk);
+    else if (c.op === "tag" && !out.includes(tagLabel(c.tag))) out.push(tagLabel(c.tag));
+  };
+  for (const m of a.modules) if (m.applies) walk(m.applies.condition);
+  return out.length > 0 ? out : ["a technology"];
+}
 
 /**
  * Where an installation lives, as the person would look for it: skill
@@ -395,10 +407,18 @@ export function ItemDetailPane({
                   Habi's catalog suggests when it applies. Treat it as a pointer and read the skill.
                 </p>
               ) : null}
+              {r.basis === "described" ? (
+                <p className="muted why-basis">
+                  This rule is read from the skill's own description: it names {describedTags(a).join(", ")},
+                  and Habi checks for that here. The author declared no rules, so treat it as a pointer and
+                  read the skill.
+                </p>
+              ) : null}
+              {r.pick ? <p className="muted why-basis">One of Habi's picks — {r.pick.why}.</p> : null}
               {a.applicability === "undeclared" ? (
                 <p className="muted">
-                  {NO_RULES_PHRASE}. Habi does not guess from the title or text. You can still install it
-                  deliberately{isLocal ? ", or add rules in My skills" : ""}.
+                  No rules for when it applies, and its description names nothing Habi can look for. You can
+                  still install it deliberately{isLocal ? ", or add rules in My skills" : ""}.
                 </p>
               ) : (
                 <>
