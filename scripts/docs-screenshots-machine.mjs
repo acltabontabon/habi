@@ -12,6 +12,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseChangelog } from "./changelog.mjs";
 import { openBrowser } from "./lib/cdp.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,6 +24,10 @@ process.env.HABI_HOME = realpathSync(join(work, "habi-home"));
 const url = process.argv[2] ?? "http://127.0.0.1:1441";
 const bridge = process.argv[3] ?? "http://127.0.0.1:1440";
 const expected = JSON.parse(readFileSync(join(root, "apps/desktop/package.json"), "utf8")).version;
+// What's new must show this version's whole changelog entry: every bullet's bold lead.
+const entry = parseChangelog(readFileSync(join(root, "CHANGELOG.md"), "utf8")).releases.find((r) => r.version === expected);
+assert.ok(entry, `CHANGELOG.md has no entry for ${expected}.`);
+const leads = [...entry.markdown.matchAll(/^[-*] \*\*(.+?)\*\*/gm)].map((m) => m[1].replace(/`/g, ""));
 
 async function invoke(cmd, args = {}) {
   const reply = await fetch(`${bridge}/invoke`, {
@@ -107,7 +112,7 @@ try {
   await shot("pr-library-status/after.jpg");
   await page(`document.querySelector('.sidebar-version').click()`);
   await until(`document.querySelector('#whatsnew') && document.querySelector('.timeline-version')?.textContent === ${JSON.stringify(expected)}`, "current What's new version");
-  await until(`document.querySelector('.about-notes')?.textContent.includes('Libraries scale to many.') && document.querySelector('.about-notes')?.textContent.includes('Back says where it goes.')`, "current release notes");
+  await until(`${JSON.stringify(leads)}.every((lead) => document.querySelector('.about-notes')?.textContent.includes(lead))`, "current release notes");
   console.log(`Verified Habi ${expected}: machine collection default, three selected-agent installs, shared-folder explanations, global search, history filters, expanded paths, recovery result, library management link.`);
 } finally {
   await close();
