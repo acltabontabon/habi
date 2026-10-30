@@ -278,7 +278,7 @@ impl Skills<'_> {
         let candidates: Vec<_> = sources
             .list()?
             .into_iter()
-            .filter(|s| portable_identity(s) == source_identity)
+            .filter(|s| crate::source::same_repository(&portable_identity(s), &source_identity))
             .collect();
         // Prefer a connection that still has the copied version cached.
         let Some(source) = candidates
