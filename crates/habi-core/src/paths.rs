@@ -4,9 +4,10 @@
 //! paths that Habi does not control. `RelPath` is the only way those strings
 //! become file-system locations: it rejects absolute paths, `..`, empty
 //! segments, backslashes, drive prefixes and names that Windows would alias
-//! (trailing dots or spaces, device names, `<>:"|?*`), and `resolve_for_write` refuses to
-//! cross symbolic links so a hostile tree cannot redirect a write outside the
-//! project.
+//! (trailing dots or spaces, device names, `<>:"|?*`), invisible and
+//! direction-changing characters that make a name read as something else, and
+//! `resolve_for_write` refuses to cross symbolic links so a hostile tree cannot
+//! redirect a write outside the project.
 
 use crate::error::{HabiError, Result};
 use serde::{Deserialize, Serialize};
@@ -19,6 +20,20 @@ pub const MAX_REL_PATH_LEN: usize = 1024;
 
 /// Characters Windows does not allow in file names.
 const WINDOWS_FORBIDDEN: &[char] = &['<', '>', ':', '"', '|', '?', '*'];
+
+/// Zero-width and bidirectional control characters: `notes\u{202e}dm.exe` reads
+/// as `notesexe.md`, so a name holding one could spoof what a preview lists.
+/// The same set the signals reader looks for in file contents.
+fn hidden_character(c: char) -> bool {
+    matches!(c,
+        '\u{061c}'
+        | '\u{200b}'..='\u{200f}'
+        | '\u{202a}'..='\u{202e}'
+        | '\u{2060}'..='\u{2064}'
+        | '\u{2066}'..='\u{2069}'
+        | '\u{feff}'
+        | '\u{e0000}'..='\u{e007f}')
+}
 
 /// Why a path component would name a different file (or a device) on
 /// Windows, if it would. Checked on every platform: a project written on macOS
@@ -82,6 +97,11 @@ impl RelPath {
                 p if p.eq_ignore_ascii_case(".git") => return Err(invalid("contains `.git`")),
                 p if p.chars().any(|c| c.is_control()) => {
                     return Err(invalid("contains control characters"));
+                }
+                p if p.chars().any(hidden_character) => {
+                    return Err(invalid(
+                        "contains an invisible or direction-changing character",
+                    ));
                 }
                 p => {
                     if let Some(why) = windows_alias(p) {
@@ -320,6 +340,21 @@ pub fn display_path(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_names_that_read_as_something_else() {
+        for bad in [
+            "notes\u{202e}dm.exe",
+            "scripts/\u{202e}hs.gpj",
+            "scripts/a\u{200b}.md",
+            "a\u{2066}b/c.md",
+            "\u{feff}SKILL.md",
+            "a\u{e0041}.md",
+        ] {
+            assert!(RelPath::new(bad).is_err(), "{bad:?}");
+        }
+        assert!(RelPath::new("références/ça.md").is_ok());
+    }
 
     #[test]
     fn rejects_traversal_and_absolute_paths() {
