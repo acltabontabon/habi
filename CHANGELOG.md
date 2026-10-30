@@ -52,6 +52,9 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Wide windows use their width.** Suggested's list and card grow with the window, the All
   skills list widens, My skills grows and centres, and every capped page (Settings, Privacy,
   About, Contributions) sits centred like Home instead of leaving a void on the right.
+- **A simpler Settings page.** One column at a reading measure: a row per setting with the words on
+  the left and the choice on the right, on and off as a switch, and three groups — Updates, This
+  machine, Housekeeping — instead of four columns.
 
 ### Fixed
 

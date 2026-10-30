@@ -1,4 +1,4 @@
-/** Settings hang from one thread like warp: a titled group with its knot, and the settings under it. */
+/** Settings hang from one thread like warp: a titled group with its knot, and a row per setting under it. */
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Icon } from "./Icon";
 
@@ -13,13 +13,30 @@ export function SettingGroup({ title, id, children }: { title: string; id: strin
   );
 }
 
-/** One setting: its name and a line of context, then what to choose or do about it beneath. */
-export function Setting({ label, hint, children }: { label: string; hint?: string; children?: ReactNode }) {
+/**
+ * One setting as a row: its name and a line of context on the left, and what
+ * to choose or do about it on the right. On a narrow page the control drops
+ * beneath the words.
+ */
+export function Setting({
+  label,
+  hint,
+  wide,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** The control needs the row's width (a list): it goes beneath the words. */
+  wide?: boolean;
+  children?: ReactNode;
+}) {
   return (
-    <div className="setting">
-      <span className="setting-label">{label}</span>
-      {hint ? <p className="setting-hint">{hint}</p> : null}
-      {children}
+    <div className={wide ? "setting is-wide" : "setting"}>
+      <div className="setting-text">
+        <span className="setting-label">{label}</span>
+        {hint ? <p className="setting-hint">{hint}</p> : null}
+      </div>
+      {children ? <div className="setting-control">{children}</div> : null}
     </div>
   );
 }

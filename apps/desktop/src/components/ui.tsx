@@ -212,3 +212,31 @@ export function Working({
     </div>
   );
 }
+
+/**
+ * On or off: one knot that slides along a short thread, in the language of
+ * the settings' other choices. A button with the switch role, so Space and
+ * Enter flip it and a screen reader says which way it is.
+ */
+export function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={`switch${checked ? " is-on" : ""}`}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="switch-knot" aria-hidden="true" />
+    </button>
+  );
+}

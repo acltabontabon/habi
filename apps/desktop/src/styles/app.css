@@ -8828,37 +8828,35 @@ button.chooser-crumb:focus-visible {
 
 /* ---------- Settings ---------- */
 
-/* Settings hang from one thread like warp: a line across the page, a knot where each group begins. */
+/* One column at a reading measure, centred. Groups hang from one thread like
+   warp: a line across the page with a knot where each begins, and a row per
+   setting beneath it, the words on the left and the choice on the right. */
 .page.settings {
-  max-width: 1500px;
+  max-width: calc(880px + 2 * var(--s6));
   container-type: inline-size;
+}
+
+.settings-head {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-head .lead-sm {
+  margin: 0;
 }
 
 .set-warp {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  margin-top: var(--s5);
-}
-
-@container (min-width: 760px) {
-  .set-warp {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@container (min-width: 1180px) {
-  .set-warp {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  gap: var(--s7);
+  margin-top: var(--s6);
 }
 
 .set-group {
   position: relative;
   display: grid;
-  gap: var(--s4);
+  gap: var(--s2);
   align-content: start;
-  /* The padding is the gap between columns, so the line above runs on unbroken. */
-  padding: var(--s4) var(--s6) var(--s6) 0;
+  padding-top: var(--s4);
   border-top: 1px solid var(--hairline-strong);
 }
 
@@ -8883,14 +8881,26 @@ button.chooser-crumb:focus-visible {
 
 .set-items {
   display: grid;
-  gap: var(--s5);
   align-content: start;
 }
 
+/* A row: words, then the control, each setting parted from the next by a hairline. */
 .setting {
   display: grid;
-  gap: var(--s2);
-  justify-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s2) var(--s7);
+  padding: var(--s4) 0;
+}
+
+.setting + .setting {
+  border-top: 1px solid var(--hairline);
+}
+
+.setting-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .setting-label {
@@ -8902,15 +8912,60 @@ button.chooser-crumb:focus-visible {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--ink-muted);
-  max-width: 46ch;
+  max-width: 52ch;
   text-wrap: pretty;
+}
+
+.setting-control {
+  display: grid;
+  gap: var(--s3);
+  justify-items: end;
+  justify-self: end;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.setting-control .thread-choice {
+  width: 340px;
+  max-width: 100%;
+  margin-top: 0;
+}
+
+.setting-control .tool-list {
+  margin: 0;
+}
+
+.setting-control .data-path {
+  max-width: 44ch;
+}
+
+/* A control that needs the row's width (the tool list) sits beneath the words. */
+.setting.is-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.setting.is-wide .setting-control {
+  justify-self: stretch;
+  justify-items: start;
+}
+
+@container (max-width: 640px) {
+  .setting {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .setting-control {
+    justify-items: start;
+    justify-self: start;
+  }
+  .setting-control .data-path {
+    max-width: none;
+  }
 }
 
 .set-action {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: var(--s1);
   padding: 4px 0 5px;
   border: 0;
   border-bottom: 2px solid var(--hairline-strong);
@@ -8946,8 +9001,45 @@ button.chooser-crumb:focus-visible {
   outline-offset: 3px;
 }
 
-.setting > .thread-choice {
-  margin-top: var(--s2);
+/* On or off: a knot on a short thread, lit when on. */
+.switch {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hairline-strong);
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.switch-knot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--ink-faint);
+  transition:
+    transform var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+
+.switch.is-on {
+  background: var(--thread);
+}
+
+.switch.is-on .switch-knot {
+  transform: translateX(20px);
+  box-shadow: inset 0 0 0 2px var(--thread);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
 }
 
 /* Choices as knots on a thread. */
