@@ -569,11 +569,11 @@ Notes:
 | zvariant_derive | 5.15.0 | MIT | https://github.com/z-galaxy/zbus/ | [T267](#t267) |
 | zvariant_utils | 4.2.0 | MIT | https://github.com/z-galaxy/zbus/ | [T3](#t3) |
 
-## JavaScript components (179)
+## JavaScript components (180)
 
 | Component | Version | License | Source | Texts |
 |---|---|---|---|---|
-| @codemirror/autocomplete | 6.20.3 | MIT | https://code.haverbeke.berlin/codemirror/autocomplete.git | [T274](#t274) |
+| @codemirror/autocomplete | 6.20.4 | MIT | https://code.haverbeke.berlin/codemirror/autocomplete.git | [T274](#t274) |
 | @codemirror/commands | 6.11.1 | MIT | https://code.haverbeke.berlin/codemirror/commands.git | [T274](#t274) |
 | @codemirror/lang-css | 6.3.1 | MIT | https://github.com/codemirror/lang-css.git | [T274](#t274) |
 | @codemirror/lang-html | 6.4.12 | MIT | https://code.haverbeke.berlin/codemirror/lang-html.git | [T274](#t274) |
@@ -582,11 +582,12 @@ Notes:
 | @codemirror/lang-markdown | 6.5.2 | MIT | https://code.haverbeke.berlin/codemirror/lang-markdown.git | [T274](#t274) |
 | @codemirror/lang-python | 6.2.1 | MIT | https://github.com/codemirror/lang-python.git | [T274](#t274) |
 | @codemirror/lang-yaml | 6.1.3 | MIT | https://github.com/codemirror/lang-yaml.git | [T275](#t275) |
-| @codemirror/language | 6.12.4 | MIT | https://code.haverbeke.berlin/codemirror/language.git | [T274](#t274) |
-| @codemirror/legacy-modes | 6.5.4 | MIT | https://code.haverbeke.berlin/codemirror/legacy-modes.git | [T274](#t274) |
+| @codemirror/language | 6.13.1 | MIT | https://code.haverbeke.berlin/codemirror/language.git | [T274](#t274) |
+| @codemirror/legacy-modes | 6.5.5 | MIT | https://code.haverbeke.berlin/codemirror/legacy-modes.git | [T274](#t274) |
 | @codemirror/lint | 6.9.7 | MIT | https://code.haverbeke.berlin/codemirror/lint.git | [T274](#t274) |
 | @codemirror/state | 6.7.6 | MIT | https://code.haverbeke.berlin/codemirror/state.git | [T274](#t274) |
-| @codemirror/view | 6.43.13 | MIT | https://code.haverbeke.berlin/codemirror/view.git | [T274](#t274) |
+| @codemirror/streamparser | 6.0.0 | MIT | https://code.haverbeke.berlin/codemirror/streamparser.git | [T274](#t274) |
+| @codemirror/view | 6.43.15 | MIT | https://code.haverbeke.berlin/codemirror/view.git | [T274](#t274) |
 | @floating-ui/core | 1.8.0 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
 | @floating-ui/dom | 1.8.0 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
 | @floating-ui/react-dom | 2.1.9 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
@@ -597,39 +598,39 @@ Notes:
 | @lezer/css | 1.3.8 | MIT | https://code.haverbeke.berlin/lezer/css.git | [T279](#t279) |
 | @lezer/highlight | 1.2.5 | MIT | https://code.haverbeke.berlin/lezer/highlight.git | [T279](#t279) |
 | @lezer/html | 1.3.13 | MIT | https://github.com/lezer-parser/html.git | [T279](#t279) |
-| @lezer/javascript | 1.5.5 | MIT | https://code.haverbeke.berlin/lezer/javascript.git | [T279](#t279) |
+| @lezer/javascript | 1.5.6 | MIT | https://code.haverbeke.berlin/lezer/javascript.git | [T279](#t279) |
 | @lezer/json | 1.0.3 | MIT | https://github.com/lezer-parser/json.git | [T280](#t280) |
 | @lezer/lr | 1.4.10 | MIT | https://code.haverbeke.berlin/lezer/lr.git | [T279](#t279) |
-| @lezer/markdown | 1.7.2 | MIT | https://code.haverbeke.berlin/lezer/markdown.git | [T281](#t281) |
+| @lezer/markdown | 1.8.1 | MIT | https://code.haverbeke.berlin/lezer/markdown.git | [T281](#t281) |
 | @lezer/python | 1.1.19 | MIT | https://code.haverbeke.berlin/lezer/python.git | [T281](#t281) |
 | @lezer/yaml | 1.0.4 | MIT | https://github.com/lezer-parser/yaml.git | [T282](#t282) |
 | @marijn/find-cluster-break | 1.0.4 | MIT | https://code.haverbeke.berlin/marijn/find-cluster-break.git | [T283](#t283) |
-| @radix-ui/primitive | 1.1.7 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-arrow | 1.1.15 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/primitive | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-arrow | 1.1.17 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/react-compose-refs | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-context | 1.2.2 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-dialog | 1.1.23 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-dismissable-layer | 1.1.19 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-focus-guards | 1.1.6 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-focus-scope | 1.1.16 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-context | 1.3.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-dialog | 1.3.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-dismissable-layer | 1.2.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-focus-guards | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-focus-scope | 1.3.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/react-id | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-popper | 1.3.7 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-portal | 1.1.17 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-presence | 1.1.10 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-primitive | 2.1.10 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-slot | 1.3.3 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-tooltip | 1.2.16 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-callback-ref | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-controllable-state | 1.2.6 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-popper | 1.4.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-portal | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-presence | 1.1.11 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-primitive | 2.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-slot | 1.5.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-tooltip | 1.4.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-use-callback-ref | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-use-controllable-state | 1.3.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/react-use-effect-event | 0.0.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/react-use-layout-effect | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/react-use-rect | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-size | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-visually-hidden | 1.2.11 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-use-size | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
+| @radix-ui/react-visually-hidden | 1.2.13 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/rect | 1.1.3 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @tanstack/query-core | 5.104.0 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
-| @tanstack/react-query | 5.104.0 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
-| @tauri-apps/api | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri.git | [T92](#t92) [T233](#t233) [T286](#t286) |
+| @tanstack/query-core | 5.104.5 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
+| @tanstack/react-query | 5.104.5 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
+| @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri.git | [T92](#t92) [T233](#t233) [T286](#t286) |
 | @types/debug | 4.1.13 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
 | @types/estree | 1.0.9 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
 | @types/estree-jsx | 1.0.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
@@ -720,8 +721,8 @@ Notes:
 | ms | 2.1.3 | MIT | vercel/ms | [T308](#t308) |
 | parse-entities | 4.0.2 | MIT | wooorm/parse-entities | [T309](#t309) |
 | property-information | 7.2.0 | MIT | wooorm/property-information | [T309](#t309) |
-| react | 19.3.0 | MIT | https://github.com/react/react.git | [T310](#t310) |
-| react-dom | 19.3.0 | MIT | https://github.com/react/react.git | [T310](#t310) |
+| react | 19.3.1 | MIT | https://github.com/react/react.git | [T310](#t310) |
+| react-dom | 19.3.1 | MIT | https://github.com/react/react.git | [T310](#t310) |
 | react-markdown | 10.1.0 | MIT | remarkjs/react-markdown | [T311](#t311) |
 | react-remove-scroll | 2.7.2 | MIT | https://github.com/theKashey/react-remove-scroll | [T288](#t288) |
 | react-remove-scroll-bar | 2.3.8 | MIT | https://github.com/theKashey/react-remove-scroll-bar | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
