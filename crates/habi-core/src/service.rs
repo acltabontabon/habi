@@ -166,6 +166,28 @@ fn summary_key(project_id: &str) -> String {
     format!("project-summary:{project_id}")
 }
 
+/// The home folder or a whole disk is not a project. Reading one as such would be slow for no
+/// answer, and would make every file in it readable as a project file.
+fn refuse_too_wide(root: &Path) -> Result<()> {
+    let home =
+        directories::BaseDirs::new().and_then(|b| crate::paths::canonical(b.home_dir()).ok());
+    if holds_too_much(root, home.as_deref()) {
+        return Err(HabiError::invalid(format!(
+            "{} holds much more than one project. Choose a project folder inside it.",
+            crate::paths::display_path(root)
+        )));
+    }
+    Ok(())
+}
+
+/// A disk's top, on macOS a mounted volume's too, or the home folder or anything above it.
+fn holds_too_much(root: &Path, home: Option<&Path>) -> bool {
+    let parent = root.parent();
+    parent.is_none()
+        || parent == Some(Path::new("/Volumes"))
+        || home.is_some_and(|h| h.starts_with(root))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -563,16 +585,7 @@ impl Habi {
     /// Registers (or re-opens) a project directory and returns its record.
     pub fn open_project(&self, path: &Path) -> Result<ProjectRecord> {
         let root = crate::paths::canonical_dir(path)?;
-        // The home folder or a whole disk is not a project. Reading one as such would be slow for
-        // no answer, and would make every file in it readable as a project file.
-        let home =
-            directories::BaseDirs::new().and_then(|b| crate::paths::canonical(b.home_dir()).ok());
-        if root.parent().is_none() || home.is_some_and(|h| h.starts_with(&root)) {
-            return Err(HabiError::invalid(format!(
-                "{} holds much more than one project. Choose a project folder inside it.",
-                crate::paths::display_path(&root)
-            )));
-        }
+        refuse_too_wide(&root)?;
         let id = project_id(&root);
         let name = root
             .file_name()
@@ -650,6 +663,8 @@ impl Habi {
                 p.path
             )));
         }
+        // An earlier version may have recorded one before these were refused.
+        refuse_too_wide(&p.root)?;
         Ok(p)
     }
 
@@ -2809,5 +2824,22 @@ fn join(dir: &str, name: &str) -> String {
         name.to_string()
     } else {
         format!("{dir}/{name}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::holds_too_much;
+    use std::path::Path;
+
+    #[test]
+    fn a_disk_or_the_home_folder_is_too_wide_to_be_a_project() {
+        let home = Some(Path::new("/Users/sam"));
+        for wide in ["/", "/Volumes/Backup", "/Users", "/Users/sam"] {
+            assert!(holds_too_much(Path::new(wide), home), "{wide}");
+        }
+        for project in ["/Volumes/Backup/shop", "/Users/sam/shop", "/srv/shop"] {
+            assert!(!holds_too_much(Path::new(project), home), "{project}");
+        }
     }
 }
