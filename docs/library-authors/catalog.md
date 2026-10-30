@@ -52,3 +52,37 @@ in the registry). Nothing is fetched until preview.
 | `hints` | Author-declared skills use them as default. Habi's judgment; never override author rules. |
 | `picks` | Skills Habi stands behind, offered in a project's **Suggested** list before the library is connected, so the catalog carries the title and gist. A pick's `applies_when` is also its rule once connected (taking precedence over `hints`); without one it is a practice for any codebase. Keep them few: at most five per library, and verify each folder at the revision Habi reads. |
 | `status` | Marks `deprecated` or `archived`; includes `successor`. Habi can't auto-detect. |
+
+## Catalog check
+
+Upstream repositories rename and move skills, and Habi would go on offering a pick it can't
+install. So once a week, `.github/workflows/catalog-check.yml` runs `scripts/check-catalog.mjs`
+against GitHub. For each entry it finds the revision Habi reads (the default branch, or the newest
+version tag for `track: latest-release`) and checks that, at that revision:
+
+- each `picks[].skill` folder holds a skill Habi would find, with a `SKILL.md` whose `name` is
+  `picks[].name`, or the folder's name when the pick has none;
+- each `hints[].path` matches at least one skill folder, and so does every alternative of a
+  `{a,b}` pattern, so one renamed skill isn't hidden by the others;
+- each `discovery.include` pattern matches at least one skill;
+- the repository is still at the address in `url`.
+
+A failure opens one issue titled "Catalog check failed", or updates the one already open, with the
+report. Close it once the catalog is fixed.
+
+To run it yourself, or after changing an entry (without a token, GitHub allows about one run an
+hour):
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" node scripts/check-catalog.mjs
+```
+
+The report marks each library `ok`, `FAILED` or `UNCHECKED`:
+
+- **`FAILED`** means the catalog is out of date. Look at the repository, then correct the path, set
+  or remove `name`, or remove the pick; a pick whose folder moved is reported with where a skill of
+  that name now is. Update the `Picks checked at` comment above the entry as you do.
+- **`UNCHECKED`** means something got in the way, such as a rate limit or GitHub being down, and
+  says nothing about the catalog. Run it again.
+
+The check needs the network, so it isn't part of `scripts/check.sh` or CI; only its tests are.

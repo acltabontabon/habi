@@ -1,0 +1,62 @@
+name: Catalog check
+
+# Once a week, checks that the catalog's picks and hints still point at real skills: upstream
+# repositories rename and move them, and nothing else would notice. A failure opens one issue, or
+# updates the one already open. See docs/library-authors/catalog.md.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Picks and hints resolve
+    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Check the catalog against GitHub
+        id: check
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-catalog.mjs 2>&1 | tee "$RUNNER_TEMP/catalog-report.txt"
+      - name: Open or update the issue
+        if: failure() && steps.check.outcome == 'failure'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          TITLE: Catalog check failed
+        run: |
+          body="$RUNNER_TEMP/catalog-issue.md"
+          {
+            echo "The [catalog check]($REPO_URL/actions/runs/$RUN_ID) found something to look at. What to do about it is in [the catalog docs]($REPO_URL/blob/main/docs/library-authors/catalog.md#catalog-check)."
+            echo
+            echo '```text'
+            cat "$RUNNER_TEMP/catalog-report.txt"
+            echo '```'
+          } > "$body"
+          # --search matches words, so the title is compared whole.
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITLE\" in:title" \
+            --json number,title --jq 'map(select(.title == env.TITLE)) | first | .number // empty')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body-file "$body"
+          fi
