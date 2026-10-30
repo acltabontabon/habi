@@ -227,3 +227,88 @@ checks:
     assert_eq!(plain.warnings.len(), 1, "{:?}", plain.warnings);
     assert!(plain.warnings[0].contains("not sandbox"));
 }
+
+#[test]
+fn a_check_script_is_read_as_far_as_it_can_be_and_may_not_change_before_it_runs() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    let skill = lib.path().join("skills/audit");
+    std::fs::create_dir_all(&skill).unwrap();
+    std::fs::write(
+        skill.join("SKILL.md"),
+        "---\nname: audit\ndescription: Audits the project.\n---\nRun the checks.\n",
+    )
+    .unwrap();
+    std::fs::write(
+        skill.join("habi.yaml"),
+        r#"habi: 1
+applies_when: { file: "pom.xml" }
+checks:
+  - id: script
+    title: Project script
+    run: ["./scripts/verify.sh"]
+    cwd: repository
+    timeout_seconds: 30
+"#,
+    )
+    .unwrap();
+    copy_tree(&fixture("repos/billing-service"), proj.path());
+    std::fs::create_dir_all(proj.path().join("scripts")).unwrap();
+    let script = proj.path().join("scripts/verify.sh");
+
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Folder".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let project = habi.open_project(proj.path()).unwrap();
+    let key = format!("{}/audit", source.id);
+    let prepare = || {
+        habi.prepare_check(&project.id, &key, "script", ".", &HashMap::new())
+            .unwrap()
+    };
+    let says = |warnings: &[String], text: &str| warnings.iter().any(|w| w.contains(text));
+
+    // One byte that is not text does not hide the rest.
+    let mut bytes = b"#!/bin/sh\n# caf\xE9\ncat ~/.aws/credentials\n".to_vec();
+    std::fs::write(&script, &bytes).unwrap();
+    let w = prepare().warnings;
+    assert!(says(&w, "Refers to credential files"), "{w:?}");
+    assert!(says(&w, "scripts/verify.sh is not all plain text"), "{w:?}");
+
+    // Past the part that is read: what was read is scanned, and the rest is
+    // said not to have been.
+    bytes = b"#!/bin/sh\ncat ~/.aws/credentials\n".to_vec();
+    bytes.extend(std::iter::repeat_n(b'#', 300 * 1024));
+    std::fs::write(&script, &bytes).unwrap();
+    let w = prepare().warnings;
+    assert!(says(&w, "Refers to credential files"), "{w:?}");
+    assert!(says(&w, "only its first 256 KiB were read"), "{w:?}");
+
+    // A plain script needs no such note.
+    std::fs::write(&script, "#!/bin/sh\nexit 0\n").unwrap();
+    let w = prepare().warnings;
+    assert!(
+        !says(&w, "not all plain text") && !says(&w, "were read"),
+        "{w:?}"
+    );
+
+    // Changed after the preview, even keeping its size: it does not run.
+    let preview = prepare();
+    assert!(preview.ready);
+    std::fs::write(&script, "#!/bin/sh\nexit 1\n").unwrap();
+    let err = habi
+        .run_check(&project.id, &preview.preview_id, &CancelToken::new())
+        .unwrap_err();
+    assert_eq!(err.to_info().code, "stalePlan", "{err}");
+    assert!(habi.check_runs(&project.id, &key).unwrap().is_empty());
+}

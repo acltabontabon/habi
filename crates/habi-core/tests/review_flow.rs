@@ -253,6 +253,11 @@ fn review_loop_on_a_github_remote() {
         theirs,
         "nothing changed"
     );
+    // Building on their commit, with a change of the author's own.
+    let mut form = habi.contributions().preview(&c.id).unwrap().form;
+    form.examples[0].description = "Review a new @Entity class".into();
+    habi.update_contribution(&c.id, "Owner for JPA review", "Sharper example", &form)
+        .unwrap();
     let third = habi.commit_contribution_with(&c.id, true, &cancel).unwrap();
     let third_commit = third.commit_id.clone().unwrap();
     habi.publish_contribution(&c.id, true, &cancel).unwrap();
@@ -262,7 +267,8 @@ fn review_loop_on_a_github_remote() {
         theirs,
         "built on their commit"
     );
-    // The skill folder is exactly what the author staged.
+    // Their file stays: no preview listed it, so no commit of the author's
+    // may remove it.
     let files = git(
         &bare,
         &[
@@ -274,7 +280,7 @@ fn review_loop_on_a_github_remote() {
             "skills/jpa-entity-review",
         ],
     );
-    assert!(!files.contains("NOTES.md"), "{files}");
+    assert!(files.contains("NOTES.md"), "{files}");
 
     // Without a way to ask the host, a revision is allowed but says so, and
     // sending it does not claim the request was updated.

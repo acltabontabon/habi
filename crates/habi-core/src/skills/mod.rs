@@ -48,6 +48,7 @@ pub const LOCAL_SOURCE_NAME: &str = "My skills";
 pub(crate) const MAX_FILES: usize = 200;
 pub(crate) const MAX_FILE_BYTES: u64 = 1024 * 1024;
 const MAX_TEXT: usize = 512 * 1024;
+const MAX_TOTAL_BYTES: u64 = 16 * 1024 * 1024;
 
 /// Where a local skill came from. Attribution only; never used for matching.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -464,27 +465,133 @@ impl Tree {
     }
 }
 
-/// Limits for reading a folder that may hold several skills.
+/// Limits for reading a folder.
 pub(crate) struct TreeLimits {
     pub max_files: usize,
     pub max_file_bytes: u64,
     pub max_total_bytes: u64,
+    /// The folder may hold anything: build and dependency folders that are not
+    /// part of a skill are not worth walking.
+    pub discovery: bool,
+    /// Stop at the limits and return what was read, instead of failing. For
+    /// a caller that says the package is over its limits by itself.
+    pub keep_partial: bool,
 }
 
 impl TreeLimits {
     pub const PACKAGE: TreeLimits = TreeLimits {
         max_files: MAX_FILES,
         max_file_bytes: MAX_FILE_BYTES,
-        max_total_bytes: 16 * 1024 * 1024,
+        max_total_bytes: MAX_TOTAL_BYTES,
+        discovery: false,
+        keep_partial: false,
     };
     pub const FOLDER: TreeLimits = TreeLimits {
         max_files: 5_000,
         max_file_bytes: MAX_FILE_BYTES,
         max_total_bytes: 64 * 1024 * 1024,
+        discovery: true,
+        keep_partial: false,
+    };
+    /// A skill in My skills is opened even when it is over the package limits,
+    /// or its files could never be removed to bring it back under them.
+    const OPENING: TreeLimits = TreeLimits {
+        max_files: 5_000,
+        max_file_bytes: MAX_FILE_BYTES,
+        max_total_bytes: 64 * 1024 * 1024,
+        discovery: false,
+        keep_partial: true,
     };
 }
 
-const SKIPPED_DIRS: &[&str] = &[".git", "node_modules", "target", ".venv", "__pycache__"];
+/// Not walked when looking for skills in a folder. Inside a skill they are
+/// content like any other, and Habi will not create them there (see
+/// [`build_folder_in`]): the next read of a folder of skills would pass them by.
+const BUILD_FOLDERS: &[&str] = &["node_modules", "target", ".venv", "__pycache__"];
+
+fn inside_a_skill(root: &Path, dir: &Path) -> bool {
+    dir.ancestors()
+        .take_while(|d| d.starts_with(root))
+        .any(|d| d.join(SKILL_FILE).is_file())
+}
+
+/// The build or dependency folder `rel` would create, if any. `is_folder` says
+/// whether its last component is a folder too.
+fn build_folder_in(rel: &RelPath, is_folder: bool) -> Option<&str> {
+    let parts: Vec<&str> = rel.components().collect();
+    let folders = parts.len() - usize::from(!is_folder);
+    parts
+        .into_iter()
+        .take(folders)
+        .find(|part| BUILD_FOLDERS.iter().any(|b| part.eq_ignore_ascii_case(b)))
+}
+
+fn refuse_build_folder(rel: &RelPath, name: &str) -> HabiError {
+    HabiError::invalid(format!(
+        "`{rel}` would put files in a folder named `{name}`, which Habi passes by when it reads a folder of skills, so they could go missing. Choose another name."
+    ))
+}
+
+/// A path as a case-insensitive volume sees it.
+// TODO(fold_path): use `crate::paths::fold_path` when it lands; it also folds
+// Unicode normalization.
+fn fold(path: &str) -> String {
+    path.to_lowercase()
+}
+
+/// Two of `paths` that would be one file on macOS and Windows, if any.
+pub(crate) fn case_collision<'p>(
+    paths: impl IntoIterator<Item = &'p String>,
+) -> Option<(&'p str, &'p str)> {
+    let mut seen: HashMap<String, &str> = HashMap::new();
+    for path in paths {
+        if let Some(other) = seen.insert(fold(path), path) {
+            return Some((other, path));
+        }
+    }
+    None
+}
+
+pub(crate) fn collision_message(a: &str, b: &str) -> String {
+    format!(
+        "`{a}` and `{b}` differ only by upper and lower case, so they would be one file on macOS and Windows"
+    )
+}
+
+/// Reports files that would overwrite each other on macOS and Windows. They
+/// stay in the tree, so a package holding them can still be opened and fixed.
+pub(crate) fn note_collisions(tree: &mut Tree) {
+    let mut seen: HashMap<String, String> = HashMap::new();
+    for path in tree.files.keys() {
+        if let Some(other) = seen.insert(fold(path), path.clone())
+            && !tree.skipped.iter().any(|d| d.path.as_deref() == Some(path))
+        {
+            tree.skipped.push(Diagnostic::error(
+                format!(
+                    "differs from `{other}` only by upper and lower case, so the two would be one file on macOS and Windows"
+                ),
+                Some(path),
+            ));
+        }
+    }
+}
+
+fn total_bytes(tree: &Tree) -> u64 {
+    tree.files.values().map(|b| b.len() as u64).sum()
+}
+
+/// Refuses a change that takes a package over its size limit. One that makes
+/// an oversized package smaller is how it gets fixed, so it passes.
+fn check_total(before: u64, after: u64) -> Result<()> {
+    if after > MAX_TOTAL_BYTES && after > before {
+        return Err(HabiError::invalid(format!(
+            "that would take this skill to {} MiB; a skill may hold at most {} MiB. Remove some files first.",
+            after.div_ceil(1024 * 1024),
+            MAX_TOTAL_BYTES / 1024 / 1024
+        )));
+    }
+    Ok(())
+}
 
 /// Reads a folder without following symbolic links. Links and oversized
 /// files are reported in `skipped` rather than read; exceeding the overall
@@ -493,6 +600,20 @@ pub(crate) fn read_tree(root: &Path, limits: &TreeLimits) -> Result<Tree> {
     let mut tree = Tree::default();
     let mut total = 0u64;
     let mut stack = vec![root.to_path_buf()];
+    let too_many = || {
+        HabiError::Unsupported(format!(
+            "{} holds more than {} files; choose a narrower folder",
+            display_path(root),
+            limits.max_files
+        ))
+    };
+    let too_large = || {
+        HabiError::Unsupported(format!(
+            "{} is larger than {} MiB; choose a narrower folder",
+            display_path(root),
+            limits.max_total_bytes / 1024 / 1024
+        ))
+    };
     while let Some(dir) = stack.pop() {
         let entries = std::fs::read_dir(&dir)
             .map_err(|e| HabiError::io(format!("reading {}", display_path(&dir)), e))?;
@@ -512,8 +633,47 @@ pub(crate) fn read_tree(root: &Path, limits: &TreeLimits) -> Result<Tree> {
                 ));
             } else if meta.is_dir() {
                 let name = entry.file_name();
-                if !SKIPPED_DIRS.iter().any(|s| name == *s) {
+                // Repository data, never content, and `RelPath` refuses it.
+                if name == ".git" {
+                    continue;
+                }
+                if !limits.discovery || !BUILD_FOLDERS.iter().any(|b| name == *b) {
                     stack.push(path);
+                    continue;
+                }
+                if !inside_a_skill(root, &dir) {
+                    continue;
+                }
+                // A skill's own: read it, but on its own limits, so one huge
+                // folder marks that skill and does not stop the whole read.
+                let Ok(inner) = read_tree(&path, &TreeLimits::PACKAGE) else {
+                    tree.skipped.push(Diagnostic::error(
+                        "is a build or dependency folder too large to copy; remove it to import this skill",
+                        Some(&rel),
+                    ));
+                    continue;
+                };
+                total += total_bytes(&inner);
+                tree.files.extend(
+                    inner
+                        .files
+                        .into_iter()
+                        .map(|(p, b)| (format!("{rel}/{p}"), b)),
+                );
+                tree.executables
+                    .extend(inner.executables.iter().map(|p| format!("{rel}/{p}")));
+                tree.skipped.extend(inner.skipped.into_iter().map(|d| {
+                    let inside = d.path.as_deref().unwrap_or_default();
+                    Diagnostic {
+                        path: Some(format!("{rel}/{inside}")),
+                        ..d
+                    }
+                }));
+                if tree.files.len() > limits.max_files {
+                    return Err(too_many());
+                }
+                if total > limits.max_total_bytes {
+                    return Err(too_large());
                 }
             } else if meta.is_file() {
                 if rel.starts_with(".habi-tmp-") || rel.contains("/.habi-tmp-") {
@@ -527,21 +687,19 @@ pub(crate) fn read_tree(root: &Path, limits: &TreeLimits) -> Result<Tree> {
                     continue;
                 }
                 if tree.files.len() >= limits.max_files {
-                    return Err(HabiError::Unsupported(format!(
-                        "{} holds more than {} files; choose a narrower folder",
-                        display_path(root),
-                        limits.max_files
-                    )));
+                    if limits.keep_partial {
+                        return Ok(tree);
+                    }
+                    return Err(too_many());
                 }
                 match read_bounded(&path, limits.max_file_bytes)? {
                     Bounded::Content(bytes) => {
                         total += bytes.len() as u64;
                         if total > limits.max_total_bytes {
-                            return Err(HabiError::Unsupported(format!(
-                                "{} is larger than {} MiB; choose a narrower folder",
-                                display_path(root),
-                                limits.max_total_bytes / 1024 / 1024
-                            )));
+                            if limits.keep_partial {
+                                return Ok(tree);
+                            }
+                            return Err(too_large());
                         }
                         if crate::fsutil::is_executable(&path) {
                             tree.executables.insert(rel.clone());
@@ -556,10 +714,29 @@ pub(crate) fn read_tree(root: &Path, limits: &TreeLimits) -> Result<Tree> {
                         Some(&rel),
                     )),
                 }
+            } else {
+                tree.skipped.push(Diagnostic::error(
+                    "is not a regular file (a pipe, socket or device), which Habi does not read",
+                    Some(&rel),
+                ));
             }
         }
     }
+    note_collisions(&mut tree);
     Ok(tree)
+}
+
+/// A package that could not be read within its limits, as far as it can be
+/// said: its SKILL.md, for its name, and why the rest is not there. It reads
+/// as incomplete, so it is shown and not imported.
+pub(crate) fn unread_package(dir: &Path, why: &HabiError) -> Tree {
+    let mut tree = Tree::default();
+    if let Ok(Bounded::Content(bytes)) = read_bounded(&dir.join(SKILL_FILE), MAX_FILE_BYTES) {
+        tree.files.insert(SKILL_FILE.into(), bytes);
+    }
+    tree.skipped
+        .push(Diagnostic::error(format!("Not read: {why}."), None));
+    tree
 }
 
 /// Indexes a tree as a library whose files sit under `prefix` (empty for the
@@ -657,15 +834,12 @@ pub(crate) fn describe_tree(tree: &Tree) -> Described {
         ));
     }
     diagnostics.extend(tree.skipped.iter().map(|d| {
-        Diagnostic::error(
-            format!(
-                "`{}` {} (the package is incomplete)",
-                d.path.as_deref().unwrap_or("a file"),
-                d.message
-            ),
-            d.path.as_deref(),
-        )
-        .with_code(DiagnosticCode::UnreadableFile)
+        let message = match d.path.as_deref() {
+            Some(path) => format!("`{path}` {} (the package is incomplete)", d.message),
+            // About the package as a whole.
+            None => d.message.clone(),
+        };
+        Diagnostic::error(message, d.path.as_deref()).with_code(DiagnosticCode::UnreadableFile)
     }));
     Described {
         item,
@@ -673,6 +847,13 @@ pub(crate) fn describe_tree(tree: &Tree) -> Described {
         name,
         description,
     }
+}
+
+/// Why Habi will not edit a file: saving would replace what it cannot read.
+fn not_utf8(file: &str) -> String {
+    format!(
+        "{file} is not UTF-8 text, and saving it here would replace the characters Habi cannot read. Convert it to UTF-8 in a text editor"
+    )
 }
 
 fn count(diags: &[Diagnostic], level: DiagnosticLevel) -> u32 {
@@ -710,9 +891,90 @@ fn compose_skill_md(yaml: &str, body: &str) -> String {
     out
 }
 
+/// `yaml` with the top-level `key` set to `value` (or gone, if it is empty).
+/// Only that key's lines change. `None` if it cannot be written.
+fn set_frontmatter_key(yaml: &str, key: &str, value: &str) -> Option<String> {
+    let newline = if yaml.contains("\r\n") { "\r\n" } else { "\n" };
+    let entry = if value.is_empty() {
+        String::new()
+    } else {
+        let mut one = Map::new();
+        one.insert(key.to_string(), json!(value));
+        let written = serde_saphyr::to_string(&Value::Object(one)).ok()?;
+        format!("{}{newline}", written.trim_end().replace('\n', newline))
+    };
+    let lines: Vec<&str> = yaml.split_inclusive('\n').collect();
+    let starts =
+        |line: &&str, key: &str| line.strip_prefix(key).is_some_and(|r| r.starts_with(':'));
+    let (from, to) = match lines.iter().position(|l| starts(l, key)) {
+        Some(at) => {
+            // Its value may go on, indented, on the lines below.
+            let mut end = at + 1;
+            for (i, line) in lines.iter().enumerate().skip(at + 1) {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                if !line.starts_with([' ', '\t']) {
+                    break;
+                }
+                end = i + 1;
+            }
+            (at, end)
+        }
+        // Where readers expect it: `name` first, `description` next.
+        None => {
+            let after = lines
+                .iter()
+                .position(|l| key != "name" && starts(l, "name"))
+                .map_or(0, |at| at + 1);
+            (after, after)
+        }
+    };
+    let mut out: String = lines.iter().take(from).copied().collect();
+    out.push_str(&entry);
+    out.extend(lines.iter().skip(to).copied());
+    Some(out)
+}
+
+/// The frontmatter text with some keys changed, leaving every other line as
+/// written: comments, ordering, quoting and values such as `version: 1.10`,
+/// which would not survive being parsed and written again. `None` if the
+/// result would not read back as exactly `raw` with those changes.
+fn edit_frontmatter(
+    yaml: &str,
+    raw: &Map<String, Value>,
+    changes: &[(&str, &str)],
+) -> Option<String> {
+    let mut text = yaml.to_string();
+    let mut expected = raw.clone();
+    for (key, value) in changes {
+        let current = raw.get(*key).and_then(Value::as_str).map(str::trim);
+        if current.unwrap_or_default() == *value {
+            continue;
+        }
+        text = set_frontmatter_key(&text, key, value)?;
+        if value.is_empty() {
+            expected.shift_remove(*key);
+        } else {
+            expected.insert((*key).to_string(), json!(value));
+        }
+    }
+    let intact = if text.trim().is_empty() {
+        expected.is_empty()
+    } else {
+        library::parse_yaml(&text).ok()?.as_object() == Some(&expected)
+    };
+    intact.then_some(text)
+}
+
 /// Replaces `name` in a SKILL.md, keeping everything else.
 pub(crate) fn rename_in_skill_md(text: &str, name: &str) -> Result<String> {
     let (front, body) = library::parse_frontmatter(text).map_err(HabiError::invalid)?;
+    if let Ok((yaml, _)) = library::split_frontmatter(text)
+        && let Some(edited) = edit_frontmatter(yaml, &front.raw, &[("name", name)])
+    {
+        return Ok(compose_skill_md(&edited, body));
+    }
     let mut raw = front.raw;
     raw.insert("name".into(), json!(name));
     // Keep `name` first, where readers expect it.
@@ -761,6 +1023,26 @@ fn differs_from(baseline: &[BaselineFile], files: &[SkillFileEntry]) -> bool {
                 .iter()
                 .any(|f| f.path == b.path && f.digest == b.digest && f.executable == b.executable)
         })
+}
+
+/// Whether two existing paths are one file.
+#[cfg(unix)]
+fn same_file(a: &Path, b: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    match (std::fs::symlink_metadata(a), std::fs::symlink_metadata(b)) {
+        (Ok(a), Ok(b)) => a.dev() == b.dev() && a.ino() == b.ino(),
+        _ => false,
+    }
+}
+
+/// Whether two existing paths are one file. Canonical paths carry the name
+/// as it is stored, however it was spelled here.
+#[cfg(not(unix))]
+fn same_file(a: &Path, b: &Path) -> bool {
+    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    }
 }
 
 struct Row {
@@ -829,7 +1111,22 @@ impl<'a> Skills<'a> {
         if !dir.is_dir() {
             return Ok(Tree::default());
         }
-        read_tree(&dir, &TreeLimits::PACKAGE)
+        let mut tree = read_tree(&dir, &TreeLimits::OPENING)?;
+        // Over the limits it still opens, so its files can be removed; the
+        // diagnostic keeps it from being installed, exported or shared meanwhile.
+        let total = total_bytes(&tree);
+        if tree.files.len() > MAX_FILES || total > MAX_TOTAL_BYTES {
+            tree.skipped.push(Diagnostic::error(
+                format!(
+                    "This skill holds {} files and {} MiB; a skill may hold at most {MAX_FILES} files and {} MiB. Remove some of them to install, export or share it.",
+                    tree.files.len(),
+                    total.div_ceil(1024 * 1024),
+                    MAX_TOTAL_BYTES / 1024 / 1024
+                ),
+                None,
+            ));
+        }
+        Ok(tree)
     }
 
     /// Identifiers in use by skills that are not in the trash, by skill id.
@@ -854,6 +1151,13 @@ impl<'a> Skills<'a> {
         let text = skill_md
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
+        let not_text = skill_md.is_some_and(|b| std::str::from_utf8(b).is_err());
+        if not_text {
+            diagnostics.push(
+                Diagnostic::error(not_utf8(SKILL_FILE), Some(SKILL_FILE))
+                    .with_code(DiagnosticCode::UnreadableFile),
+            );
+        }
         let (document, document_error) = match library::parse_frontmatter(&text) {
             Ok((front, body)) => (
                 SkillDocument {
@@ -861,7 +1165,7 @@ impl<'a> Skills<'a> {
                     description: front.description.unwrap_or_default(),
                     body: body.trim_start_matches(['\n', '\r']).to_string(),
                 },
-                None,
+                not_text.then(|| not_utf8(SKILL_FILE)),
             ),
             Err(e) => (
                 SkillDocument {
@@ -913,9 +1217,20 @@ impl<'a> Skills<'a> {
             .iter()
             .find(|s| tree.files.contains_key(**s))
             .copied();
-        let metadata_text = sidecar_name
-            .and_then(|s| tree.files.get(s))
-            .map(|b| String::from_utf8_lossy(b).into_owned());
+        // "Exactly as stored" cannot be shown for bytes that are not text, and
+        // what could be shown must not be saved back over them.
+        let metadata_bytes = sidecar_name.and_then(|s| tree.files.get(s));
+        let metadata_not_text = metadata_bytes.is_some_and(|b| std::str::from_utf8(b).is_err());
+        if metadata_not_text {
+            let name = sidecar_name.unwrap_or(SIDECAR_FILES[0]);
+            diagnostics.push(
+                Diagnostic::error(not_utf8(name), Some(name))
+                    .with_code(DiagnosticCode::InvalidMetadata),
+            );
+        }
+        let metadata_text = metadata_bytes
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .map(str::to_string);
         let sidecar = metadata_text
             .as_deref()
             .and_then(|t| library::parse_yaml(t).ok());
@@ -975,9 +1290,12 @@ impl<'a> Skills<'a> {
                 .and_then(|s| tree.files.get(s))
                 .map(|b| sha256(b)),
             metadata_text,
-            metadata_status: item
-                .map(|i| i.metadata_status)
-                .unwrap_or(MetadataStatus::Undeclared),
+            metadata_status: if metadata_not_text {
+                MetadataStatus::Invalid
+            } else {
+                item.map(|i| i.metadata_status)
+                    .unwrap_or(MetadataStatus::Undeclared)
+            },
             applies_when: item.and_then(|i| i.applies_when.clone()),
             excludes: item.and_then(|i| i.excludes.clone()),
             scope: item.map(|i| i.scope).unwrap_or_default(),
@@ -1049,6 +1367,9 @@ impl<'a> Skills<'a> {
             return Err(HabiError::invalid(format!(
                 "a skill may hold at most {MAX_FILES} files"
             )));
+        }
+        if let Some((a, b)) = case_collision(tree.files.keys()) {
+            return Err(HabiError::invalid(collision_message(a, b)));
         }
         let id: String = uuid::Uuid::new_v4()
             .simple()
@@ -1182,10 +1503,12 @@ impl<'a> Skills<'a> {
         {
             return Err(HabiError::invalid("that is too long to save in SKILL.md"));
         }
-        let existing = std::fs::read(&path)
-            .ok()
-            .map(|b| String::from_utf8_lossy(&b).into_owned())
-            .unwrap_or_default();
+        let existing = match std::fs::read(&path) {
+            Ok(bytes) => String::from_utf8(bytes)
+                .map_err(|_| HabiError::invalid(format!("{}.", not_utf8(SKILL_FILE))))?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+            Err(e) => return Err(HabiError::io(format!("reading {SKILL_FILE}"), e)),
+        };
         let name = document.name.trim();
         let description = document.description.trim();
         let text = match library::split_frontmatter(&existing)
@@ -1199,20 +1522,26 @@ impl<'a> Skills<'a> {
             {
                 compose_skill_md(yaml, &document.body)
             }
-            Ok((_, front)) => {
-                let mut ordered = Map::new();
-                if !name.is_empty() {
-                    ordered.insert("name".into(), json!(name));
-                }
-                if !description.is_empty() {
-                    ordered.insert("description".into(), json!(description));
-                }
-                for (k, v) in front.raw {
-                    if k != "name" && k != "description" {
-                        ordered.insert(k, v);
+            Ok((yaml, front)) => {
+                let changes = [("name", name), ("description", description)];
+                match edit_frontmatter(yaml, &front.raw, &changes) {
+                    Some(edited) => compose_skill_md(&edited, &document.body),
+                    None => {
+                        let mut ordered = Map::new();
+                        if !name.is_empty() {
+                            ordered.insert("name".into(), json!(name));
+                        }
+                        if !description.is_empty() {
+                            ordered.insert("description".into(), json!(description));
+                        }
+                        for (k, v) in front.raw {
+                            if k != "name" && k != "description" {
+                                ordered.insert(k, v);
+                            }
+                        }
+                        render_skill_md(&ordered, &document.body)?
                     }
                 }
-                render_skill_md(&ordered, &document.body)?
             }
             Err(_) if existing.trim().is_empty() => {
                 let mut front = Map::new();
@@ -1307,9 +1636,31 @@ impl<'a> Skills<'a> {
         let (_, dir) = self.editable(id)?;
         let path = Self::sidecar_path(&dir);
         Self::check_base(&path, base_digest, "habi.yaml")?;
-        let existing = std::fs::read(&path)
-            .ok()
-            .and_then(|b| library::parse_yaml(&String::from_utf8_lossy(&b)).ok());
+        // A file that does not read as metadata is the author's, half-written
+        // perhaps. Taken for empty, it would be replaced or removed.
+        let file = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let existing = match std::fs::read(&path) {
+            Ok(bytes) => {
+                let text = String::from_utf8(bytes)
+                    .map_err(|_| HabiError::invalid(format!("{}.", not_utf8(&file))))?;
+                let value = library::parse_yaml(&text).map_err(|e| {
+                    HabiError::invalid(format!(
+                        "{file} could not be read ({e}); fix it in {file} before changing the form"
+                    ))
+                })?;
+                if !value.is_object() && !value.is_null() {
+                    return Err(HabiError::invalid(format!(
+                        "{file} does not hold a mapping of keys and values; fix it in {file} before changing the form"
+                    )));
+                }
+                Some(value)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => return Err(HabiError::io(format!("reading {file}"), e)),
+        };
         let name = self.names()?.remove(id).unwrap_or_default();
         match Self::form_to_sidecar(existing, form, &name)? {
             Some(value) => {
@@ -1354,6 +1705,12 @@ impl<'a> Skills<'a> {
         Self::check_base(&path, base_digest, "habi.yaml")?;
         if text.len() > MAX_TEXT {
             return Err(HabiError::invalid("habi.yaml is too large"));
+        }
+        if let Ok(bytes) = std::fs::read(&path)
+            && std::str::from_utf8(&bytes).is_err()
+        {
+            let file = path.file_name().unwrap_or_default().to_string_lossy();
+            return Err(HabiError::invalid(format!("{}.", not_utf8(&file))));
         }
         if text.trim().is_empty() {
             if path.exists() {
@@ -1439,6 +1796,11 @@ impl<'a> Skills<'a> {
         if text.len() > MAX_TEXT {
             return Err(HabiError::invalid(format!("{rel} is too large to save")));
         }
+        if base_digest.is_none()
+            && let Some(name) = build_folder_in(&rel, false)
+        {
+            return Err(refuse_build_folder(&rel, name));
+        }
         let path = resolve_for_write(&dir, &rel)?;
         if path.is_dir() {
             return Err(HabiError::Conflict(format!("`{rel}` is a folder")));
@@ -1455,6 +1817,17 @@ impl<'a> Skills<'a> {
                 "a skill may hold at most {MAX_FILES} files"
             )));
         }
+        if base_digest.is_none()
+            && let Some(other) = tree.files.keys().find(|p| fold(p) == fold(rel.as_str()))
+        {
+            return Err(HabiError::Conflict(format!(
+                "{}; rename it, or choose another name",
+                collision_message(other, rel.as_str())
+            )));
+        }
+        let before = total_bytes(&tree);
+        let replaced = tree.files.get(rel.as_str()).map_or(0, |b| b.len() as u64);
+        check_total(before, before - replaced + text.len() as u64)?;
         atomic_write_mode(&path, text.as_bytes(), None)?;
         self.touch(id)?;
         self.get(id)
@@ -1467,12 +1840,18 @@ impl<'a> Skills<'a> {
     pub fn add_files(&self, id: &str, folder: &str, sources: &[PathBuf]) -> Result<LocalSkill> {
         let _lock = self.lock(id)?;
         let (_, dir) = self.editable(id)?;
-        let existing = self.tree(id)?.files.len();
-        if existing + sources.len() > MAX_FILES {
+        let tree = self.tree(id)?;
+        if tree.files.len() + sources.len() > MAX_FILES {
             return Err(HabiError::invalid(format!(
                 "a skill may hold at most {MAX_FILES} files"
             )));
         }
+        // By their folded names: two files that differ only by case would
+        // overwrite each other on macOS and Windows.
+        let mut taken: HashMap<String, String> =
+            tree.files.keys().map(|p| (fold(p), p.clone())).collect();
+        let before = total_bytes(&tree);
+        let mut after = before;
         let mut planned = Vec::new();
         for source in sources {
             let meta = std::fs::symlink_metadata(source)
@@ -1506,14 +1885,28 @@ impl<'a> Skills<'a> {
             } else {
                 RelPath::new(into)?.join(&name)?
             };
+            if let Some(name) = build_folder_in(&rel, false) {
+                return Err(refuse_build_folder(&rel, name));
+            }
             let target = resolve_for_write(&dir, &rel)?;
-            if target.exists() || planned.iter().any(|(t, _, _)| t == &target) {
+            if let Some(other) = taken.get(&fold(rel.as_str()))
+                && other != rel.as_str()
+            {
+                return Err(HabiError::Conflict(format!(
+                    "{}; rename one first",
+                    collision_message(other, rel.as_str())
+                )));
+            }
+            if target.exists() || taken.contains_key(&fold(rel.as_str())) {
                 return Err(HabiError::Conflict(format!(
                     "`{rel}` already exists in this skill; rename or remove it first"
                 )));
             }
+            taken.insert(fold(rel.as_str()), rel.to_string());
+            after += bytes.len() as u64;
             planned.push((target, bytes, executable));
         }
+        check_total(before, after)?;
         for (target, bytes, executable) in planned {
             atomic_write_mode(&target, &bytes, Some(executable))?;
         }
@@ -1527,7 +1920,7 @@ impl<'a> Skills<'a> {
         let _lock = self.lock(id)?;
         let (_, dir) = self.editable(id)?;
         let rel = RelPath::new(rel)?;
-        if rel.as_str() == SKILL_FILE {
+        if rel.as_str().eq_ignore_ascii_case(SKILL_FILE) {
             return Err(HabiError::invalid("a skill needs its SKILL.md"));
         }
         let path = crate::paths::resolve_for_read(&dir, &rel)?
@@ -1550,20 +1943,44 @@ impl<'a> Skills<'a> {
         let (_, dir) = self.editable(id)?;
         let from = RelPath::new(from)?;
         let to = RelPath::new(to)?;
-        if from.as_str() == SKILL_FILE || to.as_str() == SKILL_FILE {
+        if from.as_str().eq_ignore_ascii_case(SKILL_FILE)
+            || to.as_str().eq_ignore_ascii_case(SKILL_FILE)
+        {
             return Err(HabiError::invalid("SKILL.md keeps its name and place"));
         }
-        if to.starts_with(&from) {
+        let case_only = fold(from.as_str()) == fold(to.as_str());
+        if to.starts_with(&from)
+            || (!case_only && fold(to.as_str()).starts_with(&format!("{}/", fold(from.as_str()))))
+        {
             return Err(HabiError::invalid(format!(
                 "`{from}` cannot move into itself"
             )));
         }
         let source = crate::paths::resolve_for_read(&dir, &from)?
             .ok_or_else(|| HabiError::NotFound(from.to_string()))?;
+        if let Some(name) = build_folder_in(&to, source.is_dir())
+            && !from.components().any(|part| part == name)
+        {
+            return Err(refuse_build_folder(&to, name));
+        }
         let target = resolve_for_write(&dir, &to)?;
-        if std::fs::symlink_metadata(&target).is_ok() {
+        // `notes.md` to `Notes.md`: on a case-insensitive volume the destination
+        // "exists" because it is the file being renamed.
+        if std::fs::symlink_metadata(&target).is_ok() && !(case_only && same_file(&source, &target))
+        {
             return Err(HabiError::Conflict(format!(
                 "`{to}` already exists in this skill"
+            )));
+        }
+        if let Some(other) = self
+            .tree(id)?
+            .files
+            .keys()
+            .find(|p| fold(p) == fold(to.as_str()) && p.as_str() != from.as_str())
+        {
+            return Err(HabiError::Conflict(format!(
+                "{}; choose another name",
+                collision_message(other, to.as_str())
             )));
         }
         if let Some(parent) = target.parent() {
@@ -1596,7 +2013,7 @@ impl<'a> Skills<'a> {
         let _lock = self.lock(id)?;
         let (_, dir) = self.editable(id)?;
         let rel = RelPath::new(rel)?;
-        if rel.as_str() == SKILL_FILE {
+        if rel.as_str().eq_ignore_ascii_case(SKILL_FILE) {
             return Err(HabiError::invalid("edit SKILL.md in the editor instead"));
         }
         let target = crate::paths::resolve_for_read(&dir, &rel)?
@@ -1619,6 +2036,10 @@ impl<'a> Skills<'a> {
                 )));
             }
         };
+        let tree = self.tree(id)?;
+        let before = total_bytes(&tree);
+        let replaced = tree.files.get(rel.as_str()).map_or(0, |b| b.len() as u64);
+        check_total(before, before - replaced + bytes.len() as u64)?;
         atomic_write_mode(&target, &bytes, Some(crate::fsutil::is_executable(&target)))?;
         self.touch(id)?;
         self.get(id)
@@ -1655,13 +2076,49 @@ impl<'a> Skills<'a> {
         Ok(())
     }
 
+    /// Takes a skill out of the trash. If another skill took its identifier
+    /// meanwhile, this one comes back under a free one: two skills with one
+    /// identifier would both stop being installable.
     pub fn restore(&self, id: &str) -> Result<LocalSkill> {
-        self.row(id)?;
+        let _lock = self.lock(id)?;
+        let row = self.row(id)?;
+        if row.deleted_at.is_some() {
+            self.free_identifier(id)?;
+        }
         self.store.conn()?.execute(
             "UPDATE local_skills SET deleted_at = NULL WHERE id = ?1",
             [id],
         )?;
         self.get(id)
+    }
+
+    /// Renames a skill in the trash if its identifier is in use by another.
+    fn free_identifier(&self, id: &str) -> Result<()> {
+        let path = package_dir(self.paths, id)?.join(SKILL_FILE);
+        let Ok(Bounded::Content(bytes)) = read_bounded(&path, MAX_FILE_BYTES) else {
+            return Ok(());
+        };
+        let text = String::from_utf8_lossy(&bytes);
+        let Some(name) = library::parse_frontmatter(&text)
+            .ok()
+            .and_then(|(front, _)| front.name)
+        else {
+            return Ok(());
+        };
+        if !self.names()?.values().any(|n| n == &name) {
+            return Ok(());
+        }
+        let free = self.free_name(&name)?;
+        if free.is_empty() {
+            return Ok(());
+        }
+        if std::str::from_utf8(&bytes).is_err() {
+            return Err(HabiError::invalid(format!(
+                "Another skill uses the identifier `{name}`, and {}. Rename the other skill first, or convert this one.",
+                not_utf8(SKILL_FILE)
+            )));
+        }
+        atomic_write_mode(&path, rename_in_skill_md(&text, &free)?.as_bytes(), None)
     }
 
     /// Permanently removes a skill that is already in the trash.

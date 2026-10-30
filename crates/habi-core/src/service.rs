@@ -1655,6 +1655,7 @@ impl Habi {
             || now.cwd != shown.cwd
             || now.resolved_program != shown.resolved_program
             || now.item_digest != shown.item_digest
+            || now.script_digest != shown.script_digest
         {
             return Err(HabiError::StalePlan(
                 "the command changed since you previewed it; preview it again".into(),
@@ -1828,12 +1829,16 @@ impl Habi {
                     let Some(dir) = crate::paths::resolve_for_read(&p.root, &rel)? else {
                         continue;
                     };
+                    // One package that cannot be read is that package's problem:
+                    // it is shown as incomplete, and the others can be imported.
+                    let tree = crate::skills::read_tree(&dir, &TreeLimits::PACKAGE)
+                        .unwrap_or_else(|e| crate::skills::unread_package(&dir, &e));
                     let skill_md = format!("{}/{}", found.path, crate::library::SKILL_FILE);
                     let installed = lock.items.iter().find(|i| {
                         i.source.identity != mine && i.files.iter().any(|f| f.path == skill_md)
                     });
                     packages.push(Package {
-                        tree: crate::skills::read_tree(&dir, &TreeLimits::PACKAGE)?,
+                        tree,
                         origin: match installed {
                             Some(i) => SkillOrigin::Library {
                                 source_name: i.source.name.clone(),
@@ -1931,6 +1936,9 @@ impl Habi {
                             Some("a file"),
                         ));
                     }
+                    // A Git tree can hold names one volume cannot: copying both
+                    // onto macOS or Windows would lose one.
+                    crate::skills::note_collisions(&mut tree);
                     packages.push(Package {
                         path: item.id.clone(),
                         tree,
@@ -2711,10 +2719,12 @@ impl Habi {
         }
     }
 
-    /// Prepares the branch. For a revision of a skill from My skills or a
-    /// project, the skill is first copied again from where it lives, so edits
-    /// made after "Revise" are included. `build_on_remote` is the user's
-    /// choice to build on commits someone else pushed to the branch.
+    /// Prepares the branch. For a skill from My skills or a project, the skill
+    /// is first copied again from where it lives, so edits made since are
+    /// included. If that changes a first version, nothing is prepared yet: what
+    /// leaves the machine must be what the preview showed, and the preview now
+    /// shows the new files. `build_on_remote` is the user's choice to build on
+    /// commits someone else pushed to the branch.
     pub fn commit_contribution_with(
         &self,
         id: &str,
@@ -2722,9 +2732,15 @@ impl Habi {
         cancel: &CancelToken,
     ) -> Result<Contribution> {
         let c = self.contributions().preview(id)?;
-        if c.revising {
+        if c.state == crate::contribute::ContributionState::Draft {
+            let shown = self.contributions().outgoing_digest(id)?;
             let root = self.contribution_project_root(&c.origin);
             self.contributions().resync(id, root.as_deref())?;
+            if !c.revising && self.contributions().outgoing_digest(id)? != shown {
+                return Err(HabiError::StalePlan(
+                    "The skill changed since this preview. Check the files again, then prepare the branch.".into(),
+                ));
+            }
         }
         self.contributions()
             .commit_with(id, build_on_remote, cancel)

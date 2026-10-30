@@ -1770,3 +1770,707 @@ fn removed_and_unreachable_library_items_are_reported_not_guessed() {
     assert!(status.detail.unwrap().contains("not connected"));
     assert!(status.source_id.is_none());
 }
+
+// ----- keeping what the author wrote ---------------------------------------------------
+
+fn package(habi: &Habi, id: &str) -> std::path::PathBuf {
+    habi.paths.skills().join(id).join("package")
+}
+
+fn listed(skill: &LocalSkill) -> Vec<&str> {
+    skill.files.iter().map(|f| f.path.as_str()).collect()
+}
+
+/// Whether this temporary volume treats `a` and `A` as one file.
+fn case_insensitive_volume(dir: &Path) -> bool {
+    let probe = dir.join("case-probe");
+    std::fs::write(&probe, "x").unwrap();
+    let insensitive = dir.join("CASE-PROBE").exists();
+    std::fs::remove_file(probe).unwrap();
+    insensitive
+}
+
+#[test]
+fn a_title_edit_never_removes_metadata_that_does_not_parse() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Alpha", "Does a thing. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    let typed = "# my long notes\napplies_when:\n  any: [ { tag: lang:java\nowner: Me\n";
+    let s = habi.skills().save_metadata_text(&id, typed, None).unwrap();
+    assert_eq!(s.metadata_status, MetadataStatus::Invalid);
+
+    let mut form = s.form.clone();
+    form.title = "Alpha renamed".into();
+    let err = habi
+        .skills()
+        .save_applicability(&id, &form, s.metadata_digest.as_deref())
+        .unwrap_err();
+    assert!(err.to_string().contains("habi.yaml"), "{err}");
+    assert_eq!(
+        std::fs::read_to_string(package(&habi, &id).join("habi.yaml")).unwrap(),
+        typed,
+        "the file is left exactly as typed"
+    );
+
+    // The title still saves, with the document.
+    let saved = habi
+        .skills()
+        .save_document(
+            &id,
+            "Alpha renamed",
+            &s.document,
+            s.document_digest.as_deref(),
+        )
+        .unwrap();
+    assert_eq!(saved.summary.title, "Alpha renamed");
+    assert_eq!(saved.metadata_text.as_deref(), Some(typed));
+
+    // Valid metadata that is not a mapping is not taken for empty either.
+    let list = habi
+        .skills()
+        .save_metadata_text(&id, "- one\n- two\n", saved.metadata_digest.as_deref())
+        .unwrap();
+    assert!(
+        habi.skills()
+            .save_applicability(&id, &form, list.metadata_digest.as_deref())
+            .is_err()
+    );
+    assert!(package(&habi, &id).join("habi.yaml").exists());
+}
+
+#[test]
+fn going_over_the_package_total_is_refused_and_an_oversized_skill_stays_fixable() {
+    const MIB: usize = 1024 * 1024;
+    let home = tempfile::tempdir().unwrap();
+    let picked = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Beta", "Does a thing. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    let files: Vec<_> = (0..17)
+        .map(|i| {
+            let p = picked.path().join(format!("f{i}.bin"));
+            std::fs::write(&p, vec![b'x'; MIB]).unwrap();
+            p
+        })
+        .collect();
+
+    // Nothing is written when the whole selection does not fit.
+    let err = habi.skills().add_files(&id, "assets", &files).unwrap_err();
+    assert!(err.to_string().contains("16 MiB"), "{err}");
+    assert!(!package(&habi, &id).join("assets").exists());
+    assert_eq!(habi.skills().get(&id).unwrap().summary.errors, 0);
+
+    // Up to the limit is fine; one byte past it is not, however it arrives.
+    habi.skills()
+        .add_files(&id, "assets", &files[..15])
+        .unwrap();
+    let almost = picked.path().join("almost.bin");
+    std::fs::write(&almost, vec![b'x'; MIB - 64 * 1024]).unwrap();
+    let last = habi
+        .skills()
+        .add_files(&id, "assets", std::slice::from_ref(&almost))
+        .unwrap();
+    assert_eq!(last.summary.file_count, 17);
+    let room = 16 * MIB - last.files.iter().map(|f| f.size as usize).sum::<usize>();
+    let too_long = "x".repeat(room + 1);
+    assert!(
+        habi.skills()
+            .write_file(&id, "references/more.md", &too_long, None)
+            .is_err()
+    );
+    assert!(!package(&habi, &id).join("references/more.md").exists());
+    let small = picked.path().join("small.bin");
+    std::fs::write(&small, b"small").unwrap();
+    habi.skills()
+        .add_files(&id, "assets", std::slice::from_ref(&small))
+        .unwrap();
+    let grown = picked.path().join("grown.bin");
+    std::fs::write(&grown, vec![b'y'; room + 1024]).unwrap();
+    assert!(
+        habi.skills()
+            .replace_file(&id, "assets/small.bin", &grown)
+            .is_err()
+    );
+    habi.skills().remove_path(&id, "assets/small.bin").unwrap();
+
+    // A skill already over the limit (put there by hand, or by an older Habi)
+    // opens, says so, and can be brought back under it.
+    let extra = package(&habi, &id).join("assets/extra.bin");
+    std::fs::write(&extra, vec![b'z'; MIB]).unwrap();
+    let over = habi.skills().get(&id).unwrap();
+    assert_eq!(over.summary.name, "beta");
+    assert_eq!(over.summary.file_count, 18);
+    assert!(over.summary.errors > 0);
+    assert!(
+        over.diagnostics
+            .iter()
+            .any(|d| d.level == DiagnosticLevel::Error && d.message.contains("at most 200 files")),
+        "{:?}",
+        over.diagnostics
+    );
+    let row = habi.skills().list().unwrap();
+    assert_eq!(row[0].name, "beta");
+    assert_eq!(row[0].file_count, 18);
+    assert!(habi.skills().export(&id, picked.path()).is_err());
+    // Growing it further is refused; anything that shrinks it is not.
+    assert!(
+        habi.skills()
+            .write_file(&id, "references/more.md", "more", None)
+            .is_err()
+    );
+    let tiny = habi.skills().read_file(&id, "assets/extra.bin").unwrap();
+    habi.skills()
+        .write_file(&id, "assets/extra.bin", "now small", Some(&tiny.digest))
+        .unwrap();
+    assert_eq!(habi.skills().get(&id).unwrap().summary.errors, 0);
+}
+
+#[test]
+fn build_folders_in_a_package_are_kept_and_not_created() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Gamma", "Does a thing. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    let skills = habi.skills();
+
+    // Refused as new folders, so nothing goes where a folder read passes it by.
+    let err = skills
+        .write_file(&id, "assets/target/data.txt", "important", None)
+        .unwrap_err();
+    assert!(err.to_string().contains("target"), "{err}");
+    skills
+        .write_file(&id, "references/a.md", "a", None)
+        .unwrap();
+    assert!(
+        skills
+            .rename_path(&id, "references", "node_modules")
+            .is_err()
+    );
+    assert!(
+        skills
+            .rename_path(&id, "references/a.md", "x/__pycache__/a.md")
+            .is_err()
+    );
+    let picked = tempfile::tempdir().unwrap();
+    let source = picked.path().join("b.md");
+    std::fs::write(&source, "b").unwrap();
+    assert!(
+        skills
+            .add_files(&id, ".venv", std::slice::from_ref(&source))
+            .is_err()
+    );
+    // A file of that name is not a folder of that name.
+    skills
+        .write_file(&id, "assets/target", "fine", None)
+        .unwrap();
+
+    // Already there (from an older Habi): listed, editable and movable out.
+    put(&package(&habi, &id), "legacy/node_modules/kept.md", "kept");
+    let now = skills.get(&id).unwrap();
+    assert!(listed(&now).contains(&"legacy/node_modules/kept.md"));
+    let kept = skills
+        .read_file(&id, "legacy/node_modules/kept.md")
+        .unwrap();
+    skills
+        .write_file(
+            &id,
+            "legacy/node_modules/kept.md",
+            "edited",
+            Some(&kept.digest),
+        )
+        .unwrap();
+    let moved = skills
+        .rename_path(&id, "legacy/node_modules/kept.md", "references/kept.md")
+        .unwrap();
+    assert!(listed(&moved).contains(&"references/kept.md"));
+    assert!(!package(&habi, &id).join("legacy").exists());
+
+    // A folder of skills: passed by outside a skill, content inside one.
+    let src = tempfile::tempdir().unwrap();
+    let front = |name: &str| {
+        format!("---\nname: {name}\ndescription: A tool. Use when asked.\n---\nRun it.\n")
+    };
+    put(src.path(), "tool-skill/SKILL.md", &front("tool-skill"));
+    put(
+        src.path(),
+        "tool-skill/scripts/target/tool.py",
+        "print('x')\n",
+    );
+    put(src.path(), "node_modules/dep/SKILL.md", &front("dep"));
+    put(src.path(), "huge-skill/SKILL.md", &front("huge-skill"));
+    for i in 0..201 {
+        put(src.path(), &format!("huge-skill/node_modules/f{i}.js"), "x");
+    }
+    let from = ImportFrom::Folder {
+        path: src.path().to_string_lossy().into(),
+    };
+    let found = habi.inspect_import(&from, &CancelToken::new()).unwrap();
+    let names: Vec<&str> = found.candidates.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, ["huge-skill", "tool-skill"]);
+    let tool = &found.candidates[1];
+    assert!(tool.complete, "{:?}", tool.problems);
+    assert!(tool.files.iter().any(|f| f == "scripts/target/tool.py"));
+    let huge = &found.candidates[0];
+    assert!(!huge.complete, "its folder is reported, not dropped");
+    assert!(
+        huge.problems
+            .iter()
+            .any(|p| p.message.contains("node_modules")),
+        "{:?}",
+        huge.problems
+    );
+}
+
+#[test]
+fn text_that_is_not_utf8_is_not_saved_over() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Eps", "Does it. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    let path = package(&habi, &id).join("SKILL.md");
+    // Latin-1 e-acute.
+    let mut latin1 = b"---\nname: eps\ndescription: Does it. Use when asked.\n---\nCaf".to_vec();
+    latin1.push(0xE9);
+    latin1.extend_from_slice(b" menu\n");
+    std::fs::write(&path, &latin1).unwrap();
+
+    let s = habi.skills().get(&id).unwrap();
+    assert!(
+        s.document_error
+            .as_deref()
+            .is_some_and(|e| e.contains("UTF-8")),
+        "{:?}",
+        s.document_error
+    );
+    assert!(s.summary.errors > 0);
+    assert_eq!(s.summary.name, "eps", "it can still be found by its name");
+    let mut doc = s.document.clone();
+    doc.body.push_str("More.\n");
+    assert!(
+        habi.skills()
+            .save_document(&id, "Eps", &doc, s.document_digest.as_deref())
+            .is_err()
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), latin1);
+
+    // The same for the metadata, whichever way it would be saved.
+    let meta = package(&habi, &id).join("habi.yaml");
+    let bytes = b"habi: 1\nowner: Caf\xE9\n".to_vec();
+    std::fs::write(&meta, &bytes).unwrap();
+    let s = habi.skills().get(&id).unwrap();
+    assert_eq!(s.metadata_status, MetadataStatus::Invalid);
+    assert_eq!(s.metadata_text, None, "no lossy copy to save back");
+    let digest = s.metadata_digest.as_deref();
+    assert!(
+        habi.skills()
+            .save_metadata_text(&id, "habi: 1\n", digest)
+            .is_err()
+    );
+    assert!(habi.skills().save_metadata_text(&id, "", digest).is_err());
+    assert!(
+        habi.skills()
+            .save_applicability(&id, &s.form, digest)
+            .is_err()
+    );
+    assert_eq!(std::fs::read(&meta).unwrap(), bytes);
+}
+
+#[test]
+fn saving_changes_only_the_frontmatter_lines_it_must() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Zeta", "Old. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    let path = package(&habi, &id).join("SKILL.md");
+    let rest = "# who answers\nmetadata:\n  version: 1.10\n  released: 2026-01-01\n  flag: 'yes' # quoted on purpose\nlicense: MIT\n";
+    std::fs::write(
+        &path,
+        format!("---\nname: zeta\ndescription: Old. Use when asked.\n{rest}---\n\nBody.\n"),
+    )
+    .unwrap();
+
+    let save = |name: &str, description: &str| {
+        let current = habi.skills().get(&id).unwrap();
+        habi.skills()
+            .save_document(
+                &id,
+                "Zeta",
+                &SkillDocument {
+                    name: name.into(),
+                    description: description.into(),
+                    body: "Body.\n".into(),
+                },
+                current.document_digest.as_deref(),
+            )
+            .unwrap()
+    };
+    let read = || std::fs::read_to_string(&path).unwrap();
+
+    save("zeta", "New. Use when asked.");
+    assert_eq!(
+        read(),
+        format!("---\nname: zeta\ndescription: New. Use when asked.\n{rest}---\n\nBody.\n")
+    );
+    save("zeta-two", "New. Use when asked.");
+    assert_eq!(
+        read(),
+        format!("---\nname: zeta-two\ndescription: New. Use when asked.\n{rest}---\n\nBody.\n")
+    );
+
+    // Values YAML would read as something else, and values over several lines,
+    // come back as they were typed and leave the rest alone.
+    for (name, description) in [
+        ("zeta", "New: a # b\nsecond line"),
+        ("null", "true"),
+        ("123", "0x10"),
+        ("zeta", "- x"),
+    ] {
+        let saved = save(name, description);
+        assert_eq!(saved.document.name, name);
+        assert_eq!(saved.document.description, description);
+        assert!(read().contains("  version: 1.10\n"), "{}", read());
+    }
+    // A long value's old lines go with it.
+    let saved = save("zeta", "One line.");
+    assert_eq!(saved.document.description, "One line.");
+    assert!(!read().contains("second line"), "{}", read());
+    assert!(read().contains(rest), "{}", read());
+
+    // Emptied keys go, and come back where readers expect them.
+    save("", "");
+    assert_eq!(read(), format!("---\n{rest}---\n\nBody.\n"));
+    save("zeta", "Back.");
+    assert_eq!(
+        read(),
+        format!("---\nname: zeta\ndescription: Back.\n{rest}---\n\nBody.\n")
+    );
+
+    // CRLF lines stay CRLF.
+    let crlf = "---\r\nname: zeta\r\ndescription: Back.\r\nmetadata:\r\n  version: 1.10\r\n---\r\n\r\nBody.\r\n";
+    std::fs::write(&path, crlf).unwrap();
+    save("zeta", "Again.");
+    assert!(
+        read().starts_with(
+            "---\nname: zeta\r\ndescription: Again.\r\nmetadata:\r\n  version: 1.10\n---\n"
+        ),
+        "{:?}",
+        read()
+    );
+}
+
+#[test]
+fn files_differing_only_by_case_are_reported_not_lost() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    put(
+        lib.path(),
+        "skills/collide/SKILL.md",
+        "---\nname: collide\ndescription: Thing. Use when asked.\n---\nBody\n",
+    );
+    put(lib.path(), "skills/collide/references/a.md", "first\n");
+    put(
+        lib.path(),
+        "skills/fine/SKILL.md",
+        "---\nname: fine\ndescription: Thing. Use when asked.\n---\nBody\n",
+    );
+    git(lib.path(), &["init", "-q"]);
+    git(lib.path(), &["add", "-A"]);
+    // A second name straight into Git's index, as an author on Linux would have.
+    let second = lib.path().join("second.txt");
+    std::fs::write(&second, "second\n").unwrap();
+    let oid = git(lib.path(), &["hash-object", "-w", "second.txt"]);
+    std::fs::remove_file(&second).unwrap();
+    git(
+        lib.path(),
+        &[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("100644,{oid},skills/collide/references/A.md"),
+        ],
+    );
+    git(lib.path(), &["commit", "-qm", "init"]);
+
+    let habi = open(home.path());
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Team".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let from = ImportFrom::Library {
+        source_id: source.id.clone(),
+    };
+    let found = habi.inspect_import(&from, &CancelToken::new()).unwrap();
+    let collide = found
+        .candidates
+        .iter()
+        .find(|c| c.name == "collide")
+        .unwrap();
+    assert!(!collide.complete);
+    assert!(
+        collide
+            .problems
+            .iter()
+            .any(|p| p.message.contains("upper and lower case")),
+        "{:?}",
+        collide.problems
+    );
+    assert!(
+        found
+            .candidates
+            .iter()
+            .any(|c| c.name == "fine" && c.complete)
+    );
+
+    let selection = |path: &str| ImportSelection {
+        path: path.into(),
+        rename: None,
+    };
+    let out = habi
+        .import_skills(
+            &from,
+            &[selection(&collide.path), selection("fine")],
+            &CancelToken::new(),
+        )
+        .unwrap();
+    assert_eq!(out.skipped.len(), 1, "{:?}", out.skipped);
+    assert_eq!(out.imported.len(), 1);
+    assert_eq!(out.imported[0].name, "fine");
+
+    // Read from a volume that can hold both, the same.
+    let folder = tempfile::tempdir().unwrap();
+    if !case_insensitive_volume(folder.path()) {
+        put(
+            folder.path(),
+            "SKILL.md",
+            "---\nname: pair\ndescription: Thing. Use when asked.\n---\nBody\n",
+        );
+        put(folder.path(), "a.md", "first");
+        put(folder.path(), "A.md", "second");
+        let found = habi
+            .inspect_import(
+                &ImportFrom::Folder {
+                    path: folder.path().to_string_lossy().into(),
+                },
+                &CancelToken::new(),
+            )
+            .unwrap();
+        assert!(!found.candidates[0].complete);
+    }
+}
+
+#[test]
+fn one_oversized_project_skill_does_not_block_the_others() {
+    let home = tempfile::tempdir().unwrap();
+    let proj = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    for (name, files) in [("good", 0), ("huge", 201)] {
+        let dir = format!(".claude/skills/{name}");
+        put(
+            proj.path(),
+            &format!("{dir}/SKILL.md"),
+            &format!("---\nname: {name}\ndescription: Thing. Use when asked.\n---\nBody\n"),
+        );
+        for i in 0..files {
+            put(proj.path(), &format!("{dir}/f{i}.txt"), "x");
+        }
+    }
+    let project = habi.open_project(proj.path()).unwrap();
+    let from = ImportFrom::Project {
+        project_id: project.id.clone(),
+    };
+    let found = habi.inspect_import(&from, &CancelToken::new()).unwrap();
+    assert_eq!(found.candidates.len(), 2);
+    let good = found.candidates.iter().find(|c| c.name == "good").unwrap();
+    assert!(good.complete);
+    let huge = found.candidates.iter().find(|c| c.name == "huge").unwrap();
+    assert!(!huge.complete);
+    assert!(
+        huge.problems
+            .iter()
+            .any(|p| p.message.contains("more than 200 files")),
+        "{:?}",
+        huge.problems
+    );
+
+    let out = habi
+        .import_skills(
+            &from,
+            &[
+                ImportSelection {
+                    path: good.path.clone(),
+                    rename: None,
+                },
+                ImportSelection {
+                    path: huge.path.clone(),
+                    rename: None,
+                },
+            ],
+            &CancelToken::new(),
+        )
+        .unwrap();
+    assert_eq!(out.imported.len(), 1);
+    assert_eq!(out.imported[0].name, "good");
+    assert_eq!(out.skipped.len(), 1);
+}
+
+#[test]
+fn restoring_under_a_taken_identifier_keeps_both_skills_working() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let description = "Does a thing. Use when asked.";
+    let first = draft(&habi, "Same name", description, "First.\n");
+    let id = first.summary.id.clone();
+    // Things only a line-by-line rename keeps.
+    let path = package(&habi, &id).join("SKILL.md");
+    let text = std::fs::read_to_string(&path).unwrap();
+    std::fs::write(&path, text.replace("---\n\n", "# kept\n---\n\n")).unwrap();
+    habi.skills().trash(&id).unwrap();
+    let second = draft(&habi, "Same name", description, "Second.\n");
+    assert_eq!(first.summary.name, second.summary.name);
+    assert_eq!(habi.skills().library().unwrap().0.items.len(), 1);
+
+    let restored = habi.skills().restore(&id).unwrap();
+    assert_eq!(restored.summary.errors, 0, "{:?}", restored.diagnostics);
+    assert_ne!(restored.summary.name, first.summary.name);
+    assert_eq!(restored.document.body, "First.\n");
+    assert!(std::fs::read_to_string(&path).unwrap().contains("# kept\n"));
+    let live = habi.skills().get(&second.summary.id).unwrap();
+    assert_eq!(live.summary.errors, 0, "{:?}", live.diagnostics);
+    assert_eq!(habi.skills().library().unwrap().0.items.len(), 2);
+
+    // With the identifier free, a restore changes nothing.
+    habi.skills().trash(&id).unwrap();
+    let before = std::fs::read(&path).unwrap();
+    habi.skills().restore(&id).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+}
+
+#[test]
+fn skill_md_stays_put_in_any_case_and_a_case_only_rename_works() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Delta", "Does a thing. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    let skills = habi.skills();
+    let dir = package(&habi, &id);
+    for spelling in ["Skill.MD", "skill.md", "SKILL.MD"] {
+        assert!(skills.remove_path(&id, spelling).is_err(), "{spelling}");
+        assert!(
+            skills.rename_path(&id, spelling, "moved.md").is_err(),
+            "{spelling}"
+        );
+        assert!(
+            skills.rename_path(&id, "moved.md", spelling).is_err(),
+            "{spelling}"
+        );
+    }
+    let picked = tempfile::tempdir().unwrap();
+    let source = picked.path().join("x.md");
+    std::fs::write(&source, "x").unwrap();
+    assert!(skills.replace_file(&id, "skill.md", &source).is_err());
+    assert!(dir.join("SKILL.md").is_file());
+    assert_eq!(skills.get(&id).unwrap().document_error, None);
+
+    skills.write_file(&id, "notes.md", "n", None).unwrap();
+    let renamed = skills.rename_path(&id, "notes.md", "Notes.md").unwrap();
+    assert!(listed(&renamed).contains(&"Notes.md"));
+    assert!(!listed(&renamed).contains(&"notes.md"));
+    assert_eq!(
+        skills.read_file(&id, "Notes.md").unwrap().text.as_deref(),
+        Some("n")
+    );
+
+    // Folders too, and still nothing is replaced.
+    skills.write_file(&id, "refs/a.md", "a", None).unwrap();
+    let renamed = skills.rename_path(&id, "refs", "Refs").unwrap();
+    assert!(listed(&renamed).contains(&"Refs/a.md"));
+    skills.write_file(&id, "other.md", "o", None).unwrap();
+    assert!(skills.rename_path(&id, "other.md", "Notes.md").is_err());
+    assert!(skills.rename_path(&id, "other.md", "NOTES.md").is_err());
+    assert_eq!(
+        skills.read_file(&id, "other.md").unwrap().text.as_deref(),
+        Some("o")
+    );
+
+    // Where both spellings can exist, they are two files: not "the same".
+    if !case_insensitive_volume(&dir) {
+        put(&dir, "one.md", "1");
+        put(&dir, "ONE.md", "2");
+        assert!(skills.rename_path(&id, "one.md", "ONE.md").is_err());
+    }
+}
+
+#[test]
+fn added_files_differing_only_by_case_do_not_overwrite_each_other() {
+    let home = tempfile::tempdir().unwrap();
+    let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let habi = open(home.path());
+    let s = draft(&habi, "Ten", "Does a thing. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    std::fs::write(a.path().join("notes.md"), "from a").unwrap();
+    std::fs::write(b.path().join("NOTES.md"), "from b").unwrap();
+    let both = [a.path().join("notes.md"), b.path().join("NOTES.md")];
+    let err = habi
+        .skills()
+        .add_files(&id, "references", &both)
+        .unwrap_err();
+    assert!(err.to_string().contains("upper and lower case"), "{err}");
+    assert!(!package(&habi, &id).join("references").exists());
+
+    // Nor over a file that is already there, or as a new text file.
+    habi.skills()
+        .add_files(&id, "references", &both[..1])
+        .unwrap();
+    assert!(
+        habi.skills()
+            .add_files(&id, "references", &both[1..])
+            .is_err()
+    );
+    assert!(
+        habi.skills()
+            .write_file(&id, "references/Notes.md", "x", None)
+            .is_err()
+    );
+    let kept = habi.skills().read_file(&id, "references/notes.md").unwrap();
+    assert_eq!(kept.text.as_deref(), Some("from a"));
+}
+
+#[test]
+fn names_that_read_as_something_else_are_refused() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let s = draft(&habi, "Bidi", "Does a thing. Use when asked.", "Body.\n");
+    let id = s.summary.id.clone();
+    for name in ["notes\u{202E}dm.exe", "scripts/a\u{200B}.md"] {
+        assert!(
+            habi.skills().write_file(&id, name, "x", None).is_err(),
+            "{name:?}"
+        );
+    }
+    // Found in a folder, such a file is reported, and the package not imported.
+    let src = tempfile::tempdir().unwrap();
+    put(
+        src.path(),
+        "SKILL.md",
+        "---\nname: spoof\ndescription: Thing. Use when asked.\n---\nBody\n",
+    );
+    put(src.path(), "notes\u{202E}dm.exe", "plain text\n");
+    let found = habi
+        .inspect_import(
+            &ImportFrom::Folder {
+                path: src.path().to_string_lossy().into(),
+            },
+            &CancelToken::new(),
+        )
+        .unwrap();
+    assert!(!found.candidates[0].complete);
+}

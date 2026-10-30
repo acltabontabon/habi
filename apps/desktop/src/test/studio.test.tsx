@@ -692,6 +692,29 @@ describe("the Skill Studio, saving", () => {
     expect(count("save_skill_metadata")).toBe(0);
   });
 
+  it("saves a title edit without touching rules that cannot be read", async () => {
+    const unreadable = (): LocalSkill => ({
+      ...asWritten(),
+      metadataText: "applies_when:\n  any: [ { tag: lang:java\n",
+      metadataStatus: "invalid",
+      appliesWhen: null,
+    });
+    handlers.get_skill = () => unreadable();
+    handlers.save_skill_document = () => ({ ...unreadable(), documentDigest: "doc2" });
+    const rules = vi.fn(() => {
+      throw { code: "invalidInput", message: "habi.yaml could not be read" };
+    });
+    handlers.save_skill_applicability = rules;
+    wrap(<SkillStudio id="k" />);
+    await screen.findByLabelText("Skill title");
+    fireEvent.change(screen.getByLabelText("Skill title"), { target: { value: "Review, renamed" } });
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
+    await waitFor(() => expect(count("save_skill_document")).toBeGreaterThan(0));
+    await new Promise((r) => setTimeout(r, 900));
+    expect(rules).not.toHaveBeenCalled();
+    expect(screen.queryByText(/could not be read/)).not.toBeInTheDocument();
+  });
+
   it("keeps the rules on screen when they could not be saved before switching to YAML", async () => {
     handlers.get_skill = () => asWritten();
     handlers.save_skill_document = () => ({ ...asWritten(), documentDigest: "doc2" });
