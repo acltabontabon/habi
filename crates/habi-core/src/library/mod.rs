@@ -65,6 +65,10 @@ pub fn parse_yaml(text: &str) -> Result<Value, String> {
 /// (`using-superpowers`), not something that needs them all.
 const MAX_CALLS: usize = 5;
 
+/// How many distinct names are collected from one skill's instructions. Far
+/// more than `MAX_CALLS`: most `word:word` text does not name a skill at all.
+const MAX_CALLED_NAMES: usize = 64;
+
 /// The names written as `plugin:skill` in a skill's instructions, the way
 /// skills in one plugin call each other (`superpowers:writing-plans`). Only
 /// this form counts: a name in backticks is usually a "see also", and works
@@ -74,12 +78,16 @@ fn called_names(body: &str) -> Vec<String> {
         regex::Regex::new(r"\b[a-z][a-z0-9-]*:([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\b").ok()
     });
     let mut names: Vec<String> = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
     if let Some(call) = CALL.as_ref() {
         for caps in call.captures_iter(body) {
             if let Some(name) = caps.get(1).map(|m| m.as_str())
-                && !names.iter().any(|n| n == name)
+                && seen.insert(name)
             {
                 names.push(name.to_string());
+                if names.len() >= MAX_CALLED_NAMES {
+                    break;
+                }
             }
         }
     }
@@ -89,11 +97,14 @@ fn called_names(body: &str) -> Vec<String> {
 /// Turns called names into sibling ids: skills in the same folder as the
 /// caller (one plugin, or a library's `skills/`), by their SKILL.md name.
 fn resolve_calls(items: &mut [LibraryItem], called: &HashMap<String, Vec<String>>) {
-    let siblings: Vec<(String, String, String)> = items
-        .iter()
-        .filter(|i| i.kind != ItemKind::Instructions)
-        .map(|i| (dir_of(&i.path).to_string(), i.name.clone(), i.id.clone()))
-        .collect();
+    let mut siblings: HashMap<String, HashMap<String, String>> = HashMap::new();
+    for i in items.iter().filter(|i| i.kind != ItemKind::Instructions) {
+        siblings
+            .entry(dir_of(&i.path).to_string())
+            .or_default()
+            .entry(i.name.clone())
+            .or_insert_with(|| i.id.clone());
+    }
     for item in items.iter_mut() {
         let Some(names) = called.get(&item.path) else {
             continue;
@@ -102,12 +113,7 @@ fn resolve_calls(items: &mut [LibraryItem], called: &HashMap<String, Vec<String>
         let calls: Vec<String> = names
             .iter()
             .filter(|n| **n != item.name)
-            .filter_map(|n| {
-                siblings
-                    .iter()
-                    .find(|(dir, name, _)| dir == parent && name == n)
-                    .map(|(_, _, id)| id.clone())
-            })
+            .filter_map(|n| siblings.get(parent).and_then(|named| named.get(n)).cloned())
             .collect();
         if calls.len() <= MAX_CALLS {
             item.calls = calls;
@@ -182,6 +188,9 @@ pub fn check_skill_name(name: &str) -> Result<(), String> {
         Err("may contain only lowercase letters, digits and hyphens".into())
     } else if name.starts_with('-') || name.ends_with('-') || name.contains("--") {
         Err("may not start or end with a hyphen or contain `--`".into())
+    } else if let Some(why) = crate::paths::windows_alias(name) {
+        // The name becomes the folder it installs to, on every platform.
+        Err(why.into())
     } else {
         Ok(())
     }
@@ -599,19 +608,24 @@ pub fn build_index(
             std::iter::successors(parent(dir), |d| parent(d)).find(|d| accepted_dirs.contains(d))
         };
         if let Some(outer) = enclosing {
-            index.diagnostics.push(Diagnostic::warning(
+            // A skill in a folder takes all that folder's files. One at the root
+            // does not take other skills' folders, so these belong to nothing.
+            let message = if outer.is_empty() {
                 format!(
-                    "`{dir}` is nested inside the skill `{outer}` and is treated as part of it"
-                ),
-                Some(&join(dir, SKILL_FILE)),
-            ));
+                    "`{dir}` is inside the skill at the root of this library. It is not listed as a skill, and its files are not part of the root skill, so they are not read or installed"
+                )
+            } else {
+                format!("`{dir}` is nested inside the skill `{outer}` and is treated as part of it")
+            };
+            index
+                .diagnostics
+                .push(Diagnostic::warning(message, Some(&join(dir, SKILL_FILE))));
             continue;
         }
         accepted_dirs.insert(dir);
         accepted.push(dir.clone());
     }
 
-    let mut seen_ids: HashMap<String, String> = HashMap::new();
     // Names each skill's instructions call as `plugin:skill`, by skill folder.
     let mut called: HashMap<String, Vec<String>> = HashMap::new();
     for dir in &accepted {
@@ -779,19 +793,8 @@ pub fn build_index(
             }
         }
 
+        // The id it asks for: `settle_ids` decides who keeps it.
         let id = metadata.id.clone().unwrap_or_else(|| name.clone());
-        let id = if let Some(other) = seen_ids.get(&id) {
-            diags.push(Diagnostic::warning(
-                format!(
-                    "id `{id}` is also used by `{other}`; this item is keyed by its path instead"
-                ),
-                Some(&skill_md),
-            ));
-            dir.replace('/', ".")
-        } else {
-            id
-        };
-        seen_ids.insert(id.clone(), dir.clone());
         let content_digest = item_digest(&item_files);
         diags.extend(package_checks(dir, &content_digest, &item_files, read));
         let signals = signals::scan(dir, &content_digest, &item_files, read);
@@ -837,6 +840,8 @@ pub fn build_index(
             complete: true,
         });
     }
+
+    let mut seen_ids = settle_ids(&mut index.items, source_id);
 
     // Instructions declared in the manifest.
     for entry in manifest_instructions {
@@ -947,6 +952,51 @@ pub fn build_index(
     index
 }
 
+/// Gives every skill an id of its own, and returns which folder holds each id.
+///
+/// Everything looks an item up by id and takes the first it finds, so two with
+/// one id means one of them can never be reached. Of those asking for the same
+/// id, a skill whose folder has that name keeps it. The others go by their path,
+/// but only once every id asked for has been given out, so that a path never
+/// takes an id another skill asked for; a number is added if the path is taken.
+fn settle_ids(items: &mut [LibraryItem], source_id: &str) -> HashMap<String, String> {
+    let (named_for_id, others): (Vec<_>, Vec<_>) = items.iter_mut().partition(|item| {
+        item.path.rsplit('/').next() == Some(item.id.as_str())
+            || item.path.replace('/', ".") == item.id
+    });
+    let mut seen: HashMap<String, String> = HashMap::new();
+    let mut displaced = Vec::new();
+    for item in named_for_id.into_iter().chain(others) {
+        if seen.contains_key(&item.id) {
+            displaced.push(item);
+        } else {
+            seen.insert(item.id.clone(), item.path.clone());
+        }
+    }
+    for item in displaced {
+        // A skill at the root is the only one in its library, so a path is not empty.
+        let path_id = item.path.replace('/', ".");
+        let mut id = path_id.clone();
+        let mut attempt = 1;
+        while seen.contains_key(&id) {
+            attempt += 1;
+            id = format!("{path_id}-{attempt}");
+        }
+        let other = seen.get(&item.id).cloned().unwrap_or_default();
+        item.diagnostics.push(Diagnostic::warning(
+            format!(
+                "id `{}` is also used by `{other}`; this item is known as `{id}` instead",
+                item.id
+            ),
+            Some(&join(&item.path, SKILL_FILE)),
+        ));
+        seen.insert(id.clone(), item.path.clone());
+        item.key = format!("{source_id}/{id}");
+        item.id = id;
+    }
+    seen
+}
+
 /// Digest of an item's files: paths, contents and executable bits.
 pub fn item_digest(files: &[ItemFile]) -> String {
     let keyed: Vec<(String, String)> = files
@@ -1039,6 +1089,20 @@ pub(crate) fn check_package_files(
     let mut diags = Vec::new();
     let mut complete = true;
     let paths: HashSet<&str> = files.iter().map(|f| f.path.as_str()).collect();
+    // Every folder that holds a file: a link may name a folder.
+    let mut folders: HashSet<&str> = HashSet::new();
+    for f in files {
+        let mut path = f.path.as_str();
+        while let Some((parent, _)) = path.rsplit_once('/')
+            && folders.insert(parent)
+        {
+            path = parent;
+        }
+    }
+    let package_has = |target: &str| {
+        let target = target.trim_end_matches('/');
+        target.is_empty() || paths.contains(target) || folders.contains(target)
+    };
     let lower_ext = |p: &str| {
         p.rsplit_once('.')
             .map(|(_, e)| e.to_ascii_lowercase())
@@ -1077,8 +1141,10 @@ pub(crate) fn check_package_files(
         }
     };
 
-    // Local file references in Markdown.
+    // Local file references in Markdown. Past the limit a problem is only
+    // counted: finding its line means searching the file, once per reference.
     let mut problems: Vec<Diagnostic> = Vec::new();
+    let mut problem_count = 0usize;
     for f in files
         .iter()
         // Assets are often templates whose links are placeholders.
@@ -1111,7 +1177,7 @@ pub(crate) fn check_package_files(
                             ),
                             DiagnosticCode::BrokenLink,
                         )),
-                        Some(Ok(target)) if !package_has(&paths, &target) => Some((
+                        Some(Ok(target)) if !package_has(&target) => Some((
                             format!("{} links to `{target}`, which is not in the skill", f.path),
                             DiagnosticCode::MissingReferencedFile,
                         )),
@@ -1122,10 +1188,10 @@ pub(crate) fn check_package_files(
                 MarkdownRef::Code(raw) => (
                     match code_path(raw) {
                         Some(target)
-                            if !package_has(&paths, &target)
+                            if !package_has(&target)
                                 && !resolve_link(from_dir, &target)
                                     .and_then(Result::ok)
-                                    .is_some_and(|t| package_has(&paths, &t)) =>
+                                    .is_some_and(|t| package_has(&t)) =>
                         {
                             Some((
                                 format!(
@@ -1143,17 +1209,19 @@ pub(crate) fn check_package_files(
             if let Some((message, code)) = problem
                 && seen.insert(message.clone())
             {
-                problems.push(
-                    Diagnostic::warning(message, Some(&f.path))
-                        .with_code(code)
-                        .at_line(line_of(body, raw)),
-                );
+                problem_count += 1;
+                if problems.len() < MAX_REFERENCE_PROBLEMS {
+                    problems.push(
+                        Diagnostic::warning(message, Some(&f.path))
+                            .with_code(code)
+                            .at_line(line_of(body, raw)),
+                    );
+                }
             }
         }
     }
-    if problems.len() > MAX_REFERENCE_PROBLEMS {
-        let more = problems.len() - MAX_REFERENCE_PROBLEMS;
-        problems.truncate(MAX_REFERENCE_PROBLEMS);
+    if problem_count > MAX_REFERENCE_PROBLEMS {
+        let more = problem_count - MAX_REFERENCE_PROBLEMS;
         problems.push(Diagnostic::warning(
             format!("{more} more references to files that are not in the skill"),
             None,
@@ -1206,16 +1274,6 @@ pub(crate) fn check_package_files(
         }
     }
     (diags, complete)
-}
-
-fn package_has(paths: &HashSet<&str>, target: &str) -> bool {
-    let target = target.trim_end_matches('/');
-    target.is_empty()
-        || paths.contains(target)
-        || paths.iter().any(|p| {
-            p.strip_prefix(target)
-                .is_some_and(|rest| rest.starts_with('/'))
-        })
 }
 
 fn check_json(text: &str) -> Result<(), String> {
@@ -1519,7 +1577,7 @@ fn resolve_link(from_dir: &str, raw: &str) -> Option<Result<String, ()>> {
     clippy::indexing_slicing,
     reason = "a scanner: every index is checked against the length first"
 )]
-fn percent_decode(s: &str) -> Option<String> {
+pub(crate) fn percent_decode(s: &str) -> Option<String> {
     if !s.contains('%') {
         return Some(s.to_string());
     }

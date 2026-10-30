@@ -45,7 +45,8 @@ fn collect(validator: &Validator, value: &Value) -> Result<(), Vec<String>> {
             let at = e.instance_path().to_string();
             let mut msg = e.to_string();
             if msg.len() > 240 {
-                msg.truncate(240);
+                // The message quotes the file, so byte 240 can be inside a character.
+                msg.truncate(msg.floor_char_boundary(240));
                 msg.push('…');
             }
             if at.is_empty() {

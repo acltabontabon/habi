@@ -24,7 +24,7 @@ use crate::library::model::LibraryIndex;
 use crate::library::summary::{LibraryLicense, LibrarySummary, detect_spdx, summarize};
 use crate::source::{
     CatalogBinding, Freshness, NewSource, Source, SourceKind, SourceRole, Sources,
-    is_local_location, remote_identity,
+    is_local_location, repository_key,
 };
 use registry::{Entry, OwnershipMethod, PublisherKind, Registry, StatusState, Track};
 use serde::{Deserialize, Serialize};
@@ -296,7 +296,7 @@ fn matches_entry(source: &Source, entry: &Entry) -> bool {
     }
     source.kind == SourceKind::Git
         && !is_local_location(&source.location)
-        && remote_identity(&source.location).eq_ignore_ascii_case(&entry.identity())
+        && repository_key(&source.location).eq_ignore_ascii_case(&repository_key(&entry.url))
 }
 
 impl<'a> Catalog<'a> {
@@ -353,11 +353,15 @@ impl<'a> Catalog<'a> {
         let Some(source) = Self::pick(&all, entry).cloned() else {
             return Ok(None);
         };
-        // The registry says how a library is followed. One connected before
-        // it said so is brought in line; what it has read stays until the
-        // user updates it.
+        // The registry says how a library is followed. One connected from the
+        // catalog before it said so is brought in line; what it has read stays
+        // until the user updates it. A source the user added themselves, for a
+        // repository that happens to be in the catalog, keeps the version they chose.
         let wanted = tracking(entry);
-        if source.kind == SourceKind::Git && source.tracked != wanted {
+        if source.catalog_id.as_deref() == Some(entry.id.as_str())
+            && source.kind == SourceKind::Git
+            && source.tracked != wanted
+        {
             return self.sources.set_tracked(&source.id, &wanted).map(Some);
         }
         Ok(Some(source))
@@ -592,7 +596,7 @@ impl<'a> Catalog<'a> {
             None => {
                 let source = self.sources.add_with(
                     &NewSource {
-                        name: entry.name.clone(),
+                        name: self.sources.available_name(&entry.name)?,
                         location: entry.url.clone(),
                         subdir: None,
                         tracked: tracking(entry),
