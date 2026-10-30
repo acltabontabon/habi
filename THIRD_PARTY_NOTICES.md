@@ -83,7 +83,7 @@ Notes:
 | core-graphics-types | 0.2.0 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs | [T4](#t4) [T49](#t49) |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 | https://github.com/RustCrypto/utils | [T26](#t26) [T51](#t51) |
 | cpufeatures | 0.3.1 | MIT OR Apache-2.0 | https://github.com/RustCrypto/utils | [T26](#t26) [T45](#t45) |
-| crc32fast | 1.5.2 | MIT OR Apache-2.0 | https://github.com/srijs/rust-crc32fast | [T13](#t13) [T52](#t52) |
+| crc32fast | 1.5.3 | MIT OR Apache-2.0 | https://github.com/srijs/rust-crc32fast | [T13](#t13) [T52](#t52) |
 | crossbeam-channel | 0.5.17 | MIT OR Apache-2.0 | https://github.com/crossbeam-rs/crossbeam | [T4](#t4) [T53](#t53) [T54](#t54) |
 | crossbeam-deque | 0.8.8 | MIT OR Apache-2.0 | https://github.com/crossbeam-rs/crossbeam | [T4](#t4) [T53](#t53) |
 | crossbeam-epoch | 0.9.21 | MIT OR Apache-2.0 | https://github.com/crossbeam-rs/crossbeam | [T4](#t4) [T53](#t53) |
@@ -177,7 +177,7 @@ Notes:
 | glob | 0.3.4 | MIT OR Apache-2.0 | https://github.com/rust-lang/glob | [T4](#t4) [T25](#t25) |
 | globset | 0.4.20 | Unlicense OR MIT | https://github.com/BurntSushi/ripgrep/tree/master/crates/globset | [T6](#t6) [T7](#t7) [T8](#t8) |
 | gobject-sys | 0.18.0 | MIT | https://github.com/gtk-rs/gtk-rs-core | [T19](#t19) |
-| granit-parser | 1.3.0 | MIT OR Apache-2.0 | https://github.com/bourumir-wyngs/granit-parser | [T108](#t108) |
+| granit-parser | 2.0.0 | MIT OR Apache-2.0 | https://github.com/bourumir-wyngs/granit-parser | [T108](#t108) |
 | gtk | 0.18.2 | MIT | https://github.com/gtk-rs/gtk3-rs | [T18](#t18) [T19](#t19) |
 | gtk-sys | 0.18.2 | MIT | https://github.com/gtk-rs/gtk3-rs | [T19](#t19) |
 | gtk3-macros | 0.18.2 | MIT | https://github.com/gtk-rs/gtk3-rs | [T18](#t18) [T19](#t19) |
@@ -235,20 +235,20 @@ Notes:
 | js-sys | 0.3.106 | MIT OR Apache-2.0 | https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys | [T4](#t4) [T42](#t42) |
 | json-patch | 4.2.0 | MIT/Apache-2.0 | https://github.com/idubrov/json-patch | [T13](#t13) [T139](#t139) |
 | jsonptr | 0.7.1 | MIT OR Apache-2.0 | https://github.com/chanced/jsonptr | [T140](#t140) [T141](#t141) |
-| jsonschema | 0.58.4 | MIT | https://github.com/Stranger6667/jsonschema | [T142](#t142) |
-| jsonschema-regex | 0.58.4 | MIT | https://github.com/Stranger6667/jsonschema | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
-| jsonschema-value | 0.58.4 | MIT | https://github.com/Stranger6667/jsonschema | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
+| jsonschema | 0.60.2 | MIT | https://github.com/Stranger6667/jsonschema | [T142](#t142) |
+| jsonschema-regex | 0.60.2 | MIT | https://github.com/Stranger6667/jsonschema | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
+| jsonschema-value | 0.60.2 | MIT | https://github.com/Stranger6667/jsonschema | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | keyboard-types | 0.8.3 | MIT OR Apache-2.0 | https://github.com/rust-windowing/keyboard-types | [T4](#t4) [T143](#t143) |
 | kqueue | 1.2.1 | MIT | https://gitlab.com/rust-kqueue/rust-kqueue | [T144](#t144) |
 | kqueue-sys | 1.1.2 | MIT | https://gitlab.com/rust-kqueue/rust-kqueue-sys | [T144](#t144) |
 | lazy_static | 1.5.1 | MIT OR Apache-2.0 | https://github.com/rust-lang-nursery/lazy-static.rs | [T4](#t4) [T3](#t3) |
 | libappindicator | 0.9.0 | Apache-2.0 OR MIT | https://crates.io/crates/libappindicator | [T4](#t4) [T145](#t145) |
 | libappindicator-sys | 0.9.0 | Apache-2.0 OR MIT | https://crates.io/crates/libappindicator-sys | standard text: [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html), [MIT](https://spdx.org/licenses/MIT.html) |
-| libc | 0.2.189 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc | [T10](#t10) [T146](#t146) |
+| libc | 0.2.191 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc | [T10](#t10) [T146](#t146) |
 | libdbus-sys | 0.2.7 | Apache-2.0/MIT | https://github.com/diwic/dbus-rs | [T61](#t61) [T62](#t62) |
 | libloading | 0.7.4 | ISC | https://github.com/nagisa/rust_libloading/ | [T147](#t147) |
 | libredox | 0.1.25 | MIT | https://gitlab.redox-os.org/redox-os/libredox.git | [T148](#t148) |
-| libsqlite3-sys | 0.38.2 | MIT | https://github.com/rusqlite/rusqlite | [T149](#t149) |
+| libsqlite3-sys | 0.39.1 | MIT | https://github.com/rusqlite/rusqlite | [T149](#t149) |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/sunfishcode/linux-raw-sys | [T150](#t150) [T4](#t4) [T151](#t151) [T3](#t3) |
 | litemap | 0.8.3 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 | https://github.com/Amanieu/parking_lot | [T4](#t4) [T152](#t152) |
@@ -259,7 +259,7 @@ Notes:
 | memoffset | 0.9.1 | MIT | https://github.com/Gilnaa/memoffset | [T154](#t154) |
 | micromap | 0.3.0 | MIT | https://github.com/yegor256/micromap | [T155](#t155) |
 | mime | 0.3.17 | MIT OR Apache-2.0 | https://github.com/hyperium/mime | [T4](#t4) [T156](#t156) |
-| minisign-verify | 0.2.5 | MIT | https://github.com/jedisct1/rust-minisign-verify | [T157](#t157) |
+| minisign-verify | 0.3.0 | MIT | https://github.com/jedisct1/rust-minisign-verify | [T157](#t157) |
 | miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide | [T158](#t158) [T92](#t92) [T159](#t159) [T160](#t160) |
 | miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide | [T158](#t158) [T92](#t92) [T159](#t159) [T160](#t160) |
 | mio | 1.2.3 | MIT | https://github.com/tokio-rs/mio | [T161](#t161) |
@@ -350,15 +350,15 @@ Notes:
 | redox_users | 0.5.3 | MIT | https://gitlab.redox-os.org/redox-os/users | [T194](#t194) |
 | ref-cast | 1.0.27 | MIT OR Apache-2.0 | https://github.com/dtolnay/ref-cast | [T10](#t10) [T3](#t3) |
 | ref-cast-impl | 1.0.27 | MIT OR Apache-2.0 | https://github.com/dtolnay/ref-cast | [T10](#t10) [T3](#t3) |
-| referencing | 0.58.4 | MIT | https://github.com/Stranger6667/jsonschema | [T142](#t142) |
+| referencing | 0.60.2 | MIT | https://github.com/Stranger6667/jsonschema | [T142](#t142) |
 | regex | 1.13.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex | [T4](#t4) [T25](#t25) |
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex | [T4](#t4) [T25](#t25) |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex | [T4](#t4) [T25](#t25) |
 | reqwest | 0.13.5 | MIT OR Apache-2.0 | https://github.com/seanmonstar/reqwest | [T195](#t195) [T196](#t196) |
-| rfd | 0.16.0 | MIT | https://github.com/PolyMeilex/rfd | [T197](#t197) |
-| roxmltree | 0.21.1 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree | [T4](#t4) [T198](#t198) |
+| rfd | 0.17.2 | MIT | https://github.com/PolyMeilex/rfd | [T197](#t197) |
+| roxmltree | 0.21.2 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree | [T4](#t4) [T198](#t198) |
 | rsqlite-vfs | 0.1.1 | MIT | https://crates.io/crates/rsqlite-vfs | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
-| rusqlite | 0.40.2 | MIT | https://github.com/rusqlite/rusqlite | [T149](#t149) |
+| rusqlite | 0.41.1 | MIT | https://github.com/rusqlite/rusqlite | [T149](#t149) |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT | https://github.com/rust-lang/rustc-hash | [T10](#t10) [T3](#t3) |
 | rustix | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/rustix | [T199](#t199) [T4](#t4) [T151](#t151) [T3](#t3) |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 | https://github.com/rustls/pki-types | [T200](#t200) [T201](#t201) |
@@ -378,24 +378,24 @@ Notes:
 | serde_core | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde | [T10](#t10) [T3](#t3) |
 | serde_derive | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde | [T10](#t10) [T3](#t3) |
 | serde_derive_internals | 0.29.1 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde | [T10](#t10) [T3](#t3) |
-| serde_json | 1.0.151 | MIT OR Apache-2.0 | https://github.com/serde-rs/json | [T10](#t10) [T3](#t3) |
+| serde_json | 1.0.154 | MIT OR Apache-2.0 | https://github.com/serde-rs/json | [T10](#t10) [T3](#t3) |
 | serde_repr | 0.1.21 | MIT OR Apache-2.0 | https://github.com/dtolnay/serde-repr | [T10](#t10) [T3](#t3) |
 | serde_spanned | 0.6.9 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
 | serde_spanned | 1.1.1 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
 | serde_with | 3.24.0 | MIT OR Apache-2.0 | https://github.com/jonasbb/serde_with/ | [T4](#t4) [T207](#t207) |
 | serde_with_macros | 3.24.0 | MIT OR Apache-2.0 | https://github.com/jonasbb/serde_with/ | [T4](#t4) [T207](#t207) |
-| serde-saphyr | 1.3.0 | MIT OR Apache-2.0 | https://github.com/bourumir-wyngs/serde-saphyr | [T10](#t10) [T3](#t3) |
+| serde-saphyr | 2.0.0 | MIT OR Apache-2.0 | https://github.com/bourumir-wyngs/serde-saphyr | [T10](#t10) [T3](#t3) |
 | serde-untagged | 0.1.9 | MIT OR Apache-2.0 | https://github.com/dtolnay/serde-untagged | [T10](#t10) [T3](#t3) |
 | serialize-to-javascript | 0.1.2 | MIT OR Apache-2.0 | https://github.com/chippers/serialize-to-javascript | [T77](#t77) [T208](#t208) |
 | serialize-to-javascript-impl | 0.1.2 | MIT OR Apache-2.0 | https://github.com/chippers/serialize-to-javascript | [T77](#t77) [T208](#t208) |
 | servo_arc | 0.4.3 | MIT OR Apache-2.0 | https://github.com/servo/stylo | [T4](#t4) [T3](#t3) |
 | sha2 | 0.10.9 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes | [T26](#t26) [T209](#t209) |
-| sha2 | 0.11.0 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes | [T26](#t26) [T210](#t210) |
+| sha2 | 0.11.1 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes | [T26](#t26) [T210](#t210) |
 | sharded-slab | 0.1.7 | MIT | https://github.com/hawkw/sharded-slab | [T211](#t211) |
 | signal-hook-registry | 1.4.8 | MIT OR Apache-2.0 | https://github.com/vorner/signal-hook | [T4](#t4) [T212](#t212) |
 | simd-adler32 | 0.3.10 | MIT | https://github.com/mcountryman/simd-adler32 | [T213](#t213) |
 | simdutf8 | 0.1.5 | MIT OR Apache-2.0 | https://github.com/rusticstuff/simdutf8 | [T92](#t92) [T126](#t126) |
-| similar | 3.2.0 | Apache-2.0 | https://github.com/mitsuhiko/similar | [T4](#t4) |
+| similar | 3.2.1 | Apache-2.0 | https://github.com/mitsuhiko/similar | [T4](#t4) |
 | siphasher | 1.0.4 | MIT OR Apache-2.0 | https://github.com/jedisct1/rust-siphash | [T214](#t214) [T77](#t77) [T19](#t19) |
 | slab | 0.4.12 | MIT | https://github.com/tokio-rs/slab | [T215](#t215) |
 | smallvec | 1.16.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-smallvec | [T4](#t4) [T216](#t216) |
@@ -421,13 +421,13 @@ Notes:
 | tao | 0.37.1 | Apache-2.0 | https://github.com/tauri-apps/tao | [T13](#t13) [T229](#t229) |
 | tao-macros | 0.1.4 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tao | [T4](#t4) [T230](#t230) [T231](#t231) |
 | tar | 0.4.46 | MIT OR Apache-2.0 | https://github.com/composefs/tar-rs | [T4](#t4) [T232](#t232) |
-| tauri | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
+| tauri | 2.12.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
 | tauri-codegen | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
 | tauri-macros | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tauri-plugin-dialog | 2.8.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-plugin-fs | 2.6.0 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-plugin-opener | 2.7.0 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-plugin-updater | 2.13.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
+| tauri-plugin-dialog | 2.8.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
+| tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
+| tauri-plugin-opener | 2.7.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
+| tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
 | tauri-runtime | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
 | tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
 | tauri-utils | 2.10.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
@@ -480,7 +480,7 @@ Notes:
 | url | 2.5.8 | MIT OR Apache-2.0 | https://github.com/servo/rust-url | [T4](#t4) [T127](#t127) |
 | urlpattern | 0.6.0 | MIT | https://github.com/denoland/rust-urlpattern | [T250](#t250) |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | https://github.com/hsivonen/utf8_iter | [T251](#t251) [T77](#t77) [T80](#t80) |
-| uuid | 1.26.1 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid | [T4](#t4) [T252](#t252) |
+| uuid | 1.29.0 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid | [T4](#t4) [T252](#t252) |
 | uuid-simd | 0.8.0 | MIT | https://github.com/Nugine/simd | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | valuable | 0.1.1 | MIT | https://github.com/tokio-rs/valuable | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | vsimd | 0.8.0 | MIT | https://github.com/Nugine/simd | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
