@@ -62,10 +62,16 @@ version tag for `track: latest-release`) and checks that, at that revision:
 
 - each `picks[].skill` folder holds a skill Habi would find, with a `SKILL.md` whose `name` is
   `picks[].name`, or the folder's name when the pick has none;
+- each pick's `tokens` is within 25% of what its `SKILL.md` measures now: the characters in `name`
+  and `description`, divided by 4 and rounded up. Small edits upstream aren't worth an issue;
+- each pick's `scripts` is true exactly when the skill has an executable file or a code file;
 - each `hints[].path` matches at least one skill folder, and so does every alternative of a
   `{a,b}` pattern, so one renamed skill isn't hidden by the others;
 - each `discovery.include` pattern matches at least one skill;
 - the repository is still at the address in `url`.
+
+A pick's `caution` is not checked. It comes from Habi's own scan of the skill's files, which this
+script can't repeat, so re-measure it in the app when you update a pick.
 
 A failure opens one issue titled "Catalog check failed", or updates the one already open, with the
 report. Close it once the catalog is fixed.
@@ -80,8 +86,9 @@ GITHUB_TOKEN="$(gh auth token)" node scripts/check-catalog.mjs
 The report marks each library `ok`, `FAILED` or `UNCHECKED`:
 
 - **`FAILED`** means the catalog is out of date. Look at the repository, then correct the path, set
-  or remove `name`, or remove the pick; a pick whose folder moved is reported with where a skill of
-  that name now is. Update the `Picks checked at` comment above the entry as you do.
+  or remove `name`, update `tokens` or `scripts`, or remove the pick; a pick whose folder moved is
+  reported with where a skill of that name now is. Update the `Picks checked at` comment above the
+  entry as you do.
 - **`UNCHECKED`** means something got in the way, such as a rate limit or GitHub being down, and
   says nothing about the catalog. Run it again.
 

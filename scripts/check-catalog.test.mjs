@@ -7,14 +7,16 @@ import {
   alternatives,
   checkCatalog,
   checkEntry,
-  frontmatterName,
+  frontmatter,
   githubClient,
   globMatcher,
+  isCode,
   latestRelease,
   parseYaml,
   repoOf,
   report,
   skillFolders,
+  tokensOf,
 } from "./check-catalog.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -150,7 +152,11 @@ test("reads every entry of the real catalog", () => {
     assert.ok(repoOf(source.url), source.id);
     assert.ok(source.discovery.include.length > 0, source.id);
     assert.ok(["latest-release", "default", undefined].includes(source.discovery.track), source.id);
-    for (const pick of source.picks ?? []) assert.ok(!/[*?{]/.test(pick.skill), pick.skill);
+    for (const pick of source.picks ?? []) {
+      assert.ok(!/[*?{]/.test(pick.skill), pick.skill);
+      assert.ok(Number.isInteger(pick.tokens) && pick.tokens > 0, pick.skill);
+      assert.ok(pick.scripts === undefined || typeof pick.scripts === "boolean", pick.skill);
+    }
     // Every pattern is one the checker understands.
     for (const pattern of [...source.discovery.include, ...(source.discovery.exclude ?? []), ...(source.hints ?? []).map((h) => h.path)]) {
       assert.equal(typeof globMatcher(pattern)("skills/a/SKILL.md"), "boolean");
@@ -225,19 +231,55 @@ test("skill folders are those Habi finds: in scope, outermost, at any depth", ()
 });
 
 test("reads a SKILL.md's name the way Habi does", () => {
-  assert.equal(frontmatterName(skillMd("my-skill")), "my-skill");
-  assert.equal(frontmatterName("\uFEFF---\r\nname: my-skill\r\n---\r\n"), "my-skill");
-  assert.equal(frontmatterName('---\nname: "my-skill"\n---\n'), "my-skill");
-  assert.equal(frontmatterName("---\nname: 'my-skill'  # why\n---\n"), "my-skill");
-  assert.equal(frontmatterName("---\nname: my-skill # why\n---\n"), "my-skill");
+  const nameOf = (text) => frontmatter(text).name;
+  assert.equal(nameOf(skillMd("my-skill")), "my-skill");
+  assert.equal(nameOf("\uFEFF---\r\nname: my-skill\r\n---\r\n"), "my-skill");
+  assert.equal(nameOf('---\nname: "my-skill"\n---\n'), "my-skill");
+  assert.equal(nameOf("---\nname: 'my-skill'  # why\n---\n"), "my-skill");
+  assert.equal(nameOf("---\nname: my-skill # why\n---\n"), "my-skill");
   // The rest of the frontmatter is the author's: this reader's limits do not apply to it.
-  assert.equal(frontmatterName("---\ndescription: |\n  name: not-this\n  has: colons\nname: real\n---\n"), "real");
-  assert.equal(frontmatterName("---\nmetadata:\n  name: nested\n---\n"), null);
-  assert.equal(frontmatterName("---\nname:\n---\n"), null);
-  assert.equal(frontmatterName("---\nname: 12\n---\n"), null);
-  assert.equal(frontmatterName("---\ndescription: none\n---\nname: body\n"), null);
-  assert.throws(() => frontmatterName("# No frontmatter\nname: x\n"), /does not start/);
-  assert.throws(() => frontmatterName("---\nname: x\n"), /not closed/);
+  assert.equal(nameOf("---\ndescription: |\n  name: not-this\n  has: colons\nname: real\n---\n"), "real");
+  assert.equal(nameOf("---\nallowed-tools: { a: b: c\nname: real\n---\n"), "real");
+  assert.equal(nameOf("---\nmetadata:\n  name: nested\n---\n"), null);
+  assert.equal(nameOf("---\nnames: other\n---\n"), null);
+  assert.equal(nameOf("---\nname:\n---\n"), null);
+  assert.equal(nameOf("---\nname: 12\n---\n"), null);
+  assert.equal(nameOf("---\ndescription: none\n---\nname: body\n"), null);
+  assert.throws(() => frontmatter("# No frontmatter\nname: x\n"), /does not start/);
+  assert.throws(() => frontmatter("---\nname: x\n"), /not closed/);
+});
+
+test("reads a SKILL.md's description in each form YAML writes it", () => {
+  const described = (...lines) => frontmatter(["---", "name: a", ...lines, "license: MIT", "---", ""].join("\n")).description;
+  assert.equal(described("description: One line."), "One line.");
+  assert.equal(described('description: "Quoted: with a colon."'), "Quoted: with a colon.");
+  assert.equal(described("description: 'It''s single-quoted.'"), "It's single-quoted.");
+  assert.equal(described("description: Plain # and a comment"), "Plain");
+  assert.equal(described("description: Plain,", "  over two", "  lines."), "Plain, over two lines.");
+  assert.equal(described('description: "Quoted,', '  over two lines."'), "Quoted, over two lines.");
+  assert.equal(described('description: "With\\nan escape."'), "With\nan escape.");
+  assert.equal(described("description: |", "  Line one.", "    Indented.", "", "  Line three."), "Line one.\n  Indented.\n\nLine three.");
+  assert.equal(described("description: >-", "  Folded", "  together.", "", "  New paragraph."), "Folded together.\nNew paragraph.");
+  assert.equal(described("description: >", "  Trailing newline dropped.", ""), "Trailing newline dropped.");
+  assert.equal(described("description:", "  Starts on the next line."), "Starts on the next line.");
+  assert.equal(described(), null);
+  assert.equal(described("description:"), null);
+  assert.equal(described("description: 12"), null);
+  // A bare colon is what a YAML parser refuses, and then Habi reads no description at all.
+  assert.throws(() => described("description: Use when: reviewing"), /line 3/);
+  assert.throws(() => described('description: "Bad \\q escape"'), /unsupported escape/);
+});
+
+test("counts tokens and recognises code as Habi does", () => {
+  // The rule of suggest::tokens_of: characters, not bytes, and rounded up.
+  assert.equal(tokensOf("abcd", ""), 1);
+  assert.equal(tokensOf("abcd", "e"), 2);
+  assert.equal(tokensOf("ab", "cdefgh"), 2);
+  assert.equal(tokensOf("\uD83D\uDE42\uD83D\uDE42", "\u00E9\u00E9"), 1);
+
+  for (const file of ["scripts/run.py", "run.SH", "a/b.mjs", "tool.kts", ".sh"]) assert.ok(isCode(file, "100644"), file);
+  for (const file of ["SKILL.md", "scripts/schema.json", "Makefile", "x.py/readme", "templates/a.html"]) assert.ok(!isCode(file, "100644"), file);
+  assert.ok(isCode("bin/tool", "100755"));
 });
 
 test("reads the address of a repository", () => {
@@ -366,6 +408,86 @@ test("reports each way a pick stops resolving", async () => {
     'pick skills/outer/inner: inside the skill "skills/outer", so read as part of it',
     "pick elsewhere/out-of-scope: has a SKILL.md, but discovery does not read it",
   ]);
+});
+
+test("tokens is reported only past the tolerance, in either direction", async () => {
+  // 4 characters of name and 396 of description: 100 tokens.
+  const description = "x".repeat(396);
+  const { github } = fakeGitHub({
+    routes: repoRoutes("example-org/skills", blobs("skills/abcd/SKILL.md")),
+    files: { [raw("skills/abcd/SKILL.md")]: `---\nname: abcd\ndescription: ${description}\n---\n` },
+  });
+  const problemsWith = async (tokens) =>
+    (await checkEntry(entry({ picks: [{ skill: "skills/abcd", tokens }] }), github)).problems;
+  // 25% of the catalog's number: 100 is within it of 80 and of 133, not of 79 or 134.
+  for (const close of [100, 80, 125, 133]) assert.deepEqual(await problemsWith(close), [], `${close}`);
+  for (const far of [79, 134, 40, 200]) {
+    assert.deepEqual(await problemsWith(far), [`pick skills/abcd: tokens is ${far} in the catalog, measured 100`]);
+  }
+});
+
+test("a pick with no name in its SKILL.md is measured by its folder's name, as Habi does", async () => {
+  const { github } = fakeGitHub({
+    routes: repoRoutes("example-org/skills", blobs("skills/abcdefgh/SKILL.md")),
+    files: { [raw("skills/abcdefgh/SKILL.md")]: "---\ndescription: abcd\n---\n" },
+  });
+  const result = await checkEntry(entry({ picks: [{ skill: "skills/abcdefgh", tokens: 3 }] }), github);
+  assert.deepEqual(result.problems, ['pick skills/abcdefgh: SKILL.md has no name, expected "abcdefgh"']);
+});
+
+test("scripts is compared with the code the skill comes with", async () => {
+  const tree = [
+    ...blobs(
+      "skills/with-code/SKILL.md",
+      "skills/with-code/scripts/run.py",
+      "skills/plain/SKILL.md",
+      "skills/plain/scripts/schema.json",
+      "skills/plain/reference.md",
+      // Files of other folders, and code the discovery patterns do not read, are not its code.
+      "skills/plain-other/SKILL.md",
+      "skills/plain-other/run.py",
+      "skills/scoped/SKILL.md",
+      "skills/scoped/fixtures/run.py",
+    ),
+    { path: "skills/with-bit/SKILL.md", mode: "100644", type: "blob" },
+    { path: "skills/with-bit/tool", mode: "100755", type: "blob" },
+    // Habi skips symbolic links.
+    { path: "skills/linked/SKILL.md", mode: "100644", type: "blob" },
+    { path: "skills/linked/run.py", mode: "120000", type: "blob" },
+  ];
+  const named = (...names) => Object.fromEntries(names.map((name) => [raw(`skills/${name}/SKILL.md`), skillMd(name)]));
+  const { github } = fakeGitHub({
+    routes: repoRoutes("example-org/skills", tree),
+    files: named("with-code", "plain", "plain-other", "scoped", "with-bit", "linked"),
+  });
+  const problems = async (picks) =>
+    (await checkEntry(entry({ discovery: { include: ["skills/**"], exclude: ["skills/scoped/fixtures/**"] }, picks }), github)).problems;
+
+  assert.deepEqual(
+    await problems([
+      { skill: "skills/with-code", scripts: true },
+      { skill: "skills/with-bit", scripts: true },
+      { skill: "skills/plain" },
+      { skill: "skills/scoped" },
+      { skill: "skills/linked" },
+    ]),
+    [],
+  );
+  assert.deepEqual(await problems([{ skill: "skills/with-code" }]), [
+    'pick skills/with-code: has code ("skills/with-code/scripts/run.py"), but scripts is not set in the catalog',
+  ]);
+  assert.deepEqual(await problems([{ skill: "skills/plain", scripts: true }]), [
+    "pick skills/plain: scripts is true in the catalog, but it has no code",
+  ]);
+});
+
+test("caution is left to Habi's own scan", async () => {
+  const { github } = fakeGitHub({
+    routes: repoRoutes("example-org/skills", blobs("skills/a/SKILL.md")),
+    files: { [raw("skills/a/SKILL.md")]: skillMd("a") },
+  });
+  const result = await checkEntry(entry({ picks: [{ skill: "skills/a", caution: "Contains a compiled program" }] }), github);
+  assert.deepEqual(result.problems, []);
 });
 
 test("reports hints and discovery patterns that no longer match a skill", async () => {

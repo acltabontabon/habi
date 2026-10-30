@@ -2,7 +2,9 @@
 // Checks that the catalog's picks and hints still point at real skills. Upstream repositories
 // rename and move skills, and the app would go on offering a pick it cannot install. For each
 // entry of crates/habi-core/catalog/sources.yaml: finds the revision Habi reads, lists its files
-// through the GitHub API, and reads the SKILL.md of every pick.
+// through the GitHub API, reads the SKILL.md of every pick, and compares what the pick says about
+// itself (`tokens`, `scripts`) with what is there. `caution` comes from Habi's own scan and is not
+// checked here.
 //
 // What counts as a release, a match or a skill folder follows Habi's own rules, which are named
 // where they are used here: a change to one should change the other.
@@ -22,6 +24,11 @@ const API = "https://api.github.com";
 const RAW = "https://raw.githubusercontent.com";
 const SKILL_FILE = "SKILL.md";
 const SYMLINK_MODE = "120000";
+const EXECUTABLE_MODE = "100755";
+// `ItemFile::is_code` in library/model.rs.
+const CODE_EXTENSIONS = ["py", "sh", "bash", "zsh", "fish", "js", "mjs", "cjs", "ts", "mts", "rb", "pl", "php", "ps1", "lua", "go", "rs", "swift", "kt", "kts"];
+// A pick's `tokens` is an estimate, and descriptions get small edits: only a real change is news.
+const TOKENS_TOLERANCE = 0.25;
 const PAGE_SIZE = 100;
 const TIMEOUT_MS = 60_000;
 // Before the second and third attempt at a request.
@@ -99,7 +106,12 @@ function readQuoted(cursor, number) {
   const quoted = double ?? single;
   if (!quoted) throw unsupported(number, "a quoted string must close on its line");
   cursor.at += quoted[0].length;
-  return double ? JSON.parse(double[0]) : single[0].slice(1, -1).replaceAll("''", "'");
+  if (!double) return single[0].slice(1, -1).replaceAll("''", "'");
+  try {
+    return JSON.parse(double[0].replaceAll("\n", "\\n"));
+  } catch {
+    throw unsupported(number, `unsupported escape in ${double[0].slice(0, 40)}`);
+  }
 }
 
 /** The value after `key: ` or `- `, on one line. */
@@ -254,13 +266,18 @@ const folderOf = (file) => (file.includes("/") ? file.slice(0, file.lastIndexOf(
 const baseName = (folder) => folder.slice(folder.lastIndexOf("/") + 1);
 const skillFile = (folder) => (folder ? `${folder}/${SKILL_FILE}` : SKILL_FILE);
 
-/** The skill folders Habi finds among `files`: read by `discovery`, and not inside another skill. */
-export function skillFolders(files, discovery) {
+/** A test for whether `discovery` reads a file. */
+function scopeOf(discovery) {
   const include = (discovery.include ?? []).map(globMatcher);
   const exclude = (discovery.exclude ?? []).map(globMatcher);
-  const admitted = (file) =>
+  return (file) =>
     (include.length === 0 || include.some((matches) => matches(file))) &&
     !exclude.some((matches) => matches(file));
+}
+
+/** The skill folders Habi finds among `files`: read by `discovery`, and not inside another skill. */
+export function skillFolders(files, discovery) {
+  const admitted = scopeOf(discovery);
   const folders = [...files]
     .filter((file) => (file === SKILL_FILE || file.endsWith(`/${SKILL_FILE}`)) && admitted(file))
     .map(folderOf)
@@ -278,23 +295,59 @@ export function skillFolders(files, discovery) {
   return accepted;
 }
 
+/** YAML's line folding: one line break is a space, and of several, the first is dropped. */
+function fold(lines) {
+  return lines
+    .join("\n")
+    .trim()
+    .replace(/\n+/g, (breaks) => (breaks.length === 1 ? " " : breaks.slice(1)));
+}
+
+/** One top-level text value of a frontmatter, which may run over several lines; null if absent or not text. */
+function frontmatterValue(lines, end, key) {
+  for (let i = 1; i < end; i++) {
+    if (!lines[i].startsWith(`${key}:`)) continue;
+    const pair = /^[^:]+:(?:\s+(.*))?$/.exec(lines[i]);
+    if (!pair) continue;
+    const head = pair[1]?.trim();
+    // It runs until the next line that starts at the left margin.
+    let stop = i + 1;
+    while (stop < end && (lines[stop].trim() === "" || /^\s/.test(lines[stop]))) stop++;
+    const rest = lines.slice(i + 1, stop);
+    if (head && /^[|>][-+\d]*(?:\s+#.*)?$/.test(head)) {
+      const indent = rest.find((line) => line.trim())?.search(/\S/) ?? 0;
+      const body = rest.map((line) => line.slice(indent));
+      return (head[0] === "|" ? body.join("\n") : fold(body)).trim();
+    }
+    const folded = fold([isBlank(head) ? "" : head, ...rest.map((line) => line.trim())]);
+    const value = isBlank(folded) ? null : readValue(folded, i + 1);
+    return typeof value === "string" ? value.trim() : null;
+  }
+  return null;
+}
+
 /**
- * The `name` in a SKILL.md's frontmatter, or null if it has none. Only that line is read: the
- * rest is the author's YAML, in forms this file's reader refuses. Throws if it cannot be read.
+ * The `name` and `description` in a SKILL.md's frontmatter, each null if it has none. Only those
+ * are read: the rest is the author's YAML, in forms this file's reader refuses. Throws if they
+ * cannot be read.
  */
-export function frontmatterName(text) {
+export function frontmatter(text) {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/);
   if (lines[0] !== "---") throw new Error("does not start with YAML frontmatter");
   const end = lines.findIndex((line, i) => i > 0 && line.trimEnd() === "---");
   if (end < 0) throw new Error("frontmatter is not closed");
-  for (let i = 1; i < end; i++) {
-    const pair = /^name:(?:\s+(.*))?$/.exec(lines[i]);
-    if (!pair) continue;
-    const raw = pair[1]?.trim();
-    const value = isBlank(raw) ? null : readValue(raw, i + 1);
-    return typeof value === "string" ? value.trim() : null;
-  }
-  return null;
+  return { name: frontmatterValue(lines, end, "name"), description: frontmatterValue(lines, end, "description") };
+}
+
+/** What a skill's name and description cost in every agent session (`suggest::tokens_of`). */
+export function tokensOf(name, description) {
+  return Math.ceil(([...name].length + [...description].length) / 4);
+}
+
+/** A file an agent could run: marked executable, or source code (`ItemFile::is_code`). */
+export function isCode(file, mode) {
+  const dot = file.lastIndexOf(".");
+  return mode === EXECUTABLE_MODE || (dot >= 0 && CODE_EXTENSIONS.includes(file.slice(dot + 1).toLowerCase()));
 }
 
 /** `owner/repo` of a `https://github.com/<owner>/<repo>` address. */
@@ -386,7 +439,17 @@ async function resolveRevision(entry, repo, defaultBranch, github) {
   return { sha: await github.head(repo, defaultBranch), label: branch };
 }
 
-async function checkPick(pick, repo, sha, { files, folders }, github, result) {
+/** The measured facts a pick carries. `caution` is left out: only Habi's own scan can say it. */
+function checkMeasured(pick, label, fields, code, result) {
+  const tokens = tokensOf(fields.name ?? baseName(pick.skill), fields.description ?? "");
+  if (pick.tokens !== undefined && Math.abs(tokens - pick.tokens) > pick.tokens * TOKENS_TOLERANCE) {
+    result.problems.push(`${label}: tokens is ${pick.tokens} in the catalog, measured ${tokens}`);
+  }
+  if (pick.scripts && !code) result.problems.push(`${label}: scripts is true in the catalog, but it has no code`);
+  if (!pick.scripts && code) result.problems.push(`${label}: has code (${quoted(code)}), but scripts is not set in the catalog`);
+}
+
+async function checkPick(pick, repo, sha, { files, folders, blobs, admitted }, github, result) {
   const label = `pick ${pick.skill}`;
   if (!folders.includes(pick.skill)) {
     const enclosing = folders.find((folder) => folder === "" || pick.skill.startsWith(`${folder}/`));
@@ -405,16 +468,20 @@ async function checkPick(pick, repo, sha, { files, folders }, github, result) {
     result.unchecked.push(`${label}: ${e.message}`);
     return;
   }
-  let name;
+  let fields;
   try {
-    name = frontmatterName(text);
+    fields = frontmatter(text);
   } catch (e) {
     result.problems.push(`${label}: ${SKILL_FILE} ${e.message}`);
     return;
   }
   const expected = pick.name ?? baseName(pick.skill);
+  const { name } = fields;
   if (name === null) result.problems.push(`${label}: ${SKILL_FILE} has no name, expected ${quoted(expected)}`);
   else if (name !== expected) result.problems.push(`${label}: ${SKILL_FILE} is named ${quoted(name)}, expected ${quoted(expected)}`);
+  const prefix = `${pick.skill}/`;
+  const code = blobs.find((blob) => blob.path.startsWith(prefix) && admitted(blob.path) && isCode(blob.path.slice(prefix.length), blob.mode));
+  checkMeasured(pick, label, fields, code?.path, result);
 }
 
 /** Checks one catalog entry. A problem is the catalog being out of date; `unchecked` is something in the way of knowing. */
@@ -449,8 +516,10 @@ export async function checkEntry(entry, github) {
     // A partial listing would call skills missing that are not.
     if (tree.truncated) throw new Error("GitHub cut the file listing short: too large to check in one request");
     // Habi skips symbolic links, so a linked SKILL.md is not a skill.
-    const files = new Set(tree.tree.filter((item) => item.type === "blob" && item.mode !== SYMLINK_MODE).map((item) => item.path));
+    const blobs = tree.tree.filter((item) => item.type === "blob" && item.mode !== SYMLINK_MODE);
+    const files = new Set(blobs.map((blob) => blob.path));
     const folders = skillFolders(files, entry.discovery);
+    const admitted = scopeOf(entry.discovery);
     result.skills = folders.length;
 
     for (const pattern of entry.discovery.include ?? []) {
@@ -471,7 +540,7 @@ export async function checkEntry(entry, github) {
       }
     }
     for (const pick of entry.picks ?? []) {
-      await checkPick(pick, repo, revision.sha, { files, folders }, github, result);
+      await checkPick(pick, repo, revision.sha, { files, folders, blobs, admitted }, github, result);
     }
   } catch (e) {
     result.unchecked.push(e.message);
