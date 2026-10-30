@@ -2,7 +2,7 @@
 // Renders the film (docs/media/demo.mp4, with a poster, a GIF and the chapter times) from
 // scripts/film/: the scenes in film.js are a function of time, so this steps through them frame by
 // frame in headless Chrome and encodes what it sees. The screens it films are the app's own,
-// photographed by scripts/marketing-shots.mjs into scripts/film/shots/dark/ (run that first); the
+// photographed by scripts/docs-screenshots.mjs into scripts/film/shots/dark/ (run that first); the
 // sound is scripts/film/score.mjs.
 //
 //   node scripts/render-film.mjs                       # the whole film

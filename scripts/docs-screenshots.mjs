@@ -110,7 +110,8 @@ async function run() {
   // Home: every project woven with the libraries that fit it.
   for (const name of ["storefront-web", "platform-monorepo", "orders-api"]) {
     await click(name, ".sidebar-item");
-    await until(`document.querySelector(".project-head h1")?.textContent.startsWith(${JSON.stringify(name)}) && document.querySelector(".rec-row")`, name, 90000);
+    // A project with nothing installed opens on Suggested, the others on All skills.
+    await until(`document.querySelector(".project-head h1")?.textContent.startsWith(${JSON.stringify(name)}) && document.querySelector(".project-body")?.textContent.trim()`, name, 90000);
   }
   await page(`document.querySelector(".sidebar-brand").click()`);
   await until(`document.querySelectorAll(".loom-row-label").length >= 7 && document.querySelector(".loom-float")`, "the loom");
