@@ -506,9 +506,16 @@ impl<'a> Applier<'a> {
         // there (leaving them out of the plan), so this plan no longer describes the project.
         let recovered = self.recover_locked(root)?;
         if recovered.iter().any(|r| r.action != UNREADABLE) {
+            let undone = recovered
+                .iter()
+                .all(|r| r.state != JournalState::NeedsAttention);
             return Err(HabiError::StalePlan(
-                "an earlier change was interrupted, and Habi has undone it. Review the new preview."
-                    .into(),
+                if undone {
+                    "an earlier change was interrupted, and Habi has undone it. Review the new preview."
+                } else {
+                    "an earlier change was interrupted, and Habi could not undo all of it; see the operation history. Review the new preview."
+                }
+                .into(),
             ));
         }
 
