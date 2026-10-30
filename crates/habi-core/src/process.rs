@@ -217,6 +217,10 @@ pub fn run(spec: Spec, cancel: &CancelToken) -> Result<Output> {
         cmd.env(k, v);
     }
     isolate(&mut cmd);
+    // A missing folder fails the spawn exactly like a missing program: say which it was.
+    if let Some(cwd) = spec.cwd.as_ref().filter(|c| !c.is_dir()) {
+        return Err(HabiError::NotFound(format!("folder {}", cwd.display())));
+    }
     let started = Instant::now();
     let mut child = cmd.spawn().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {

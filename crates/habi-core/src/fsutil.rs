@@ -82,6 +82,13 @@ pub enum Bounded {
 /// Reads a regular file if it is at most `limit` bytes. Symbolic links are
 /// refused by the caller (via `symlink_metadata`) before reaching here.
 pub fn read_bounded(path: &Path, limit: u64) -> Result<Bounded> {
+    // Asked before opening: opening a named pipe blocks until something writes to it.
+    if std::fs::metadata(path).is_ok_and(|m| !m.is_file()) {
+        return Err(HabiError::io(
+            format!("reading {}", path.display()),
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "not a regular file"),
+        ));
+    }
     let file = std::fs::File::open(path)
         .map_err(|e| HabiError::io(format!("reading {}", path.display()), e))?;
     let len = file
@@ -104,6 +111,12 @@ pub fn read_bounded(path: &Path, limit: u64) -> Result<Bounded> {
 
 /// Reads the first `limit` bytes of a file.
 pub fn read_prefix(path: &Path, limit: usize) -> std::io::Result<Vec<u8>> {
+    if std::fs::metadata(path).is_ok_and(|m| !m.is_file()) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
     let file = std::fs::File::open(path)?;
     let mut buf = Vec::with_capacity(limit);
     file.take(limit as u64).read_to_end(&mut buf)?;
