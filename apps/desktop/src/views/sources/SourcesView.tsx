@@ -42,6 +42,7 @@ import { useNav } from "../../lib/nav";
 import {
   invalidateProjectData,
   useCatalog,
+  useKnownRepoFacts,
   useRecentProjects,
   useRepoFacts,
   useSkills,
@@ -667,19 +668,11 @@ function ExploreCard({
       : entry.problem && entry.availability === "notFetched"
         ? "unreachable"
         : null;
-  // How many people use it and whether it is alive: asked of GitHub only once they point at it.
-  const [curious, setCurious] = useState(false);
-  const facts = useRepoFacts(curious ? entry.id : undefined).data;
+  // How many people use it, once its page has been opened. Pointing at a card asks GitHub nothing.
+  const facts = useKnownRepoFacts(entry.id).data;
   return (
     <li>
-      <button
-        type="button"
-        className="lib-card"
-        onClick={onOpen}
-        onPointerEnter={() => setCurious(true)}
-        onFocus={() => setCurious(true)}
-        title={entry.problem?.message ?? undefined}
-      >
+      <button type="button" className="lib-card" onClick={onOpen} title={entry.problem?.message ?? undefined}>
         <span className="lib-card-head">
           <span className="library-row-name">{entry.name}</span>
           <Icon name="chevronRight" size={14} className="lib-go" />

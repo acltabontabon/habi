@@ -329,7 +329,18 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
     );
   }
   if (skills.isPending) return <Working>Loading your skills…</Working>;
-  if (skills.isError) return <ErrorNotice error={skills.error} />;
+  if (skills.isError) {
+    return (
+      <ErrorNotice
+        error={skills.error}
+        action={
+          <Button size="sm" onClick={() => void skills.refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    );
+  }
 
   const act = async (fn: () => Promise<unknown>, done: string) => {
     setError(null);
@@ -432,7 +443,9 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
                 <span className="trash-actions">
                   <Button
                     size="sm"
-                    onClick={() => fromTrash(s, () => api.restoreSkill(s.id), `“${s.title}” restored.`)}
+                    onClick={() =>
+                      fromTrash(s, () => api.restoreSkill(s.id), `“${s.title || "Untitled skill"}” restored.`)
+                    }
                   >
                     Restore
                   </Button>
@@ -443,7 +456,11 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
                         variant="danger"
                         onClick={() => {
                           setPurging(null);
-                          fromTrash(s, () => api.purgeSkill(s.id), `“${s.title}” deleted.`);
+                          fromTrash(
+                            s,
+                            () => api.purgeSkill(s.id),
+                            `“${s.title || "Untitled skill"}” deleted.`,
+                          );
                         }}
                       >
                         Delete for good

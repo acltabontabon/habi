@@ -7,7 +7,7 @@
  * in the usual review: agents, every file, confirm.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import type { ItemRef } from "../../bindings/ItemRef";
 import type { Kit as KitData } from "../../bindings/Kit";
 import type { KitGroup } from "../../bindings/KitGroup";
@@ -97,7 +97,16 @@ async function resolve(
   return item ? { sourceId: source.id, itemId: item.id } : null;
 }
 
-export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () => void }) {
+export function Kit({
+  overview,
+  onAll,
+  ticks,
+}: {
+  overview: ProjectOverview;
+  onAll: () => void;
+  /** Held by the project page, so unticking survives reading a skill and coming back. */
+  ticks?: [Set<string>, Dispatch<SetStateAction<Set<string>>>];
+}) {
   const { project } = overview;
   const client = useQueryClient();
   const dyes = useDyes();
@@ -117,7 +126,8 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
   const kit = frozen?.kit ?? overview.kit;
 
   // What Habi ticks to start with, except copies of skills already on this machine; a knot flips that.
-  const [flipped, setFlipped] = useState<Set<string>>(() => new Set());
+  const own = useState<Set<string>>(() => new Set());
+  const [flipped, setFlipped] = ticks ?? own;
   const isOn = (s: Suggestion) => !s.installed && flipped.has(s.key) !== (s.chosen && !everywhere(s));
   const open = kit.suggestions.filter((s) => !s.installed);
   const chosen = open.filter(isOn);

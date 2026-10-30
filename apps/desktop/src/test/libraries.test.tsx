@@ -336,6 +336,16 @@ describe("exploring the catalog", () => {
     world({ entry: catalog[0] as CatalogEntry, sources: [own] });
   });
 
+  it("asks GitHub nothing when a card is only pointed at or focused", async () => {
+    const user = userEvent.setup();
+    wrap(explore);
+    const cards = await screen.findByRole("list", { name: "Libraries to explore" });
+    const card = within(cards).getByText("Anthropic").closest("button") as HTMLButtonElement;
+    await user.hover(card);
+    card.focus();
+    expect(invoke.mock.calls.some(([cmd]) => cmd === "catalog_repo_facts")).toBe(false);
+  });
+
   it("shows the libraries not yet connected as cards, by who stands behind them", async () => {
     const user = userEvent.setup();
     wrap(explore);

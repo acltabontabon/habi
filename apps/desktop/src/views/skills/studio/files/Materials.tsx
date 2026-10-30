@@ -353,6 +353,8 @@ function SourceTree({
   const shown = useMemo(() => packageTree(skill.files, query), [skill.files, query]);
 
   const onTreeKey = (e: KeyboardEvent<HTMLElement>) => {
+    // The rename field lives in the tree: its keys are typing, not moving around.
+    if (e.target instanceof HTMLInputElement) return;
     const rows = [...(tree.current?.querySelectorAll<HTMLButtonElement>("[data-row]") ?? [])];
     const at = rows.indexOf(document.activeElement as HTMLButtonElement);
     const path = (document.activeElement as HTMLElement | null)?.dataset.path;

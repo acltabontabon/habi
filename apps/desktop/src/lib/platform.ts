@@ -2,7 +2,7 @@
 
 type NavigatorWithData = Navigator & { userAgentData?: { platform?: string } };
 
-function isMac(): boolean {
+export function isMac(): boolean {
   if (typeof navigator === "undefined") return false;
   const nav = navigator as NavigatorWithData;
   return /mac/i.test(nav.userAgentData?.platform || nav.platform || "");

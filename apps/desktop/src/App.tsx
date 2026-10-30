@@ -14,6 +14,7 @@ import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
 import { NavProvider, useNav } from "./lib/nav";
 import { isOwnChange, staleKey } from "./lib/ownChanges";
+import { isMac } from "./lib/platform";
 import { invalidateSkills, keys, useAppInfo, useSettings } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
 import { UpdatesProvider } from "./lib/updates";
@@ -232,6 +233,8 @@ function Shell() {
           : route.name === "sources"
             ? `sources:${route.sourceId ?? route.entry ?? route.view ?? ""}`
             : route.name;
+  // A project's tabs are one screen to the boundary: changing tab must not throw away what was ticked.
+  const boundary = route.name === "project" ? `project:${route.projectId}` : screen;
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the screen changes.
   useEffect(() => {
     document.getElementById("main")?.scrollTo({ top: 0 });
@@ -291,6 +294,8 @@ function Shell() {
       const mod = e.metaKey || e.ctrlKey;
       // A focused control (the code editor's ⌘[ outdent) handled it already.
       if (!mod || e.defaultPrevented) return;
+      // On a Mac, Ctrl+K, N and O in a text field are the system's editing keys, not Habi's.
+      if (isMac() && !e.metaKey && isTextEntry(e.target)) return;
       // A held shortcut acts once, not once per key repeat.
       if (e.repeat) return;
       // While a dialog is open, global shortcuts would act behind it (and
@@ -333,7 +338,7 @@ function Shell() {
         <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
         <main id="main" className="main" tabIndex={-1}>
           {/* A screen that fails to render is replaced; the sidebar still works, and leaving clears it. */}
-          <ErrorBoundary key={screen} area={route.name}>
+          <ErrorBoundary key={boundary} area={route.name}>
             <Suspense fallback={<Loading stage />}>
               {route.name === "welcome" && <Welcome />}
               {route.name === "project" && (

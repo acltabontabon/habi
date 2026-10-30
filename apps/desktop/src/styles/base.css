@@ -123,3 +123,16 @@ pre,
   scrollbar-width: thin;
   scrollbar-color: var(--hairline-strong) transparent;
 }
+
+/* Names, paths and queries come from elsewhere, and a long one has no spaces to break at. */
+.dialog-title,
+.dialog-description,
+.toast > span,
+.page-title,
+.notice-title,
+.notice-text,
+.empty-title,
+.mys-empty,
+.mt-name {
+  overflow-wrap: anywhere;
+}

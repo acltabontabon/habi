@@ -13,16 +13,16 @@ import { groupOfEntry } from "../lib/catalog";
 import { type Dye, useDyes } from "../lib/dye";
 import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
 import { groupMachineSkills, hasUpdate } from "../lib/machine";
-import { lastProject, useNav } from "../lib/nav";
+import { forgetRememberedProject, lastProject, useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
 import {
   keys,
   useAppInfo,
   useCatalog,
   useContributions,
+  useKnownRepoFacts,
   useMachineSkills,
   useRecentProjects,
-  useRepoFacts,
   useSkillsOverview,
   useSources,
 } from "../lib/queries";
@@ -64,7 +64,11 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     try {
       await api.forgetProject(projectId);
       void client.invalidateQueries({ queryKey: keys.recent });
-      if (route.name === "project" && route.projectId === projectId) navigate({ name: "welcome" });
+      forgetRememberedProject(projectId);
+      if (route.name === "project" && route.projectId === projectId) {
+        navigate({ name: "welcome" }, { replace: true });
+      }
+      client.removeQueries({ queryKey: keys.overview(projectId) });
       toast.show(`${name} removed from the list. Nothing on disk was changed.`);
     } catch (e) {
       toast.show(`Could not remove ${name}: ${e instanceof Error ? e.message : String(e)}`, "danger");
@@ -341,9 +345,8 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
 
 /**
  * The library's card on hover: what it is, how much it holds, how it is
- * doing upstream (stars and last push, for a catalog library, asked of
- * GitHub only once someone looks), and what it means for the project being
- * worked on.
+ * doing upstream (stars and last push, for a catalog library, when its page
+ * has already asked GitHub), and what it means for the project being worked on.
  */
 function LibraryItem({
   source,
@@ -365,7 +368,7 @@ function LibraryItem({
   const peeked = looks > 0;
   const client = useQueryClient();
   const entry = useCatalog().data?.find((e) => e.id === source.catalogId);
-  const facts = useRepoFacts(peeked ? (source.catalogId ?? undefined) : undefined).data;
+  const facts = useKnownRepoFacts(source.catalogId ?? undefined).data;
   // Only what is already known: hovering never runs a project's inspection.
   const overview =
     peeked && projectId ? client.getQueryData<ProjectOverview>(keys.overview(projectId)) : undefined;

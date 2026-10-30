@@ -330,7 +330,8 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
       open
       wide={step.name === "review"}
       onOpenChange={(open) => {
-        if (!open) onClose();
+        // An import in progress finishes first: closing would forget a Git copy it is still reading.
+        if (!open && !importing) onClose();
       }}
       title={
         step.name === "git"
@@ -361,6 +362,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
           <>
             <Button
               variant="quiet"
+              disabled={importing}
               onClick={() => (start.source === "choose" ? setStep({ name: "choose" }) : onClose())}
             >
               {start.source === "choose" ? "Back" : "Cancel"}

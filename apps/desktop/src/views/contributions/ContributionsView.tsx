@@ -6,7 +6,7 @@
  * Nothing is merged by Habi.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, type ReactNode, useState } from "react";
+import { type CSSProperties, type ReactNode, useRef, useState } from "react";
 import type { Contribution } from "../../bindings/Contribution";
 import type { DraftFile } from "../../bindings/DraftFile";
 import type { DraftFileStatus } from "../../bindings/DraftFileStatus";
@@ -43,6 +43,7 @@ import {
   sharingChip,
   targetBranch,
   visibilityText,
+  withRehearsal,
 } from "../../lib/sharing";
 import { tagLabel } from "../../lib/tags";
 import { useAutosave } from "../../lib/useAutosave";
@@ -684,7 +685,21 @@ const reviewerKey = (v: ReviewerText) => JSON.stringify([v.title, v.message, v.f
 function Editor({ id }: { id: string }) {
   const contribution = useContribution(id);
   if (contribution.isPending) return <Working>Loading the contribution…</Working>;
-  if (contribution.isError || !contribution.data) return <ErrorNotice error={contribution.error} />;
+  if (contribution.isError || !contribution.data) {
+    return (
+      <div className="page">
+        <BackLink fallback={{ name: "contributions" }} fallbackLabel="Contributions" />
+        <ErrorNotice
+          error={contribution.error}
+          action={
+            <Button size="sm" onClick={() => void contribution.refetch()}>
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
   return <EditorBody id={id} c={contribution.data} />;
 }
 
@@ -733,7 +748,13 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
     void client.invalidateQueries({ queryKey: keys.contributions });
   };
 
+  // One action at a time, whichever button it came from: the first to finish must not re-enable
+  // one still running. Typing stays free.
+  const running = useRef(false);
+  const working = busy !== null;
   const act = async (name: string, fn: () => Promise<unknown>) => {
+    if (running.current) return;
+    running.current = true;
     setBusy(name);
     setError(null);
     try {
@@ -741,6 +762,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
     } catch (e) {
       setError(e);
     } finally {
+      running.current = false;
       setBusy(null);
       refresh();
     }
@@ -781,11 +803,8 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         setRehearsalNote("No projects are open in Habi yet, so there is nothing to check against.");
         return;
       }
-      const marker = r.text.split("\n")[0] ?? "";
-      const without = message.includes(marker)
-        ? message.slice(0, message.indexOf(marker)).trimEnd()
-        : message.trimEnd();
-      setMessage(without ? `${without}\n\n${r.text}` : r.text);
+      // Built on the message as it is now: this can take a while, and typing goes on meanwhile.
+      setMessage((current) => withRehearsal(current, r.text));
       setRehearsalNote(
         `Added from ${plural(r.projects, "project")}. Edit or remove it before preparing the branch.`,
       );
@@ -820,6 +839,8 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
     });
 
   const publish = async () => {
+    if (running.current) return;
+    running.current = true;
     setBusy("publish");
     setSendError(null);
     try {
@@ -838,6 +859,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
       // Shown inside the dialog, where the person is looking.
       setSendError(e);
     } finally {
+      running.current = false;
       setBusy(null);
       refresh();
     }
@@ -852,7 +874,8 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
   const discard = () =>
     act("discard", async () => {
       await api.discardContribution(id);
-      navigate({ name: "contributions" });
+      // Replaced, so Back does not return to a contribution that is gone.
+      navigate({ name: "contributions" }, { replace: true });
     });
 
   const pushed = c.state === "published" || c.pushedCommit !== null;
@@ -895,7 +918,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
           tone="warn"
           title="Someone else pushed to this branch"
           action={
-            <Button busy={busy === "commit"} onClick={() => void prepare(true)}>
+            <Button busy={busy === "commit"} disabled={working} onClick={() => void prepare(true)}>
               Build on their commits
             </Button>
           }
@@ -931,6 +954,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
               size="sm"
               variant="quiet"
               busy={busy === "cancelRevision"}
+              disabled={working}
               onClick={() => void cancelRevision()}
             >
               Cancel revision
@@ -991,7 +1015,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
             <FilesReview
               c={c}
               editable={editable}
-              saving={busy === "select"}
+              saving={working}
               onInclude={(p, v) => void include(p, v)}
             />
           </section>
@@ -1044,6 +1068,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                       variant="quiet"
                       icon="layers"
                       busy={busy === "rehearse"}
+                      disabled={working}
                       onClick={() => void rehearse()}
                     >
                       Add where it applies…
@@ -1085,7 +1110,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                     variant="primary"
                     icon="branch"
                     busy={busy === "commit"}
-                    disabled={errors.length > 0 || outgoing.length === 0}
+                    disabled={working || errors.length > 0 || outgoing.length === 0}
                     onClick={() => void prepare(false)}
                   >
                     {c.revising ? "Prepare the revision" : "Prepare branch"}
@@ -1093,7 +1118,9 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                   <span className="field-hint">
                     {errors.length > 0
                       ? "Fix the blocking problems first."
-                      : `Commits ${plural(outgoing.length, "file")} to ${c.branch} in Habi's copy of the library. Nothing is sent; next: ${send.label}.`}
+                      : outgoing.length === 0
+                        ? "Include at least one changed file."
+                        : `Commits ${plural(outgoing.length, "file")} to ${c.branch} in Habi's copy of the library. Nothing is sent; next: ${send.label}.`}
                   </span>
                 </div>
               ) : null}
@@ -1127,17 +1154,32 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                 <div className="send-actions">
                   {c.state !== "published" ? (
                     <>
-                      <Button variant="primary" icon="share" onClick={() => setSendOpen(true)}>
+                      <Button
+                        variant="primary"
+                        icon="share"
+                        disabled={working}
+                        onClick={() => setSendOpen(true)}
+                      >
                         {`${send.label}…`}
                       </Button>
-                      <Button icon="download" busy={busy === "export"} onClick={() => void exportPatch()}>
+                      <Button
+                        icon="download"
+                        busy={busy === "export"}
+                        disabled={working}
+                        onClick={() => void exportPatch()}
+                      >
                         Export patch…
                       </Button>
                       {send.note ? <span className="field-hint">{send.note}</span> : null}
                     </>
                   ) : (
                     <>
-                      <Button icon="download" busy={busy === "export"} onClick={() => void exportPatch()}>
+                      <Button
+                        icon="download"
+                        busy={busy === "export"}
+                        disabled={working}
+                        onClick={() => void exportPatch()}
+                      >
                         Export patch…
                       </Button>
                       {!c.publishedUrl && !c.review ? (
@@ -1175,6 +1217,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                   size="sm"
                   icon="trash"
                   busy={busy === "discard"}
+                  disabled={working}
                   onClick={() => void discard()}
                 >
                   Discard
@@ -1194,6 +1237,8 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
       <Dialog
         open={sendOpen}
         onOpenChange={(open) => {
+          // Once it is sending it cannot be called back, so Cancel must not suggest that it was.
+          if (!open && busy === "publish") return;
           setSendOpen(open);
           if (!open) setSendError(null);
         }}
@@ -1205,10 +1250,15 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         }
         footer={
           <>
-            <Button variant="quiet" onClick={() => setSendOpen(false)}>
+            <Button variant="quiet" disabled={busy === "publish"} onClick={() => setSendOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" busy={busy === "publish"} onClick={() => void publish()}>
+            <Button
+              variant="primary"
+              busy={busy === "publish"}
+              disabled={working}
+              onClick={() => void publish()}
+            >
               {send.label}
             </Button>
           </>
@@ -1394,7 +1444,15 @@ function StartContribution() {
                 value={folder || folders.data?.[0] || ""}
                 onChange={(e) => setFolder(e.target.value)}
               >
-                {(folders.data ?? []).length === 0 ? <option value="">No skill folders found</option> : null}
+                {(folders.data ?? []).length === 0 ? (
+                  <option value="">
+                    {folders.isPending
+                      ? "Looking for skill folders…"
+                      : folders.isError
+                        ? "Could not read this project"
+                        : "No skill folders found"}
+                  </option>
+                ) : null}
                 {(folders.data ?? []).map((x) => (
                   <option key={x} value={x}>
                     {x}
@@ -1545,7 +1603,16 @@ export function ContributionsView({ contributionId }: { contributionId?: string 
         </div>
       </header>
       {list.isPending ? <Working>Loading…</Working> : null}
-      {list.isError ? <ErrorNotice error={list.error} /> : null}
+      {list.isError ? (
+        <ErrorNotice
+          error={list.error}
+          action={
+            <Button size="sm" onClick={() => void list.refetch()}>
+              Try again
+            </Button>
+          }
+        />
+      ) : null}
       {list.data && items.length === 0 ? (
         <div className="share-empty">
           <p className="empty-title">Nothing shared yet</p>

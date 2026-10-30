@@ -284,6 +284,36 @@ describe("sharing activity list", () => {
   });
 });
 
+describe("sending", () => {
+  it("cannot be cancelled once it has started, since a push cannot be called back", async () => {
+    let finish: (value: unknown) => void = () => {};
+    handlers = {
+      contribution: () => ({ ...base, state: "committed", commitId: "abc" }),
+      app_info: () => info(true),
+      publish_contribution: () => new Promise((resolve) => (finish = resolve)),
+    };
+    const user = userEvent.setup();
+    wrap(<ContributionsView contributionId="c1" />, { name: "contributions", contributionId: "c1" });
+    const open = await screen.findByRole("button", { name: /Open a pull request…|Send…|Push.*…/ });
+    await user.click(open);
+    const dialog = await screen.findByRole("dialog");
+    const buttons = within(dialog).getAllByRole("button");
+    await user.click(buttons[buttons.length - 1] as HTMLElement);
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("publish_contribution", expect.anything()));
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    finish({
+      branch: "b",
+      remote: "origin",
+      updatedExisting: false,
+      pullRequestUrl: null,
+      pullRequestNote: null,
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});
+
 describe("contribution review", () => {
   it("lists changed files first, collapses unchanged ones and saves the selection", async () => {
     let current = base;

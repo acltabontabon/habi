@@ -452,7 +452,7 @@ function SkillHead({
   if (shape.languages.length > 0) {
     signature.push(
       <span key="langs" title={shape.languages.map((l) => l.label).join(" · ")}>
-        {shape.languages.length} languages
+        {plural(shape.languages.length, "language")}
       </span>,
     );
   }
@@ -885,7 +885,16 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         ) : null}
         {layout === "full" || peek ? panel : null}
         {library.isPending && source.snapshot ? <Working>Reading the library…</Working> : null}
-        {library.isError ? <ErrorNotice error={library.error} /> : null}
+        {library.isError ? (
+          <ErrorNotice
+            error={library.error}
+            action={
+              <Button size="sm" onClick={() => void library.refetch()}>
+                Try again
+              </Button>
+            }
+          />
+        ) : null}
       </aside>
 
       <section className="library-reader" ref={readerBox}>

@@ -325,7 +325,9 @@ function FolderScan({
             <span className="scan-label">{skills.length === 1 ? "skill" : "skills"} found</span>
             <span className="scan-marks">
               {withScripts > 0 ? <span>{plural(withScripts, "has", "have")} scripts</span> : null}
-              {needLook > 0 ? <span className="tone-warn">{needLook} need a look</span> : null}
+              {needLook > 0 ? (
+                <span className="tone-warn">{plural(needLook, "needs", "need")} a look</span>
+              ) : null}
             </span>
           </p>
           <ul className="scan-list" aria-label="Skills found in the folder">
@@ -840,6 +842,12 @@ export function ConnectLibrary({
       <Button variant="primary" size="md" className="connect-go" type="submit" busy={busy} disabled={!valid}>
         {registered ? "Try again" : "Connect library"}
       </Button>
+      {/* A button that will not press says why. */}
+      {location.trim() && !valid && !busy ? (
+        <span className="field-hint">
+          {shownName.trim() ? "Say which branch or tag." : "Give it a name."}
+        </span>
+      ) : null}
       {registered ? (
         <Button variant="quiet" onClick={() => void forget()}>
           Remove and start over
