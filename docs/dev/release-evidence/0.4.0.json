@@ -141,5 +141,16 @@
       ],
       "evidence": "Artifact-only verification at 2026-10-30T00:53:07.650741Z: all platform SHA-256 entries match; GitHub provenance verifies source revision c12f68314c2f6f7ca04adeab53c78355cc99818d, refs/tags/v0.4.0 and .github/workflows/release.yml; the updater signature verifies with the configured public key and signs version 0.4.0. Workflow: https://github.com/acltabontabon/habi/actions/runs/40979299426. Packaged-app runtime validation has not been run; every runtime check remains false."
     }
-  ]
+  ],
+  "publication": {
+    "url": "https://github.com/acltabontabon/habi/releases/tag/v0.4.0",
+    "publishedAt": "2026-10-30T04:53:52Z",
+    "manualValidationWaiver": {
+      "source": "Explicit maintainer instruction in the release chat",
+      "instruction": "Waive and publish",
+      "scope": "Packaged macOS/Windows runtime tests and seven-agent discovery tests",
+      "recordedAt": "2026-10-30T04:54:09.265243Z"
+    },
+    "releaseReadinessPassed": false
+  }
 }
