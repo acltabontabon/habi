@@ -10,11 +10,14 @@
 //! - the skills a session offered its agent (a `skill_listing` attachment).
 //!
 //! Nothing is stored and nothing else is looked at. "Not used" is said only of
-//! a skill a session offered: a folder Claude Code does not read, a skill newer
-//! than any session, or a format this no longer understands all end in saying
-//! nothing, never in calling a skill dead. The format is Claude Code's own and
-//! undocumented; `docs/dev/compatibility-research.md` records what was checked,
-//! and what other agents keep.
+//! a skill a session offered, so a folder Claude Code does not read or a skill
+//! newer than any session says nothing. A record that names a use but cannot be
+//! read makes the whole read partial, which also says nothing of unused skills.
+//! The format is Claude Code's own and undocumented, and one change cannot be
+//! seen from here: if the `Skill` tool were renamed, its calls would look like
+//! any other tool's and skills would read as unused.
+//! `docs/dev/compatibility-research.md` records what was checked, and what other
+//! agents keep.
 
 use crate::cancel::CancelToken;
 use crate::clients::ClientId;
@@ -25,9 +28,9 @@ use regex::bytes::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::Reverse;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, DirEntry, File};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::SystemTime;
@@ -39,6 +42,13 @@ pub const WINDOW_DAYS: u32 = 30;
 
 /// Where Claude Code keeps session transcripts, under the home folder.
 pub const TRANSCRIPTS_DIR: &str = ".claude/projects";
+
+/// A repository's other checkouts looked for; one with more says so.
+const MAX_CHECKOUTS: usize = 64;
+
+/// Lines read at the head of a transcript to find whose it is: a session opens
+/// with a few records that name no folder.
+const HEAD_LINES: usize = 64;
 
 /// A skill's use, as far as a project's transcripts show it.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -74,8 +84,9 @@ pub struct SkillUsage {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct SkillUsageReport {
-    /// Some transcripts were skipped (a limit, an unreadable file): uses may be
-    /// missing, so counts are minimums and no skill is called unused.
+    /// Some transcripts were skipped (a limit, an unreadable file), or a record
+    /// that names a use could not be read: uses may be missing, so counts are
+    /// minimums and no skill is called unused.
     pub partial: bool,
     pub skills: Vec<SkillUsage>,
 }
@@ -134,29 +145,43 @@ fn candidate(line: &[u8]) -> bool {
 }
 
 struct Tally<'a> {
-    root: &'a Path,
+    /// The project and the repository's other checkouts.
+    roots: &'a [PathBuf],
     cutoff: OffsetDateTime,
     /// Name or folder name to skill. Only skills Claude Code can read.
     watched: HashMap<&'a str, usize>,
     /// By tool call or record id: a resumed session can repeat its records.
     uses: HashMap<String, (usize, OffsetDateTime)>,
+    /// Calls that failed. Kept apart from `uses`: files are read newest first,
+    /// and an older one can repeat a call after its failure was seen.
+    failed: HashSet<String>,
+    /// When each skill was last called or typed.
+    direct: Vec<Option<OffsetDateTime>>,
     first_seen: Vec<Option<OffsetDateTime>>,
+    /// A record named a use and could not be read.
+    unreadable: bool,
 }
 
 impl Tally<'_> {
+    fn in_project(&self, folder: &str) -> bool {
+        let folder = Path::new(folder);
+        self.roots.iter().any(|root| folder.starts_with(root))
+    }
+
     fn seen(&mut self, skill: usize, at: OffsetDateTime) {
         if let Some(first) = self.first_seen.get_mut(skill) {
             *first = Some(first.map_or(at, |f| f.min(at)));
         }
     }
 
-    fn used(&mut self, id: &str, name: &str, at: OffsetDateTime) {
+    fn used(&mut self, id: &str, skill: usize, at: OffsetDateTime, direct: bool) {
         if at < self.cutoff {
             return;
         }
-        if let Some(&skill) = self.watched.get(name) {
-            self.uses.insert(id.to_string(), (skill, at));
-            self.seen(skill, at);
+        self.uses.insert(id.to_string(), (skill, at));
+        self.seen(skill, at);
+        if direct && let Some(last) = self.direct.get_mut(skill) {
+            *last = Some(at);
         }
     }
 
@@ -175,29 +200,50 @@ impl Tally<'_> {
         }
     }
 
-    fn agent_calls(&mut self, record: &Value, at: OffsetDateTime) {
+    fn agent_calls(&mut self, record: &Value, at: Option<OffsetDateTime>) {
         let blocks = record.pointer("/message/content").and_then(Value::as_array);
         for block in blocks.into_iter().flatten() {
-            if block.get("type").and_then(Value::as_str) == Some("tool_use")
-                && block.get("name").and_then(Value::as_str) == Some("Skill")
-                && let (Some(id), Some(name)) = (
-                    block.get("id").and_then(Value::as_str),
-                    block.pointer("/input/skill").and_then(Value::as_str),
-                )
+            if block.get("type").and_then(Value::as_str) != Some("tool_use")
+                || block.get("name").and_then(Value::as_str) != Some("Skill")
             {
-                self.used(id, name, at);
+                continue;
+            }
+            match (
+                block.get("id").and_then(Value::as_str),
+                block.pointer("/input/skill").and_then(Value::as_str),
+                at,
+            ) {
+                (Some(id), Some(name), Some(at)) => {
+                    if let Some(&skill) = self.watched.get(name) {
+                        self.used(id, skill, at, true);
+                    }
+                }
+                _ => self.unreadable = true,
             }
         }
     }
 
-    fn user_turn(&mut self, record: &Value, at: OffsetDateTime) {
-        let id = record.get("uuid").and_then(Value::as_str).unwrap_or("");
+    fn command(&mut self, record: &Value, text: &str, at: Option<OffsetDateTime>) {
+        let Some(&skill) = command_name(text).and_then(|name| self.watched.get(name)) else {
+            return;
+        };
+        let (Some(id), Some(at)) = (record.get("uuid").and_then(Value::as_str), at) else {
+            self.unreadable = true;
+            return;
+        };
+        // A skill loaded for the session comes as a record the app wrote. Right
+        // after a call or a typed command it would be that same load.
+        let loaded = record.get("isMeta").and_then(Value::as_bool) == Some(true);
+        let last = self.direct.get(skill).copied().flatten();
+        if loaded && last.is_some_and(|last| (at - last).abs() <= Duration::minutes(1)) {
+            return;
+        }
+        self.used(id, skill, at, !loaded);
+    }
+
+    fn user_turn(&mut self, record: &Value, at: Option<OffsetDateTime>) {
         match record.pointer("/message/content") {
-            Some(Value::String(text)) => {
-                if let Some(name) = command_name(text) {
-                    self.used(id, name, at);
-                }
-            }
+            Some(Value::String(text)) => self.command(record, text, at),
             Some(Value::Array(blocks)) => {
                 for block in blocks {
                     match block.get("type").and_then(Value::as_str) {
@@ -206,16 +252,12 @@ impl Tally<'_> {
                             if block.get("is_error").and_then(Value::as_bool) == Some(true) =>
                         {
                             if let Some(call) = block.get("tool_use_id").and_then(Value::as_str) {
-                                self.uses.remove(call);
+                                self.failed.insert(call.to_string());
                             }
                         }
                         Some("text") => {
-                            let name = block
-                                .get("text")
-                                .and_then(Value::as_str)
-                                .and_then(command_name);
-                            if let Some(name) = name {
-                                self.used(id, name, at);
+                            if let Some(text) = block.get("text").and_then(Value::as_str) {
+                                self.command(record, text, at);
                             }
                         }
                         _ => {}
@@ -232,21 +274,23 @@ impl Tally<'_> {
         };
         // Folder names are lossy (`/a/b-c` and `/a/b/c` share one, and `/a/b-c`
         // starts like `/a/b`), so the record's own folder decides.
-        let Some(cwd) = record.get("cwd").and_then(Value::as_str) else {
-            return;
-        };
-        if !Path::new(cwd).starts_with(self.root) {
+        let cwd = record.get("cwd").and_then(Value::as_str);
+        if cwd.is_some_and(|folder| !self.in_project(folder)) {
             return;
         }
-        let Some(at) = record
-            .get("timestamp")
-            .and_then(Value::as_str)
-            .and_then(crate::time::parse)
-        else {
-            return;
-        };
+        // Without a folder and a time a use cannot be placed; see `unreadable`.
+        let at = cwd.and(
+            record
+                .get("timestamp")
+                .and_then(Value::as_str)
+                .and_then(crate::time::parse),
+        );
         match record.get("type").and_then(Value::as_str) {
-            Some("attachment") => self.offered(&record, at),
+            Some("attachment") => {
+                if let Some(at) = at {
+                    self.offered(&record, at);
+                }
+            }
             Some("assistant") => self.agent_calls(&record, at),
             Some("user") => self.user_turn(&record, at),
             _ => {}
@@ -301,22 +345,81 @@ fn collect(dir: &Path, since: SystemTime, partial: &mut bool, out: &mut Vec<Tran
     }
 }
 
-/// Transcripts of sessions started in the project or below it (a subfolder, a
-/// worktree under `.claude/worktrees`), the newest first. Folders of others
-/// that merely start alike are listed too; `Tally::record` turns them away.
+/// The path a small Git file points to, after `prefix`, resolved from `base`.
+fn pointed_at(file: &Path, base: &Path, prefix: &str) -> Option<PathBuf> {
+    fs::symlink_metadata(file).ok().filter(|m| m.is_file())?;
+    let bytes = crate::fsutil::read_prefix(file, 4096).ok()?;
+    let text = String::from_utf8_lossy(&bytes);
+    let path = base.join(text.trim().strip_prefix(prefix)?.trim());
+    Some(crate::paths::canonical(&path).unwrap_or(path))
+}
+
+/// The project and the repository's other checkouts, wherever they are. Sessions
+/// in any of them can use the project's skills, and a checkout beside the
+/// project is nothing its folder name would give away. Read from the files Git
+/// keeps them in (`.git/worktrees/<id>/gitdir`); Git is not run.
+fn checkouts(root: &Path, partial: &mut bool) -> Vec<PathBuf> {
+    let mut found = vec![root.to_path_buf()];
+    let dot_git = root.join(".git");
+    let Ok(meta) = fs::symlink_metadata(&dot_git) else {
+        return found;
+    };
+    let common = if meta.is_dir() {
+        dot_git
+    } else {
+        // A linked checkout's `.git` is a file: `gitdir: <common>/worktrees/<id>`.
+        // A submodule's looks the same but does not go through `worktrees`.
+        let admin = pointed_at(&dot_git, root, "gitdir:");
+        let common = admin
+            .as_deref()
+            .and_then(Path::parent)
+            .and_then(|parent| (parent.file_name()? == "worktrees").then(|| parent.parent())?);
+        let Some(common) = common else {
+            return found;
+        };
+        found.extend(common.parent().map(Path::to_path_buf));
+        common.to_path_buf()
+    };
+    let linked = entries(&common.join("worktrees"), partial);
+    *partial |= linked.len() > MAX_CHECKOUTS;
+    for entry in linked.iter().filter(|e| is_dir(e)).take(MAX_CHECKOUTS) {
+        let admin = entry.path();
+        // `gitdir` names the checkout's `.git` file.
+        if let Some(checkout) = pointed_at(&admin.join("gitdir"), &admin, "") {
+            found.extend(checkout.parent().map(Path::to_path_buf));
+        }
+    }
+    // Sorted, a folder comes before what is inside it, which it already covers.
+    found.sort();
+    let mut kept: Vec<PathBuf> = Vec::new();
+    for path in found {
+        if !kept.iter().any(|k| path.starts_with(k)) {
+            kept.push(path);
+        }
+    }
+    kept
+}
+
+/// Transcripts from the folders of sessions started in a checkout or below it (a
+/// subfolder, a worktree under `.claude/worktrees`), the newest first. Folder
+/// names are lossy, so this also lists sessions of other projects whose path
+/// starts alike (`/a/b-c` for `/a/b`); `starts_elsewhere` puts those down.
 fn transcripts(
     dir: &Path,
-    project: &Path,
+    roots: &[PathBuf],
     since: SystemTime,
     partial: &mut bool,
 ) -> Vec<Transcript> {
-    let folder = transcript_folder(project);
-    let below = format!("{folder}-");
+    let folders: Vec<String> = roots.iter().map(|r| transcript_folder(r)).collect();
     let mut out = Vec::new();
     for entry in entries(dir, partial) {
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        if !is_dir(&entry) || (name != folder && !name.starts_with(&below)) {
+        let wanted = folders.iter().any(|folder| {
+            name.strip_prefix(folder.as_str())
+                .is_some_and(|rest| rest.is_empty() || rest.starts_with('-'))
+        });
+        if !is_dir(&entry) || !wanted {
             continue;
         }
         collect(&entry.path(), since, partial, &mut out);
@@ -370,18 +473,39 @@ fn next_line(
     }
 }
 
+/// Whether a transcript belongs to another project: its first record that names
+/// a folder is outside this one. Nothing else is taken from it, and it is read
+/// no further. A transcript that does not say within its first lines is read.
+fn starts_elsewhere(reader: &mut impl BufRead, tally: &Tally<'_>, limits: &UsageLimits) -> bool {
+    let mut line = Vec::new();
+    for _ in 0..HEAD_LINES {
+        match next_line(reader, &mut line, limits.line_bytes) {
+            Ok(Some(true)) => {
+                let folder = serde_json::from_slice::<Value>(&line)
+                    .ok()
+                    .and_then(|record| Some(record.get("cwd")?.as_str()?.to_string()));
+                if let Some(folder) = folder {
+                    return !tally.in_project(&folder);
+                }
+            }
+            Ok(Some(false)) => {}
+            Ok(None) | Err(_) => return false,
+        }
+    }
+    false
+}
+
 fn read_transcript(
-    file: File,
+    reader: &mut impl BufRead,
     tally: &mut Tally<'_>,
     limits: &UsageLimits,
     cancel: &CancelToken,
     partial: &mut bool,
 ) -> Result<()> {
-    let mut reader = BufReader::with_capacity(64 * 1024, file);
     let mut line = Vec::new();
     let mut read: u32 = 0;
     loop {
-        match next_line(&mut reader, &mut line, limits.line_bytes) {
+        match next_line(reader, &mut line, limits.line_bytes) {
             Ok(None) => return Ok(()),
             Ok(Some(true)) => {
                 if candidate(&line) {
@@ -431,54 +555,92 @@ pub fn read_usage(
     }
 
     let cutoff = now - Duration::days(i64::from(WINDOW_DAYS));
-    let mut watched: HashMap<&str, usize> = HashMap::new();
-    for (i, (skill, _)) in unique.iter().enumerate() {
-        if skill.readers.contains(&ClientId::ClaudeCode) {
-            watched.insert(&skill.name, i);
-            // Agents may go by the folder where `name` differs from it.
-            if let Some(folder) = skill.path.rsplit('/').next() {
-                watched.insert(folder, i);
-            }
+    let readable = || {
+        unique
+            .iter()
+            .enumerate()
+            .filter(|(_, (skill, _))| skill.readers.contains(&ClientId::ClaudeCode))
+    };
+    let mut watched: HashMap<&str, usize> = readable()
+        .map(|(i, (skill, _))| (skill.name.as_str(), i))
+        .collect();
+    // Agents may go by the folder where `name` differs from it, but a skill of
+    // that name keeps its own uses.
+    for (i, (skill, _)) in readable() {
+        if let Some(folder) = skill.path.rsplit('/').next() {
+            watched.entry(folder).or_insert(i);
         }
     }
+
+    let mut partial = false;
+    // With nothing to look for, no transcript is opened at all.
+    let nothing = watched.is_empty();
+    let roots = if nothing {
+        Vec::new()
+    } else {
+        checkouts(root, &mut partial)
+    };
     let mut tally = Tally {
-        root,
+        roots: &roots,
         cutoff,
         watched,
         uses: HashMap::new(),
+        failed: HashSet::new(),
+        direct: vec![None; unique.len()],
         first_seen: vec![None; unique.len()],
+        unreadable: false,
     };
 
-    let mut partial = false;
     let since = SystemTime::from(cutoff);
     let mut total: u64 = 0;
     let mut files: usize = 0;
-    // With nothing to look for, no transcript is opened at all.
-    let found = if tally.watched.is_empty() {
+    let found = if nothing {
         Vec::new()
     } else {
-        transcripts(dir, root, since, &mut partial)
+        transcripts(dir, &roots, since, &mut partial)
     };
     for transcript in found {
         cancel.check()?;
-        if files >= limits.files
-            || transcript.size > limits.file_bytes
+        if files >= limits.files {
+            partial = true;
+            continue;
+        }
+        files += 1;
+        let Ok(file) = File::open(&transcript.path) else {
+            partial = true;
+            continue;
+        };
+        let mut reader = BufReader::with_capacity(64 * 1024, file);
+        // Another project's costs none of the budget, which is for this one.
+        if starts_elsewhere(&mut reader, &tally, limits) {
+            continue;
+        }
+        if transcript.size > limits.file_bytes
             || total.saturating_add(transcript.size) > limits.total_bytes
         {
             partial = true;
             continue;
         }
-        files += 1;
         total += transcript.size;
-        match File::open(&transcript.path) {
-            Ok(file) => read_transcript(file, &mut tally, limits, cancel, &mut partial)?,
-            Err(_) => partial = true,
+        if reader.rewind().is_err() {
+            partial = true;
+            continue;
         }
+        read_transcript(&mut reader, &mut tally, limits, cancel, &mut partial)?;
     }
+
+    partial |= tally.unreadable;
+    let Tally {
+        mut uses,
+        failed,
+        first_seen,
+        ..
+    } = tally;
+    uses.retain(|id, _| !failed.contains(id));
 
     let mut counts = vec![0u32; unique.len()];
     let mut last: Vec<Option<OffsetDateTime>> = vec![None; unique.len()];
-    for (skill, at) in tally.uses.values() {
+    for (skill, at) in uses.values() {
         if let (Some(count), Some(latest)) = (counts.get_mut(*skill), last.get_mut(*skill)) {
             *count += 1;
             *latest = Some(latest.map_or(*at, |l: OffsetDateTime| l.max(*at)));
@@ -489,7 +651,7 @@ pub fn read_usage(
         .iter()
         .enumerate()
         .map(|(i, (skill, tokens))| {
-            let since = tally.first_seen.get(i).copied().flatten();
+            let since = first_seen.get(i).copied().flatten();
             let uses = counts.get(i).copied().unwrap_or(0);
             let used_at = last.get(i).copied().flatten();
             SkillUsage {
@@ -561,6 +723,42 @@ mod tests {
             None
         );
         assert_eq!(command_name("<command-name>/x"), None);
+    }
+
+    #[test]
+    fn a_read_stops_partway_through_a_file_when_cancelled() {
+        // A use on every line: past the first check, nothing more may be counted.
+        let mut text = String::new();
+        for i in 0..10_000 {
+            text.push_str(&format!(
+                r#"{{"type":"assistant","cwd":"/p","timestamp":"2026-10-01T00:00:00Z","message":{{"content":[{{"type":"tool_use","id":"t{i}","name":"Skill","input":{{"skill":"x"}}}}]}}}}"#
+            ));
+            text.push('\n');
+        }
+        let roots = [PathBuf::from("/p")];
+        let mut tally = Tally {
+            roots: &roots,
+            cutoff: OffsetDateTime::UNIX_EPOCH,
+            watched: HashMap::from([("x", 0)]),
+            uses: HashMap::new(),
+            failed: HashSet::new(),
+            direct: vec![None],
+            first_seen: vec![None],
+            unreadable: false,
+        };
+        let cancel = CancelToken::new();
+        cancel.cancel();
+        let mut partial = false;
+        let result = read_transcript(
+            &mut text.as_bytes(),
+            &mut tally,
+            &UsageLimits::DEFAULT,
+            &cancel,
+            &mut partial,
+        );
+        assert!(matches!(result, Err(crate::error::HabiError::Cancelled)));
+        assert!(!tally.uses.is_empty(), "it had started");
+        assert!(tally.uses.len() < 10_000, "and it stopped");
     }
 
     #[test]

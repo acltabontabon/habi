@@ -17,7 +17,7 @@ const STAYS: Fact[] = [
   ["Inspection and matching", "Nothing is sent away to be analyzed"],
   [
     "Your Claude Code sessions",
-    "~/.claude/projects, last 30 days, read when you open a project’s All skills. Only skill names and times are used, and nothing is kept",
+    "~/.claude/projects, last 30 days, read when a project’s All skills list opens, as it does on opening a project with something installed. Only skill names and times are used, and nothing is kept. Sessions of projects with a similar path are opened only to tell them apart",
   ],
   ["Logs and reports", "Redacted. A report is written only when you save it"],
 ];

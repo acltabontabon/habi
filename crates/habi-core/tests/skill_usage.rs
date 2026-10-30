@@ -11,6 +11,7 @@ use habi_core::skills::intake::DiscoveredSkill;
 use habi_core::store::AppPaths;
 use habi_core::usage::{SkillUsage, SkillUsageReport, UsageLimits, read_usage, transcript_folder};
 use regex::Regex;
+use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -422,4 +423,382 @@ fn a_cancelled_read_stops() {
         &cancel,
     );
     assert!(matches!(result, Err(HabiError::Cancelled)));
+}
+
+fn days_ago(days: i64) -> String {
+    habi_core::time::format(OffsetDateTime::now_utc() - time::Duration::days(days))
+}
+
+fn listing_in(folder: &Path, name: &str, days: i64) -> String {
+    json!({
+        "type": "attachment",
+        "uuid": format!("listing-{days}"),
+        "timestamp": days_ago(days),
+        "cwd": folder,
+        "attachment": { "type": "skill_listing", "names": [name] },
+    })
+    .to_string()
+}
+
+fn call_in(folder: &Path, id: &str, name: &str, days: i64) -> String {
+    json!({
+        "type": "assistant",
+        "uuid": format!("record-{id}"),
+        "timestamp": days_ago(days),
+        "cwd": folder,
+        "message": { "content": [
+            { "type": "tool_use", "id": id, "name": "Skill", "input": { "skill": name } }
+        ] },
+    })
+    .to_string()
+}
+
+fn typed_in(folder: &Path, uuid: &str, name: &str, days: i64) -> String {
+    json!({
+        "type": "user",
+        "uuid": uuid,
+        "timestamp": days_ago(days),
+        "cwd": folder,
+        "message": { "content": format!(
+            "<command-message>{name}</command-message>\n<command-name>/{name}</command-name>"
+        ) },
+    })
+    .to_string()
+}
+
+/// A skill loaded for the session: the app's record, with no slash.
+fn loaded_in(folder: &Path, uuid: &str, name: &str, days: i64) -> String {
+    json!({
+        "type": "user",
+        "uuid": uuid,
+        "isMeta": true,
+        "timestamp": days_ago(days),
+        "cwd": folder,
+        "message": { "content": format!(
+            "<command-message>{name}</command-message>\n<command-name>{name}</command-name>\n<skill-format>true</skill-format>"
+        ) },
+    })
+    .to_string()
+}
+
+impl World {
+    fn lines(&self, folder: &Path, session: &str, lines: &[String]) {
+        let dir = self.transcripts().join(transcript_folder(folder));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(session), format!("{}\n", lines.join("\n"))).unwrap();
+    }
+
+    fn read_at(&self, root: &Path, skills: &[DiscoveredSkill]) -> SkillUsageReport {
+        read_usage(
+            &self.transcripts(),
+            root,
+            skills,
+            OffsetDateTime::now_utc(),
+            &UsageLimits::DEFAULT,
+            &CancelToken::new(),
+        )
+        .unwrap()
+    }
+
+    /// A linked worktree of the project, away from it, as Git records one.
+    fn linked_checkout(&self, name: &str) -> PathBuf {
+        let checkout = self.project.parent().unwrap().join("away").join(name);
+        fs::create_dir_all(&checkout).unwrap();
+        let admin = self.project.join(".git/worktrees").join(name);
+        fs::create_dir_all(&admin).unwrap();
+        fs::write(
+            admin.join("gitdir"),
+            format!("{}\n", checkout.join(".git").display()),
+        )
+        .unwrap();
+        fs::write(
+            checkout.join(".git"),
+            format!("gitdir: {}\n", admin.display()),
+        )
+        .unwrap();
+        checkout
+    }
+}
+
+#[test]
+fn a_worktree_away_from_the_project_counts_as_the_project() {
+    let world = World::new();
+    let checkout = world.linked_checkout("feature");
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[listing_in(&world.project, "alpha", 9)],
+    );
+    world.lines(
+        &checkout,
+        "feature.jsonl",
+        &[
+            call_in(&checkout, "t1", "alpha", 2),
+            call_in(&checkout, "t2", "alpha", 1),
+        ],
+    );
+
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(!report.partial);
+    assert_eq!(
+        uses(&report, "alpha"),
+        Some(2),
+        "not \"Not used in 9 days\""
+    );
+
+    // The same from the other side: the worktree opened, the main checkout's sessions counted.
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[call_in(&world.project, "t3", "alpha", 3)],
+    );
+    let report = world.read_at(&checkout, &[skill("alpha")]);
+    assert_eq!(uses(&report, "alpha"), Some(3));
+}
+
+#[test]
+fn a_submodule_is_not_a_checkout_of_the_repository_around_it() {
+    let world = World::new();
+    let module = world.project.join("vendor/lib");
+    fs::create_dir_all(&module).unwrap();
+    let admin = world.project.join(".git/modules/lib");
+    fs::create_dir_all(&admin).unwrap();
+    fs::write(
+        module.join(".git"),
+        format!("gitdir: {}\n", admin.display()),
+    )
+    .unwrap();
+    world.lines(
+        &world.project,
+        "around.jsonl",
+        &[call_in(&world.project, "t1", "alpha", 1)],
+    );
+
+    let report = world.read_at(&module, &[skill("alpha")]);
+    assert!(entry(&report, "alpha").usage.is_none());
+}
+
+#[test]
+fn more_worktrees_than_are_looked_for_makes_the_read_partial() {
+    let world = World::new();
+    for i in 0..65 {
+        world.linked_checkout(&format!("w{i}"));
+    }
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[listing_in(&world.project, "alpha", 9)],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(report.partial);
+    assert!(entry(&report, "alpha").usage.is_none());
+}
+
+#[test]
+fn a_use_that_cannot_be_read_makes_the_read_partial() {
+    let here = |world: &World, lines: &[String]| {
+        world.lines(&world.project, "s.jsonl", lines);
+        world.read(&[skill("alpha")], &UsageLimits::DEFAULT)
+    };
+
+    // The Skill tool's input renamed: a call that may be this skill.
+    let world = World::new();
+    let renamed = json!({
+        "type": "assistant", "uuid": "c1", "timestamp": days_ago(1), "cwd": world.project,
+        "message": { "content": [
+            { "type": "tool_use", "id": "t1", "name": "Skill", "input": { "name": "alpha" } }
+        ] },
+    })
+    .to_string();
+    let report = here(&world, &[listing_in(&world.project, "alpha", 9), renamed]);
+    assert!(report.partial);
+    assert!(entry(&report, "alpha").usage.is_none(), "not \"Not used\"");
+
+    // Records without an id: two typed commands, which must not collapse into one key.
+    let world = World::new();
+    let strip = |line: String| {
+        let mut record: serde_json::Value = serde_json::from_str(&line).unwrap();
+        record.as_object_mut().unwrap().remove("uuid");
+        record.to_string()
+    };
+    let report = here(
+        &world,
+        &[
+            listing_in(&world.project, "alpha", 9),
+            strip(typed_in(&world.project, "u1", "alpha", 2)),
+            strip(typed_in(&world.project, "u2", "alpha", 1)),
+        ],
+    );
+    assert!(report.partial);
+    assert!(entry(&report, "alpha").usage.is_none());
+
+    // A call with no time cannot be placed in the window.
+    let world = World::new();
+    let timeless = json!({
+        "type": "assistant", "uuid": "c1", "cwd": world.project,
+        "message": { "content": [
+            { "type": "tool_use", "id": "t1", "name": "Skill", "input": { "skill": "alpha" } }
+        ] },
+    })
+    .to_string();
+    let report = here(&world, &[listing_in(&world.project, "alpha", 9), timeless]);
+    assert!(report.partial);
+
+    // Something that is not this skill's use says nothing about the read.
+    let world = World::new();
+    let report = here(
+        &world,
+        &[
+            listing_in(&world.project, "alpha", 9),
+            strip(typed_in(&world.project, "u1", "model", 1)),
+        ],
+    );
+    assert!(!report.partial);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+}
+
+/// The limit the docs state: a renamed tool looks like any other tool.
+#[test]
+fn a_renamed_skill_tool_cannot_be_told_from_any_other_tool() {
+    let world = World::new();
+    let renamed = call_in(&world.project, "t1", "alpha", 1).replace("\"Skill\"", "\"LoadSkill\"");
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[listing_in(&world.project, "alpha", 9), renamed],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(!report.partial);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+}
+
+#[test]
+fn another_projects_transcripts_are_put_down_and_cost_nothing() {
+    let world = World::new();
+    let sibling = world.project.with_file_name("my-app-two");
+    world.lines(
+        &world.project,
+        "here.jsonl",
+        &[listing_in(&world.project, "alpha", 9)],
+    );
+    // Far past every limit below, and a later record that would count if it were read on.
+    let padding = json!({ "padding": "x".repeat(8192) }).to_string();
+    world.lines(
+        &sibling,
+        "there.jsonl",
+        &[
+            listing_in(&sibling, "alpha", 9),
+            padding,
+            call_in(&world.project, "t1", "alpha", 1),
+        ],
+    );
+    let size = fs::metadata(
+        world
+            .transcripts()
+            .join(transcript_folder(&sibling))
+            .join("there.jsonl"),
+    )
+    .unwrap()
+    .len();
+    let tight = UsageLimits {
+        file_bytes: size - 1,
+        total_bytes: size - 1,
+        ..UsageLimits::DEFAULT
+    };
+
+    let report = world.read(&[skill("alpha")], &tight);
+    assert!(!report.partial, "another project's size is not this read's");
+    assert_eq!(
+        uses(&report, "alpha"),
+        Some(0),
+        "and nothing was taken from it"
+    );
+    assert_eq!(days(&report, "alpha"), Some(9));
+}
+
+#[test]
+fn a_skill_loaded_for_a_session_counts_once() {
+    let world = World::new();
+    let here = &world.project;
+    world.lines(
+        here,
+        "s.jsonl",
+        &[
+            listing_in(here, "alpha", 9),
+            // Called, then its text arrives as the app's own record: one load.
+            call_in(here, "t1", "alpha", 3),
+            loaded_in(here, "m1", "alpha", 3),
+            // Typed, the same.
+            typed_in(here, "u1", "alpha", 2),
+            loaded_in(here, "m2", "alpha", 2),
+            // Loaded with nothing before it: a load of its own.
+            loaded_in(here, "m3", "alpha", 1),
+        ],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(3));
+}
+
+#[test]
+fn a_refused_call_stays_refused_when_an_older_file_repeats_it() {
+    let world = World::new();
+    let here = &world.project;
+    let refusal = json!({
+        "type": "user", "uuid": "r1", "timestamp": days_ago(1), "cwd": here,
+        "message": { "content": [
+            { "type": "tool_result", "tool_use_id": "t1", "is_error": true, "content": "No." }
+        ] },
+    })
+    .to_string();
+    world.lines(
+        here,
+        "new.jsonl",
+        &[
+            listing_in(here, "alpha", 9),
+            call_in(here, "t1", "alpha", 1),
+            refusal,
+        ],
+    );
+    world.lines(here, "old.jsonl", &[call_in(here, "t1", "alpha", 1)]);
+    let old = fs::File::options()
+        .write(true)
+        .open(world.folder("").join("old.jsonl"))
+        .unwrap();
+    old.set_modified(SystemTime::now() - Duration::from_secs(86_400))
+        .unwrap();
+    drop(old);
+
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+}
+
+#[test]
+fn a_folder_name_does_not_take_the_uses_of_a_skill_with_that_name() {
+    let world = World::new();
+    let here = &world.project;
+    world.lines(
+        here,
+        "s.jsonl",
+        &[
+            listing_in(here, "renamed", 9),
+            listing_in(here, "review", 8),
+            call_in(here, "t1", "review", 1),
+        ],
+    );
+    let in_folder_review = DiscoveredSkill {
+        path: ".claude/skills/review".into(),
+        ..skill("renamed")
+    };
+    let named_review = DiscoveredSkill {
+        path: ".claude/skills/rev".into(),
+        ..skill("review")
+    };
+    for skills in [
+        [in_folder_review.clone(), named_review.clone()],
+        [named_review.clone(), in_folder_review.clone()],
+    ] {
+        let report = world.read(&skills, &UsageLimits::DEFAULT);
+        assert_eq!(uses(&report, "review"), Some(1));
+        assert_eq!(uses(&report, "renamed"), Some(0));
+    }
 }

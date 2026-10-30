@@ -300,19 +300,21 @@ describe("workbench", () => {
       wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
 
       const used = row("Liquibase migration review");
-      expect(await within(used).findByText("Used 12× in 30 days")).toBeInTheDocument();
+      expect(await within(used).findByText("Used 12× in Claude Code here in 30 days")).toBeInTheDocument();
       // A skill in use is not asked to justify what it costs.
       expect(within(used).queryByText(/tokens/)).toBeNull();
 
       const unused = row("JPA entity review");
-      expect(within(unused).getByText("Not used in 30 days")).toBeInTheDocument();
+      expect(within(unused).getByText("Not used in Claude Code here in 30 days")).toBeInTheDocument();
       expect(within(unused).getByText("~42 tokens")).toBeInTheDocument();
 
       expect(within(row("GitHub PR summary")).queryByText(/used/i)).toBeNull();
       expect(within(row("Service observability")).queryByText(/used/i)).toBeNull();
 
       // A skill that was already in the project, with less history: it says so.
-      await waitFor(() => expect(within(row("house-style")).getByText("Not used in 4 days")).toBeVisible());
+      await waitFor(() =>
+        expect(within(row("house-style")).getByText("Not used in Claude Code here in 4 days")).toBeVisible(),
+      );
     });
 
     it("says nothing when there are no transcripts", async () => {
@@ -347,7 +349,9 @@ describe("workbench", () => {
       });
       wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
       expect(
-        await within(row("Liquibase migration review")).findByText("Used at least 2× in 30 days"),
+        await within(row("Liquibase migration review")).findByText(
+          "Used at least 2× in Claude Code here in 30 days",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -372,7 +376,7 @@ describe("workbench", () => {
         skills: [{ name: "jpa-entity-review", tokens: 42, usage: { uses: 0, lastUsed: null, days: 30 } }],
       });
       const { container } = wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
-      await within(row("JPA entity review")).findByText("Not used in 30 days");
+      await within(row("JPA entity review")).findByText("Not used in Claude Code here in 30 days");
       const results = await axe.run(container);
       expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
     });

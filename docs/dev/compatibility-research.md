@@ -338,8 +338,12 @@ and counts only), so check it again if the format changes. No transcript content
 - **Reliability.** All 12 records that begin `Base directory for this skill:`, the text a loaded skill
   arrives with, traced back to a tool call or a typed command. No tool call ID appeared twice across
   files on this machine, though Habi still counts each once because a resumed session could repeat one.
+- **Checkouts.** A Git worktree away from the project gets a transcript folder of its own, which
+  nothing in its name links to the project, so Habi finds them through `.git/worktrees/*/gitdir`. Once
+  Git forgets a worktree, its sessions cannot be tied to the project.
 - **Not visible.** An agent reading a `SKILL.md` as a plain file. Which copy was used when a project and
-  a personal skill share a name (only the first text block's `Base directory` says, and not always).
+  a personal skill share a name (only the first text block's `Base directory` says, and not always). A
+  renamed `Skill` tool: its calls would look like any other tool's, and skills would read as unused.
 - **Limits of this check.** Very long folder names were not seen (the longest was 176 characters),
   and Windows paths were not checked on a real machine.
 

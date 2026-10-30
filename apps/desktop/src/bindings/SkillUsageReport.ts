@@ -6,7 +6,8 @@ import type { SkillUsage } from "./SkillUsage";
  */
 export type SkillUsageReport = { 
 /**
- * Some transcripts were skipped (a limit, an unreadable file): uses may be
- * missing, so counts are minimums and no skill is called unused.
+ * Some transcripts were skipped (a limit, an unreadable file), or a record
+ * that names a use could not be read: uses may be missing, so counts are
+ * minimums and no skill is called unused.
  */
 partial: boolean, skills: Array<SkillUsage>, };
