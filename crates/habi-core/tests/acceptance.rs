@@ -17,6 +17,7 @@ use habi_core::recommend::{Group, ReadinessState};
 use habi_core::service::{Habi, ItemRef};
 use habi_core::source::{Freshness, NewSource, TrackedRef};
 use habi_core::store::AppPaths;
+use habi_core::suggest::KitGroup;
 use std::path::Path;
 use std::process::Command;
 
@@ -316,4 +317,59 @@ fn damaged_exclusions_are_an_error_not_an_empty_list() {
         .unwrap();
     habi.inspect(&project.id, true, &CancelToken::new())
         .unwrap();
+}
+
+#[test]
+fn more_counts_only_what_fits_and_is_not_listed_yet() {
+    let home = tempfile::tempdir().unwrap();
+    let parent = tempfile::tempdir().unwrap();
+    let remote = parent.path().join("team-skills");
+    let project_dir = parent.path().join("billing-service");
+    let cancel = CancelToken::new();
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+
+    copy_tree(&fixture("libraries/example-team-library"), &remote);
+    git(&remote, &["init", "-q"]);
+    git(&remote, &["add", "-A"]);
+    git(&remote, &["commit", "-qm", "Team library"]);
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Team".into(),
+            location: remote.to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Branch {
+                name: "main".into(),
+            },
+        })
+        .unwrap();
+    habi.sources().refresh(&source.id, &cancel).unwrap();
+    copy_tree(&fixture("repos/billing-service"), &project_dir);
+    let project = habi.open_project(&project_dir).unwrap();
+
+    let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
+    assert_eq!(kit.more, 0, "everything that fits is listed");
+    let items: Vec<ItemRef> = kit
+        .suggestions
+        .iter()
+        .filter(|s| s.library.connected && s.group != KitGroup::Practice && !s.installed)
+        .filter_map(|s| s.item.clone())
+        .collect();
+    assert!(!items.is_empty());
+
+    let plan = habi
+        .plan_install(
+            &project.id,
+            &items,
+            &[ClientId::ClaudeCode],
+            false,
+            &Decisions::new(),
+        )
+        .unwrap();
+    habi.apply(&plan.id).unwrap();
+
+    // Installed, they are listed as installed. Nothing more has appeared.
+    let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
+    assert!(kit.suggestions.iter().filter(|s| s.installed).count() >= items.len());
+    assert_eq!(kit.more, 0);
 }

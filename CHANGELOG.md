@@ -98,6 +98,17 @@ Every project gets Habi's answer to "what should my agents have here?", before a
   huge file no longer fails the whole library, names that differ only by case or aren't valid
   UTF-8 are flagged, and files in folders named `target` or `node_modules` inside a skill are kept.
 - **Two skills with one name no longer hide each other.** Each gets its own id.
+- **"Does not apply" means it.** When part of a project could not be listed or read, including
+  `setup.py`, `-r` includes in requirements files and dynamic `pyproject` dependencies, Habi now
+  answers *needs information* instead. Requirements written as `name @ url`, files starting with a
+  byte-order mark, and OpenAPI documents over 8 MiB are recognized.
+- **A `.gitignore` above your repository**, such as `*` in a home folder, no longer hides the project.
+- **Large repositories inspect quickly.** Very large manifests and repositories with thousands of
+  modules no longer take minutes; past Habi's limits, the result says what was not read.
+- **Honest use counts.** A transcript line cut short makes counts minimums rather than reading as
+  *Not used*, a refused call no longer makes a skill read as *Not used*, and sessions from another
+  checkout count only when that checkout and the repository name each other. *More skills fit* no
+  longer counts skills you have already installed.
 - **Skills stay fixable.** A skill over the 16 MiB total can still be opened and trimmed, and Habi
   refuses a change that would take it over. Restoring from the trash when the name is taken gives
   the skill a new one instead of disabling both, and one oversized skill in a project no longer
@@ -120,7 +131,9 @@ Every project gets Habi's answer to "what should my agents have here?", before a
   sidebar sent a request the security model never allowed. Only opening a library's page does.
 - **Your home folder or a whole disk can't be opened as a project**, which also keeps it from being
   read file by file.
-- **Hostile libraries and files get less far.** A named pipe can't hang Habi. Huge Markdown can't
+- **Hostile libraries and files get less far.** A `.gitignore` that is a link to a device or a
+  named pipe can't hang or exhaust Habi, and a pointer to another machine in a checkout's Git files
+  is never followed. A named pipe can't hang Habi anywhere else either. Huge Markdown can't
   stall indexing for minutes. Addresses carrying a password or token in the forms that used to slip
   through, and addresses with invisible characters, are refused. A symbolic link can't serve as a
   library's subfolder. File names with invisible or direction-changing characters are refused.

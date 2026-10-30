@@ -13,4 +13,3 @@
 {"parentUuid":"a-10","isSidechain":false,"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_old","name":"Skill","input":{"skill":"stale-helper"}}]},"type":"assistant","uuid":"a-11","timestamp":"{{days_ago:40}}","cwd":"{{project}}","sessionId":"session-a"}
 {"parentUuid":"a-11","isSidechain":false,"attachment":{"type":"invoked_skills","skills":[{"name":"stale-helper","path":".claude/skills/stale-helper/SKILL.md"}]},"type":"attachment","uuid":"a-12","timestamp":"{{days_ago:2}}","cwd":"{{project}}","sessionId":"session-a"}
 {"parentUuid":"a-12","isSidechain":false,"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_a6","name":"Skill","input":{"skill":"agents-only"}}]},"type":"assistant","uuid":"a-13","timestamp":"{{days_ago:2}}","cwd":"{{project}}","sessionId":"session-a"}
-{"parentUuid":"a-13","isSidechain":false,"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_cut","name":"Skill","input":{"skill":"stale

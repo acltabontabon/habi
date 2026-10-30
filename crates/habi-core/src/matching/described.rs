@@ -452,6 +452,23 @@ static DESCRIPTION_SET: LazyLock<Option<RegexSet>> =
 /// Rules already read, by name and description: an overview reads every
 /// skill of every library, and the words do not change between reads.
 static READ: LazyLock<Mutex<HashMap<Words, Option<Condition>>>> = LazyLock::new(Default::default);
+/// Rules remembered at once. Past this the cache starts over; a library can
+/// hold any number of skills, and reading one again is cheap.
+const MAX_REMEMBERED: usize = 4096;
+
+/// How much of a name and a description is read, in characters. The Agent Skills
+/// format allows 64 and 1,024; a library can hold longer ones, and what names a
+/// skill's subject comes first.
+const MAX_NAME_CHARS: usize = 256;
+const MAX_DESCRIPTION_CHARS: usize = 1024;
+
+/// The first `max` characters of `text`.
+fn head(text: &str, max: usize) -> &str {
+    match text.char_indices().nth(max) {
+        Some((end, _)) => text.get(..end).unwrap_or(text),
+        None => text,
+    }
+}
 
 /// A skill's name and description.
 type Words = (String, String);
@@ -502,6 +519,8 @@ const LOOKBACK_WORDS: usize = MAX_FILLERS + 2;
 /// appearance (the name first). Languages are left out when anything more
 /// specific is named.
 pub fn mentions(name: &str, description: &str) -> Vec<Mention> {
+    let name = head(name, MAX_NAME_CHARS);
+    let description = head(description, MAX_DESCRIPTION_CHARS);
     let mut found: Vec<Mention> = Vec::new();
     let described = in_description(description)
         .into_iter()
@@ -520,12 +539,17 @@ pub fn mentions(name: &str, description: &str) -> Vec<Mention> {
 /// A rule from what the skill says it is for, or `None` when it names no
 /// technology Habi can detect (or so many that it is about none of them).
 pub fn described_rule(name: &str, description: &str) -> Option<Condition> {
+    let name = head(name, MAX_NAME_CHARS);
+    let description = head(description, MAX_DESCRIPTION_CHARS);
     let key = (name.to_string(), description.to_string());
     if let Some(rule) = READ.lock().ok().and_then(|read| read.get(&key).cloned()) {
         return rule;
     }
     let rule = read_rule(name, description);
     if let Ok(mut read) = READ.lock() {
+        if read.len() >= MAX_REMEMBERED {
+            read.clear();
+        }
         read.insert(key, rule.clone());
     }
     rule
@@ -920,6 +944,38 @@ fn same_list(text: &str, end: usize, start: usize) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_head_of_a_long_description_is_read() {
+        let padding = "lorem ipsum ".repeat(200);
+        assert!(padding.len() > MAX_DESCRIPTION_CHARS);
+        // What comes past the limit is not read at all, and costs no time.
+        let late = format!("{padding}. Use with Django.");
+        assert!(mentions("helper", &late).is_empty());
+        assert_eq!(described_rule("helper", &late), None);
+        assert!(!mentions("helper", "Use with Django.").is_empty());
+
+        // Cut at a character, not a byte.
+        assert_eq!(head("déjà", 2), "dé");
+        assert_eq!(head("déjà", 4), "déjà");
+        assert_eq!(head("déjà", 40), "déjà");
+    }
+
+    #[test]
+    fn the_cache_of_rules_read_does_not_grow_past_its_limit() {
+        for i in 0..MAX_REMEMBERED + 10 {
+            described_rule(&format!("skill-{i}"), "Use with Django.");
+        }
+        assert!(READ.lock().unwrap().len() <= MAX_REMEMBERED);
+        // Different words past the limit are the same words to the cache.
+        let long = "x".repeat(10 * MAX_DESCRIPTION_CHARS);
+        described_rule("one-name", &long);
+        let key = (
+            "one-name".to_string(),
+            head(&long, MAX_DESCRIPTION_CHARS).to_string(),
+        );
+        assert!(READ.lock().unwrap().contains_key(&key));
+    }
     use crate::inspect::tags::{LANGUAGE_TAGS, TAG_RULES, basis};
 
     fn tags(name: &str, description: &str) -> Vec<&'static str> {

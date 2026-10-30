@@ -209,7 +209,7 @@ fn the_service_says_what_the_transcripts_show() {
     assert_eq!(uses(&report, "changelog-style"), Some(0));
     assert_eq!(days(&report, "changelog-style"), Some(20));
     // Everything that only looks like a use: a mention, a plugin's skill, another tool, a call
-    // from before the window, a cut-off line, a compaction's note, and other folders' sessions.
+    // from before the window, a compaction's note, and other folders' sessions.
     assert_eq!(uses(&report, "stale-helper"), Some(0));
     let unused = entry(&report, "stale-helper").usage.clone().unwrap();
     assert_eq!(unused.last_used, None);
@@ -557,6 +557,172 @@ fn a_worktree_away_from_the_project_counts_as_the_project() {
 }
 
 #[test]
+fn an_entry_the_checkout_does_not_name_back_widens_nothing() {
+    // Any folder can hold `.git/worktrees/x/gitdir`, naming any tree at all.
+    let world = World::new();
+    let elsewhere = world.project.parent().unwrap().join("elsewhere");
+    let inside = elsewhere.join("secret-project");
+    fs::create_dir_all(&inside).unwrap();
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[listing_in(&world.project, "alpha", 9)],
+    );
+    world.lines(
+        &inside,
+        "other.jsonl",
+        &[
+            call_in(&inside, "o1", "alpha", 1),
+            call_in(&inside, "o2", "alpha", 1),
+        ],
+    );
+    let admin = world.project.join(".git/worktrees/x");
+    fs::create_dir_all(&admin).unwrap();
+    fs::write(
+        admin.join("gitdir"),
+        format!("{}\n", elsewhere.join(".git").display()),
+    )
+    .unwrap();
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+
+    // A `.git` file there, or one naming something else, is no better.
+    fs::write(elsewhere.join(".git"), "gitdir: /somewhere/else\n").unwrap();
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+
+    // A `.git` that is a folder is another repository, not this checkout.
+    fs::remove_file(elsewhere.join(".git")).unwrap();
+    fs::create_dir_all(elsewhere.join(".git")).unwrap();
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+
+    // The real thing, both ways, counts.
+    fs::remove_dir_all(elsewhere.join(".git")).unwrap();
+    fs::write(
+        elsewhere.join(".git"),
+        format!("gitdir: {}\n", admin.display()),
+    )
+    .unwrap();
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(2));
+}
+
+#[test]
+fn a_checkouts_git_file_alone_cannot_claim_a_repository() {
+    // A folder someone sent, whose `.git` file names a real repository nearby.
+    let world = World::new();
+    let checkout = world.linked_checkout("real");
+    let stranger = world.project.parent().unwrap().join("stranger");
+    fs::create_dir_all(&stranger).unwrap();
+    fs::write(
+        stranger.join(".git"),
+        format!(
+            "gitdir: {}\n",
+            world.project.join(".git/worktrees/real").display()
+        ),
+    )
+    .unwrap();
+    world.lines(
+        &stranger,
+        "stranger.jsonl",
+        &[listing_in(&stranger, "alpha", 9)],
+    );
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[call_in(&world.project, "t1", "alpha", 1)],
+    );
+    world.lines(
+        &checkout,
+        "real.jsonl",
+        &[call_in(&checkout, "t2", "alpha", 1)],
+    );
+
+    let report = world.read_at(&stranger, &[skill("alpha")]);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+    assert!(!report.partial);
+}
+
+#[test]
+fn a_bare_repository_does_not_make_what_is_beside_it_a_checkout() {
+    let world = World::new();
+    let parent = world.project.parent().unwrap();
+    let bare = parent.join("repo.git");
+    let admin = bare.join("worktrees/main");
+    fs::create_dir_all(&admin).unwrap();
+    fs::write(
+        admin.join("gitdir"),
+        format!("{}\n", world.project.join(".git").display()),
+    )
+    .unwrap();
+    fs::write(
+        world.project.join(".git"),
+        format!("gitdir: {}\n", admin.display()),
+    )
+    .unwrap();
+    let beside = parent.join("beside");
+    fs::create_dir_all(&beside).unwrap();
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[listing_in(&world.project, "alpha", 9)],
+    );
+    world.lines(
+        &beside,
+        "beside.jsonl",
+        &[call_in(&beside, "t1", "alpha", 1)],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+}
+
+#[test]
+fn a_pointer_to_another_machine_is_not_followed() {
+    // `//x` is `/x` on macOS and Linux: if it were followed the read would see
+    // this checkout. On Windows `\\host\share` would connect to the host.
+    let world = World::new();
+    let checkout = world.linked_checkout("feature");
+    world.lines(
+        &world.project,
+        "main.jsonl",
+        &[listing_in(&world.project, "alpha", 9)],
+    );
+    world.lines(
+        &checkout,
+        "feature.jsonl",
+        &[call_in(&checkout, "t1", "alpha", 1)],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(1), "followed when it is local");
+
+    let admin = world.project.join(".git/worktrees/feature");
+    let doubled = |path: &Path| {
+        if cfg!(windows) {
+            format!(r"\\?\{}", path.display())
+        } else {
+            format!("/{}", path.display())
+        }
+    };
+    for target in [
+        doubled(&checkout.join(".git")),
+        r"\\host.invalid\share\repo\.git".to_string(),
+        "//host.invalid/share/repo/.git".to_string(),
+    ] {
+        fs::write(admin.join("gitdir"), format!("{target}\n")).unwrap();
+        let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+        assert_eq!(uses(&report, "alpha"), Some(0), "{target}");
+    }
+
+    // The same for a checkout's own `.git` file.
+    let git_file = checkout.join(".git");
+    fs::write(&git_file, format!("gitdir: {}\n", doubled(&admin))).unwrap();
+    let report = world.read_at(&checkout, &[skill("alpha")]);
+    assert_eq!(uses(&report, "alpha"), Some(1), "its own sessions only");
+    assert!(!report.partial);
+}
+
+#[test]
 fn a_submodule_is_not_a_checkout_of_the_repository_around_it() {
     let world = World::new();
     let module = world.project.join("vendor/lib");
@@ -592,6 +758,91 @@ fn more_worktrees_than_are_looked_for_makes_the_read_partial() {
     let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
     assert!(report.partial);
     assert!(entry(&report, "alpha").usage.is_none());
+}
+
+#[test]
+fn a_line_cut_short_makes_the_read_partial() {
+    // A crash or a live append cuts the last line, which holds a Skill call.
+    let world = World::new();
+    let call = call_in(&world.project, "t1", "alpha", 1);
+    let cut = call.get(..call.len() - 20).unwrap().to_string();
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[listing_in(&world.project, "alpha", 9), cut],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(report.partial);
+    assert!(entry(&report, "alpha").usage.is_none(), "not \"Not used\"");
+
+    // The whole line is an ordinary use.
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[listing_in(&world.project, "alpha", 9), call],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(!report.partial);
+    assert_eq!(uses(&report, "alpha"), Some(1));
+
+    // A broken line that cannot matter is passed over unparsed.
+    let world = World::new();
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[
+            listing_in(&world.project, "alpha", 9),
+            "{ not json, and nothing about tools".to_string(),
+        ],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(!report.partial);
+}
+
+#[test]
+fn a_refused_call_for_a_skill_no_session_offered_says_nothing() {
+    let world = World::new();
+    let refusal = json!({
+        "type": "user", "uuid": "r1", "timestamp": days_ago(5), "cwd": world.project,
+        "message": { "content": [
+            { "type": "tool_result", "tool_use_id": "t1", "is_error": true, "content": "Unknown skill" }
+        ] },
+    })
+    .to_string();
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[call_in(&world.project, "t1", "alpha", 5), refusal.clone()],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert!(
+        entry(&report, "alpha").usage.is_none(),
+        "\"Not used\" is only said of a skill a session offered"
+    );
+
+    // Offered as well, the refused call is still not a use.
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[
+            listing_in(&world.project, "alpha", 9),
+            call_in(&world.project, "t1", "alpha", 5),
+            refusal,
+        ],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(0));
+    assert_eq!(days(&report, "alpha"), Some(9));
+
+    // A call that went through covers the days since it, offered or not.
+    world.lines(
+        &world.project,
+        "s.jsonl",
+        &[call_in(&world.project, "t1", "alpha", 4)],
+    );
+    let report = world.read(&[skill("alpha")], &UsageLimits::DEFAULT);
+    assert_eq!(uses(&report, "alpha"), Some(1));
+    assert_eq!(days(&report, "alpha"), Some(4));
 }
 
 #[test]

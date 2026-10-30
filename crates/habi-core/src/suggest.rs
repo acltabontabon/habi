@@ -218,10 +218,12 @@ pub fn kit(input: &KitInput) -> Kit {
             }
             _ => continue,
         };
-        if kind != KitGroup::Practice {
+        let installed = r.installation.is_some() || input.folders.has(input.root, &r.item.name);
+        // `more` says what fits and is not shown; an installed skill is neither
+        // counted as shown nor something more to find.
+        if kind != KitGroup::Practice && !installed {
             fitting += 1;
         }
-        let installed = r.installation.is_some() || input.folders.has(input.root, &r.item.name);
         if !r.item.installable && !installed {
             continue;
         }
