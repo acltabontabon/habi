@@ -35,6 +35,8 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 
 ### Fixed
 
+- **Opening Habi twice at once no longer fails.** The desktop app and the command line opening the
+  data folder at the same moment could stop one of them with "restricting …-journal".
 - **A project's page opens faster** with many libraries connected: what a skill says it is for is
   read once, and a project's skill folders are listed once instead of probed per skill.
 - **Installed skills no longer change what a project is.** Scripts and instruction files inside

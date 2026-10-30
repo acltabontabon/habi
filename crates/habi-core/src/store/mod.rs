@@ -88,7 +88,7 @@ impl AppPaths {
         if let Ok(entries) = std::fs::read_dir(self.logs()) {
             for entry in entries.flatten() {
                 if entry.file_type().is_ok_and(|t| t.is_file()) {
-                    private(&entry.path(), 0o600)?;
+                    private_found(&entry.path(), 0o600)?;
                 }
             }
         }
@@ -110,6 +110,19 @@ fn private(path: &Path, mode: u32) -> Result<()> {
 #[cfg(not(unix))]
 fn private(_path: &Path, _mode: u32) -> Result<()> {
     Ok(())
+}
+
+/// `private` for a file a listing found. Another process may remove it before
+/// this runs (SQLite deletes a journal when its write ends, and the write-ahead
+/// log when the last connection closes); a file that is gone has nothing left
+/// to limit, and must not stop this process from opening.
+fn private_found(path: &Path, mode: u32) -> Result<()> {
+    match private(path, mode) {
+        Err(HabiError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+            Ok(())
+        }
+        other => other,
+    }
 }
 
 /// Handle to the SQLite database. Connections are opened per operation, so
@@ -150,7 +163,7 @@ impl Store {
                     || [format!("{name}-wal"), format!("{name}-shm")].contains(&file)
                     || file.starts_with(&format!("{name}.pre-v"));
                 if ours && entry.file_type().is_ok_and(|t| t.is_file()) {
-                    private(&entry.path(), 0o600)?;
+                    private_found(&entry.path(), 0o600)?;
                 }
             }
         }
@@ -302,6 +315,27 @@ mod tests {
     }
 
     #[cfg(unix)]
+    #[cfg(unix)]
+    #[test]
+    fn a_file_gone_before_it_is_restricted_does_not_stop_an_open() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        // SQLite removed this journal between the listing and the call.
+        let gone = dir.path().join("habi.db.pre-v4.bak-journal");
+        private_found(&gone, 0o600).unwrap();
+        // Only that is forgiven: a folder Habi just made must exist.
+        assert!(private(&gone, 0o600).is_err());
+        // Any other failure still says so.
+        let file = dir.path().join("habi.db-wal");
+        std::fs::write(&file, "x").unwrap();
+        assert!(private_found(&file.join("child"), 0o600).is_err());
+        // And a file that is there is still limited.
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+        private_found(&file, 0o600).unwrap();
+        let mode = std::fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+
     #[test]
     fn the_data_folder_and_database_are_private_to_the_user() {
         use std::os::unix::fs::PermissionsExt;
