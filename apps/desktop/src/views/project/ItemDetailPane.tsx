@@ -23,7 +23,6 @@ import {
   installLabel,
   installTone,
   kindLabel,
-  NO_RULES_PHRASE,
   prerequisiteLabel,
   prerequisiteTone,
   readinessLabel,
@@ -418,8 +417,8 @@ export function ItemDetailPane({
               {r.pick ? <p className="muted why-basis">One of Habi's picks — {r.pick.why}.</p> : null}
               {a.applicability === "undeclared" ? (
                 <p className="muted">
-                  {NO_RULES_PHRASE}, and its description names nothing Habi can look for. You can still
-                  install it deliberately{isLocal ? ", or add rules in My skills" : ""}.
+                  No rules for when it applies, and its description names nothing Habi can look for. You can
+                  still install it deliberately{isLocal ? ", or add rules in My skills" : ""}.
                 </p>
               ) : (
                 <>

@@ -10,6 +10,7 @@ import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider } from "../lib/nav";
 import { Kit } from "../views/project/Kit";
+import { ReviewDialog } from "../views/review/ReviewDialog";
 import billing from "./fixtures/overview-billing-service.json";
 import planInstall from "./fixtures/plan-install.json";
 
@@ -117,14 +118,15 @@ describe("the kit", () => {
     const user = userEvent.setup();
     wrap(<Kit overview={overview} onAll={vi.fn()} />);
     await user.click(knot("Grill the plan"));
-    const chosen = overview.kit.suggestions.filter((s) => !s.installed && s.title !== "Grill the plan");
+    const chosen = overview.kit.suggestions.filter((s) => s.chosen && s.title !== "Grill the plan");
     expect(within(cart()).getByText(`${chosen.length} skills`)).toBeInTheDocument();
     await user.click(within(cart()).getByRole("button", { name: "Review and add…" }));
     await screen.findByRole("dialog");
     const connects = invoke.mock.calls
       .filter(([cmd]) => cmd === "connect_catalog_entry")
       .map(([, a]) => a.entryId);
-    expect(connects.sort()).toEqual(["github", "mattpocock", "sentry", "superpowers"]);
+    // Superpowers' pick starts unticked, so nothing asks to connect it.
+    expect(connects.sort()).toEqual(["github", "mattpocock", "sentry"]);
     const plan = invoke.mock.calls.find(([cmd]) => cmd === "plan_install");
     expect(plan?.[1].items).toHaveLength(chosen.length);
     expect(plan?.[1].items).toContainEqual({ sourceId: "src-sentry", itemId: "gha-security-review" });
@@ -254,5 +256,88 @@ describe("the kit", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Explore libraries/ })).toBeInTheDocument();
     expect(screen.queryByRole("complementary")).toBeNull();
+  });
+
+  it("starts with the strongest few ticked and says what they cost", async () => {
+    const user = userEvent.setup();
+    wrap(<Kit overview={overview} onAll={vi.fn()} />);
+    const ticked = overview.kit.suggestions.filter((s) => s.chosen);
+    expect(ticked.length).toBeLessThan(overview.kit.suggestions.length);
+    // A practice beyond the first, and community code to run, wait for a tick.
+    expect(knot("Verification before completion").checked).toBe(false);
+    expect(knot("Diagnosing bugs").checked).toBe(false);
+    const cost = ticked.reduce((sum, s) => sum + s.tokens, 0);
+    expect(within(cart()).getByText(`About ${cost} tokens in every agent session.`)).toBeVisible();
+    await user.click(knot("Verification before completion"));
+    const more = overview.kit.suggestions.find((s) => s.title === "Verification before completion");
+    expect(
+      within(cart()).getByText(`About ${cost + (more?.tokens ?? 0)} tokens in every agent session.`),
+    ).toBeVisible();
+    // Superpowers is connected only once something from it is chosen.
+    expect(within(cart()).getByText("Superpowers")).toBeVisible();
+  });
+
+  it("says what a row brings with it", () => {
+    wrap(
+      <Kit
+        overview={withSuggestions((s) =>
+          s.title === "Spring Boot testing"
+            ? {
+                ...s,
+                chosen: false,
+                caution: ["Contains a compiled program", "Contains invisible characters"],
+              }
+            : s,
+        )}
+        onAll={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Contains a compiled program and 1 more/)).toBeInTheDocument();
+    expect(screen.getByText("Comes with scripts")).toBeInTheDocument();
+    expect(knot("Spring Boot testing").checked).toBe(false);
+  });
+});
+
+describe("the review", () => {
+  it("offers the skills a chosen one calls by name, and adds them to the plan", async () => {
+    const user = userEvent.setup();
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "library")
+        return {
+          sourceId: "team",
+          items: [
+            { id: "writing-plans", title: "Writing plans", calls: ["executing-plans"], mcp: [] },
+            { id: "executing-plans", title: "Executing plans", calls: [], mcp: [] },
+          ],
+        };
+      if (cmd === "project_overview") return overview;
+      if (cmd === "detected_clients") return ["claude-code"];
+      if (cmd === "plan_install") return planInstall;
+      if (cmd === "list_sources") return [];
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(
+      <ReviewDialog
+        projectId={overview.project.id}
+        request={{
+          kind: "install",
+          items: [{ sourceId: "team", itemId: "writing-plans" }],
+          title: "Writing plans",
+        }}
+        onClose={vi.fn()}
+      />,
+    );
+    const section = await screen.findByRole("region", { name: "Called by name" });
+    expect(section).toHaveTextContent("Writing plans calls Executing plans.");
+    await user.click(within(section).getByRole("button", { name: "Add it too" }));
+    await vi.waitFor(() => {
+      const last = invoke.mock.calls.filter(([cmd]) => cmd === "plan_install").at(-1);
+      expect(last?.[1].items).toEqual([
+        { sourceId: "team", itemId: "writing-plans" },
+        { sourceId: "team", itemId: "executing-plans" },
+      ]);
+    });
+    expect(screen.queryByRole("region", { name: "Called by name" })).toBeNull();
+    expect(screen.getByRole("dialog", { name: /Install 2 skills/ })).toBeInTheDocument();
   });
 });

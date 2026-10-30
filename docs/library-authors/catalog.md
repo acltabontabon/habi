@@ -32,6 +32,9 @@ in the registry). Nothing is fetched until preview.
       title: Wrangler
       gist: "Configure, run and deploy Workers with Wrangler."   # Habi's words, 100 characters at most
       why: "Projects with a Wrangler config"                    # 60 characters at most
+      tokens: 74                             # measured: its name and description, about 4 characters each
+      scripts: true                          # measured: it comes with code an agent could run (omit if not)
+      caution: "Contains a compiled program" # measured: what Habi's scan flags as caution (omit if nothing)
       applies_when: { file: "**/wrangler.{toml,json,jsonc}" }  # omit for a practice that fits any codebase
   status: { state: deprecated, successor: "org/new-lib" }
 ```

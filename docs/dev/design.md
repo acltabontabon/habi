@@ -102,11 +102,14 @@ its one signature — used only where it carries meaning.
   file:line; a quiet chip says whose word it is only when it is not Habi's pick (*Team
   requirement*, *Author's rule*, *Habi's rule*, *From its description*). A skill another of the
   person's projects uses comes first and says so on a saffron knot (*Also in nextshop*); one
-  already in their own skill folders starts unticked (*On this machine*). Beside the list, a
-  sticky card says how many are chosen and which libraries are connected first; its one button
+  already in their own skill folders starts unticked (*On this machine*). A row also says what it
+  brings: *Comes with scripts*, what the scan flags as caution (an icon and words), and its cost
+  at the end of the line (*~55 tokens*). Beside the list, a sticky card says how many are chosen,
+  about what they cost in every session, and which libraries are connected first; its one button
   (*Review and add…*) weaves while they connect (Cancel stops it; leaving the page stops it too),
-  then opens the usual review. Below 760 px the card docks at the foot. Everything else is chosen
-  to start with: they are suggestions, not a menu.
+  then opens the usual review. Below 760 px the card docks at the foot. Only the strongest few
+  start ticked (`suggest::tick`): team requirements and rules, what other projects use, three
+  narrow rules for the stack and one practice. Never what the scan flags, nor community code to run.
 - **Project home** — below 1020 px the header compacts (icon actions on the title row) and the
   workbench shows the list or one item with "← Recommendations", never both squeezed. The
   wide layout: the project's swatch, identity (name, path, branch), the recognized
@@ -127,8 +130,9 @@ its one signature — used only where it carries meaning.
 - **Workflow** — numbered steps on a vertical thread, references opening inline, "Prepare
   for my agent" kept apart from "Run a check".
 - **Review** — clients and scope, every file with an expandable diff and plain explanation,
-  conflicts with explicit choices, notes, the recovery promise, and a final button that names
-  the action ("Install for Cursor in this project").
+  conflicts with explicit choices, skills the chosen ones call by name (with one button to add
+  them), notes, the recovery promise, and a final button that names the action ("Install for
+  Cursor in this project").
 - **Sidebar** — navigation first: projects, My skills, *Libraries*, Contributions when there
   are any. Connected libraries are one family on one warp — a hairline spine through each
   source's thread (stitched for community) — that continues into a small open knot, *Explore

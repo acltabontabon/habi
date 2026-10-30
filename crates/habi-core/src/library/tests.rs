@@ -630,3 +630,68 @@ fn humanize_keeps_initialisms_readable() {
     assert_eq!(humanize("slack_gif.creator"), "Slack GIF creator");
     assert_eq!(humanize(""), "");
 }
+
+// ----- skills that call each other ----------------------------------------------
+
+fn item_named<'a>(idx: &'a LibraryIndex, name: &str) -> &'a LibraryItem {
+    idx.items.iter().find(|i| i.name == name).unwrap()
+}
+
+#[test]
+fn a_skill_calling_a_sibling_by_name_says_so() {
+    let skill =
+        |name: &str, body: &str| format!("---\nname: {name}\ndescription: A skill.\n---\n{body}");
+    let plans = skill(
+        "writing-plans",
+        "Then use superpowers:executing-plans. See also `verification` and superpowers:missing-one.\nhttps://example.com/x and ci:verification.",
+    );
+    let executing = skill("executing-plans", "Ends with superpowers:writing-plans.");
+    let verification = skill("verification", "No calls here.");
+    let plugin = skill(
+        "elsewhere",
+        "Calls other:executing-plans in another folder.",
+    );
+    let idx = index(&[
+        ("skills/writing-plans/SKILL.md", plans.as_str()),
+        ("skills/executing-plans/SKILL.md", executing.as_str()),
+        ("skills/verification/SKILL.md", verification.as_str()),
+        ("plugins/other/skills/elsewhere/SKILL.md", plugin.as_str()),
+    ]);
+    // Only `plugin:skill` calls, in order, to skills beside it. A backticked
+    // name is a "see also", and a name not in the library is nothing to add.
+    assert_eq!(
+        item_named(&idx, "writing-plans").calls,
+        ["executing-plans", "verification"]
+    );
+    assert_eq!(item_named(&idx, "executing-plans").calls, ["writing-plans"]);
+    assert!(item_named(&idx, "verification").calls.is_empty());
+    // A sibling is in the same folder: another plugin's skill of that name is not this one.
+    assert!(item_named(&idx, "elsewhere").calls.is_empty());
+}
+
+#[test]
+fn a_skill_naming_many_others_is_an_index_of_them() {
+    let names: Vec<String> = (1..=6).map(|i| format!("skill-{i}")).collect();
+    let calls = names
+        .iter()
+        .map(|n| format!("pack:{n}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let index_skill = format!("---\nname: using-pack\ndescription: Index.\n---\n{calls}");
+    let bodies: Vec<(String, String)> = names
+        .iter()
+        .map(|n| {
+            (
+                format!("skills/{n}/SKILL.md"),
+                format!("---\nname: {n}\ndescription: A skill.\n---\nBody."),
+            )
+        })
+        .collect();
+    let mut files: Vec<(&str, &str)> = bodies
+        .iter()
+        .map(|(p, t)| (p.as_str(), t.as_str()))
+        .collect();
+    files.push(("skills/using-pack/SKILL.md", index_skill.as_str()));
+    let idx = index(&files);
+    assert!(item_named(&idx, "using-pack").calls.is_empty());
+}

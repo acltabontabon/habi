@@ -1,14 +1,14 @@
 {
-  "sourceId": "1b570c789e23",
-  "snapshot": "0961267311b14067dfabb154d4bac7771b452376",
+  "sourceId": "aa1893d04afe",
+  "snapshot": "5ff9836d17aa8dcfa348fa946e8091993a7a7c7c",
   "name": null,
   "owner": null,
   "description": null,
   "contact": null,
   "items": [
     {
-      "key": "1b570c789e23/api-design",
-      "sourceId": "1b570c789e23",
+      "key": "aa1893d04afe/api-design",
+      "sourceId": "aa1893d04afe",
       "id": "api-design",
       "kind": "skill",
       "title": "API design",
@@ -52,11 +52,12 @@
       "metadataStatus": "undeclared",
       "diagnostics": [],
       "signals": [],
+      "calls": [],
       "complete": true
     },
     {
-      "key": "1b570c789e23/ci-review",
-      "sourceId": "1b570c789e23",
+      "key": "aa1893d04afe/ci-review",
+      "sourceId": "aa1893d04afe",
       "id": "ci-review",
       "kind": "skill",
       "title": "CI review",
@@ -94,11 +95,12 @@
       "metadataStatus": "undeclared",
       "diagnostics": [],
       "signals": [],
+      "calls": [],
       "complete": true
     },
     {
-      "key": "1b570c789e23/migrations",
-      "sourceId": "1b570c789e23",
+      "key": "aa1893d04afe/migrations",
+      "sourceId": "aa1893d04afe",
       "id": "migrations",
       "kind": "skill",
       "title": "Migrations",
@@ -167,11 +169,12 @@
           "more": 0
         }
       ],
+      "calls": [],
       "complete": true
     },
     {
-      "key": "1b570c789e23/wrangler",
-      "sourceId": "1b570c789e23",
+      "key": "aa1893d04afe/wrangler",
+      "sourceId": "aa1893d04afe",
       "id": "wrangler",
       "kind": "skill",
       "title": "Wrangler",
@@ -209,6 +212,7 @@
       "metadataStatus": "undeclared",
       "diagnostics": [],
       "signals": [],
+      "calls": [],
       "complete": true
     }
   ],

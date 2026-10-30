@@ -138,6 +138,10 @@ struct RawPick {
     title: String,
     gist: String,
     why: String,
+    tokens: u32,
+    #[serde(default)]
+    scripts: bool,
+    caution: Option<String>,
     applies_when: Option<Value>,
 }
 
@@ -155,6 +159,13 @@ pub struct Pick {
     pub gist: String,
     /// Habi's reason to suggest it, as a short phrase ("Any project with tests").
     pub why: String,
+    /// What its name and description cost in every agent session, in tokens
+    /// (`suggest::tokens_of`), at the revision checked.
+    pub tokens: u32,
+    /// It comes with code an agent could run, at the revision checked.
+    pub scripts: bool,
+    /// What Habi's scan of its files flags as caution, at the revision checked.
+    pub caution: Option<String>,
     /// Where it fits; `None` for a practice that fits any codebase.
     pub applies_when: Option<Condition>,
 }
@@ -428,6 +439,12 @@ fn validate(raw: RawEntry, strict: bool) -> Result<Entry> {
             return Err(bad(&id, format!("pick `{skill}` is listed twice")));
         }
         let words = |s: &str, most: usize| !s.trim().is_empty() && s.chars().count() <= most;
+        if pick.tokens == 0 {
+            return Err(bad(
+                &id,
+                format!("pick `{skill}` needs its measured `tokens`"),
+            ));
+        }
         if !words(&pick.title, 60) || !words(&pick.gist, 100) || !words(&pick.why, 60) {
             return Err(bad(
                 &id,
@@ -458,6 +475,9 @@ fn validate(raw: RawEntry, strict: bool) -> Result<Entry> {
             title: pick.title,
             gist: pick.gist,
             why: pick.why,
+            tokens: pick.tokens,
+            scripts: pick.scripts,
+            caution: pick.caution,
             applies_when,
         });
     }
@@ -654,7 +674,7 @@ mod tests {
     fn picks_are_single_folders_with_words_and_rules_that_compile() {
         let pick = |p: &str| {
             entry_yaml(&format!(
-                "{BUILDER}    picks:\n      - {{ skill: \"{p}\", title: T, gist: G, why: W }}\n"
+                "{BUILDER}    picks:\n      - {{ skill: \"{p}\", title: T, gist: G, why: W, tokens: 40 }}\n"
             ))
         };
         assert!(Registry::parse(&pick("skills/tdd")).is_ok());
@@ -662,11 +682,11 @@ mod tests {
         assert!(Registry::parse(&pick("skills/../x")).is_err());
         assert!(Registry::parse(&pick("skills/tdd/SKILL.md")).is_err());
         let bad_rule = entry_yaml(&format!(
-            "{BUILDER}    picks:\n      - {{ skill: skills/a, title: T, gist: G, why: W, applies_when: {{ script: x }} }}\n"
+            "{BUILDER}    picks:\n      - {{ skill: skills/a, title: T, gist: G, why: W, tokens: 40, applies_when: {{ script: x }} }}\n"
         ));
         assert!(Registry::parse(&bad_rule).is_err());
         let wordless = entry_yaml(&format!(
-            "{BUILDER}    picks:\n      - {{ skill: skills/a, title: T, gist: \"\", why: W }}\n"
+            "{BUILDER}    picks:\n      - {{ skill: skills/a, title: T, gist: \"\", why: W, tokens: 40 }}\n"
         ));
         assert!(Registry::parse(&wordless).is_err());
     }

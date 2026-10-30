@@ -22,7 +22,7 @@ import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { initialsOf, Strand, Swatch } from "../../components/Weave";
 import { api, type Decisions, HabiError } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
-import { ALL_CLIENTS, clientLabel, plural } from "../../lib/format";
+import { ALL_CLIENTS, andList, clientLabel, plural } from "../../lib/format";
 import { copyState, precedenceNote } from "../../lib/machine";
 import { beginOwnChange, endOwnChange, staleKey } from "../../lib/ownChanges";
 import { invalidateProjectData, invalidateSkills, keys, useSources } from "../../lib/queries";
@@ -327,6 +327,9 @@ export function ReviewDialog({
   // An update does not add MCP servers an item suggests only now, unless asked.
   const [addMcp, setAddMcp] = useState(false);
   const [decisions, setDecisions] = useState<Decisions>({});
+  // Skills added from here: what the chosen ones call by name.
+  const [extra, setExtra] = useState<ItemRef[]>([]);
+  const items: ItemRef[] = request.kind === "install" ? [...request.items, ...extra] : [];
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
   // At least one agent is always picked: the last one cannot be unticked, so there is never an empty preview.
@@ -343,14 +346,14 @@ export function ReviewDialog({
 
   // What a machine install would sit next to: projects that already hold the skill.
   const shadows = useQuery({
-    queryKey: ["machineShadows", request.kind === "install" ? request.items : null, chosen],
+    queryKey: ["machineShadows", request.kind === "install" ? items : null, chosen],
     enabled: machine && request.kind === "install" && chosen.length > 0 && !detecting,
     retry: false,
-    queryFn: () => api.machineInstallPreview(request.kind === "install" ? request.items : [], chosen),
+    queryFn: () => api.machineInstallPreview(items, chosen),
   });
 
   // The MCP option only does something for a skill that names a server it needs.
-  const wanted = request.kind === "install" && !machine ? request.items : [];
+  const wanted = machine ? [] : items;
   const overview = useQuery<ProjectOverview>({
     queryKey: keys.overview(projectId ?? ""),
     queryFn: () => api.projectOverview(projectId ?? "", false),
@@ -383,11 +386,33 @@ export function ReviewDialog({
     });
   });
   const libraries = useQueries({
-    queries: [...new Set(wanted.map((r) => r.sourceId))].map((sourceId) => ({
+    queries: [...new Set(items.map((r) => r.sourceId))].map((sourceId) => ({
       queryKey: keys.library(sourceId),
       queryFn: () => api.library(sourceId),
     })),
   });
+  // Skills the ones being installed call by name, that are not coming with them or already here.
+  const planned = new Set(items.map((r) => `${r.sourceId}/${r.itemId}`));
+  const companions = new Map<string, { ref: ItemRef; title: string; by: string[] }>();
+  for (const ref of items) {
+    const library = libraries.find((l) => l.data?.sourceId === ref.sourceId)?.data;
+    const caller = library?.items.find((i) => i.id === ref.itemId);
+    for (const id of caller?.calls ?? []) {
+      const key = `${ref.sourceId}/${id}`;
+      const callee = library?.items.find((i) => i.id === id);
+      const here = overview.data?.recommendations.some(
+        (r) => r.item.sourceId === ref.sourceId && r.item.id === id && r.installation,
+      );
+      if (!caller || !callee || planned.has(key) || here) continue;
+      const entry = companions.get(key) ?? {
+        ref: { sourceId: ref.sourceId, itemId: id },
+        title: callee.title,
+        by: [],
+      };
+      if (!entry.by.includes(caller.title)) entry.by.push(caller.title);
+      companions.set(key, entry);
+    }
+  }
   const asksMcp = wanted.some((ref) =>
     libraries.some(
       (l) =>
@@ -397,7 +422,7 @@ export function ReviewDialog({
   );
 
   const plan = useQuery<Plan>({
-    queryKey: ["plan", projectId, request, chosen, includeMcp, addMcp, decisions],
+    queryKey: ["plan", projectId, request, extra, chosen, includeMcp, addMcp, decisions],
     enabled: request.kind !== "install" || (chosen.length > 0 && !detecting),
     retry: false,
     gcTime: 0,
@@ -408,8 +433,8 @@ export function ReviewDialog({
       switch (request.kind) {
         case "install":
           return projectId === null
-            ? api.planInstallMachine(request.items, chosen, decisions)
-            : api.planInstall(projectId, request.items, chosen, includeMcp, decisions);
+            ? api.planInstallMachine(items, chosen, decisions)
+            : api.planInstall(projectId, items, chosen, includeMcp, decisions);
         case "update":
           return projectId === null
             ? api.planUpdateMachine(request.keys, decisions)
@@ -490,7 +515,7 @@ export function ReviewDialog({
     request.kind === "install" ? (machine ? "Install on this machine" : "Install") : plan.title;
 
   const titles: Record<ReviewRequest["kind"], string> = {
-    install: `Install ${request.title}`,
+    install: extra.length > 0 ? `Install ${plural(items.length, "skill")}` : `Install ${request.title}`,
     update: `Update ${request.title}`,
     remove: `Remove ${request.title}`,
     restore: `Restore: ${request.title}`,
@@ -500,10 +525,10 @@ export function ReviewDialog({
   const only = p && p.items.length === 1 ? p.items[0] : undefined;
   // The skill's own cloth, known before the preview arrives: its library's dye, its initials.
   const mark =
-    installing && request.items.length === 1 ? (
+    installing && items.length === 1 ? (
       <Swatch
-        dyes={[dyeOf((request.items[0] as ItemRef).sourceId)]}
-        seed={(request.items[0] as ItemRef).itemId}
+        dyes={[dyeOf((items[0] as ItemRef).sourceId)]}
+        seed={(items[0] as ItemRef).itemId}
         size={44}
         initials={initialsOf(request.title)}
       />
@@ -684,6 +709,32 @@ export function ReviewDialog({
                       ? "Your skill folders already match. Installing again would not modify any file."
                       : "The project already matches. Installing again would not modify any file."}
                   </Notice>
+                ) : null}
+
+                {companions.size > 0 ? (
+                  <section className="review-companions" aria-labelledby="companions-title">
+                    <h3 id="companions-title" className="review-heading">
+                      Called by name
+                    </h3>
+                    <ul className="review-notes">
+                      {[...new Set([...companions.values()].flatMap((c) => c.by))].map((caller) => {
+                        const called = [...companions.values()].filter((c) => c.by.includes(caller));
+                        return (
+                          <li key={caller}>
+                            <strong>{caller}</strong> calls {andList(called.map((c) => c.title))}. Those steps
+                            will not work without {called.length === 1 ? "it" : "them"}.
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <Button
+                      size="sm"
+                      icon="plus"
+                      onClick={() => setExtra((x) => [...x, ...[...companions.values()].map((c) => c.ref)])}
+                    >
+                      {companions.size === 1 ? "Add it too" : `Add these ${companions.size} too`}
+                    </Button>
+                  </section>
                 ) : null}
 
                 {p.mcpSuggestions.length > 0 ? (

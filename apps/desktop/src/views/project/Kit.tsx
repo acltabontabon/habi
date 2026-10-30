@@ -21,17 +21,21 @@ import { Weaving } from "../../components/Weaving";
 import { useActions } from "../../lib/actions";
 import { api, HabiError, newJobId } from "../../lib/api";
 import { type Dye, useDyes } from "../../lib/dye";
-import { plural } from "../../lib/format";
+import { andList, plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateProjectData, keys, useMachineSkills } from "../../lib/queries";
 import { summarize } from "../../lib/skillFacts";
 import { ReviewDialog } from "../review/ReviewDialog";
+import { SIGNALS_LIMIT } from "../sources/Signals";
 
 const SECTIONS: { group: KitGroup; title: string }[] = [
   { group: "required", title: "Your team requires" },
   { group: "stack", title: "For this stack" },
   { group: "practice", title: "For how you work" },
 ];
+
+const COST_TIP =
+  "Agents load every installed skill's name and description at the start of each session. Its full instructions load only when it is used. An estimate, about 4 characters to a token.";
 
 /** A library that is not connected yet: a loose, undyed thread. */
 const LOOSE: Dye = { color: "var(--ink-faint)", community: true };
@@ -57,12 +61,6 @@ export function basisWord(s: Suggestion): string | null {
 export function reasonOf(s: Suggestion): string {
   if (s.applicability && s.applicability.applicability === "applies") return s.applicability.reason;
   return s.pick ?? "";
-}
-
-/** Names as a sentence: "Vercel, Sentry and Superpowers". */
-export function names(list: string[]): string {
-  if (list.length <= 1) return list.join("");
-  return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
 }
 
 type Phase =
@@ -118,11 +116,12 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
   }, [overview, frozen]);
   const kit = frozen?.kit ?? overview.kit;
 
-  // Chosen to start with, except copies of skills already on this machine; a knot flips that.
+  // What Habi ticks to start with, except copies of skills already on this machine; a knot flips that.
   const [flipped, setFlipped] = useState<Set<string>>(() => new Set());
-  const isOn = (s: Suggestion) => !s.installed && flipped.has(s.key) === everywhere(s);
+  const isOn = (s: Suggestion) => !s.installed && flipped.has(s.key) !== (s.chosen && !everywhere(s));
   const open = kit.suggestions.filter((s) => !s.installed);
   const chosen = open.filter(isOn);
+  const cost = chosen.reduce((sum, s) => sum + s.tokens, 0);
   const toConnect = [
     ...new Map(
       chosen
@@ -262,7 +261,7 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                 ? "Habi found nothing it would pick for this project. Explore libraries, or write a skill of your own."
                 : done
                   ? "New suggestions appear when the project, your libraries or your other projects change."
-                  : "Habi's picks for what it read in this repository, each with the reason it fits."}
+                  : "Habi's picks for what it read in this repository, each with the reason it fits. The strongest few start ticked."}
             </p>
           </header>
 
@@ -330,17 +329,36 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                           {s.gist ? (
                             <p className="kit-gist">{s.pick ? s.gist : summarize(s.gist).text}</p>
                           ) : null}
-                          {reason || s.elsewhere.length > 0 ? (
-                            <p className="kit-why">
-                              {reason ? <span className="kit-why-text">{reason}</span> : null}
-                              {s.elsewhere.length > 0 ? (
-                                <span className="kit-elsewhere">
-                                  {reason ? "Also in" : "In"} {names(s.elsewhere)}
-                                </span>
-                              ) : null}
-                              {basis ? <span className="kit-basis">{basis}</span> : null}
-                            </p>
-                          ) : null}
+                          <p className="kit-why">
+                            {reason ? <span className="kit-why-text">{reason}</span> : null}
+                            {s.elsewhere.length > 0 ? (
+                              <span className="kit-elsewhere">
+                                {reason ? "Also in" : "In"} {andList(s.elsewhere)}
+                              </span>
+                            ) : null}
+                            {basis ? <span className="kit-basis">{basis}</span> : null}
+                            {s.caution[0] ? (
+                              <span
+                                className="kit-caution"
+                                data-tip={`${s.caution.join(". ")}. ${SIGNALS_LIMIT}`}
+                              >
+                                <Icon name="warning" size={12} />
+                                {s.caution[0]}
+                                {s.caution.length > 1 ? ` and ${s.caution.length - 1} more` : ""}
+                              </span>
+                            ) : null}
+                            {s.scripts ? (
+                              <span
+                                className="kit-basis"
+                                data-tip="Your agent can run this code. The review shows every file."
+                              >
+                                Comes with scripts
+                              </span>
+                            ) : null}
+                            <span className="kit-cost" data-tip={COST_TIP}>
+                              ~{s.tokens} tokens
+                            </span>
+                          </p>
                         </div>
                       </li>
                     );
@@ -383,6 +401,11 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
             <p className="kit-cart-count">
               {chosen.length === 0 ? "Nothing chosen" : plural(chosen.length, "skill")}
             </p>
+            {chosen.length > 0 ? (
+              <p className="kit-cart-note" data-tip={COST_TIP}>
+                About {cost.toLocaleString("en")} tokens in every agent session.
+              </p>
+            ) : null}
             {toConnect.length > 0 ? (
               <div className="kit-connects">
                 <p className="kit-cart-note">
@@ -437,7 +460,7 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
             ) : null}
             {missing.length > 0 ? (
               <p className="kit-cart-note is-warn" role="status">
-                Not found in {missing.length === 1 ? "its library" : "their libraries"}: {names(missing)}.
+                Not found in {missing.length === 1 ? "its library" : "their libraries"}: {andList(missing)}.
               </p>
             ) : null}
             <p className="kit-cart-note">

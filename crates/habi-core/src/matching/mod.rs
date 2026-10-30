@@ -160,11 +160,15 @@ fn true_leaves(node: &EvalNode) -> Vec<String> {
         Condition::Not { .. } => Vec::new(),
         _ if node.outcome == Tri::True => vec![match &node.location {
             // File name and line only; the full path is in the evidence.
-            Some(loc) => format!(
-                "{} ({})",
-                node.summary,
-                loc.rsplit('/').next().unwrap_or(loc)
-            ),
+            Some(loc) => {
+                let file = loc.rsplit('/').next().unwrap_or(loc);
+                // "Has manage.py" already says where.
+                if node.summary.ends_with(file) {
+                    node.summary.clone()
+                } else {
+                    format!("{} ({file})", node.summary)
+                }
+            }
             None => node.summary.clone(),
         }],
         _ => Vec::new(),

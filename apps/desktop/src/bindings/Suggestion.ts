@@ -42,4 +42,22 @@ applicability: ApplicabilityResult | null,
 /**
  * The person's other projects that have it, installed by Habi.
  */
-elsewhere: Array<string>, };
+elsewhere: Array<string>, 
+/**
+ * What its name and description cost in every agent session, in tokens.
+ */
+tokens: number, 
+/**
+ * It comes with code an agent could run.
+ */
+scripts: boolean, 
+/**
+ * What the scan of its files flags as caution, in plain sentences.
+ */
+caution: Array<string>, 
+/**
+ * Whether it starts ticked: team requirements and rules, what the
+ * person's other projects use, then the strongest few. Never a skill the
+ * scan flags, nor community code to run; those are a choice to make.
+ */
+chosen: boolean, };

@@ -13,9 +13,15 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 
 - **Suggested, for every project.** A project opens on a short, opinionated list of skills for
   it: the team's requirements, skills for its stack, and a few practices for any codebase, each
-  with the reason it fits (*Uses React · package.json:5*) and whose word that is. **Add N
-  skills…** connects the libraries they come from (read only, nothing runs) and opens the usual
-  review. **All skills** keeps the full workbench one tab away.
+  with the reason it fits (*Uses React · package.json:5*) and whose word that is. The strongest
+  few start ticked, since every skill costs context in every agent session: each row and the total
+  say about how much. **Review and add…** connects the libraries they come from (read only, nothing
+  runs) and opens the usual review. **All skills** keeps the full workbench one tab away.
+- **What a skill brings, said up front.** A row says when a skill comes with code an agent could
+  run, and what Habi's scan of its files flags as caution. Those from community libraries start
+  unticked, so running someone else's code is a choice.
+- **Skills that call each other.** The install review lists skills the chosen ones call by name
+  (`superpowers:writing-plans`), which would otherwise break, and adds them in one click.
 - **Habi's picks.** The catalog names the skills Habi stands behind in each library, with when
   each fits, so suggestions work before anything is connected. A catalog library's page lists
   its picks; Explore puts the libraries with something for your projects first and says which.

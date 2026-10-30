@@ -308,6 +308,21 @@
   white-space: nowrap;
 }
 
+/* What the scan flags: always an icon and words, never color alone. */
+.kit-caution {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--warn-ink);
+}
+
+/* What it costs in every session: quiet, at the end of the line. */
+.kit-cost {
+  margin-left: auto;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
 /* Left out: the row steps back, its thread goes slack. */
 .kit-row:not(.is-on):not(.is-added) .kit-title,
 .kit-row:not(.is-on):not(.is-added) .kit-gist {
@@ -534,4 +549,11 @@
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--ink-faint);
+}
+
+/* The review: skills the chosen ones call by name. */
+.review-companions {
+  display: grid;
+  justify-items: start;
+  gap: var(--s2);
 }

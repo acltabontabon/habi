@@ -43,8 +43,8 @@
   from a skill's name and description (a fixed lexicon of the technologies Habi detects) for
   skills with no rule from their author or the catalog.
 - **`library`**: reads a snapshot into a `LibraryIndex`: `SKILL.md` frontmatter, optional
-  `habi.yaml`, `habi-library.yaml` instructions, diagnostics, provenance and the static
-  `signals` read from a skill's files.
+  `habi.yaml`, `habi-library.yaml` instructions, diagnostics, provenance, the static `signals`
+  read from a skill's files, and which siblings a skill calls by name (`calls`).
 - **`source`**: registration, refresh (Git into a bare cache, or folder), release tags,
   moved-tag and rewritten-history warnings, offline cache, snapshot listings in SQLite,
   contents in the blob store.
@@ -65,7 +65,8 @@
 - **`suggest`**: a project's *Suggested* list: team requirements, skills for its stack and a
   few practices, capped and ordered by stated rules, from connected libraries' recommendations
   and from the catalog's picks for libraries not connected (evaluated against the inspection;
-  nothing is fetched).
+  nothing is fetched). It also says what each costs in context (`tokens_of`), what it brings, and
+  which start ticked.
 - **`skills`**: My skills. Package storage, document and applicability saving with
   external-edit detection, validation, zip export (`archive`), lineage and three-way library
   updates (`lineage`, `upstream`), the skills in your home folder (`machine`), and `intake`,

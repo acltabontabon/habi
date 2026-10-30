@@ -19,7 +19,8 @@
 use crate::catalog::registry::{Entry, Pick, PublisherKind, StatusState};
 use crate::install::lock::lock_key;
 use crate::install::status::SkillFolders;
-use crate::library::model::LibraryIndex;
+use crate::library::model::{ItemFile, LibraryIndex, LibraryItem};
+use crate::library::signals::SignalSeverity;
 use crate::matching::condition::Condition;
 use crate::matching::{Applicability, ApplicabilityResult, Scope, Views, assess_in};
 use crate::recommend::{Basis, Group, Recommendation};
@@ -39,6 +40,14 @@ const MAX_STACK: usize = 6;
 const MAX_UNPICKED_PER_LIBRARY: usize = 1;
 /// Practices that fit any codebase shown at most.
 const MAX_PRACTICE: usize = 3;
+/// Skills for the stack, of Habi's choosing, that start chosen. Every skill an
+/// agent carries costs context in every session, so the list is longer than
+/// what starts ticked: the strongest few, the rest a tick away.
+const MAX_TICKED_STACK: usize = 3;
+/// Practices that start chosen, unless the person's other projects use them.
+const MAX_TICKED_PRACTICE: usize = 1;
+/// A rule accepting more alternatives than this is too broad to start chosen.
+const MAX_TICKED_BREADTH: usize = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -95,6 +104,24 @@ pub struct Suggestion {
     pub applicability: Option<ApplicabilityResult>,
     /// The person's other projects that have it, installed by Habi.
     pub elsewhere: Vec<String>,
+    /// What its name and description cost in every agent session, in tokens.
+    pub tokens: u32,
+    /// It comes with code an agent could run.
+    pub scripts: bool,
+    /// What the scan of its files flags as caution, in plain sentences.
+    pub caution: Vec<String>,
+    /// Whether it starts ticked: team requirements and rules, what the
+    /// person's other projects use, then the strongest few. Never a skill the
+    /// scan flags, nor community code to run; those are a choice to make.
+    pub chosen: bool,
+}
+
+/// What a skill's name and description cost in every agent session, in tokens,
+/// about 4 characters each. Agents load these at the start of a session to know
+/// the skill exists; the instructions load only when it is used.
+pub fn tokens_of(name: &str, description: &str) -> u32 {
+    let chars = name.chars().count() + description.chars().count();
+    u32::try_from(chars.div_ceil(4)).unwrap_or(u32::MAX)
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
@@ -160,12 +187,11 @@ struct Candidate {
 pub fn kit(input: &KitInput) -> Kit {
     let mut candidates: Vec<Candidate> = Vec::new();
     let mut fitting = 0usize;
-    // Where each connected item lives in its library, to key it as the catalog does.
-    let paths: HashMap<&str, &str> = input
+    let items: HashMap<&str, &LibraryItem> = input
         .connected
         .iter()
         .flat_map(|c| c.index.items.iter())
-        .map(|i| (i.key.as_str(), i.path.as_str()))
+        .map(|i| (i.key.as_str(), i))
         .collect();
 
     for r in input.recommendations {
@@ -199,7 +225,8 @@ pub fn kit(input: &KitInput) -> Kit {
         if !r.item.installable && !installed {
             continue;
         }
-        let path = paths.get(r.item.key.as_str()).copied();
+        let found = items.get(r.item.key.as_str()).copied();
+        let path = found.map(|i| i.path.as_str());
         let (key, order) = match (library.entry, path) {
             (Some(entry), Some(path)) => (
                 catalog_key(&entry.id, path),
@@ -221,6 +248,16 @@ pub fn kit(input: &KitInput) -> Kit {
             && (broad || library.source.role == SourceRole::Community)
         {
             continue;
+        }
+        let mut caution: Vec<String> = Vec::new();
+        for signal in found
+            .map_or(&[][..], |i| i.signals.as_slice())
+            .iter()
+            .filter(|s| s.severity == SignalSeverity::Caution)
+        {
+            if !caution.contains(&signal.summary) {
+                caution.push(signal.summary.clone());
+            }
         }
         candidates.push(Candidate {
             broad,
@@ -259,6 +296,10 @@ pub fn kit(input: &KitInput) -> Kit {
                 pick: r.pick.as_ref().map(|p| p.why.clone()),
                 applicability: (!practice).then(|| r.applicability.clone()),
                 elsewhere,
+                tokens: tokens_of(&r.item.name, &r.item.description),
+                scripts: found.is_some_and(|i| i.files.iter().any(ItemFile::is_code)),
+                caution,
+                chosen: false,
             },
         });
     }
@@ -336,6 +377,12 @@ pub fn kit(input: &KitInput) -> Kit {
     let (mut practices, candidates): (Vec<Candidate>, Vec<Candidate>) = candidates
         .into_iter()
         .partition(|c| c.suggestion.group == KitGroup::Practice);
+    // Skills whose rule is narrow enough to start chosen.
+    let narrow: Vec<String> = candidates
+        .iter()
+        .filter(|c| !c.broad && c.breadth <= MAX_TICKED_BREADTH)
+        .map(|c| c.suggestion.key.clone())
+        .collect();
     let mut out: Vec<Suggestion> = Vec::new();
     let named = |out: &[Suggestion], s: &Suggestion| {
         out.iter().any(|o| o.name.eq_ignore_ascii_case(&s.name))
@@ -405,6 +452,7 @@ pub fn kit(input: &KitInput) -> Kit {
             out.push(c.suggestion);
         }
     }
+    tick(&mut out, &narrow);
     let shown = out
         .iter()
         .filter(|s| s.library.connected && s.group != KitGroup::Practice && !s.installed)
@@ -412,6 +460,33 @@ pub fn kit(input: &KitInput) -> Kit {
     Kit {
         more: u32::try_from(fitting.saturating_sub(shown)).unwrap_or(u32::MAX),
         suggestions: out,
+    }
+}
+
+/// Sets what starts ticked, walking the list in its order.
+fn tick(out: &mut [Suggestion], narrow: &[String]) {
+    let (mut stack, mut practice) = (0usize, 0usize);
+    for s in out.iter_mut() {
+        let flagged = !s.caution.is_empty() || (s.library.community && s.scripts);
+        let team_rule = !s.library.community && s.basis == Basis::Declared;
+        s.chosen = !s.installed
+            && match s.group {
+                KitGroup::Required => true,
+                _ if flagged => false,
+                _ if !s.elsewhere.is_empty() => true,
+                KitGroup::Stack if team_rule => true,
+                KitGroup::Stack
+                    if s.pick.is_some() && stack < MAX_TICKED_STACK && narrow.contains(&s.key) =>
+                {
+                    stack += 1;
+                    true
+                }
+                KitGroup::Practice if practice < MAX_TICKED_PRACTICE => {
+                    practice += 1;
+                    true
+                }
+                _ => false,
+            };
     }
 }
 
@@ -519,6 +594,10 @@ fn from_pick(
         applicability,
         // Nothing of a library that is not connected is installed through Habi.
         elsewhere: Vec::new(),
+        tokens: pick.tokens,
+        scripts: pick.scripts,
+        caution: pick.caution.iter().cloned().collect(),
+        chosen: false,
     }
 }
 
@@ -591,29 +670,33 @@ sources:
     publisher: { name: Makers, kind: builder, owner: makers }
     ownership: { method: github-verified-org, checked: "2026-10-03" }
     picks:
-      - { skill: skills/react-rules, title: React rules, gist: Rules for React., why: React apps, applies_when: { tag: "framework:react" } }
-      - { skill: skills/django-rules, name: makers-django, title: Django rules, gist: Rules for Django., why: Django apps, applies_when: { tag: "framework:django" } }
-      - { skill: skills/ts-style, title: TypeScript style, gist: Style., why: TypeScript, applies_when: { tag: "lang:typescript" } }
-      - { skill: skills/web-any, title: Any web, gist: Web., why: Web apps, applies_when: { any: [ { tag: "framework:vue" }, { tag: "framework:svelte" }, { tag: "framework:react" } ] } }
-      - { skill: skills/makers-way, title: Makers way, gist: How makers work., why: Any codebase }
+      - { skill: skills/react-rules, title: React rules, gist: Rules for React., tokens: 10, why: React apps, applies_when: { tag: "framework:react" } }
+      - { skill: skills/django-rules, name: makers-django, title: Django rules, gist: Rules for Django., tokens: 10, why: Django apps, applies_when: { tag: "framework:django" } }
+      - { skill: skills/ts-style, title: TypeScript style, gist: Style., tokens: 10, why: TypeScript, applies_when: { tag: "lang:typescript" } }
+      - { skill: skills/web-any, title: Any web, gist: Web., tokens: 10, why: Web apps, applies_when: { any: [ { tag: "framework:vue" }, { tag: "framework:svelte" }, { tag: "framework:react" } ] } }
+      - { skill: skills/makers-way, title: Makers way, gist: How makers work., tokens: 10, why: Any codebase }
   - id: crowd
     name: Crowd
     url: https://github.com/crowd/skills
     summary: Skills.
     publisher: { name: Crowd, kind: community, owner: crowd }
     picks:
-      - { skill: skills/debugging, title: Debugging, gist: Find the cause first., why: Any codebase }
-      - { skill: skills/planning, title: Planning, gist: "Plan, then build.", why: Any codebase }
-      - { skill: skills/review, title: Review, gist: Review the diff., why: Any codebase }
-      - { skill: skills/verify, title: Verify, gist: Check before saying done., why: Any codebase }
-      - { skill: other/react-rules, title: React rules again, gist: Same name., why: React apps, applies_when: { tag: "framework:react" } }
+      - { skill: skills/debugging, title: Debugging, gist: Find the cause first., tokens: 10, why: Any codebase }
+      - { skill: skills/planning, title: Planning, gist: "Plan, then build.", tokens: 10, why: Any codebase }
+      - { skill: skills/review, title: Review, gist: Review the diff., tokens: 10, why: Any codebase }
+      - { skill: skills/verify, title: Verify, gist: Check before saying done., tokens: 10, why: Any codebase }
+      - { skill: other/react-rules, title: React rules again, gist: Same name., tokens: 10, why: React apps, applies_when: { tag: "framework:react" } }
 "#;
 
     fn run(root: &Path) -> Kit {
+        run_with(CATALOG, root)
+    }
+
+    fn run_with(yaml: &str, root: &Path) -> Kit {
         let inspection =
             crate::inspect::inspect(root, &Default::default(), &CancelToken::new()).unwrap();
         let views = Views::new(&inspection, &[]);
-        let entries = catalog(CATALOG);
+        let entries = catalog(yaml);
         kit(&KitInput {
             root,
             folders: &SkillFolders::of(root),
@@ -737,5 +820,51 @@ sources:
                 ("Planning", true),
             ]
         );
+    }
+
+    #[test]
+    fn the_strongest_few_start_ticked_and_flagged_skills_never_do() {
+        let yaml = r#"version: 1
+sources:
+  - id: makers
+    name: Makers
+    url: https://github.com/makers/skills
+    summary: Skills.
+    publisher: { name: Makers, kind: builder, owner: makers }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    picks:
+      - { skill: skills/one, title: One, gist: G, tokens: 10, why: W, applies_when: { tag: "framework:react" } }
+      - { skill: skills/two, title: Two, gist: G, tokens: 20, why: W, applies_when: { tag: "framework:react" } }
+      - { skill: skills/code, title: Code, gist: G, tokens: 5, scripts: true, why: W, applies_when: { tag: "framework:react" } }
+      - { skill: skills/flag, title: Flag, gist: G, tokens: 5, caution: "Contains a compiled program", why: W, applies_when: { tag: "framework:react" } }
+      - { skill: skills/three, title: Three, gist: G, tokens: 30, why: W, applies_when: { dependency: { name: react, ecosystem: npm } } }
+      - { skill: skills/four, title: Four, gist: G, tokens: 40, why: W, applies_when: { tag: "lang:typescript" } }
+      - { skill: skills/five, title: Five, gist: G, tokens: 50, why: W, applies_when: { dependency: { name: react-dom, ecosystem: npm } } }
+      - { skill: skills/wide, title: Wide, gist: G, tokens: 60, why: W, applies_when: { any: [ { tag: "framework:vue" }, { tag: "framework:svelte" }, { tag: "framework:angular" }, { tag: "framework:next" }, { tag: "framework:react" } ] } }
+      - { skill: skills/way, title: Way, gist: G, tokens: 70, why: W }
+      - { skill: skills/other, title: Other way, gist: G, tokens: 80, why: W }
+"#;
+        let dir = project(&[
+            (
+                "package.json",
+                r#"{"name":"web","dependencies":{"react":"19.0.0"}}"#,
+            ),
+            ("src/App.tsx", "export const App = () => null;"),
+        ]);
+        let k = run_with(yaml, dir.path());
+        let ticked: Vec<&str> = k
+            .suggestions
+            .iter()
+            .filter(|s| s.chosen)
+            .map(|s| s.title.as_str())
+            .collect();
+        // Three narrow rules for the stack and one practice. What the scan
+        // flags, community code to run and broad rules wait for a tick.
+        assert_eq!(ticked, ["One", "Two", "Three", "Way"]);
+        let code = k.suggestions.iter().find(|s| s.title == "Code").unwrap();
+        assert!(code.scripts && !code.chosen);
+        let flag = k.suggestions.iter().find(|s| s.title == "Flag").unwrap();
+        assert_eq!(flag.caution, ["Contains a compiled program"]);
+        assert!(!flag.chosen);
     }
 }

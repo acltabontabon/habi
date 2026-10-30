@@ -207,6 +207,12 @@ export function compactCount(n: number): string {
   return String(n);
 }
 
+/** Names as a sentence: "Vercel, Sentry and Superpowers". */
+export function andList(list: string[]): string {
+  if (list.length <= 1) return list.join("");
+  return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+}
+
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
