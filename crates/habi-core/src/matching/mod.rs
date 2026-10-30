@@ -15,6 +15,12 @@ use eval::{Declaration, EvalNode, Tri, View, evaluate, specificity};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+/// Modules explained in full in one result, the most relevant first. The rest
+/// keep their outcome: a result crosses to the window per skill, per overview,
+/// and a repository can have thousands of modules.
+const MAX_EXPLAINED_MODULES: usize = 200;
+const SHORT_REASON: usize = 160;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -353,6 +359,11 @@ pub fn assess_in(
             .unwrap_or_default(),
     };
     let specificity = modules.first().map(|m| m.specificity).unwrap_or(0);
+    for m in modules.iter_mut().skip(MAX_EXPLAINED_MODULES) {
+        m.applies = None;
+        m.excludes = None;
+        m.reason = crate::inspect::clip(&m.reason, SHORT_REASON).to_string();
+    }
     ApplicabilityResult {
         applicability: best,
         scope,

@@ -12,6 +12,7 @@ use crate::inspect::model::{
 };
 use crate::inspect::tags::{self, TagBasis, wildcard_match};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{LazyLock, Mutex};
 use ts_rs::TS;
@@ -126,11 +127,7 @@ impl<'a> View<'a> {
     ) -> Self {
         let mut facts: Vec<&Fact> = inspection.module_facts(id).collect();
         for ancestor in inspection.ancestors(id) {
-            facts.extend(
-                inspection
-                    .module_facts(ancestor)
-                    .filter(|f| repository_level(f)),
-            );
+            facts.extend(inspection.repository_level_facts(ancestor));
         }
         View {
             module: Some(id),
@@ -202,22 +199,31 @@ impl<'a> View<'a> {
     }
 
     fn incomplete(&self, areas: &[&str]) -> Vec<String> {
-        let mut notes = Vec::new();
+        let mut notes: Vec<Cow<'_, str>> = Vec::new();
         for c in &self.coverage {
             if areas.contains(&c.area.as_str()) && c.status != CoverageStatus::Complete {
                 if c.notes.is_empty() {
-                    notes.push(format!(
+                    notes.push(Cow::Owned(format!(
                         "{} evidence for {} is incomplete",
                         c.area, c.module
-                    ));
+                    )));
                 } else {
-                    notes.extend(c.notes.iter().cloned());
+                    notes.extend(c.notes.iter().map(|n| Cow::Borrowed(n.as_str())));
                 }
             }
         }
         notes.sort();
         notes.dedup();
-        notes
+        let left_out = notes.len().saturating_sub(MAX_GAPS);
+        let mut gaps: Vec<String> = notes
+            .into_iter()
+            .take(MAX_GAPS)
+            .map(Cow::into_owned)
+            .collect();
+        if left_out > 0 {
+            gaps.push(format!("(and {left_out} more)"));
+        }
+        gaps
     }
 
     fn relative<'p>(&self, path: &'p str) -> &'p str {
@@ -238,6 +244,10 @@ impl<'a> View<'a> {
         }
     }
 }
+
+/// Coverage notes quoted in one reason. Every condition that ends in "not
+/// established" says why, for every skill and every module.
+const MAX_GAPS: usize = 5;
 
 /// Coverage areas of the manifest readers, one per ecosystem.
 const MANIFEST_AREAS: &[&str] = &["maven", "gradle", "npm", "go", "cargo", "pypi", "composer"];
@@ -513,6 +523,19 @@ fn eval_dependency(
         .copied()
         .filter(|e| filter.is_none_or(|flt| flt.accepts(*e)))
         .collect();
+    // A manifest in what the walk did not list was not read, so no manifest
+    // here says only that none was seen.
+    let unlisted = view.incomplete(&["files"]);
+    if relevant.is_empty() && !unlisted.is_empty() {
+        return node(
+            condition,
+            Tri::Unknown,
+            format!(
+                "no manifest that could declare it was found, but the scan was incomplete: {}",
+                unlisted.join(" ")
+            ),
+        );
+    }
     if relevant.is_empty() {
         let what = match filter {
             Some(f) => f
@@ -532,7 +555,8 @@ fn eval_dependency(
             ),
         );
     }
-    let areas: Vec<&str> = relevant.iter().map(|e| eco_area(*e)).collect();
+    let mut areas: Vec<&str> = relevant.iter().map(|e| eco_area(*e)).collect();
+    areas.push("files");
     let gaps = view.incomplete(&areas);
     if gaps.is_empty() {
         let manifests = relevant
@@ -718,10 +742,12 @@ fn eval_tag(condition: &Condition, tag: &str, view: &View) -> EvalNode {
             format!("Habi cannot detect `{tag}`; declare whether it applies to this project"),
         );
     };
+    // Manifests need `files` too: one the walk did not list was not read.
     let mut areas: Vec<&str> = match basis {
-        TagBasis::Manifest => MANIFEST_AREAS.to_vec(),
+        TagBasis::Manifest | TagBasis::Both => {
+            MANIFEST_AREAS.iter().copied().chain(["files"]).collect()
+        }
         TagBasis::Files => vec!["files"],
-        TagBasis::Both => MANIFEST_AREAS.iter().copied().chain(["files"]).collect(),
     };
     // OpenAPI documents and Liquibase changelogs are recognized by content,
     // so their absence also depends on every candidate file having been read.

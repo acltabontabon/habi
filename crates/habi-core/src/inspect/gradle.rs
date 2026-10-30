@@ -7,13 +7,18 @@
 //! from `buildSrc` or included builds, conditional logic in `dependencies`,
 //! interpolated coordinates, or unrecognized declaration forms.
 
-use super::Collector;
 use super::model::{CoverageStatus, Ecosystem, Evidence, FactOrigin, VersionInfo, VersionState};
+use super::{Collector, FACTS_NOTE};
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
 const DETECTOR: &str = "gradle";
+
+/// Blocks nested deeper than this are not read, and the build says so.
+const MAX_BLOCK_DEPTH: usize = 256;
+/// Line-by-line notes kept word for word, per build script.
+const MAX_LINE_NOTES: usize = 20;
 
 #[derive(Debug, Clone)]
 pub struct GradleDep {
@@ -253,8 +258,14 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
         module: module.to_string(),
         ..Default::default()
     };
-    // Stack of open block names.
+    // Stack of open block names, with a count of those that change how a
+    // declaration is read: the stack can be deep, and there is a look per piece.
     let mut stack: Vec<String> = Vec::new();
+    let (mut subprojects, mut allprojects, mut buildscript) = (0usize, 0usize, 0usize);
+    // Blocks open past the depth limit: their names are not kept.
+    let mut too_deep = 0usize;
+    let mut went_too_deep = false;
+    let mut line_notes_left_out = 0usize;
     let mut unrecognized = Vec::new();
     let mut unrecognized_plugins = Vec::new();
     let mut conditional = false;
@@ -263,13 +274,20 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
         let line_no = index as u32 + 1;
         let whole = line.trim();
 
+        let mut note = |text: String| {
+            if build.partial.len() < MAX_LINE_NOTES {
+                build.partial.push(text);
+            } else {
+                line_notes_left_out += 1;
+            }
+        };
         if APPLY_FROM.is_match(whole) {
-            build
-                .partial
-                .push(format!("line {line_no}: applies a script plugin (`apply from`) whose contents are not evaluated"));
+            note(format!(
+                "line {line_no}: applies a script plugin (`apply from`) whose contents are not evaluated"
+            ));
         }
         if whole.starts_with("configure(") || whole.starts_with("configure (") {
-            build.partial.push(format!(
+            note(format!(
                 "line {line_no}: `configure(...)` applies settings to a computed set of projects"
             ));
         }
@@ -279,11 +297,31 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
         for piece in pieces(line) {
             let (trimmed, header) = match piece {
                 Piece::Open(name) => {
+                    if stack.len() >= MAX_BLOCK_DEPTH {
+                        too_deep += 1;
+                        went_too_deep = true;
+                        continue;
+                    }
+                    match name.as_str() {
+                        "subprojects" => subprojects += 1,
+                        "allprojects" => allprojects += 1,
+                        "buildscript" => buildscript += 1,
+                        _ => {}
+                    }
                     stack.push(name);
                     continue;
                 }
                 Piece::Close => {
-                    stack.pop();
+                    if too_deep > 0 {
+                        too_deep -= 1;
+                        continue;
+                    }
+                    match stack.pop().as_deref() {
+                        Some("subprojects") => subprojects -= 1,
+                        Some("allprojects") => allprojects -= 1,
+                        Some("buildscript") => buildscript -= 1,
+                        _ => {}
+                    }
                     continue;
                 }
                 Piece::Text { text, header } => (text.trim(), header),
@@ -291,11 +329,15 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
             if trimmed.is_empty() {
                 continue;
             }
-            let in_block = |name: &str, stack: &[String]| stack.iter().any(|s| s == name);
-            let top = stack.last().map(String::as_str);
-            let shared = if in_block("subprojects", &stack) {
+            // What block a piece past the depth limit is in was not kept.
+            let top = if too_deep > 0 {
+                None
+            } else {
+                stack.last().map(String::as_str)
+            };
+            let shared = if subprojects > 0 {
                 Some(SharedScope::Subprojects)
-            } else if in_block("allprojects", &stack) {
+            } else if allprojects > 0 {
                 Some(SharedScope::AllProjects)
             } else {
                 None
@@ -344,7 +386,7 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
                 }
             }
 
-            if top == Some("dependencies") && !in_block("buildscript", &stack) {
+            if top == Some("dependencies") && buildscript == 0 {
                 if trimmed.starts_with("if ")
                     || trimmed.starts_with("if(")
                     || trimmed.contains(".forEach")
@@ -400,6 +442,16 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
         }
     }
 
+    if line_notes_left_out > 0 {
+        build
+            .partial
+            .push(format!("and {line_notes_left_out} more lines like these"));
+    }
+    if went_too_deep {
+        build.partial.push(format!(
+            "blocks nested more than {MAX_BLOCK_DEPTH} deep were not read"
+        ));
+    }
     if !unrecognized_plugins.is_empty() {
         let shown: Vec<String> = unrecognized_plugins
             .iter()
@@ -445,16 +497,19 @@ pub fn parse_settings(path: &str, text: &str) -> Settings {
                 }
             }
         }
+        // Each note once: every build in the project repeats them.
         if t.starts_with("includeBuild") {
-            settings.notes.push(
-                "Included builds may contribute convention plugins that add dependencies.".into(),
-            );
+            let note = "Included builds may contribute convention plugins that add dependencies.";
+            if !settings.notes.iter().any(|n| n == note) {
+                settings.notes.push(note.into());
+            }
         }
         if t.contains(".projectDir") {
-            settings.notes.push(
-                "Some project directories are remapped in settings; module paths may differ."
-                    .into(),
-            );
+            let note =
+                "Some project directories are remapped in settings; module paths may differ.";
+            if !settings.notes.iter().any(|n| n == note) {
+                settings.notes.push(note.into());
+            }
         }
     }
     settings
@@ -619,7 +674,32 @@ pub fn collect(
     out: &mut Collector,
 ) {
     let root_build = builds.iter().find(|b| b.module == ".");
+    // What the root shares with every build, each name once: a shared block's
+    // length is multiplied by the number of builds below it.
+    let (root_deps, root_plugins) = {
+        let (mut names, mut ids) = (HashSet::new(), HashSet::new());
+        let deps: Vec<&GradleDep> = root_build
+            .into_iter()
+            .flat_map(|root| &root.dependencies)
+            .filter(|d| d.shared.is_some() && names.insert(&d.name))
+            .collect();
+        let plugins: Vec<&GradlePlugin> = root_build
+            .into_iter()
+            .flat_map(|root| &root.plugins)
+            .filter(|p| p.shared.is_some() && ids.insert(&p.id))
+            .collect();
+        (deps, plugins)
+    };
     for build in builds {
+        if out.stopped() {
+            out.coverage(
+                &build.module,
+                "gradle",
+                CoverageStatus::Partial,
+                vec![FACTS_NOTE.into()],
+            );
+            continue;
+        }
         let mut notes = build.partial.clone();
         if has_convention_sources {
             notes.push(
@@ -631,6 +711,8 @@ pub fn collect(
             notes.extend(s.notes.iter().cloned());
         }
 
+        // A bundle's members once per build, however many lines name it.
+        let mut bundles_read: HashSet<String> = HashSet::new();
         let mut record =
             |dep: &GradleDep, file: &str, origin: FactOrigin, notes: &mut Vec<String>| {
                 let (name, version, via) = if let Some(alias) = dep.name.strip_prefix("libs.") {
@@ -643,6 +725,9 @@ pub fn collect(
                         None => {
                             let bundle = catalog.and_then(|c| c.bundles.get(&alias).cloned());
                             if let (Some(members), Some(c)) = (bundle, catalog) {
+                                if !bundles_read.insert(alias.clone()) {
+                                    return;
+                                }
                                 for member in members {
                                     if let Some((coordinate, version)) = c.libraries.get(&member) {
                                         out.dependency(
@@ -702,7 +787,7 @@ pub fn collect(
         if build.module != "."
             && let Some(root) = root_build
         {
-            for dep in root.dependencies.iter().filter(|d| d.shared.is_some()) {
+            for dep in &root_deps {
                 record(dep, &root.path, FactOrigin::Inherited, &mut notes);
             }
             if !root.partial.is_empty() {
@@ -726,10 +811,9 @@ pub fn collect(
             .filter(|_| build.module != ".")
             .into_iter()
             .flat_map(|root| {
-                root.plugins
+                root_plugins
                     .iter()
-                    .filter(|p| p.shared.is_some())
-                    .map(move |p| (p, &root.path, FactOrigin::Inherited))
+                    .map(move |p| (*p, &root.path, FactOrigin::Inherited))
             });
         for (plugin, file, origin) in own.chain(inherited) {
             let (id, version) = match plugin.id.strip_prefix("libs.plugins.") {

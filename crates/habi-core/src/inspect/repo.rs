@@ -5,7 +5,12 @@ use crate::fsutil::read_prefix;
 use std::path::{Path, PathBuf};
 
 fn read_head(git_dir: &Path) -> Option<String> {
-    let bytes = read_prefix(&git_dir.join("HEAD"), 512).ok()?;
+    let head = git_dir.join("HEAD");
+    // Opening a FIFO would wait forever, and a link can lead anywhere.
+    std::fs::symlink_metadata(&head)
+        .ok()
+        .filter(|m| m.is_file())?;
+    let bytes = read_prefix(&head, 512).ok()?;
     let text = String::from_utf8_lossy(&bytes);
     text.trim()
         .strip_prefix("ref: refs/heads/")
@@ -29,6 +34,26 @@ fn gitdir_from_file(dot_git: &Path) -> Option<PathBuf> {
     git_pointer(dot_git.parent()?, target)
 }
 
+/// The nearest folder at or above `root` with a `.git` of its own, how many
+/// levels up it is, and what that `.git` is.
+fn nearest_git(root: &Path) -> Option<(usize, &Path, std::fs::Metadata)> {
+    root.ancestors()
+        .take(64)
+        .enumerate()
+        .find_map(|(depth, dir)| {
+            let meta = std::fs::symlink_metadata(dir.join(".git")).ok()?;
+            (meta.is_dir() || meta.is_file()).then_some((depth, dir, meta))
+        })
+}
+
+/// The root of the repository `root` is inside, when that is not `root` itself:
+/// the folder that makes it a `GitSubdirectory`.
+pub(crate) fn enclosing_root(root: &Path) -> Option<&Path> {
+    nearest_git(root)
+        .filter(|(depth, ..)| *depth > 0)
+        .map(|(_, dir, _)| dir)
+}
+
 pub fn describe(root: &Path) -> RepositoryInfo {
     let mut info = RepositoryInfo {
         kind: RepositoryKind::Plain,
@@ -37,38 +62,31 @@ pub fn describe(root: &Path) -> RepositoryInfo {
         is_monorepo: false,
         workspace_signals: Vec::new(),
     };
-    let mut dir = Some(root);
-    for depth in 0..64 {
-        let Some(current) = dir else { break };
-        let dot_git = current.join(".git");
-        if let Ok(meta) = std::fs::symlink_metadata(&dot_git) {
-            if meta.is_dir() {
-                info.kind = if depth == 0 {
-                    RepositoryKind::Git
-                } else {
-                    RepositoryKind::GitSubdirectory
-                };
-                info.branch = read_head(&dot_git);
-            } else if meta.is_file() {
-                let gitdir = gitdir_from_file(&dot_git);
-                let is_worktree = gitdir
-                    .as_ref()
-                    .is_some_and(|g| g.to_string_lossy().contains("/worktrees/"));
-                info.kind = match (depth, is_worktree) {
-                    (0, true) => RepositoryKind::Worktree,
-                    (0, false) => RepositoryKind::Git,
-                    _ => RepositoryKind::GitSubdirectory,
-                };
-                info.branch = gitdir.as_deref().and_then(read_head);
-            }
-            if depth > 0 {
-                info.repository_root = Some(crate::paths::display_path(current));
-            }
-            if info.kind != RepositoryKind::Plain {
-                break;
-            }
-        }
-        dir = current.parent();
+    let Some((depth, current, meta)) = nearest_git(root) else {
+        return info;
+    };
+    let dot_git = current.join(".git");
+    if meta.is_dir() {
+        info.kind = if depth == 0 {
+            RepositoryKind::Git
+        } else {
+            RepositoryKind::GitSubdirectory
+        };
+        info.branch = read_head(&dot_git);
+    } else {
+        let gitdir = gitdir_from_file(&dot_git);
+        let is_worktree = gitdir
+            .as_ref()
+            .is_some_and(|g| g.to_string_lossy().contains("/worktrees/"));
+        info.kind = match (depth, is_worktree) {
+            (0, true) => RepositoryKind::Worktree,
+            (0, false) => RepositoryKind::Git,
+            _ => RepositoryKind::GitSubdirectory,
+        };
+        info.branch = gitdir.as_deref().and_then(read_head);
+    }
+    if depth > 0 {
+        info.repository_root = Some(crate::paths::display_path(current));
     }
     info
 }
@@ -156,5 +174,28 @@ mod tests {
             assert_eq!(info.kind, RepositoryKind::Git, "{target}");
             assert_eq!(info.branch, None, "{target}");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_fifo_at_head_is_not_read() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        let head = dir.path().join(".git/HEAD");
+        let made = std::process::Command::new("mkfifo")
+            .arg(&head)
+            .status()
+            .unwrap();
+        assert!(made.success());
+
+        // On another thread: the old code never comes back from this.
+        let root = dir.path().to_path_buf();
+        let (send, receive) = std::sync::mpsc::channel();
+        std::thread::spawn(move || send.send(describe(&root)).unwrap());
+        let info = receive
+            .recv_timeout(std::time::Duration::from_secs(20))
+            .expect("describe returned");
+        assert_eq!(info.kind, RepositoryKind::Git);
+        assert_eq!(info.branch, None);
     }
 }
