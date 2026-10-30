@@ -4,8 +4,8 @@
 //! concrete versions only from `package-lock.json` or `pnpm-lock.yaml` (or an
 //! exact pin); otherwise the version stays a range.
 
-use super::Collector;
 use super::model::{CoverageStatus, Ecosystem, Evidence, FactOrigin, VersionInfo, VersionState};
+use super::{Collector, JsonStrings, is_within};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -29,32 +29,21 @@ const SECTIONS: &[(&str, &str)] = &[
     ("optionalDependencies", "optional"),
 ];
 
-/// Finds the 1-based line of `"key"` after `section` appears, for evidence.
-fn line_of_key(text: &str, section: &str, key: &str) -> Option<u32> {
-    let section_pos = text.find(&format!("\"{section}\""))?;
-    let needle = format!("\"{key}\"");
-    let rel = text.get(section_pos..)?.find(&needle)?;
-    let pos = section_pos + rel;
-    Some(text.get(..pos)?.matches('\n').count() as u32 + 1)
-}
-
 pub fn parse(path: &str, module: &str, text: &str) -> Result<PackageJson, String> {
     let json: Value =
         serde_json::from_str(text).map_err(|e| format!("could not parse {path}: {e}"))?;
     let obj = json
         .as_object()
         .ok_or_else(|| format!("{path} is not a JSON object"))?;
+    let strings = JsonStrings::new(text);
     let mut dependencies = Vec::new();
     for (section, label) in SECTIONS {
         if let Some(map) = obj.get(*section).and_then(Value::as_object) {
+            // A key's evidence is its first appearance after its section opens.
+            let opens = strings.first(section).unwrap_or(0);
             for (name, range) in map {
                 let range = range.as_str().unwrap_or("").to_string();
-                dependencies.push((
-                    name.clone(),
-                    range,
-                    *label,
-                    line_of_key(text, section, name),
-                ));
+                dependencies.push((name.clone(), range, *label, strings.line_after(opens, name)));
             }
         }
     }
@@ -196,7 +185,7 @@ pub fn collect(packages: &[PackageJson], locks: &[Lockfile], out: &mut Collector
             .iter()
             .filter(|l| {
                 let dir = l.path.rsplit_once('/').map(|(d, _)| d).unwrap_or(".");
-                dir == "." || pkg.module == dir || pkg.module.starts_with(&format!("{dir}/"))
+                is_within(&pkg.module, dir)
             })
             .max_by_key(|l| l.path.len());
         if lock.is_none() && !pkg.dependencies.is_empty() {

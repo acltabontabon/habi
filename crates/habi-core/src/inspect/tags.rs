@@ -563,40 +563,31 @@ pub fn phrase(tag: &str) -> String {
     }
 }
 
-/// Simple `*` wildcard match, linear time, no regex.
+/// Simple `*` wildcard match, linear time, no regex. Runs for every dependency
+/// against every rule, so it does not allocate.
 pub fn wildcard_match(pattern: &str, value: &str) -> bool {
-    let parts: Vec<&str> = pattern.split('*').collect();
-    if parts.len() == 1 {
+    let Some((first, mut parts)) = pattern.split_once('*') else {
         return pattern == value;
-    }
-    let mut rest = value;
-    for (i, part) in parts.iter().enumerate() {
-        if i == 0 {
-            match rest.strip_prefix(part) {
-                Some(r) => rest = r,
-                None => return false,
-            }
-        } else if i == parts.len() - 1 {
-            return rest.ends_with(part);
-        } else if let Some((_, after)) = rest.split_once(part) {
-            rest = after;
-        } else {
-            return false;
+    };
+    let Some(mut rest) = value.strip_prefix(first) else {
+        return false;
+    };
+    while let Some((part, more)) = parts.split_once('*') {
+        match rest.split_once(part) {
+            Some((_, after)) => rest = after,
+            None => return false,
         }
+        parts = more;
     }
-    true
+    rest.ends_with(parts)
 }
 
 /// Adds derived tag facts based on dependency and file facts.
 pub fn derive(out: &mut Collector, files: &[(String, u64)], module_of: &dyn Fn(&str) -> String) {
-    let snapshot: Vec<(String, String, FactSubject)> = out
-        .facts
-        .iter()
-        .map(|f| (f.id.clone(), f.module.clone(), f.subject.clone()))
-        .collect();
-    for rule in TAG_RULES {
-        for (id, module, subject) in &snapshot {
-            let hit = match subject {
+    let mut hits: Vec<(String, &'static str, String)> = Vec::new();
+    for fact in &out.facts {
+        for rule in TAG_RULES {
+            let hit = match &fact.subject {
                 FactSubject::Dependency { name, .. } => {
                     rule.dependencies.iter().any(|p| wildcard_match(p, name))
                 }
@@ -604,9 +595,12 @@ pub fn derive(out: &mut Collector, files: &[(String, u64)], module_of: &dyn Fn(&
                 FactSubject::Tag { .. } => false,
             };
             if hit {
-                out.tag(module, rule.tag, id);
+                hits.push((fact.module.clone(), rule.tag, fact.id.clone()));
             }
         }
+    }
+    for (module, tag, id) in &hits {
+        out.tag(module, tag, id);
     }
 
     // Languages: count source files per module.

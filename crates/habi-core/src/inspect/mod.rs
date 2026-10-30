@@ -31,6 +31,24 @@ pub use walk::WalkOptions;
 
 const MANIFEST_LIMIT: u64 = 2 * 1024 * 1024;
 const LOCKFILE_LIMIT: u64 = 48 * 1024 * 1024;
+/// Manifests and lockfiles read in one inspection, together. Git stores
+/// identical files once, so a small repository can hold thousands of copies of
+/// the largest lockfile allowed.
+const MANIFEST_BUDGET: u64 = 128 * 1024 * 1024;
+/// Modules kept, shallowest first. Each one costs an evaluation per skill.
+const MAX_MODULES: usize = 2_000;
+/// Dependency facts kept. A parent build fans out to every module below it.
+const MAX_FACTS: usize = 250_000;
+/// A dependency name longer than this is not a real one.
+const MAX_NAME: usize = 512;
+/// Excerpts, scopes, versions and version notes are cut or refused at this.
+const MAX_TEXT: usize = 256;
+/// Notes kept per coverage entry, and the length of each. Every evaluation that
+/// ends in "not established" can quote them.
+const MAX_NOTES: usize = 20;
+const MAX_NOTE: usize = 512;
+/// Facts derived from one other fact are never all shown.
+const MAX_DERIVED_FROM: usize = 16;
 
 /// At most `max` bytes of `text`, cut where a character ends.
 pub(crate) fn clip(text: &str, max: usize) -> &str {
@@ -39,6 +57,94 @@ pub(crate) fn clip(text: &str, max: usize) -> &str {
         end -= 1;
     }
     text.get(..end).unwrap_or(text)
+}
+
+/// Where each line of a text starts, so that a byte offset's line is a binary
+/// search away instead of a scan from the top for every dependency.
+pub(crate) struct LineStarts(Vec<usize>);
+
+impl LineStarts {
+    pub(crate) fn new(text: &str) -> Self {
+        let breaks = text.match_indices('\n').map(|(at, _)| at + 1);
+        LineStarts(std::iter::once(0).chain(breaks).collect())
+    }
+
+    /// The 1-based line of a byte offset.
+    pub(crate) fn line_at(&self, offset: usize) -> u32 {
+        self.0.partition_point(|start| *start <= offset) as u32
+    }
+}
+
+/// Every string in a JSON text and where it opens, found once. A `package.json`
+/// with 100,000 dependencies would otherwise be searched as many times.
+pub(crate) struct JsonStrings<'a> {
+    at: HashMap<&'a str, Vec<usize>>,
+    lines: LineStarts,
+}
+
+impl<'a> JsonStrings<'a> {
+    pub(crate) fn new(text: &'a str) -> Self {
+        let mut at: HashMap<&'a str, Vec<usize>> = HashMap::new();
+        let mut open = None;
+        let mut escaped = false;
+        for (i, byte) in text.bytes().enumerate() {
+            match (open, byte) {
+                (None, b'"') => open = Some(i),
+                (None, _) => {}
+                (Some(_), _) if escaped => escaped = false,
+                (Some(_), b'\\') => escaped = true,
+                (Some(start), b'"') => {
+                    if let Some(string) = text.get(start + 1..i) {
+                        at.entry(string).or_default().push(start);
+                    }
+                    open = None;
+                }
+                (Some(_), _) => {}
+            }
+        }
+        JsonStrings {
+            at,
+            lines: LineStarts::new(text),
+        }
+    }
+
+    /// Where `string` first opens.
+    pub(crate) fn first(&self, string: &str) -> Option<usize> {
+        self.at.get(string).and_then(|at| at.first()).copied()
+    }
+
+    /// The line where `string` first opens at or after `from`.
+    pub(crate) fn line_after(&self, from: usize, string: &str) -> Option<u32> {
+        let at = self.at.get(string)?;
+        let found = at.get(at.partition_point(|opens| *opens < from))?;
+        Some(self.lines.line_at(*found))
+    }
+}
+
+/// Whether a module is in `dir` or below it.
+pub(crate) fn is_within(module: &str, dir: &str) -> bool {
+    dir == "."
+        || module == dir
+        || module
+            .strip_prefix(dir)
+            .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// What a detector notes when the fact limit stopped it.
+const FACTS_NOTE: &str =
+    "This project declares more dependencies than Habi records, so some were not looked at.";
+
+/// A version that long is not one; what follows from it is not established.
+fn bounded_version(mut version: VersionInfo) -> VersionInfo {
+    let long = |text: &Option<String>| text.as_ref().is_some_and(|t| t.len() > MAX_TEXT);
+    if long(&version.declared) || long(&version.resolved) {
+        version.state = VersionState::Unresolved;
+        version.resolved = None;
+        version.declared = version.declared.map(|d| clip(&d, MAX_TEXT).to_string());
+        version.note = Some("the declared version is too long to be read".into());
+    }
+    version.note = version.note.map(|n| clip(&n, MAX_TEXT).to_string());
+    version
 }
 
 /// Accumulates facts and coverage while detectors run.
@@ -50,11 +156,25 @@ pub struct Collector {
     /// Content-probe candidates per module that were not read (limit or
     /// read error).
     pub content_skipped: BTreeMap<String, u32>,
+    /// Positions by fact id, and by module and area: every detector looks
+    /// these up once per declaration, and a manifest can hold 100,000.
+    fact_at: HashMap<String, usize>,
+    coverage_at: HashMap<(String, String), usize>,
+    /// Notes left out, by position in `coverage`.
+    notes_left_out: HashMap<usize, usize>,
+    cancel: Option<CancelToken>,
 }
 
 impl Collector {
+    /// Whether a detector should give up on what is left: the person cancelled,
+    /// or there is no room for more facts.
+    pub(crate) fn stopped(&self) -> bool {
+        self.facts.len() >= MAX_FACTS || self.cancel.as_ref().is_some_and(CancelToken::is_cancelled)
+    }
+
     fn push_or_merge(&mut self, fact: Fact) -> String {
-        if let Some(existing) = self.facts.iter_mut().find(|f| f.id == fact.id) {
+        let at = self.fact_at.get(&fact.id).copied();
+        if let Some(existing) = at.and_then(|at| self.facts.get_mut(at)) {
             for e in fact.evidence {
                 let duplicate = existing
                     .evidence
@@ -65,7 +185,9 @@ impl Collector {
                 }
             }
             for d in fact.derived_from {
-                if !existing.derived_from.contains(&d) {
+                if existing.derived_from.len() < MAX_DERIVED_FROM
+                    && !existing.derived_from.contains(&d)
+                {
                     existing.derived_from.push(d);
                 }
             }
@@ -77,6 +199,7 @@ impl Collector {
             return existing.id.clone();
         }
         let id = fact.id.clone();
+        self.fact_at.insert(id.clone(), self.facts.len());
         self.facts.push(fact);
         id
     }
@@ -91,17 +214,41 @@ impl Collector {
         version: VersionInfo,
         origin: FactOrigin,
         detector: &str,
-        evidence: Evidence,
+        mut evidence: Evidence,
     ) -> String {
-        let id = format!("dep:{module}:{}:{name}", ecosystem.label().to_lowercase());
+        let area = ecosystem.label().to_lowercase();
+        // Left out, and said to be: absence stops being established.
+        if self.facts.len() >= MAX_FACTS {
+            self.coverage(
+                module,
+                &area,
+                CoverageStatus::Partial,
+                vec![FACTS_NOTE.into()],
+            );
+            return String::new();
+        }
+        if name.len() > MAX_NAME {
+            self.coverage(
+                module,
+                &area,
+                CoverageStatus::Partial,
+                vec![format!(
+                    "A dependency name in {} is too long to be read.",
+                    evidence.file
+                )],
+            );
+            return String::new();
+        }
+        evidence.excerpt = evidence.excerpt.map(|e| clip(&e, MAX_TEXT).to_string());
+        let id = format!("dep:{module}:{area}:{name}");
         self.push_or_merge(Fact {
             id,
             module: module.to_string(),
             subject: FactSubject::Dependency {
                 ecosystem,
                 name: name.to_string(),
-                scope,
-                version,
+                scope: scope.map(|s| clip(&s, MAX_TEXT).to_string()),
+                version: bounded_version(version),
             },
             origin,
             detector: detector.to_string(),
@@ -137,9 +284,9 @@ impl Collector {
     /// Adds (or extends) a derived tag in `module` based on fact `from`.
     pub fn tag(&mut self, module: &str, tag: &str, from: &str) {
         let evidence = self
-            .facts
-            .iter()
-            .find(|f| f.id == from)
+            .fact_at
+            .get(from)
+            .and_then(|at| self.facts.get(*at))
             .map(|f| f.evidence.iter().take(1).cloned().collect())
             .unwrap_or_default();
         self.push_or_merge(Fact {
@@ -181,29 +328,53 @@ impl Collector {
         status: CoverageStatus,
         notes: Vec<String>,
     ) {
-        if let Some(existing) = self
-            .coverage
-            .iter_mut()
-            .find(|c| c.module == module && c.area == area)
-        {
-            // Keep the weakest status.
-            let rank = |s: CoverageStatus| match s {
-                CoverageStatus::Complete => 0,
-                CoverageStatus::Partial => 1,
-                CoverageStatus::Failed => 2,
-            };
-            if rank(status) > rank(existing.status) {
-                existing.status = status;
+        let key = (module.to_string(), area.to_string());
+        let at = match self.coverage_at.get(&key) {
+            Some(at) => *at,
+            None => {
+                self.coverage_at.insert(key, self.coverage.len());
+                self.coverage.push(Coverage {
+                    module: module.to_string(),
+                    area: area.to_string(),
+                    status,
+                    notes: Vec::new(),
+                });
+                self.coverage.len() - 1
             }
-            existing.notes.extend(notes);
+        };
+        let Some(entry) = self.coverage.get_mut(at) else {
             return;
+        };
+        // Keep the weakest status.
+        let rank = |s: CoverageStatus| match s {
+            CoverageStatus::Complete => 0,
+            CoverageStatus::Partial => 1,
+            CoverageStatus::Failed => 2,
+        };
+        if rank(status) > rank(entry.status) {
+            entry.status = status;
         }
-        self.coverage.push(Coverage {
-            module: module.to_string(),
-            area: area.to_string(),
-            status,
-            notes,
-        });
+        for note in notes {
+            let note = if note.len() > MAX_NOTE {
+                clip(&note, MAX_NOTE).to_string()
+            } else {
+                note
+            };
+            if entry.notes.contains(&note) {
+                continue;
+            }
+            if entry.notes.len() < MAX_NOTES {
+                entry.notes.push(note);
+                continue;
+            }
+            // Past the limit one last note says how many more there were.
+            let left_out = self.notes_left_out.entry(at).or_insert(0);
+            if *left_out > 0 {
+                entry.notes.pop();
+            }
+            *left_out += 1;
+            entry.notes.push(format!("and {left_out} more"));
+        }
     }
 
     pub fn global_file_note(&mut self, note: String) {
@@ -254,10 +425,102 @@ fn read_text(root: &Path, rel: &str, limit: u64) -> std::result::Result<String, 
     }
 }
 
+/// Reads manifests and lockfiles against `MANIFEST_BUDGET`, adding each one read
+/// to the fingerprint.
+struct ManifestReader<'a> {
+    root: &'a Path,
+    sizes: HashMap<&'a str, u64>,
+    left: u64,
+    fingerprint: Vec<(String, String)>,
+}
+
+enum Unread {
+    /// The budget ran out. The file may be fine; it was not looked at.
+    Spent(String),
+    Failed(String),
+}
+
+impl ManifestReader<'_> {
+    fn read(&mut self, rel: &str, limit: u64) -> std::result::Result<String, Unread> {
+        // A file above its own limit is refused unread, and costs nothing.
+        let size = self.sizes.get(rel).copied().unwrap_or(0);
+        if size <= limit && size > self.left {
+            return Err(Unread::Spent(format!(
+                "{rel} was not read: Habi reads a limited amount of manifests in one inspection, and this project's went past it."
+            )));
+        }
+        let text = read_text(self.root, rel, limit).map_err(Unread::Failed)?;
+        self.left = self.left.saturating_sub(text.len() as u64);
+        self.fingerprint
+            .push((rel.to_string(), sha256(text.as_bytes())));
+        Ok(text)
+    }
+
+    /// A manifest's text. One that is not read marks its module's `area`: it
+    /// may declare anything.
+    fn manifest(
+        &mut self,
+        rel: &str,
+        area: &str,
+        out: &mut Collector,
+        report: &mut ScanReport,
+    ) -> Option<String> {
+        match self.read(rel, MANIFEST_LIMIT) {
+            Ok(text) => Some(text),
+            Err(Unread::Spent(note)) => {
+                out.coverage(&dir_of(rel), area, CoverageStatus::Partial, vec![note]);
+                None
+            }
+            Err(Unread::Failed(note)) => {
+                if report.unreadable.len() < 100 {
+                    report.unreadable.push(rel.to_string());
+                }
+                out.coverage(&dir_of(rel), area, CoverageStatus::Failed, vec![note]);
+                None
+            }
+        }
+    }
+
+    /// A lockfile's text. One that cannot be read leaves versions unpinned,
+    /// which versions already say; one the budget refused marks `area` too.
+    fn lockfile(&mut self, rel: &str, area: &str, out: &mut Collector) -> Option<String> {
+        match self.read(rel, LOCKFILE_LIMIT) {
+            Ok(text) => Some(text),
+            Err(Unread::Spent(note)) => {
+                out.coverage(&dir_of(rel), area, CoverageStatus::Partial, vec![note]);
+                None
+            }
+            Err(Unread::Failed(note)) => {
+                not_pinned(rel, area, note, out);
+                None
+            }
+        }
+    }
+}
+
+fn not_pinned(rel: &str, area: &str, why: String, out: &mut Collector) {
+    out.coverage(
+        &dir_of(rel),
+        area,
+        CoverageStatus::Complete,
+        vec![format!("Versions not pinned: {why}")],
+    );
+}
+
 pub fn inspect(
     root: &Path,
     options: &WalkOptions,
     cancel: &CancelToken,
+) -> Result<ProjectInspection> {
+    inspect_within(root, options, cancel, MANIFEST_BUDGET)
+}
+
+/// `inspect`, reading at most `budget` bytes of manifests and lockfiles.
+fn inspect_within(
+    root: &Path,
+    options: &WalkOptions,
+    cancel: &CancelToken,
+    budget: u64,
 ) -> Result<ProjectInspection> {
     let root = crate::paths::canonical_dir(root)?;
     let walked = walk::walk(&root, options, cancel)?;
@@ -266,8 +529,16 @@ pub fn inspect(
     let walk_errors = walked.errors;
     let ignore_gaps = walked.ignore_gaps;
     let mut report = walked.report;
-    let mut out = Collector::default();
-    let mut fingerprint_parts: Vec<(String, String)> = Vec::new();
+    let mut out = Collector {
+        cancel: Some(cancel.clone()),
+        ..Default::default()
+    };
+    let mut reader = ManifestReader {
+        root: &root,
+        sizes: files.iter().map(|(p, size)| (p.as_str(), *size)).collect(),
+        left: budget,
+        fingerprint: Vec::new(),
+    };
 
     // Paths by file name, built once: looked up for every manifest kind.
     let mut by_name: HashMap<&str, Vec<&str>> = HashMap::new();
@@ -340,6 +611,36 @@ pub fn inspect(
                 .insert(ecosystem);
         }
     }
+    // Past the limit the shallowest modules stay. A manifest of a module that
+    // was dropped is not read, and the scan says it stopped early.
+    let capped = module_ecosystems.len() > MAX_MODULES;
+    if capped {
+        let mut ids: Vec<String> = module_ecosystems.keys().cloned().collect();
+        ids.sort_by_key(|id| (id.matches('/').count(), id.clone()));
+        for id in ids.iter().skip(MAX_MODULES) {
+            module_ecosystems.remove(id);
+        }
+        report.truncated = true;
+        report.limits_hit.push(format!(
+            "only the first {MAX_MODULES} modules were read; what the others declare is not established"
+        ));
+    }
+    let kept = |paths: Vec<String>| -> Vec<String> {
+        paths
+            .into_iter()
+            .filter(|p| !capped || module_ecosystems.contains_key(&dir_of(p)))
+            .collect()
+    };
+    let poms = kept(poms);
+    let gradle_builds = kept(gradle_builds);
+    let package_jsons = kept(package_jsons);
+    let go_mods = kept(go_mods);
+    let cargo_tomls = kept(cargo_tomls);
+    let composer_jsons = kept(composer_jsons);
+    let pyprojects = kept(pyprojects);
+    let pipfiles = kept(pipfiles);
+    let requirement_files = kept(requirement_files);
+    let setup_pys = kept(setup_pys);
     let module_ids: Vec<String> = module_ecosystems.keys().cloned().collect();
     let lookup = model::ModuleLookup::new(module_ids.iter().map(String::as_str));
     let module_of = |path: &str| lookup.owner(path).to_string();
@@ -352,28 +653,23 @@ pub fn inspect(
     for p in &poms {
         cancel.check()?;
         let module = dir_of(p);
-        match read_text(&root, p, MANIFEST_LIMIT) {
-            Ok(text) => {
-                fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-                match maven::parse(p, &module, &text) {
-                    Ok(pom) => {
-                        if let Some(a) = &pom.artifact {
-                            module_names.insert(module.clone(), a.clone());
-                        }
-                        if !pom.modules.is_empty() {
-                            signals.push(format!("Maven modules in {p} ({})", pom.modules.len()));
-                        }
-                        parsed_poms.push(pom);
-                    }
-                    Err(e) => out.coverage(&module, "maven", CoverageStatus::Failed, vec![e]),
+        let Some(text) = reader.manifest(p, "maven", &mut out, &mut report) else {
+            continue;
+        };
+        match maven::parse(p, &module, &text) {
+            Ok(pom) => {
+                if let Some(a) = &pom.artifact {
+                    module_names.insert(module.clone(), a.clone());
                 }
+                if !pom.modules.is_empty() {
+                    signals.push(format!("Maven modules in {p} ({})", pom.modules.len()));
+                }
+                parsed_poms.push(pom);
             }
-            Err(e) => {
-                report.unreadable.push(p.clone());
-                out.coverage(&module, "maven", CoverageStatus::Failed, vec![e]);
-            }
+            Err(e) => out.coverage(&module, "maven", CoverageStatus::Failed, vec![e]),
         }
     }
+    cancel.check()?;
     maven::collect(&parsed_poms, &mut out);
 
     // Gradle.
@@ -382,8 +678,7 @@ pub fn inspect(
         .chain(names("settings.gradle.kts"))
         .find(|p| !p.contains('/'))
         .and_then(|p| {
-            let text = read_text(&root, &p, MANIFEST_LIMIT).ok()?;
-            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
+            let text = reader.read(&p, MANIFEST_LIMIT).ok()?;
             Some(gradle::parse_settings(&p, &text))
         });
     if let Some(s) = &settings
@@ -395,18 +690,19 @@ pub fn inspect(
             s.includes.len()
         ));
     }
-    let catalog = match read_text(&root, "gradle/libs.versions.toml", MANIFEST_LIMIT) {
-        Ok(text) if files.iter().any(|(p, _)| p == "gradle/libs.versions.toml") => {
-            fingerprint_parts.push(("gradle/libs.versions.toml".into(), sha256(text.as_bytes())));
-            match gradle::parse_catalog("gradle/libs.versions.toml", &text) {
+    let catalog = if files.iter().any(|(p, _)| p == "gradle/libs.versions.toml") {
+        match reader.read("gradle/libs.versions.toml", MANIFEST_LIMIT) {
+            Ok(text) => match gradle::parse_catalog("gradle/libs.versions.toml", &text) {
                 Ok(c) => Some(c),
                 Err(e) => {
                     out.coverage(".", "gradle", CoverageStatus::Partial, vec![e]);
                     None
                 }
-            }
+            },
+            Err(_) => None,
         }
-        _ => None,
+    } else {
+        None
     };
     let has_convention_sources = files
         .iter()
@@ -418,17 +714,11 @@ pub fn inspect(
     for p in &gradle_builds {
         cancel.check()?;
         let module = dir_of(p);
-        match read_text(&root, p, MANIFEST_LIMIT) {
-            Ok(text) => {
-                fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-                parsed_gradle.push(gradle::parse_build(p, &module, &text));
-            }
-            Err(e) => {
-                report.unreadable.push(p.clone());
-                out.coverage(&module, "gradle", CoverageStatus::Failed, vec![e]);
-            }
+        if let Some(text) = reader.manifest(p, "gradle", &mut out, &mut report) {
+            parsed_gradle.push(gradle::parse_build(p, &module, &text));
         }
     }
+    cancel.check()?;
     gradle::collect(
         &parsed_gradle,
         catalog.as_ref(),
@@ -442,56 +732,47 @@ pub fn inspect(
     for p in &package_jsons {
         cancel.check()?;
         let module = dir_of(p);
-        match read_text(&root, p, MANIFEST_LIMIT) {
-            Ok(text) => {
-                fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-                match npm::parse(p, &module, &text) {
-                    Ok(pkg) => {
-                        if let Some(n) = &pkg.name {
-                            module_names
-                                .entry(module.clone())
-                                .or_insert_with(|| n.clone());
-                        }
-                        if !pkg.workspaces.is_empty() {
-                            signals.push(format!("npm workspaces in {p}"));
-                        }
-                        packages.push(pkg);
-                    }
-                    Err(e) => out.coverage(&module, "npm", CoverageStatus::Failed, vec![e]),
+        let Some(text) = reader.manifest(p, "npm", &mut out, &mut report) else {
+            continue;
+        };
+        match npm::parse(p, &module, &text) {
+            Ok(pkg) => {
+                if let Some(n) = &pkg.name {
+                    module_names
+                        .entry(module.clone())
+                        .or_insert_with(|| n.clone());
                 }
+                if !pkg.workspaces.is_empty() {
+                    signals.push(format!("npm workspaces in {p}"));
+                }
+                packages.push(pkg);
             }
-            Err(e) => {
-                report.unreadable.push(p.clone());
-                out.coverage(&module, "npm", CoverageStatus::Failed, vec![e]);
-            }
+            Err(e) => out.coverage(&module, "npm", CoverageStatus::Failed, vec![e]),
         }
     }
     let mut locks = Vec::new();
-    let lockfiles: Vec<String> = names("package-lock.json")
-        .into_iter()
-        .chain(names("pnpm-lock.yaml"))
-        .collect();
+    let lockfiles = kept(
+        names("package-lock.json")
+            .into_iter()
+            .chain(names("pnpm-lock.yaml"))
+            .collect(),
+    );
     for p in &lockfiles {
         cancel.check()?;
         let dir = dir_of(p);
         // Lockfile contents decide resolved versions, so they are part of the
         // fingerprint (a version bump keeps the size more often than not).
-        let parsed = read_text(&root, p, LOCKFILE_LIMIT).and_then(|text| {
-            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-            if p.ends_with("pnpm-lock.yaml") {
-                npm::parse_pnpm_lock(p, &dir, &text)
-            } else {
-                npm::parse_package_lock(p, &dir, &text)
-            }
-        });
+        let Some(text) = reader.lockfile(p, "npm", &mut out) else {
+            continue;
+        };
+        let parsed = if p.ends_with("pnpm-lock.yaml") {
+            npm::parse_pnpm_lock(p, &dir, &text)
+        } else {
+            npm::parse_package_lock(p, &dir, &text)
+        };
         match parsed {
             Ok(l) => locks.push(l),
-            Err(e) => out.coverage(
-                &dir,
-                "npm",
-                CoverageStatus::Complete,
-                vec![format!("Versions not pinned: {e}")],
-            ),
+            Err(e) => not_pinned(p, "npm", e, &mut out),
         }
     }
     if files.iter().any(|(p, _)| p == "pnpm-workspace.yaml") {
@@ -506,28 +787,10 @@ pub fn inspect(
 
     // Go, Rust, Python and PHP: a manifest per module, a lockfile where the
     // ecosystem has one. A file that cannot be read marks its area failed.
-    let read_manifest = |p: &str,
-                         area: &str,
-                         out: &mut Collector,
-                         report: &mut ScanReport,
-                         fingerprint: &mut Vec<(String, String)>| {
-        match read_text(&root, p, MANIFEST_LIMIT) {
-            Ok(text) => {
-                fingerprint.push((p.to_string(), sha256(text.as_bytes())));
-                Some(text)
-            }
-            Err(e) => {
-                report.unreadable.push(p.to_string());
-                out.coverage(&dir_of(p), area, CoverageStatus::Failed, vec![e]);
-                None
-            }
-        }
-    };
-
     let mut go = Vec::new();
     for p in &go_mods {
         cancel.check()?;
-        if let Some(text) = read_manifest(p, "go", &mut out, &mut report, &mut fingerprint_parts) {
+        if let Some(text) = reader.manifest(p, "go", &mut out, &mut report) {
             let m = golang::parse(p, &dir_of(p), &text);
             if let Some(name) = m.name.as_deref().and_then(golang::display_name) {
                 module_names.entry(m.module.clone()).or_insert(name);
@@ -540,8 +803,7 @@ pub fn inspect(
     let mut crates = Vec::new();
     for p in &cargo_tomls {
         cancel.check()?;
-        if let Some(text) = read_manifest(p, "cargo", &mut out, &mut report, &mut fingerprint_parts)
-        {
+        if let Some(text) = reader.manifest(p, "cargo", &mut out, &mut report) {
             match cargo::parse(p, &dir_of(p), &text) {
                 Ok(c) => {
                     if let Some(n) = &c.name {
@@ -555,22 +817,23 @@ pub fn inspect(
             }
         }
     }
-    let cargo_locks: Vec<cargo::CargoLock> = names("Cargo.lock")
-        .iter()
-        .filter_map(|p| {
-            let text = read_text(&root, p, LOCKFILE_LIMIT).ok()?;
-            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-            cargo::parse_lock(p, &text).ok()
-        })
-        .collect();
+    let mut cargo_locks = Vec::new();
+    for p in &kept(names("Cargo.lock")) {
+        cancel.check()?;
+        if let Some(text) = reader.lockfile(p, "cargo", &mut out) {
+            match cargo::parse_lock(p, &text) {
+                Ok(lock) => cargo_locks.push(lock),
+                Err(e) => not_pinned(p, "cargo", e, &mut out),
+            }
+        }
+    }
     cargo::collect(&crates, &cargo_locks, &mut out);
 
     let mut python_manifests = Vec::new();
     for p in pyprojects.iter().chain(&pipfiles).chain(&requirement_files) {
         cancel.check()?;
         let module = dir_of(p);
-        let Some(text) = read_manifest(p, "pypi", &mut out, &mut report, &mut fingerprint_parts)
-        else {
+        let Some(text) = reader.manifest(p, "pypi", &mut out, &mut report) else {
             continue;
         };
         let parsed = if p.ends_with("pyproject.toml") {
@@ -592,24 +855,27 @@ pub fn inspect(
             Err(e) => out.coverage(&module, "pypi", CoverageStatus::Failed, vec![e]),
         }
     }
-    let python_locks: Vec<python::PythonLock> = names("uv.lock")
+    let mut python_locks = Vec::new();
+    let python_lockfiles = names("uv.lock")
         .into_iter()
         .chain(names("poetry.lock"))
         .chain(names("Pipfile.lock"))
-        .filter_map(|p| {
-            let text = read_text(&root, &p, LOCKFILE_LIMIT).ok()?;
-            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-            python::parse_lock(&p, &text).ok()
-        })
         .collect();
+    for p in &kept(python_lockfiles) {
+        cancel.check()?;
+        if let Some(text) = reader.lockfile(p, "pypi", &mut out) {
+            match python::parse_lock(p, &text) {
+                Ok(lock) => python_locks.push(lock),
+                Err(e) => not_pinned(p, "pypi", e, &mut out),
+            }
+        }
+    }
     python::collect(&python_manifests, &python_locks, &mut out);
 
     let mut composers = Vec::new();
     for p in &composer_jsons {
         cancel.check()?;
-        if let Some(text) =
-            read_manifest(p, "composer", &mut out, &mut report, &mut fingerprint_parts)
-        {
+        if let Some(text) = reader.manifest(p, "composer", &mut out, &mut report) {
             match composer::parse(p, &dir_of(p), &text) {
                 Ok(c) => {
                     if let Some(n) = c.name.as_deref().and_then(|n| n.rsplit('/').next()) {
@@ -623,19 +889,22 @@ pub fn inspect(
             }
         }
     }
-    let composer_locks: Vec<composer::ComposerLock> = names("composer.lock")
-        .iter()
-        .filter_map(|p| {
-            let text = read_text(&root, p, LOCKFILE_LIMIT).ok()?;
-            fingerprint_parts.push((p.clone(), sha256(text.as_bytes())));
-            composer::parse_lock(p, &text).ok()
-        })
-        .collect();
+    let mut composer_locks = Vec::new();
+    for p in &kept(names("composer.lock")) {
+        cancel.check()?;
+        if let Some(text) = reader.lockfile(p, "composer", &mut out) {
+            match composer::parse_lock(p, &text) {
+                Ok(lock) => composer_locks.push(lock),
+                Err(e) => not_pinned(p, "composer", e, &mut out),
+            }
+        }
+    }
     composer::collect(&composers, &composer_locks, &mut out);
 
     // Recognized files and derived tags.
     cancel.check()?;
     files::collect(&root, &files, &mut out, &module_of);
+    cancel.check()?;
     tags::derive(&mut out, &files, &module_of);
 
     // File coverage per module: the listing is incomplete when a traversal
@@ -680,10 +949,7 @@ pub fn inspect(
             let parent = if id == "." {
                 None
             } else {
-                Some(model::owning_module(
-                    module_ids.iter().map(String::as_str).filter(|m| m != id),
-                    id,
-                ))
+                Some(lookup.parent(id).to_string())
             };
             let name = module_names.get(id).cloned().unwrap_or_else(|| {
                 if id == "." {
@@ -784,6 +1050,7 @@ pub fn inspect(
             .collect::<String>()
             .as_bytes(),
     );
+    let mut fingerprint_parts = reader.fingerprint;
     fingerprint_parts.push(("<tree>".into(), listing));
     let fingerprint = tree_digest(
         fingerprint_parts
@@ -1007,6 +1274,200 @@ mod tests {
             return; // running with privileges that read anything
         }
         assert_eq!(coverage_of(&i, ".", "files"), CoverageStatus::Partial);
+    }
+
+    #[test]
+    fn manifests_past_the_budget_are_not_read_and_coverage_says_so() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |path: &str, text: &str| {
+            let p = dir.path().join(path);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, text).unwrap();
+        };
+        let manifest = r#"{"dependencies":{"react":"^18.2.0"}}"#;
+        write("a/package.json", manifest);
+        write("b/package.json", manifest);
+        let budget = manifest.len() as u64 + 1;
+        let i = inspect_within(
+            dir.path(),
+            &WalkOptions::default(),
+            &CancelToken::new(),
+            budget,
+        )
+        .unwrap();
+        assert_eq!(coverage_of(&i, "a", "npm"), CoverageStatus::Complete);
+        assert_eq!(coverage_of(&i, "b", "npm"), CoverageStatus::Partial);
+        assert!(i.fact("dep:a:npm:react").is_some());
+        assert!(i.fact("dep:b:npm:react").is_none());
+        // Not read is not unreadable: the file may be fine.
+        assert!(i.scan.unreadable.is_empty(), "{:?}", i.scan.unreadable);
+
+        // Lockfiles draw on the same budget, and what they would pin stays open.
+        write("a/package-lock.json", r#"{"packages":{}}"#);
+        let i = inspect_within(
+            dir.path(),
+            &WalkOptions::default(),
+            &CancelToken::new(),
+            manifest.len() as u64 * 2,
+        )
+        .unwrap();
+        assert_eq!(coverage_of(&i, "a", "npm"), CoverageStatus::Partial);
+        assert_eq!(coverage_of(&i, "b", "npm"), CoverageStatus::Complete);
+    }
+
+    #[test]
+    fn past_the_fact_limit_a_dependency_is_left_out_and_coverage_says_so() {
+        let mut out = Collector::default();
+        let add = |out: &mut Collector, module: &str, name: &str| {
+            out.dependency(
+                module,
+                Ecosystem::Npm,
+                name,
+                None,
+                VersionInfo {
+                    state: VersionState::Range,
+                    declared: None,
+                    resolved: None,
+                    note: None,
+                },
+                FactOrigin::Direct,
+                "test",
+                Evidence {
+                    file: "package.json".into(),
+                    line: None,
+                    excerpt: None,
+                },
+            );
+        };
+        for i in 0..MAX_FACTS {
+            add(&mut out, "a", &i.to_string());
+        }
+        assert!(out.coverage.is_empty());
+        assert!(out.stopped());
+        add(&mut out, "b", "one-too-many");
+        assert_eq!(out.facts.len(), MAX_FACTS);
+        assert_eq!(
+            out.coverage_status("b", "npm"),
+            Some(CoverageStatus::Partial)
+        );
+    }
+
+    #[test]
+    fn overlong_names_and_versions_are_refused_not_copied() {
+        let mut out = Collector::default();
+        let evidence = || Evidence {
+            file: "pom.xml".into(),
+            line: None,
+            excerpt: Some("x".repeat(100_000)),
+        };
+        let version = |v: &str| VersionInfo {
+            state: VersionState::Resolved,
+            declared: Some(v.to_string()),
+            resolved: Some(v.to_string()),
+            note: None,
+        };
+        out.dependency(
+            ".",
+            Ecosystem::Maven,
+            &"n".repeat(100_000),
+            None,
+            version("1"),
+            FactOrigin::Direct,
+            "test",
+            evidence(),
+        );
+        assert!(out.facts.is_empty());
+        assert_eq!(
+            out.coverage_status(".", "maven"),
+            Some(CoverageStatus::Partial)
+        );
+
+        out.dependency(
+            ".",
+            Ecosystem::Maven,
+            "g:a",
+            Some("s".repeat(100_000)),
+            version(&"9".repeat(100_000)),
+            FactOrigin::Direct,
+            "test",
+            evidence(),
+        );
+        let found = out.find_dependency(".", "g:a").unwrap();
+        // A version cut short would read as another version.
+        assert_eq!(found.state, VersionState::Unresolved);
+        assert_eq!(found.resolved, None);
+        assert!(serde_json::to_string(&out.facts).unwrap().len() < 4096);
+    }
+
+    #[test]
+    fn coverage_notes_are_capped_and_the_rest_counted() {
+        let mut out = Collector::default();
+        for i in 0..1000 {
+            out.coverage(
+                ".",
+                "gradle",
+                CoverageStatus::Partial,
+                vec![format!("line {i}: something")],
+            );
+        }
+        // A repeat takes no room.
+        out.coverage(
+            ".",
+            "gradle",
+            CoverageStatus::Partial,
+            vec!["line 0: something".into()],
+        );
+        out.coverage(
+            ".",
+            "gradle",
+            CoverageStatus::Partial,
+            vec!["x".repeat(MAX_NOTE * 4)],
+        );
+        let notes = &out.coverage[0].notes;
+        assert_eq!(notes.len(), MAX_NOTES + 1);
+        assert_eq!(notes.last().unwrap(), "and 981 more");
+        assert!(notes.iter().all(|n| n.len() <= MAX_NOTE));
+    }
+
+    #[test]
+    fn detectors_stop_once_cancelled() {
+        let cancel = CancelToken::new();
+        cancel.cancel();
+        let mut out = Collector {
+            cancel: Some(cancel),
+            ..Default::default()
+        };
+        let pom = maven::parse(
+            "pom.xml",
+            ".",
+            "<project><artifactId>a</artifactId><dependencies><dependency><groupId>g</groupId><artifactId>a</artifactId><version>1</version></dependency></dependencies></project>",
+        )
+        .unwrap();
+        maven::collect(&[pom], &mut out);
+        let build = gradle::parse_build(
+            "build.gradle",
+            ".",
+            "dependencies { implementation 'g:b:1' }\n",
+        );
+        gradle::collect(&[build], None, None, false, &mut out);
+        assert!(out.facts.is_empty());
+    }
+
+    #[test]
+    fn line_starts_and_json_strings_find_what_a_scan_would() {
+        let lines = LineStarts::new("a\nbb\n\nc");
+        let offsets: Vec<u32> = (0..7).map(|at| lines.line_at(at)).collect();
+        assert_eq!(offsets, vec![1, 1, 2, 2, 2, 3, 4]);
+
+        let text = "{\n \"a\": \"x\\\"y\",\n \"deps\": {\n  \"a\": 1\n }\n}\n";
+        let strings = JsonStrings::new(text);
+        assert_eq!(strings.line_after(0, "a"), Some(2));
+        let deps = strings.first("deps").unwrap();
+        assert_eq!(strings.line_after(deps, "a"), Some(4));
+        assert_eq!(strings.line_after(deps, "deps"), Some(3));
+        assert_eq!(strings.line_after(deps, "absent"), None);
+        // An escaped quote does not end a string.
+        assert_eq!(strings.line_after(0, "y"), None);
     }
 
     #[test]
