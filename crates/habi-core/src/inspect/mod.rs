@@ -11,6 +11,7 @@ mod describe;
 pub mod files;
 pub mod golang;
 pub mod gradle;
+mod ignores;
 pub mod maven;
 pub mod model;
 pub mod npm;
@@ -30,6 +31,15 @@ pub use walk::WalkOptions;
 
 const MANIFEST_LIMIT: u64 = 2 * 1024 * 1024;
 const LOCKFILE_LIMIT: u64 = 48 * 1024 * 1024;
+
+/// At most `max` bytes of `text`, cut where a character ends.
+pub(crate) fn clip(text: &str, max: usize) -> &str {
+    let mut end = max.min(text.len());
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    text.get(..end).unwrap_or(text)
+}
 
 /// Accumulates facts and coverage while detectors run.
 #[derive(Default)]
@@ -254,6 +264,7 @@ pub fn inspect(
     let files = walked.files;
     let walked_dirs = walked.dirs;
     let walk_errors = walked.errors;
+    let ignore_gaps = walked.ignore_gaps;
     let mut report = walked.report;
     let mut out = Collector::default();
     let mut fingerprint_parts: Vec<(String, String)> = Vec::new();
@@ -633,6 +644,7 @@ pub fn inspect(
     if report.truncated {
         file_notes.extend(report.limits_hit.iter().cloned());
     }
+    file_notes.extend(ignore_gaps);
     if walk_errors > 0 {
         file_notes.push(format!(
             "{walk_errors} director{} or entr{} could not be read; files in them were not listed.",
