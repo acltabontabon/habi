@@ -29,6 +29,12 @@ const EXECUTABLE_MODE = "100755";
 const CODE_EXTENSIONS = ["py", "sh", "bash", "zsh", "fish", "js", "mjs", "cjs", "ts", "mts", "rb", "pl", "php", "ps1", "lua", "go", "rs", "swift", "kt", "kts"];
 // A pick's `tokens` is an estimate, and descriptions get small edits: only a real change is news.
 const TOKENS_TOLERANCE = 0.25;
+const MIB = 1024 * 1024;
+// What Habi will read of a library: source/mod.rs, source/git.rs (SKIP_BLOBS_OVER), paths.rs.
+const MAX_FILE_BYTES = 2 * MIB;
+const MAX_FILES = 5_000;
+const MAX_TOTAL_BYTES = 64 * MIB;
+const MAX_PATH_BYTES = 1024;
 const PAGE_SIZE = 100;
 const TIMEOUT_MS = 60_000;
 // Before the second and third attempt at a request.
@@ -41,8 +47,11 @@ const KEY = /^([A-Za-z_][\w-]*):(?:\s+(.*))?$/;
 const isItem = (text) => text === "-" || text.startsWith("- ");
 const isBlank = (text) => !text || text.startsWith("#");
 
+/** YAML this reader does not handle, which may well be valid: it says nothing about the file. */
+class ReaderLimit extends Error {}
+
 function unsupported(number, message) {
-  return new Error(`line ${number}: ${message}`);
+  return new ReaderLimit(`line ${number}: ${message}`);
 }
 
 function plainScalar(text) {
@@ -125,7 +134,8 @@ function readValue(text, number) {
     return value;
   }
   const plain = text.replace(/\s#.*$/, "").trim();
-  if (plain.includes(": ")) throw unsupported(number, `quote a value that contains ": ": ${plain}`);
+  // Not a limit of this reader: no YAML parser accepts it.
+  if (/:(?:\s|$)/.test(plain)) throw new Error(`line ${number}: invalid YAML, a value with a bare colon needs quotes: ${plain}`);
   return plainScalar(plain);
 }
 
@@ -266,20 +276,80 @@ const folderOf = (file) => (file.includes("/") ? file.slice(0, file.lastIndexOf(
 const baseName = (folder) => folder.slice(folder.lastIndexOf("/") + 1);
 const skillFile = (folder) => (folder ? `${folder}/${SKILL_FILE}` : SKILL_FILE);
 
-/** A test for whether `discovery` reads a file. */
+/** Tests for whether `discovery` reads a file, and whether it rules one out. */
 function scopeOf(discovery) {
   const include = (discovery.include ?? []).map(globMatcher);
   const exclude = (discovery.exclude ?? []).map(globMatcher);
-  return (file) =>
-    (include.length === 0 || include.some((matches) => matches(file))) &&
-    !exclude.some((matches) => matches(file));
+  const excludes = (file) => exclude.some((matches) => matches(file));
+  const admits = (file) => (include.length === 0 || include.some((matches) => matches(file))) && !excludes(file);
+  return { admits, excludes };
+}
+
+function isSafeName(part) {
+  if (part === ".." || part.toLowerCase() === ".git" || /\p{Cc}/u.test(part)) return false;
+  // Names that mean another file, or a device, on Windows.
+  if (/[<>:"|?*]/.test(part) || /[. ]$/.test(part)) return false;
+  const stem = part.split(".")[0].replace(/ +$/, "").toLowerCase();
+  return !/^(?:con|prn|aux|nul|conin\$|conout\$|(?:com|lpt)[1-9¹²³])$/.test(stem);
+}
+
+/** Whether Habi accepts a path (`RelPath::new`). */
+export function isSafePath(file) {
+  if (!file || Buffer.byteLength(file) > MAX_PATH_BYTES || /[\0\\]/.test(file) || file.startsWith("/")) return false;
+  const parts = file.split("/").filter((part) => part !== "" && part !== ".");
+  return parts.length > 0 && parts.every(isSafeName);
+}
+
+/** Whether a file name is a licence (`is_license_file`). */
+function isLicenseFile(name) {
+  const lower = name.toLowerCase();
+  const dot = lower.lastIndexOf(".");
+  const [stem, extension] = dot >= 0 ? [lower.slice(0, dot), lower.slice(dot + 1)] : [lower, ""];
+  return /^(?:license|licence|copying|unlicense)(?:-|$)/.test(stem) && ["", "md", "txt", "rst"].includes(extension);
+}
+
+/**
+ * What Habi makes of a revision's files (source/mod.rs): those it keeps, how many bytes they come
+ * to, and those it skips. A skipped file leaves the skill holding it incomplete, and install
+ * refuses an incomplete skill. Entries are as GitHub lists them: `path`, `type`, `mode`, `size`.
+ */
+export function readTree(tree, discovery) {
+  const { admits, excludes } = scopeOf(discovery);
+  const entries = tree.filter((item) => item.type === "blob" || item.type === "commit");
+  // A licence file next to admitted files, or in a folder above them, is read too.
+  const admittedFolders = new Set();
+  for (const { path: file } of entries.filter((item) => admits(item.path))) {
+    const parts = file.split("/");
+    for (let i = 0; i < parts.length; i++) admittedFolders.add(parts.slice(0, i).join("/"));
+  }
+  const admitsLicense = (file) =>
+    isLicenseFile(baseName(file)) && !excludes(file) && admittedFolders.has(folderOf(file));
+
+  const files = [];
+  const skipped = [];
+  let bytes = 0;
+  for (const item of entries) {
+    if (!admits(item.path) && !admitsLicense(item.path)) continue;
+    let reason = null;
+    if (item.type === "commit") reason = "a Git submodule";
+    else if (item.mode === SYMLINK_MODE) reason = "a symbolic link";
+    else if (!isSafePath(item.path)) reason = "not a safe file name";
+    else if (item.size > MAX_FILE_BYTES) reason = `${item.size} bytes, over the limit of ${MAX_FILE_BYTES}`;
+    if (reason) {
+      skipped.push({ path: item.path, reason });
+    } else {
+      files.push(item);
+      bytes += item.size ?? 0;
+    }
+  }
+  return { files, skipped, bytes };
 }
 
 /** The skill folders Habi finds among `files`: read by `discovery`, and not inside another skill. */
 export function skillFolders(files, discovery) {
-  const admitted = scopeOf(discovery);
+  const { admits } = scopeOf(discovery);
   const folders = [...files]
-    .filter((file) => (file === SKILL_FILE || file.endsWith(`/${SKILL_FILE}`)) && admitted(file))
+    .filter((file) => (file === SKILL_FILE || file.endsWith(`/${SKILL_FILE}`)) && admits(file))
     .map(folderOf)
     .sort();
   const accepted = [];
@@ -337,6 +407,11 @@ export function frontmatter(text) {
   const end = lines.findIndex((line, i) => i > 0 && line.trimEnd() === "---");
   if (end < 0) throw new Error("frontmatter is not closed");
   return { name: frontmatterValue(lines, end, "name"), description: frontmatterValue(lines, end, "description") };
+}
+
+/** Whether install accepts a SKILL.md name (`check_skill_name`). */
+export function isSkillName(name) {
+  return name.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name);
 }
 
 /** What a skill's name and description cost in every agent session (`suggest::tokens_of`). */
@@ -422,9 +497,8 @@ export function githubClient({ fetch: fetchFn = fetch, token, wait = (ms) => new
  * Text from an upstream repository, as one printable line with nothing that could close the code
  * block the report sits in once it is an issue. Names, branches and paths are theirs to choose.
  */
-function safe(text) {
-  return String(text).slice(0, 120).replace(/[^\x20-\x7e]|`/g, "?");
-}
+const printable = (text) => String(text).replace(/[^\x20-\x7e]|`/g, "?");
+const safe = (text) => printable(String(text).slice(0, 200));
 const quoted = (text) => JSON.stringify(safe(text));
 
 /** The revision Habi reads, as `{ sha, label }`. */
@@ -449,17 +523,25 @@ function checkMeasured(pick, label, fields, code, result) {
   if (!pick.scripts && code) result.problems.push(`${label}: has code (${quoted(code)}), but scripts is not set in the catalog`);
 }
 
-async function checkPick(pick, repo, sha, { files, folders, blobs, admitted }, github, result) {
+async function checkPick(pick, repo, sha, { listed, files, skipped, folders }, github, result) {
   const label = `pick ${pick.skill}`;
+  const prefix = `${pick.skill}/`;
   if (!folders.includes(pick.skill)) {
     const enclosing = folders.find((folder) => folder === "" || pick.skill.startsWith(`${folder}/`));
     const elsewhere = folders.filter((folder) => baseName(folder) === baseName(pick.skill));
+    const unread = skipped.find((entry) => entry.path === skillFile(pick.skill));
     let reason = `no ${SKILL_FILE} there`;
     if (enclosing !== undefined) reason = `inside the skill ${quoted(enclosing)}, so read as part of it`;
-    else if (files.has(skillFile(pick.skill))) reason = `has a ${SKILL_FILE}, but discovery does not read it`;
+    else if (unread) reason = `its ${SKILL_FILE} is ${unread.reason}, so Habi does not read it`;
+    else if (listed.has(skillFile(pick.skill))) reason = `has a ${SKILL_FILE}, but discovery does not read it`;
     else if (elsewhere.length) reason += `; a skill of that name is at ${elsewhere.map(quoted).join(", ")}`;
     result.problems.push(`${label}: ${reason}`);
     return;
+  }
+  const refused = skipped.filter((entry) => entry.path.startsWith(prefix));
+  if (refused.length) {
+    const others = refused.length > 1 ? `, and ${count(refused.length - 1, "other file")}` : "";
+    result.problems.push(`${label}: Habi refuses to install it: ${quoted(refused[0].path)} is ${refused[0].reason}${others}`);
   }
   let text;
   try {
@@ -472,15 +554,16 @@ async function checkPick(pick, repo, sha, { files, folders, blobs, admitted }, g
   try {
     fields = frontmatter(text);
   } catch (e) {
-    result.problems.push(`${label}: ${SKILL_FILE} ${e.message}`);
+    // The message quotes the file, which is theirs to write.
+    (e instanceof ReaderLimit ? result.unchecked : result.problems).push(`${label}: ${SKILL_FILE} ${safe(e.message)}`);
     return;
   }
   const expected = pick.name ?? baseName(pick.skill);
   const { name } = fields;
   if (name === null) result.problems.push(`${label}: ${SKILL_FILE} has no name, expected ${quoted(expected)}`);
   else if (name !== expected) result.problems.push(`${label}: ${SKILL_FILE} is named ${quoted(name)}, expected ${quoted(expected)}`);
-  const prefix = `${pick.skill}/`;
-  const code = blobs.find((blob) => blob.path.startsWith(prefix) && admitted(blob.path) && isCode(blob.path.slice(prefix.length), blob.mode));
+  if (name !== null && !isSkillName(name)) result.problems.push(`${label}: Habi refuses to install it: ${SKILL_FILE} name ${quoted(name)} is not a valid skill name`);
+  const code = files.find((file) => file.path.startsWith(prefix) && isCode(file.path.slice(prefix.length), file.mode));
   checkMeasured(pick, label, fields, code?.path, result);
 }
 
@@ -491,6 +574,8 @@ export async function checkEntry(entry, github) {
     repo: null,
     revision: null,
     skills: 0,
+    files: 0,
+    bytes: 0,
     picks: entry.picks?.length ?? 0,
     hints: entry.hints?.length ?? 0,
     problems: [],
@@ -515,12 +600,18 @@ export async function checkEntry(entry, github) {
     const tree = await github.tree(repo, revision.sha);
     // A partial listing would call skills missing that are not.
     if (tree.truncated) throw new Error("GitHub cut the file listing short: too large to check in one request");
-    // Habi skips symbolic links, so a linked SKILL.md is not a skill.
-    const blobs = tree.tree.filter((item) => item.type === "blob" && item.mode !== SYMLINK_MODE);
-    const files = new Set(blobs.map((blob) => blob.path));
-    const folders = skillFolders(files, entry.discovery);
-    const admitted = scopeOf(entry.discovery);
+    const { files, skipped, bytes } = readTree(tree.tree, entry.discovery);
+    const folders = skillFolders(files.map((file) => file.path), entry.discovery);
+    const listed = new Set(tree.tree.map((item) => item.path));
     result.skills = folders.length;
+    result.files = files.length;
+    result.bytes = bytes;
+    // Past these Habi refuses the whole library, rather than cut skills in half.
+    if (files.length > MAX_FILES || bytes > MAX_TOTAL_BYTES) {
+      result.problems.push(
+        `library: ${count(files.length, "file")} and ${mebibytes(bytes)} in scope, over Habi's limits of ${MAX_FILES} files and ${mebibytes(MAX_TOTAL_BYTES)}; narrow discovery`,
+      );
+    }
 
     for (const pattern of entry.discovery.include ?? []) {
       for (const alternative of alternatives(pattern)) {
@@ -540,10 +631,10 @@ export async function checkEntry(entry, github) {
       }
     }
     for (const pick of entry.picks ?? []) {
-      await checkPick(pick, repo, revision.sha, { files, folders, blobs, admitted }, github, result);
+      await checkPick(pick, repo, revision.sha, { listed, files, skipped, folders }, github, result);
     }
   } catch (e) {
-    result.unchecked.push(e.message);
+    result.unchecked.push(safe(e.message));
   }
   return result;
 }
@@ -556,6 +647,7 @@ export async function checkCatalog(catalog, github) {
 
 const count = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 const libraries = (n) => `${n} ${n === 1 ? "library" : "libraries"}`;
+const mebibytes = (bytes) => `${Math.ceil(bytes / MIB)} MiB`;
 
 /** The report, and whether everything resolved. */
 export function report(results) {
@@ -564,7 +656,9 @@ export function report(results) {
   for (const r of results) {
     const state = r.problems.length ? "FAILED" : r.unchecked.length ? "UNCHECKED" : "ok";
     const where = r.revision ? ` at ${r.revision.sha.slice(0, 7)} (${r.revision.label})` : "";
-    const facts = r.revision ? `: ${count(r.skills, "skill")}, ${count(r.picks, "pick")}, ${count(r.hints, "hint")}` : "";
+    const facts = r.revision
+      ? `: ${count(r.skills, "skill")}, ${count(r.files, "file")}, ${mebibytes(r.bytes)}, ${count(r.picks, "pick")}, ${count(r.hints, "hint")}`
+      : "";
     lines.push(`${state.padEnd(9)} ${r.id.padEnd(width)}  ${r.repo ?? "?"}${where}${facts}`);
     for (const problem of r.problems) lines.push(`    - ${problem}`);
     for (const reason of r.unchecked) lines.push(`    ? could not check: ${reason}`);
@@ -584,7 +678,8 @@ export function report(results) {
     if (unchecked) parts.push(`${unchecked} of ${libraries(results.length)} could not be fully checked`);
     lines.push(`${parts.join("; ")}.`);
   }
-  return { ok, text: lines.join("\n") };
+  // Whatever went into a line, it stays one line: this report becomes an issue and a run's log.
+  return { ok, text: lines.map(printable).join("\n") };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -595,7 +690,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(text);
     if (!ok) process.exitCode = 1;
   } catch (e) {
-    console.error(`check-catalog: ${e.message}`);
+    console.error(`check-catalog: ${safe(e.message)}`);
     process.exitCode = 1;
   }
 }

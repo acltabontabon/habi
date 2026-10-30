@@ -57,6 +57,8 @@ jobs:
             --json number,title --jq 'map(select(.title == env.TITLE)) | first | .number // empty')
           if [ -n "$number" ]; then
             gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+            # An edit notifies nobody, and this failure may be new.
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body-file "$body"
           else
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body-file "$body"
           fi

@@ -62,6 +62,11 @@ version tag for `track: latest-release`) and checks that, at that revision:
 
 - each `picks[].skill` folder holds a skill Habi would find, with a `SKILL.md` whose `name` is
   `picks[].name`, or the folder's name when the pick has none;
+- Habi can install each pick: its `name` is a valid skill name, and nothing in its folder is
+  skipped when the library is read. A symbolic link, a Git submodule, a file over 2 MiB or an unsafe
+  file name is skipped, and install refuses a skill with a file missing;
+- the library is within what Habi will read: 5,000 files and 64 MiB in scope. Past that it refuses
+  the whole library;
 - each pick's `tokens` is within 25% of what its `SKILL.md` measures now: the characters in `name`
   and `description`, divided by 4 and rounded up. Small edits upstream aren't worth an issue;
 - each pick's `scripts` is true exactly when the skill has an executable file or a code file;
@@ -70,11 +75,15 @@ version tag for `track: latest-release`) and checks that, at that revision:
 - each `discovery.include` pattern matches at least one skill;
 - the repository is still at the address in `url`.
 
-A pick's `caution` is not checked. It comes from Habi's own scan of the skill's files, which this
-script can't repeat, so re-measure it in the app when you update a pick.
+Two things are not checked:
 
-A failure opens one issue titled "Catalog check failed", or updates the one already open, with the
-report. Close it once the catalog is fixed.
+- A pick's `caution`. It comes from Habi's own scan of the skill's files, which this script can't
+  repeat, so re-measure it in the app when you update a pick.
+- The rest of a `SKILL.md`'s frontmatter. The script reads only `name` and `description`, but
+  invalid YAML under any other key makes Habi lose both, and the check won't see it.
+
+A failure opens one issue titled "Catalog check failed", or updates the one already open with the
+report and a comment. Close it once the catalog is fixed.
 
 To run it yourself, or after changing an entry (without a token, GitHub allows about one run an
 hour):
@@ -89,7 +98,8 @@ The report marks each library `ok`, `FAILED` or `UNCHECKED`:
   or remove `name`, update `tokens` or `scripts`, or remove the pick; a pick whose folder moved is
   reported with where a skill of that name now is. Update the `Picks checked at` comment above the
   entry as you do.
-- **`UNCHECKED`** means something got in the way, such as a rate limit or GitHub being down, and
-  says nothing about the catalog. Run it again.
+- **`UNCHECKED`** means something got in the way, and says nothing about the catalog. After a rate
+  limit or GitHub being down, run it again. If a `SKILL.md` is written in YAML this script doesn't
+  read, read the file yourself, or teach the script that form.
 
 The check needs the network, so it isn't part of `scripts/check.sh` or CI; only its tests are.

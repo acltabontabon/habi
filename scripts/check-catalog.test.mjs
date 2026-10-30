@@ -11,8 +11,11 @@ import {
   githubClient,
   globMatcher,
   isCode,
+  isSafePath,
+  isSkillName,
   latestRelease,
   parseYaml,
+  readTree,
   repoOf,
   report,
   skillFolders,
@@ -239,6 +242,7 @@ test("reads a SKILL.md's name the way Habi does", () => {
   assert.equal(nameOf("---\nname: my-skill # why\n---\n"), "my-skill");
   // The rest of the frontmatter is the author's: this reader's limits do not apply to it.
   assert.equal(nameOf("---\ndescription: |\n  name: not-this\n  has: colons\nname: real\n---\n"), "real");
+  // So invalid YAML elsewhere goes unseen here, though Habi would lose the name. The docs say so.
   assert.equal(nameOf("---\nallowed-tools: { a: b: c\nname: real\n---\n"), "real");
   assert.equal(nameOf("---\nmetadata:\n  name: nested\n---\n"), null);
   assert.equal(nameOf("---\nnames: other\n---\n"), null);
@@ -400,7 +404,7 @@ test("reports each way a pick stops resolving", async () => {
     'pick skills/moved: no SKILL.md there; a skill of that name is at "skills/new-home/moved"',
     "pick skills/gone: no SKILL.md there",
     "pick skills/empty: no SKILL.md there",
-    "pick skills/linked: no SKILL.md there",
+    "pick skills/linked: its SKILL.md is a symbolic link, so Habi does not read it",
     'pick skills/wrong-name: SKILL.md is named "something-else", expected "wrong-name"',
     'pick skills/named: SKILL.md is named "named", expected "the-old-name"',
     'pick skills/nameless: SKILL.md has no name, expected "nameless"',
@@ -469,16 +473,158 @@ test("scripts is compared with the code the skill comes with", async () => {
       { skill: "skills/with-bit", scripts: true },
       { skill: "skills/plain" },
       { skill: "skills/scoped" },
-      { skill: "skills/linked" },
     ]),
     [],
   );
+  // A link is not code, whatever it is called. It has its own problem: see the next test.
+  assert.deepEqual(await problems([{ skill: "skills/linked" }]), [
+    'pick skills/linked: Habi refuses to install it: "skills/linked/run.py" is a symbolic link',
+  ]);
   assert.deepEqual(await problems([{ skill: "skills/with-code" }]), [
     'pick skills/with-code: has code ("skills/with-code/scripts/run.py"), but scripts is not set in the catalog',
   ]);
   assert.deepEqual(await problems([{ skill: "skills/plain", scripts: true }]), [
     "pick skills/plain: scripts is true in the catalog, but it has no code",
   ]);
+});
+
+test("a pick Habi would refuse to install is reported", async () => {
+  const twoMiB = 2 * 1024 * 1024;
+  const installs = async (...extra) => {
+    const { github } = fakeGitHub({
+      routes: repoRoutes("example-org/skills", [...blobs("skills/a/SKILL.md", "skills/b/SKILL.md"), ...extra]),
+      files: { [raw("skills/a/SKILL.md")]: skillMd("a") },
+    });
+    const result = await checkEntry(entry({ discovery: { include: ["skills/**"], exclude: ["skills/a/fixtures/**"] }, picks: [{ skill: "skills/a" }] }), github);
+    assert.deepEqual(result.unchecked, []);
+    return result.problems;
+  };
+  const refused = (what) => [`pick skills/a: Habi refuses to install it: ${what}`];
+  const file = (path, size) => ({ path, mode: "100644", type: "blob", size });
+
+  assert.deepEqual(await installs({ path: "skills/a/link", mode: "120000", type: "blob" }), refused('"skills/a/link" is a symbolic link'));
+  assert.deepEqual(await installs({ path: "skills/a/vendor", mode: "160000", type: "commit" }), refused('"skills/a/vendor" is a Git submodule'));
+  assert.deepEqual(await installs(file("skills/a/big.bin", twoMiB + 1)), refused(`"skills/a/big.bin" is ${twoMiB + 1} bytes, over the limit of ${twoMiB}`));
+  assert.deepEqual(await installs(file("skills/a/nul.txt", 1)), refused('"skills/a/nul.txt" is not a safe file name'));
+  // Deeper in the folder counts too, including inside a skill nested in it.
+  assert.deepEqual(await installs({ path: "skills/a/nested/deep/link", mode: "120000", type: "blob" }), refused('"skills/a/nested/deep/link" is a symbolic link'));
+  assert.deepEqual(
+    await installs(file("skills/a/big.bin", twoMiB + 1), { path: "skills/a/link", mode: "120000", type: "blob" }, { path: "skills/a/sub", mode: "160000", type: "commit" }),
+    refused(`"skills/a/big.bin" is ${twoMiB + 1} bytes, over the limit of ${twoMiB}, and 2 other files`),
+  );
+
+  // Exactly the limit is read. So is anything skipped elsewhere, or that discovery rules out.
+  assert.deepEqual(await installs(file("skills/a/big.bin", twoMiB)), []);
+  assert.deepEqual(await installs({ path: "skills/b/link", mode: "120000", type: "blob" }), []);
+  assert.deepEqual(await installs({ path: "skills/a-other/link", mode: "120000", type: "blob" }), []);
+  assert.deepEqual(await installs({ path: "skills/a/fixtures/link", mode: "120000", type: "blob" }), []);
+  assert.deepEqual(await installs({ path: "other/link", mode: "120000", type: "blob" }), []);
+  // GitHub lists folders too; Habi's own listing does not.
+  assert.deepEqual(await installs({ path: "skills/a/folder", mode: "040000", type: "tree" }), []);
+});
+
+test("an invalid skill name is reported, even when the catalog agrees with it", async () => {
+  const { github } = fakeGitHub({
+    routes: repoRoutes("example-org/skills", blobs("skills/Not_Valid/SKILL.md")),
+    files: { [raw("skills/Not_Valid/SKILL.md")]: skillMd("Not_Valid") },
+  });
+  const result = await checkEntry(entry({ picks: [{ skill: "skills/Not_Valid" }] }), github);
+  assert.deepEqual(result.problems, ['pick skills/Not_Valid: Habi refuses to install it: SKILL.md name "Not_Valid" is not a valid skill name']);
+  for (const name of ["a", "a-b", "skill-2", "x".repeat(64)]) assert.ok(isSkillName(name), name);
+  for (const name of ["", "A", "a_b", "-a", "a-", "a--b", "x".repeat(65)]) assert.ok(!isSkillName(name), name);
+});
+
+test("a library past what Habi reads is reported", async () => {
+  const mib = 1024 * 1024;
+  const problems = async (tree, discovery = { include: ["skills/**"] }) => {
+    const { github } = fakeGitHub({ routes: repoRoutes("example-org/skills", [...blobs("skills/a/SKILL.md"), ...tree]) });
+    return (await checkEntry(entry({ discovery }), github)).problems;
+  };
+  const many = (n, size = 1) => Array.from({ length: n }, (_, i) => ({ path: `skills/a/f${i}.txt`, mode: "100644", type: "blob", size }));
+  // SKILL.md is one of the files.
+  assert.deepEqual(await problems(many(4_999)), []);
+  assert.deepEqual(await problems(many(5_000)), ["library: 5001 files and 1 MiB in scope, over Habi's limits of 5000 files and 64 MiB; narrow discovery"]);
+  assert.deepEqual(await problems(many(32, 2 * mib)), []);
+  assert.deepEqual(await problems([...many(32, 2 * mib), { path: "skills/a/one-more.txt", mode: "100644", type: "blob", size: 1 }]), [
+    "library: 34 files and 65 MiB in scope, over Habi's limits of 5000 files and 64 MiB; narrow discovery",
+  ]);
+  // What discovery leaves out does not count, which is why a large repository can be read at all.
+  const outside = Array.from({ length: 6_000 }, (_, i) => ({ path: `other/f${i}.txt`, mode: "100644", type: "blob", size: 1 }));
+  assert.deepEqual(await problems(outside), []);
+  // Skipped files do not count either: they were never going to be read.
+  const links = Array.from({ length: 6_000 }, (_, i) => ({ path: `skills/a/l${i}`, mode: "120000", type: "blob" }));
+  assert.deepEqual(await problems(links), []);
+});
+
+test("what Habi reads of a tree includes licences above what it reads, and nothing else", () => {
+  const paths = (tree, discovery) => readTree(tree, discovery).files.map((item) => item.path);
+  const tree = blobs(
+    "LICENSE",
+    "COPYING.txt",
+    "LICENSE-MIT.md",
+    "LICENSE.pdf",
+    "README.md",
+    "skills/LICENSE.md",
+    "skills/a/SKILL.md",
+    "skills/a/fixtures/LICENSE",
+    "other/LICENSE",
+    "other/a.txt",
+  );
+  assert.deepEqual(paths(tree, { include: ["skills/a/SKILL.md"], exclude: ["skills/a/fixtures/**"] }), [
+    "LICENSE",
+    "COPYING.txt",
+    "LICENSE-MIT.md",
+    "skills/LICENSE.md",
+    "skills/a/SKILL.md",
+  ]);
+  assert.deepEqual(paths(tree, { include: ["skills/a/SKILL.md"], exclude: ["LICENSE"] }), [
+    "COPYING.txt",
+    "LICENSE-MIT.md",
+    "skills/LICENSE.md",
+    "skills/a/SKILL.md",
+  ]);
+});
+
+test("a file name Habi would not write is unsafe", () => {
+  for (const file of ["skills/a/SKILL.md", ".github/skills/a/run.py", "a/.gitignore", "a/com0", "a/com10", "a/console.txt", "a/nullable", "é/ü.txt"]) {
+    assert.ok(isSafePath(file), file);
+  }
+  for (const file of ["", "/abs", "a\\b", "a/../b", "a/.git/config", "a/.GIT/x", "a/b\nc", "a/b\0c", "a/b:c", "a/b?", "a/b*", 'a/b"', "a/b|c", "a/<b", "a/b>", "a/b.", "a/b ", "a/con", "a/NUL.txt", "a/nul .md", "a/COM1", "a/lpt9.log", "a/com¹", `a/${"x".repeat(1100)}`]) {
+    assert.ok(!isSafePath(file), JSON.stringify(file));
+  }
+});
+
+test("frontmatter this script cannot read is unchecked; frontmatter nothing can read is a problem", async () => {
+  const outcome = async (text) => {
+    const { github } = fakeGitHub({
+      routes: repoRoutes("example-org/skills", blobs("skills/a/SKILL.md", "skills/b/SKILL.md")),
+      files: { [raw("skills/a/SKILL.md")]: text, [raw("skills/b/SKILL.md")]: skillMd("not-b") },
+    });
+    const { problems, unchecked } = await checkEntry(entry({ picks: [{ skill: "skills/a" }, { skill: "skills/b" }] }), github);
+    return { problems: problems.filter((p) => p.startsWith("pick skills/a")), unchecked, others: problems.filter((p) => p.startsWith("pick skills/b")) };
+  };
+  // Valid YAML, in forms this reader does not handle.
+  for (const text of ['---\nname: a\ndescription: "caf\\xE9"\n---\n', "---\nname: a\ndescription: &anchor text\n---\n", "---\nname: !!str a\n---\n"]) {
+    const { problems, unchecked, others } = await outcome(text);
+    assert.deepEqual(problems, [], text);
+    assert.equal(unchecked.length, 1, text);
+    assert.match(unchecked[0], /^pick skills\/a: SKILL\.md line \d+: /, text);
+    // The rest of the library is still checked.
+    assert.equal(others.length, 1, text);
+  }
+  // Not YAML at all, as Habi would find too.
+  for (const [text, message] of [
+    ["---\nname: a\ndescription: Use when: reviewing\n---\n", /invalid YAML/],
+    ["---\nname: a\ndescription: ends in a colon:\n---\n", /invalid YAML/],
+    ["---\nname: a\ndescription: over\n  two: lines\n---\n", /invalid YAML/],
+    ["# Just text\n", /does not start/],
+    ["---\nname: a\n", /not closed/],
+  ]) {
+    const { problems, unchecked } = await outcome(text);
+    assert.deepEqual(unchecked, [], text);
+    assert.equal(problems.length, 1, text);
+    assert.match(problems[0], message, text);
+  }
 });
 
 test("caution is left to Habi's own scan", async () => {
@@ -620,28 +766,60 @@ test("the token goes to the API and nowhere else", async () => {
 
 test("text from upstream cannot break out of the report", async () => {
   const hostile = "x\n```\n@someone <img src=x>\n::error::y";
+  const fence = "```";
+  const repo = "example-org/skills";
+  const branch = "main`\n::error::branch";
   const { github } = fakeGitHub({
     routes: {
-      ...repoRoutes("example-org/skills", blobs("skills/a/SKILL.md", `moved${"`"}\n@someone/b/SKILL.md`)),
-      "/repos/example-org/skills": { full_name: "example-org/skills", default_branch: "main" },
+      [`/repos/${repo}`]: { full_name: repo, default_branch: branch },
+      [`/repos/${repo}/branches/${encodeURIComponent(branch)}`]: { commit: { sha: SHA } },
+      [`/repos/${repo}/git/trees/${SHA}`]: {
+        truncated: false,
+        tree: blobs(
+          "skills/named/SKILL.md",
+          "skills/broken/SKILL.md",
+          "skills/limit/SKILL.md",
+          "skills/skipped/SKILL.md",
+          `skills/skipped/${fence}\n@someone\n::error::file`,
+          `moved${fence}@someone/gone/SKILL.md`,
+        ),
+      },
     },
-    files: { [raw("skills/a/SKILL.md")]: `---\nname: "${hostile.replaceAll("\n", "\\n")}"\n---\n` },
+    files: {
+      [raw("skills/named/SKILL.md")]: `---\nname: "${hostile.replaceAll("\n", "\\n")}"\n---\n`,
+      // A message about a value quotes the value, over as many lines as it runs to.
+      [raw("skills/broken/SKILL.md")]: `---\nname: broken\ndescription: x: y\n\n  ${fence}\n\n  @someone\n\n  ::error::description\n---\n`,
+      [raw("skills/limit/SKILL.md")]: `---\nname: limit\ndescription: "${fence} \\q\n\n  @someone\n\n  ::error::limit"\n---\n`,
+      [raw("skills/skipped/SKILL.md")]: skillMd("skipped"),
+    },
   });
   const result = await checkEntry(
-    entry({ discovery: { include: ["**"] }, picks: [{ skill: "skills/a" }, { skill: "skills/b" }] }),
+    entry({
+      discovery: { include: ["**"] },
+      picks: [{ skill: "skills/named" }, { skill: "skills/broken" }, { skill: "skills/limit" }, { skill: "skills/skipped" }, { skill: "skills/gone" }],
+    }),
     github,
   );
+  assert.ok(result.problems.some((p) => p.includes("invalid YAML")), result.problems.join("\n"));
+  assert.ok(result.unchecked.some((u) => u.includes("unsupported escape")), result.unchecked.join("\n"));
   const { text } = report([result]);
   assert.ok(!text.includes("`"), text);
-  for (const line of text.split("\n")) assert.ok(!/^\s*(@|::)/.test(line), line);
-  assert.equal(text.split("\n").length, 7, text);
+  for (const line of text.split("\n")) assert.ok(!/^\s*(@|::|<)/.test(line), line);
+  // A heading, a blank, the library, one line per finding, a blank, a summary: nothing added.
+  assert.equal(text.split("\n").length, 5 + result.problems.length + result.unchecked.length, text);
+
+  // Whatever a later change forgets to clean, the report itself holds the line.
+  const careless = { id: "x", repo: "o/r", revision: null, skills: 0, files: 0, bytes: 0, picks: 0, hints: 0, problems: [hostile], unchecked: [hostile] };
+  const held = report([careless]).text;
+  assert.ok(!held.includes("`"), held);
+  for (const line of held.split("\n")) assert.ok(!/^\s*(@|::)/.test(line), line);
 });
 
 test("the report says what passed, what failed and what could not be checked", async () => {
-  const healthy = { id: "good", repo: "o/good", revision: { sha: SHA, label: "main" }, skills: 3, picks: 2, hints: 1, problems: [], unchecked: [] };
+  const healthy = { id: "good", repo: "o/good", revision: { sha: SHA, label: "main" }, skills: 3, files: 12, bytes: 5 * 1024 * 1024, picks: 2, hints: 1, problems: [], unchecked: [] };
   const passing = report([healthy]);
   assert.equal(passing.ok, true);
-  assert.match(passing.text, /^ok +good +o\/good at aaaaaaa \(main\): 3 skills, 2 picks, 1 hint$/m);
+  assert.match(passing.text, /^ok +good +o\/good at aaaaaaa \(main\): 3 skills, 12 files, 5 MiB, 2 picks, 1 hint$/m);
   assert.match(passing.text, /All 1 library resolve: 2 picks, 1 hint\.$/);
 
   const rotten = { ...healthy, id: "rotten", repo: "o/rotten", problems: ["pick x: no SKILL.md there"] };
