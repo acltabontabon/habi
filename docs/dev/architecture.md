@@ -81,6 +81,8 @@
 - **`browse`**: the project chooser's read-only look at likely repository folders.
 - **`sample`**: removes what is left of the sample workspace earlier versions could create.
 - **`maintenance`**: pruning old journals, snapshots and unreferenced blobs (`habi gc`).
+- **`usage`**: whether a project's skills get used, from Claude Code's session transcripts, read
+  on demand and bounded; the estimate of what a skill costs every session.
 - **`service`**: the facade; projects, declarations, plans by id, overview.
 
 ## Install scopes

@@ -67,6 +67,11 @@ Habi is not a marketplace, agent launcher, chat application or configuration das
 
 They are never collapsed into a single "green" status.
 
+**Use** sits beside them and feeds none of them: *Used 12× in 30 days* or *Not used in 30 days* on
+an installed skill, counted from Claude Code's history on this machine when the list opens. It
+helps a person prune what they no longer need; it does not rank or recommend anything, and says
+nothing when there is nothing to go on.
+
 Readiness is reported per compatible agent and installation previews assess the selected
 agents. A project MCP entry establishes configuration only, not startup or authentication.
 Evidence summarizes the latest completed results across declared checks and applicable
@@ -89,6 +94,11 @@ Known gaps are listed in one place:
 A workflow execution engine, model routing or proxies, a marketplace, conversation
 monitoring, autonomous agents, LLM-generated applicability presented as fact, and
 effectiveness scores without evidence.
+
+Counting skill use is not conversation monitoring, and it stays that way: it runs when a person
+opens a list, takes only skill names and times from an agent's local history, and keeps nothing
+([exactly what is read](security-model.md#claude-code-session-history)). A count is not an
+effectiveness score, and is not presented as one.
 
 ## Future direction
 

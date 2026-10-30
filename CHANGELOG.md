@@ -32,6 +32,11 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Matching by what a skill says it is for.** A skill with no rules of its own fits a project
   when its description names a technology the project uses (*From its description*). It is
   listed under All skills, said as Habi's reading; the team's own libraries also feed Suggested.
+- **See which skills earn their place.** Under All skills, an installed skill says *Used 12× in
+  30 days* or *Not used in 30 days · ~40 tokens*, so you can remove what you no longer need. Habi
+  reads Claude Code's session history in `~/.claude/projects` for this when you open the list,
+  takes only skill names and times, keeps nothing and sends nothing; Privacy and security says
+  exactly what it reads. Other agents are not counted.
 
 ### Fixed
 

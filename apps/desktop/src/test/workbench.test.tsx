@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Plan } from "../bindings/Plan";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
+import type { SkillUsageReport } from "../bindings/SkillUsageReport";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider, useNav } from "../lib/nav";
@@ -243,6 +244,138 @@ describe("workbench", () => {
     await user.keyboard("{ArrowDown}");
     const active = document.querySelector(".rec-row.is-active");
     expect(active).toBe(rows[1]);
+  });
+
+  describe("how installed skills get used", () => {
+    const installed = ["liquibase-migration-review", "jpa-entity-review", "github-pr-summary"];
+    const overview: ProjectOverview = {
+      ...billingOverview,
+      recommendations: billingOverview.recommendations.map((r) =>
+        installed.includes(r.item.name) ? { ...r, installState: "current" } : r,
+      ),
+    };
+    const answer = (usage: SkillUsageReport) =>
+      invoke.mockImplementation(async (cmd: string) => {
+        if (cmd === "get_settings") return { autoRefreshHours: 12 };
+        if (cmd === "skill_usage") return usage;
+        if (cmd === "discover_project")
+          return {
+            skills: [
+              {
+                path: ".claude/skills/house-style",
+                name: "house-style",
+                description: "Writes like this team.",
+                readers: ["claude-code"],
+                managedBy: null,
+                hasMetadata: false,
+                fileCount: 1,
+                problems: [],
+                digest: "d",
+                importedAs: null,
+              },
+            ],
+            instructions: [],
+            limits: [],
+            inspectedAt: "2026-10-30T00:00:00Z",
+          };
+        throw { code: "notFound", message: `no mock for ${cmd}` };
+      });
+
+    it("says what the history shows on installed rows, and only there", async () => {
+      answer({
+        partial: false,
+        skills: [
+          {
+            name: "liquibase-migration-review",
+            tokens: 51,
+            usage: { uses: 12, lastUsed: "2026-10-29T00:00:00Z", days: 30 },
+          },
+          { name: "jpa-entity-review", tokens: 42, usage: { uses: 0, lastUsed: null, days: 30 } },
+          { name: "github-pr-summary", tokens: 40, usage: null },
+          // Listed by the core but not installed here: its row is not about use.
+          { name: "service-observability", tokens: 41, usage: { uses: 3, lastUsed: null, days: 30 } },
+          { name: "house-style", tokens: 12, usage: { uses: 0, lastUsed: null, days: 4 } },
+        ],
+      });
+      wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+
+      const used = row("Liquibase migration review");
+      expect(await within(used).findByText("Used 12× in 30 days")).toBeInTheDocument();
+      // A skill in use is not asked to justify what it costs.
+      expect(within(used).queryByText(/tokens/)).toBeNull();
+
+      const unused = row("JPA entity review");
+      expect(within(unused).getByText("Not used in 30 days")).toBeInTheDocument();
+      expect(within(unused).getByText("~42 tokens")).toBeInTheDocument();
+
+      expect(within(row("GitHub PR summary")).queryByText(/used/i)).toBeNull();
+      expect(within(row("Service observability")).queryByText(/used/i)).toBeNull();
+
+      // A skill that was already in the project, with less history: it says so.
+      await waitFor(() => expect(within(row("house-style")).getByText("Not used in 4 days")).toBeVisible());
+    });
+
+    it("says nothing when there are no transcripts", async () => {
+      answer({
+        partial: false,
+        skills: installed.map((name) => ({ name, tokens: 40, usage: null })),
+      });
+      wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+      await waitFor(() => expect(row("house-style")).toBeVisible());
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("skill_usage", expect.anything()));
+      for (const title of ["Liquibase migration review", "JPA entity review", "GitHub PR summary"]) {
+        expect(within(row(title)).queryByText(/used|tokens/i)).toBeNull();
+      }
+    });
+
+    it("carries on without a line when the transcripts cannot be read", async () => {
+      wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("skill_usage", expect.anything()));
+      expect(within(row("Liquibase migration review")).queryByText(/used/i)).toBeNull();
+    });
+
+    it("calls a count from a partial read a minimum", async () => {
+      answer({
+        partial: true,
+        skills: [
+          {
+            name: "liquibase-migration-review",
+            tokens: 51,
+            usage: { uses: 2, lastUsed: "2026-10-29T00:00:00Z", days: 30 },
+          },
+        ],
+      });
+      wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+      expect(
+        await within(row("Liquibase migration review")).findByText("Used at least 2× in 30 days"),
+      ).toBeInTheDocument();
+    });
+
+    it("stops the read when the list is left", async () => {
+      let finish: (report: SkillUsageReport) => void = () => undefined;
+      invoke.mockImplementation((cmd: string) => {
+        if (cmd === "skill_usage") return new Promise((resolve) => (finish = resolve));
+        if (cmd === "cancel_job") return Promise.resolve(true);
+        return Promise.reject({ code: "notFound", message: `no mock for ${cmd}` });
+      });
+      const { unmount } = wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("skill_usage", expect.anything()));
+      const job = invoke.mock.calls.find(([cmd]) => cmd === "skill_usage")?.[1].jobId;
+      unmount();
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("cancel_job", { jobId: job }));
+      finish({ partial: false, skills: [] });
+    });
+
+    it("has no detectable accessibility violations", async () => {
+      answer({
+        partial: false,
+        skills: [{ name: "jpa-entity-review", tokens: 42, usage: { uses: 0, lastUsed: null, days: 30 } }],
+      });
+      const { container } = wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+      await within(row("JPA entity review")).findByText("Not used in 30 days");
+      const results = await axe.run(container);
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+    });
   });
 
   it("has no detectable accessibility violations", async () => {

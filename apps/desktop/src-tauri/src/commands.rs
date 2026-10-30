@@ -29,6 +29,7 @@ use habi_core::skills::{LocalSkill, LocalSkillSummary, NewSkill, SkillDocument, 
 use habi_core::source::{
     NewSource, RefreshOutcome, Source, SourceRole, SourceUpdate, UpdateReport,
 };
+use habi_core::usage::SkillUsageReport;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -1507,6 +1508,17 @@ pub async fn discover_project(
     let habi = state.habi()?;
     let (cancel, _guard) = state.job(job_id);
     blocking(habi, move |h| h.discover(&project_id, &cancel)).await
+}
+
+#[tauri::command]
+pub async fn skill_usage(
+    state: State<'_, AppState>,
+    project_id: String,
+    job_id: Option<String>,
+) -> CmdResult<SkillUsageReport> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.skill_usage(&project_id, &cancel)).await
 }
 
 #[tauri::command]

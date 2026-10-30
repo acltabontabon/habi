@@ -15,6 +15,10 @@ const STAYS: Fact[] = [
   ["Your project files", "Read here, matched here"],
   ["Library contents", "Kept on disk, read here"],
   ["Inspection and matching", "Nothing is sent away to be analyzed"],
+  [
+    "Your Claude Code sessions",
+    "~/.claude/projects, last 30 days, read when you open a project’s All skills. Only skill names and times are used, and nothing is kept",
+  ],
   ["Logs and reports", "Redacted. A report is written only when you save it"],
 ];
 

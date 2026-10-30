@@ -163,6 +163,36 @@ and it is what makes authentication work without Habi handling secrets.
   blocked if any are found. Only the files shown in the preview leave the machine, and only
   on explicit export or publish.
 
+## Claude Code session history
+
+To say whether a project's skills get used, Habi reads Claude Code's session transcripts. They
+can hold anything said or shown in a session, so what happens to them is stated exactly.
+
+- **What is read.** `~/.claude/projects/<the project's folder, encoded>` and the folders of
+  sessions started below it (`<encoded>-*`, such as a worktree): the `*.jsonl` files there and in
+  `<session>/subagents/` that changed in the last 30 days. Nothing else under `~/.claude`, and
+  no other agent's history.
+- **When.** When a project's *All skills* list opens, and again if it reopens after a minute;
+  leaving stops the read. Never in the background or on a schedule. A project with no skill in a
+  folder Claude Code reads opens no transcript at all.
+- **What is used.** Lines that cannot matter are skipped unparsed. From the rest, Habi takes a
+  record's folder and time and a skill name, in three cases: the agent calling the `Skill` tool
+  (and whether that call failed), a skill typed as a slash command, and the list of skills a session
+  offered its agent. Prompts, replies, tool output and file contents are not kept, shown or logged.
+- **What is kept and sent.** Nothing is written to disk: not to Habi's database, its logs or a
+  diagnostic report. The counts stay in the window's memory while the list is open and for a minute
+  after. No transcript, count or skill name leaves the machine.
+- **Bounds.** At most 5,000 files, 512 MiB per file, 4 GiB per read and 16 MiB per line, the newest
+  first, and it can be cancelled. Symbolic links below `~/.claude/projects` are not followed.
+  Transcripts are opened read-only and never changed. A record counts only if its own folder is the
+  project or inside it, because encoded folder names are lossy (`/a/b-c` and `/a/b/c` share one).
+- **What it can say.** A count of a name in one agent's history, not a verdict on whether a skill
+  helps. *Not used* is said only of a skill a session offered and no session used, so a folder
+  Claude Code does not read, a skill newer than any session, or a changed transcript format leave
+  the row saying nothing. If a limit is reached or a file cannot be read, counts become minimums
+  (*Used at least 3×*) and no skill is called unused. The format is Claude Code's own and undocumented
+  ([what was checked](../dev/compatibility-research.md#9-what-agents-record-about-skill-use)).
+
 ## Library catalog and previews
 
 - A catalog entry is a *suggestion of a repository*, not an endorsement. **Official** means the
@@ -239,7 +269,10 @@ re-creation of deleted files. All were fixed, with regression tests.
 By design, or not solved yet:
 
 - **What an agent does** with installed content is invisible to Habi, and Habi does not claim
-  to know.
+  to know, except for how often Claude Code's own history shows a skill being loaded
+  ([what is read](#claude-code-session-history)). That count misses other agents, and a skill read
+  as a plain file instead of loaded. It goes by name, so a personal skill of the same name counts
+  too. Whether a skill helped is not something it can say.
 - **Running a check** executes code with your privileges. There is no sandbox. The preview
   lists what a pattern reading of the command and its script finds (credential files,
   download-and-run, broad deletes); that is a warning, and it misses anything obfuscated.

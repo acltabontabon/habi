@@ -303,3 +303,50 @@ Notes:
 - Junie: environment-variable syntax in `mcp.json`, and whether `AGENTS.md` is read in every surface. The `www.jetbrains.com/help/junie/` pages returned no content; the `junie.jetbrains.com/docs` pages were used instead.
 - How any of Gemini CLI, Copilot, OpenCode and Junie handles the same skill `name` found in two folders.
 - Windsurf: a project-level MCP file for the current Devin agent. The CLI configuration page returned 404, and the `mcp_config.json` on the Cascade page is global and applies to the legacy agent only.
+
+## 9. What agents record about skill use
+
+**Research date:** 2026-10-30. Unlike the rest of this page, none of this is documented by the
+vendors. It comes from reading the structure of real session files on one macOS machine (names, keys
+and counts only), so check it again if the format changes. No transcript content is copied here or in
+`fixtures/transcripts`, which is written by hand. Habi reads Claude Code only (`usage`).
+
+### Claude Code (checked: 1,719 transcripts, versions 2.1.205 to 2.1.310)
+
+- **Location.** `~/.claude/projects/<encoded>/<session>.jsonl`, and a subagent's in
+  `<session>/subagents/agent-<id>.jsonl`. `<encoded>` is the folder the session started in, with
+  every character but ASCII letters and digits replaced by `-`. So `/a/b-c` and `/a/b/c` share a name,
+  and a worktree at `.claude/worktrees/x` is `<encoded>--claude-worktrees-x`.
+- **Records.** One JSON object per line. Those Habi uses carry `type`, `timestamp` (RFC 3339, UTC),
+  `cwd`, `uuid` and `isSidechain`. `cwd` follows the session, so it can differ from the folder name.
+- **The agent loading a skill.** An `assistant` record with
+  `message.content[] = {type: "tool_use", name: "Skill", id, input: {skill, args?}}`. The next `user`
+  record holds its `tool_result` (`Launching skill: <name>`, or `is_error: true`), with
+  `toolUseResult: {success, commandName}` on the main thread only. A plugin's skill is `plugin:skill`.
+- **A person typing a skill.** No tool call. A `user` record whose text opens with
+  `<command-message>x</command-message><command-name>/x</command-name>` (older versions put the
+  name first). A skill loaded for the session has the same shape with no `/` and `isMeta: true`.
+- **What a session offered.** An `attachment` record, `{type: "skill_listing", names: [...], content,
+  skillCount, isInitial}`. `content` is `- name: description` per line, with the description as
+  written, which is what the context estimate models. Of 611 main sessions in the last 30 days, 565
+  had one. Of the 46 without, 42 were agents another app embedded in scratch folders, whose recorded
+  API request has no `Skill` tool at all, and 4 had under 20 lines. No session whose request lacked
+  the tool had a listing. So Habi says *Not used* only when a listing names the skill: without
+  one, it says nothing.
+- **Not uses.** `invoked_skills` (a skill's text carried over a compaction), `api-request-*` records
+  (which contain the `Skill` tool's definition and have no `cwd`), and the tag mentioned in a prompt.
+- **Reliability.** All 12 records that begin `Base directory for this skill:`, the text a loaded skill
+  arrives with, traced back to a tool call or a typed command. No tool call ID appeared twice across
+  files on this machine, though Habi still counts each once because a resumed session could repeat one.
+- **Not visible.** An agent reading a `SKILL.md` as a plain file. Which copy was used when a project and
+  a personal skill share a name (only the first text block's `Base directory` says, and not always).
+- **Limits of this check.** Very long folder names were not seen (the longest was 176 characters),
+  and Windows paths were not checked on a real machine.
+
+### Other agents (not implemented)
+
+| Agent | Where | What it records about skills |
+|---|---|---|
+| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, with `cwd` in `session_meta` | No skill tool. An agent reads `SKILL.md` through its shell (`exec`, `custom_tool_call`) and the path also shows up in instructions and `world_state`, so a use would have to be inferred from commands. |
+| Cursor | `~/.cursor/projects/<encoded>/agent-transcripts/**/*.jsonl` (`{role, message}`, no times per record); chats in SQLite under `~/.cursor/chats` | No skill tool. `SKILL.md` appears only as text in messages. |
+| Gemini CLI | Not installed on the machine checked; nothing confirmed | Not known. |

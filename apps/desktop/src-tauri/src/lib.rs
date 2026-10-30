@@ -334,6 +334,7 @@ pub fn run() {
             commands::preview_skill,
             commands::suggest_conditions,
             commands::discover_project,
+            commands::skill_usage,
             commands::read_instructions,
             commands::create_skill_from_instructions,
             commands::pick_import_folder,
