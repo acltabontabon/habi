@@ -523,6 +523,19 @@ fn eval_dependency(
         .copied()
         .filter(|e| filter.is_none_or(|flt| flt.accepts(*e)))
         .collect();
+    // A manifest in what the walk did not list was not read, so no manifest
+    // here says only that none was seen.
+    let unlisted = view.incomplete(&["files"]);
+    if relevant.is_empty() && !unlisted.is_empty() {
+        return node(
+            condition,
+            Tri::Unknown,
+            format!(
+                "no manifest that could declare it was found, but the scan was incomplete: {}",
+                unlisted.join(" ")
+            ),
+        );
+    }
     if relevant.is_empty() {
         let what = match filter {
             Some(f) => f
@@ -542,7 +555,8 @@ fn eval_dependency(
             ),
         );
     }
-    let areas: Vec<&str> = relevant.iter().map(|e| eco_area(*e)).collect();
+    let mut areas: Vec<&str> = relevant.iter().map(|e| eco_area(*e)).collect();
+    areas.push("files");
     let gaps = view.incomplete(&areas);
     if gaps.is_empty() {
         let manifests = relevant
@@ -728,10 +742,12 @@ fn eval_tag(condition: &Condition, tag: &str, view: &View) -> EvalNode {
             format!("Habi cannot detect `{tag}`; declare whether it applies to this project"),
         );
     };
+    // Manifests need `files` too: one the walk did not list was not read.
     let mut areas: Vec<&str> = match basis {
-        TagBasis::Manifest => MANIFEST_AREAS.to_vec(),
+        TagBasis::Manifest | TagBasis::Both => {
+            MANIFEST_AREAS.iter().copied().chain(["files"]).collect()
+        }
         TagBasis::Files => vec!["files"],
-        TagBasis::Both => MANIFEST_AREAS.iter().copied().chain(["files"]).collect(),
     };
     // OpenAPI documents and Liquibase changelogs are recognized by content,
     // so their absence also depends on every candidate file having been read.

@@ -871,6 +871,18 @@ fn inspect_within(
         }
     }
     python::collect(&python_manifests, &python_locks, &mut out);
+    // A `setup.py` makes a Python module, but what it declares is only known by
+    // running it. The module's dependencies are therefore never all seen.
+    for p in &setup_pys {
+        out.coverage(
+            &dir_of(p),
+            "pypi",
+            CoverageStatus::Partial,
+            vec![format!(
+                "{p} is a program and is not run, so the dependencies it declares are not established."
+            )],
+        );
+    }
 
     let mut composers = Vec::new();
     for p in &composer_jsons {

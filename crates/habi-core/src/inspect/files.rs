@@ -16,7 +16,6 @@ use std::sync::LazyLock;
 const DETECTOR: &str = "files";
 const PREFIX_BYTES: usize = 4096;
 const MAX_CONTENT_CHECKS: usize = 600;
-const MAX_CANDIDATE_SIZE: u64 = 8 * 1024 * 1024;
 
 /// Roles recognized purely from the path.
 const NAME_ROLES: &[(&str, &str)] = &[
@@ -222,9 +221,7 @@ pub fn collect(
     // Content checks for OpenAPI documents and Liquibase changelogs.
     let mut candidates: Vec<&(String, u64)> = files
         .iter()
-        .filter(|(p, size)| {
-            content_candidate(p) && *size <= MAX_CANDIDATE_SIZE && !inside_skill_package(p)
-        })
+        .filter(|(p, _)| content_candidate(p) && !inside_skill_package(p))
         .collect();
     candidates.sort_by(|a, b| {
         candidate_score(&b.0)
@@ -248,10 +245,12 @@ pub fn collect(
             continue;
         };
         let text = String::from_utf8_lossy(&prefix);
+        // Some editors start a file with a byte order mark.
+        let text = text.trim_start_matches('\u{feff}');
         let ext = extension(path);
         let is_openapi = match ext {
-            "yaml" | "yml" => OPENAPI_YAML.is_match(&text),
-            "json" => OPENAPI_JSON.is_match(&text),
+            "yaml" | "yml" => OPENAPI_YAML.is_match(text),
+            "json" => OPENAPI_JSON.is_match(text),
             _ => false,
         };
         if is_openapi {
@@ -266,7 +265,7 @@ pub fn collect(
                 first.map(|l| l as u32 + 1),
             );
         }
-        if matches!(ext, "xml" | "yaml" | "yml" | "json" | "sql") && LIQUIBASE.is_match(&text) {
+        if matches!(ext, "xml" | "yaml" | "yml" | "json" | "sql") && LIQUIBASE.is_match(text) {
             out.file(
                 &module_of(path),
                 path,

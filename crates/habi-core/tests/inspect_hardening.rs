@@ -295,11 +295,18 @@ fn modules_past_the_limit_are_dropped_and_the_scan_says_so() {
     assert!(i.scan.truncated);
     assert!(i.fact("dep:top:npm:react").is_some());
     assert_eq!(coverage(&i, ".", "files"), CoverageStatus::Partial);
+    // What a dropped module declares is not established.
+    assert_eq!(
+        outcome(&i, json!({"dependency": "org.x:y"}), Scope::Repository),
+        Applicability::NeedsInformation
+    );
+
     // One evaluation stays small enough to send per skill, per overview.
     let rule = Condition::parse(&json!({"dependency": "org.x:y"})).unwrap();
     let started = Instant::now();
     let result = assess(Some(&rule), None, Scope::Module, &i, &[]);
     assert!(started.elapsed() < Duration::from_secs(5));
+    assert_eq!(result.applicability, Applicability::NeedsInformation);
     assert_eq!(result.modules.len(), 2_000);
     let size = serde_json::to_string(&result).unwrap().len();
     assert!(size < 1024 * 1024, "{size} bytes");
@@ -415,5 +422,222 @@ fn a_build_gradle_of_script_plugins_keeps_evaluations_small() {
         let size = serde_json::to_string(&result).unwrap().len();
         assert!(size < 16 * 1024, "{size} bytes");
         assert!(result.reason.contains("more"), "{}", result.reason);
+    }
+}
+
+// What is not established stays unknown.
+
+fn assert_all_unknown(i: &ProjectInspection, rules: &[serde_json::Value]) {
+    for rule in rules {
+        for scope in [Scope::Module, Scope::Repository] {
+            assert_eq!(
+                outcome(i, rule.clone(), scope),
+                Applicability::NeedsInformation,
+                "{rule} in {scope:?}"
+            );
+        }
+    }
+}
+
+fn absence_rules() -> Vec<serde_json::Value> {
+    vec![
+        json!({"dependency": "org.x:y"}),
+        json!({"tag": "framework:spring-boot"}),
+        json!({"not": {"dependency": "org.x:y"}}),
+        json!({"not": {"tag": "framework:spring-boot"}}),
+        json!({"file": "**/pom.xml"}),
+    ]
+}
+
+#[test]
+fn a_walk_stopped_by_a_limit_leaves_absence_unknown() {
+    let dir = tempfile::tempdir().unwrap();
+    for n in 0..5 {
+        write(dir.path(), &format!("f{n}.txt"), "");
+    }
+    let options = WalkOptions {
+        max_files: 2,
+        ..Default::default()
+    };
+    let i = inspect(dir.path(), &options, &CancelToken::new()).unwrap();
+    assert!(i.scan.truncated);
+    assert_all_unknown(&i, &absence_rules());
+
+    // A walk that finished can say a thing is absent.
+    let i = inspected(dir.path());
+    assert_eq!(
+        outcome(&i, json!({"dependency": "org.x:y"}), Scope::Module),
+        Applicability::DoesNotApply
+    );
+    assert_eq!(
+        outcome(&i, json!({"tag": "framework:spring-boot"}), Scope::Module),
+        Applicability::DoesNotApply
+    );
+    assert_eq!(
+        outcome(&i, json!({"not": {"dependency": "org.x:y"}}), Scope::Module),
+        Applicability::Applies
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn an_unreadable_folder_leaves_absence_unknown() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "app.txt", "");
+    write(dir.path(), "locked/pom.xml", "<project/>");
+    let locked = dir.path().join("locked");
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let i = inspect(dir.path(), &WalkOptions::default(), &CancelToken::new());
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let i = i.unwrap();
+    if i.files.iter().any(|f| f == "locked/pom.xml") {
+        return; // running with privileges that read anything
+    }
+    assert_all_unknown(&i, &absence_rules());
+    // A dependency with a manifest beside it is just as open.
+    write(dir.path(), "package.json", "{}");
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let i = inspect(dir.path(), &WalkOptions::default(), &CancelToken::new());
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert_all_unknown(&i.unwrap(), &absence_rules());
+}
+
+#[test]
+fn an_ignore_file_not_applied_leaves_absence_unknown() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "app.txt", "");
+    write(dir.path(), ".gitignore", &"# padding\n".repeat(120_000));
+    let i = inspected(dir.path());
+    assert_eq!(coverage(&i, ".", "files"), CoverageStatus::Partial);
+    assert_all_unknown(&i, &absence_rules());
+}
+
+#[test]
+fn setup_py_leaves_python_dependencies_unknown() {
+    let dir = tempfile::tempdir().unwrap();
+    write(
+        dir.path(),
+        "setup.py",
+        "from setuptools import setup\nsetup(install_requires=[\"django>=5\"])\n",
+    );
+    let i = inspected(dir.path());
+    assert_eq!(coverage(&i, ".", "pypi"), CoverageStatus::Partial);
+    let pypi = i.coverage.iter().find(|c| c.area == "pypi").unwrap();
+    assert!(pypi.notes[0].contains("setup.py"), "{:?}", pypi.notes);
+    assert_all_unknown(
+        &i,
+        &[
+            json!({"dependency": "django"}),
+            json!({"tag": "framework:django"}),
+            json!({"not": {"dependency": "django"}}),
+        ],
+    );
+    // Beside it, what is declared is still found.
+    write(dir.path(), "requirements.txt", "flask\n");
+    let i = inspected(dir.path());
+    assert_eq!(coverage(&i, ".", "pypi"), CoverageStatus::Partial);
+    assert_eq!(
+        outcome(&i, json!({"dependency": "flask"}), Scope::Module),
+        Applicability::Applies
+    );
+    assert_all_unknown(&i, &[json!({"dependency": "django"})]);
+}
+
+#[test]
+fn a_requirements_file_that_includes_another_leaves_dependencies_unknown() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "requirements.txt", "-r requirements/prod.txt\n");
+    write(dir.path(), "requirements/prod.txt", "django==5.0\n");
+    let i = inspected(dir.path());
+    assert_eq!(coverage(&i, ".", "pypi"), CoverageStatus::Partial);
+    assert_all_unknown(
+        &i,
+        &[
+            json!({"dependency": "django"}),
+            json!({"tag": "framework:django"}),
+        ],
+    );
+}
+
+#[test]
+fn a_direct_reference_and_a_byte_order_mark_are_read() {
+    let dir = tempfile::tempdir().unwrap();
+    write(
+        dir.path(),
+        "requirements.txt",
+        "\u{feff}flask==3.0\ndjango @ git+https://example.com/django/django\n",
+    );
+    let i = inspected(dir.path());
+    assert_eq!(coverage(&i, ".", "pypi"), CoverageStatus::Complete);
+    for rule in [
+        json!({"dependency": "flask"}),
+        json!({"dependency": "django"}),
+        json!({"tag": "framework:django"}),
+    ] {
+        assert_eq!(
+            outcome(&i, rule.clone(), Scope::Module),
+            Applicability::Applies,
+            "{rule}"
+        );
+    }
+}
+
+#[test]
+fn a_large_openapi_document_is_still_probed() {
+    let dir = tempfile::tempdir().unwrap();
+    write(
+        dir.path(),
+        "api/openapi.json",
+        r#"{ "openapi": "3.0.3", "info": {}, "padding": ""#,
+    );
+    // Only the start of a file is read, however long the rest. Sparse where it can be.
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .open(dir.path().join("api/openapi.json"))
+        .unwrap();
+    file.set_len(9 * 1024 * 1024).unwrap();
+    drop(file);
+    let i = inspected(dir.path());
+    assert_eq!(coverage(&i, ".", "content"), CoverageStatus::Complete);
+    assert_eq!(
+        outcome(&i, json!({"tag": "api:openapi"}), Scope::Repository),
+        Applicability::Applies
+    );
+}
+
+#[test]
+fn a_byte_order_mark_does_not_hide_a_recognized_document() {
+    for (file, text, tag) in [
+        (
+            "openapi.yaml",
+            "\u{feff}openapi: 3.0.3\ninfo: {}\n",
+            "api:openapi",
+        ),
+        (
+            "openapi.json",
+            "\u{feff}{\"openapi\": \"3.1.0\"}",
+            "api:openapi",
+        ),
+        ("swagger.yml", "\u{feff}swagger: \"2.0\"\n", "api:openapi"),
+        (
+            "db/changelog.yaml",
+            "\u{feff}databaseChangeLog:\n  - changeSet: {}\n",
+            "db:liquibase",
+        ),
+        (
+            "db/changelog.sql",
+            "\u{feff}-- liquibase formatted sql\n",
+            "db:liquibase",
+        ),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), file, text);
+        let i = inspected(dir.path());
+        assert_eq!(
+            outcome(&i, json!({ "tag": tag }), Scope::Repository),
+            Applicability::Applies,
+            "{file}"
+        );
     }
 }
