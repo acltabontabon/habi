@@ -2836,12 +2836,139 @@ details > summary.change-head::-webkit-details-marker {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--s3);
-  padding: var(--s2) 0;
+  padding: var(--s4) 0;
   border-bottom: 1px solid var(--hairline);
 }
 
 .history-problem {
   color: var(--danger-ink);
+  font-size: var(--text-sm);
+}
+
+/* History keeps each decision and its files together, with details folded away. */
+.history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0 0 var(--s4);
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.history-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.history-tools button[aria-pressed="true"] {
+  background: var(--thread-wash);
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+.history-tools button:focus-visible {
+  outline: 2px solid var(--thread-strong);
+  outline-offset: 2px;
+}
+
+.history-tools button > span {
+  font: 11px var(--font-mono);
+  color: var(--ink-muted);
+}
+
+.history-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.history-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.history-title strong {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 6px 0;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+.history-meta > span + span::before {
+  content: "·";
+  margin-right: var(--s2);
+}
+
+.history-files {
+  margin-top: var(--s2);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+.history-files summary {
+  cursor: pointer;
+}
+
+.history-files ul {
+  display: grid;
+  gap: 6px;
+  margin: var(--s2) 0 0;
+  padding: var(--s3);
+  border-left: 2px solid var(--hairline-strong);
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+.history-empty {
+  padding: var(--s6) var(--s4);
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.history-empty h3 {
+  margin: var(--s3) 0 var(--s2);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.history-empty p {
+  max-width: 48ch;
+  margin: 0 auto;
+  font-size: var(--text-sm);
+}
+
+.history-checked {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
   font-size: var(--text-sm);
 }
 
@@ -4329,6 +4456,31 @@ dl.facets,
   color: var(--ink-faint);
 }
 
+.index-installed {
+  grid-column: 2 / -1;
+  font-size: var(--text-2xs);
+  color: var(--thread-strong);
+}
+
+.skill-installed {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  margin: var(--s3) 0;
+  color: var(--thread-strong);
+  font-size: var(--text-xs);
+}
+
+.library-update-check {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
 .index-source {
   grid-column: 1 / -1;
   overflow: hidden;
@@ -5367,36 +5519,12 @@ dl.facets,
 }
 
 /* The libraries list. */
-.library-rows {
-  list-style: none;
-  margin: var(--s5) 0 0;
-  padding: 0;
-  border-top: 1px solid var(--hairline);
-}
-
-.library-row {
-  display: grid;
-  grid-template-columns: 18px minmax(120px, 200px) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--s4);
-  width: 100%;
-  padding: 12px var(--s2);
-  border: 0;
-  border-bottom: 1px solid var(--hairline);
-  background: transparent;
-  text-align: left;
-}
-
-.library-row:hover {
-  background: var(--paper-raised);
-}
 
 .library-row-name {
   font-weight: 600;
 }
 
-.library-row-repo,
-.library-row-state {
+.library-row-repo {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--ink-muted);
@@ -5406,9 +5534,6 @@ dl.facets,
 }
 
 @media (max-width: 900px) {
-  .library-row {
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-  }
   .library-row-repo {
     display: none;
   }
@@ -5623,117 +5748,12 @@ dl.facets,
   gap: var(--s6);
 }
 
-.libraries-head {
-  display: grid;
-  gap: var(--s2);
-}
-
-.libraries-section {
-  display: grid;
-  gap: var(--s2);
-}
-
-.libraries-section-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s2);
-}
-
-.libraries-note {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-}
-
-.page.libraries {
-  max-width: 1040px;
-}
-
-.libraries .library-rows {
-  margin: 0;
-}
-
-.kicker-count {
-  margin-left: 6px;
-  color: var(--ink-faint);
-}
-
-/* One column rhythm for every section: thread, name, what it is, then
-   quiet facts at the right edge. */
-.libraries .library-row {
-  grid-template-columns: 18px minmax(130px, 1fr) minmax(0, 1.5fr) 128px 80px minmax(110px, 0.8fr);
-  padding: 11px var(--s2);
-}
-
-.libraries .library-row.is-discover {
-  grid-template-columns: 18px minmax(130px, 1fr) minmax(0, 1.5fr) 128px 80px minmax(110px, 0.8fr);
-}
-
-.libraries .library-row.is-discover .library-row-summary {
-  grid-column: span 2;
-}
-
-.libraries .library-row.is-own {
-  grid-template-columns: 18px minmax(130px, 1fr) minmax(0, 1fr) auto;
-}
-
-.library-row-kind,
-.library-row-count {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  white-space: nowrap;
-}
-
-.library-row-count {
-  text-align: right;
-}
-
-.libraries .library-row-state {
-  text-align: right;
-}
-
-.library-row-go {
-  color: var(--ink-faint);
-  transition: color var(--duration) var(--ease);
-}
-
-.library-row:hover .library-row-go,
-.library-row:focus-visible .library-row-go {
-  color: var(--thread-strong);
-}
+/* On a small window a ledger row drops the repository; the name says enough. */
 
 @media (max-width: 1020px) {
-  .libraries .library-row,
-  .libraries .library-row.is-discover {
-    grid-template-columns: 18px minmax(120px, 1fr) minmax(0, 1.4fr) 80px;
-  }
-  .libraries .library-row-repo,
-  .libraries .library-row-kind,
-  .libraries .library-row.is-discover .library-row-count {
+  .lib-row .library-row-repo {
     display: none;
   }
-  .libraries .library-row.is-discover .library-row-summary {
-    grid-column: span 1;
-  }
-}
-
-.library-row-summary {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.library-row.is-own .library-row-name {
-  font-weight: 550;
-}
-
-.library-row.is-own .library-row-state {
-  color: var(--thread-strong);
 }
 
 /* ---------- A community library, before connecting ---------- */
@@ -6686,86 +6706,10 @@ dl.facets,
   color: var(--ink);
 }
 
-.libraries-groups {
-  display: grid;
-  gap: var(--s6);
-}
-
 /* One rhythm for every group: thread, who, what is in it, one word of
    trust, where it stands. Nothing is a card. */
-.libraries .library-row.is-entry {
-  grid-template-columns: 18px minmax(150px, 1.1fr) minmax(0, 1.7fr) 78px 104px;
-  padding: 10px var(--s2);
-}
-
-.library-row-id {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.library-row.is-entry .library-row-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* A long location (a local folder) shrinks to an ellipsis rather than pushing the arrow onto its own line. */
-.library-row.is-entry .library-row-repo {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-}
-
-.library-row-trust {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  line-height: 1.3;
-  color: var(--ink-muted);
-  text-align: right;
-  white-space: normal;
-}
-
-.library-row-state.is-on {
-  color: var(--ink);
-}
-
-.library-row-state.is-go {
-  color: var(--ink-faint);
-  transition: color var(--duration) var(--ease);
-}
-
-.library-row.is-entry:hover .library-row-state.is-go,
-.library-row.is-entry:focus-visible .library-row-state.is-go {
-  color: var(--thread-strong);
-}
-
-.library-row.is-entry.is-own {
-  grid-template-columns: 18px minmax(150px, 1.1fr) minmax(0, 1.7fr) 78px 104px;
-}
-
-.library-row.is-entry.is-own .library-row-name {
-  font-weight: 550;
-}
-
-.library-row.is-entry:focus-visible {
-  outline: 2px solid var(--thread);
-  outline-offset: -2px;
-}
-
-@media (max-width: 1020px) {
-  .libraries .library-row.is-entry,
-  .libraries .library-row.is-entry.is-own {
-    grid-template-columns: 18px minmax(120px, 1fr) minmax(0, 1.3fr) 96px;
-  }
-  .libraries .library-row-trust {
-    display: none;
-  }
-  .libraries .library-row.is-entry .library-row-repo {
-    display: block;
-  }
-}
 
 /* ---------- A library's strip: who, what, which revision ---------- */
 
@@ -7286,246 +7230,18 @@ button.signal-where:focus-visible {
   }
 }
 
-/* ---------- Library rows: who, the gist, what was found, where it stands ---------- */
-
-.libraries .library-row.is-entry,
-.libraries .library-row.is-entry.is-own {
-  grid-template-columns: 18px minmax(150px, 200px) minmax(0, 1fr) 118px 92px 88px;
-  padding: 11px var(--s2);
-}
-
-/* The gist: what the library is, in a line or two. */
-.library-row.is-entry .library-row-summary {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  white-space: normal;
-  line-height: 1.4;
-  color: var(--ink-soft);
-}
-
-.library-row-facts {
-  display: grid;
-  gap: 1px;
-  text-align: right;
-}
-
-.library-row-facts .library-row-count {
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
-  font-weight: 550;
-  color: var(--ink);
-}
-
-.library-row-sub {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
-@media (max-width: 1240px) {
-  .libraries .library-row.is-entry,
-  .libraries .library-row.is-entry.is-own {
-    grid-template-columns: 18px minmax(130px, 190px) minmax(0, 1fr) 88px;
-  }
-  .libraries .library-row-trust {
-    display: none;
-  }
-  .library-row-facts {
-    display: none;
-  }
-  .library-row.is-entry .library-row-summary {
-    grid-column: span 1;
-  }
-}
-
 /* ---------- Libraries: a fluid page ----------
-   The page uses the window. Groups are columns that flow side by side as
-   room allows (three across on a large screen); the header puts the way in
-   (three knots) beside the title and filter instead of beneath them; each
-   row is self-contained, so it reads the same at any column width. */
+   The page uses the window: Explore's cards flow into as many columns as fit,
+   and the ledger's rows keep their facts in columns of their own. */
 
 .page.narrow.libraries {
   max-width: 1760px;
 }
 
-.libraries-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "kick bring" "title bring" "path path" "filter filter";
-  column-gap: var(--s6);
-  align-items: start;
-}
-
-/* Bringing your own library: top right, where it is found on every visit. */
-.libraries-head > .libraries-bring {
-  grid-area: bring;
-  align-self: center;
+.libraries-bring {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--s2);
-}
-
-.libraries-head > .kicker {
-  grid-area: kick;
-}
-
-.libraries-head > .page-title {
-  grid-area: title;
-  font-size: clamp(26px, 2.3vw, 32px);
-  text-wrap: balance;
-}
-
-.libraries-head > .path {
-  grid-area: path;
-  max-width: 640px;
-  margin: var(--s4) 0 var(--s3);
-}
-
-.libraries-head > .libraries-filter {
-  grid-area: filter;
-  max-width: 420px;
-}
-
-/* Groups sit where they leave no holes: one column; then what is connected
-   and the community beside the (taller) builders; then three across. */
-.libraries-groups {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "connected" "builders" "community";
-  column-gap: clamp(var(--s6), 3vw, 64px);
-  /* Spacing lives on the sections, so a group that is absent leaves no gap
-     behind and the columns still start on one line. */
-  row-gap: 0;
-  align-items: start;
-}
-
-.libraries-groups > .libraries-section {
-  margin-bottom: var(--s6);
-}
-
-.area-connected {
-  grid-area: connected;
-}
-
-.area-builders {
-  grid-area: builders;
-}
-
-.area-community {
-  grid-area: community;
-}
-
-@media (min-width: 1180px) {
-  .libraries-groups {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "connected builders" "community builders";
-    grid-template-rows: auto 1fr;
-  }
-}
-
-@media (min-width: 1760px) {
-  .libraries-groups {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas: "connected builders community";
-    grid-template-rows: auto;
-  }
-}
-
-.libraries-groups .libraries-section {
-  min-width: 0;
-}
-
-/* Fewer groups (everything connected, or a filter): they share the width
-   evenly instead of leaving a column empty. */
-@media (min-width: 1180px) {
-  .libraries-groups.is-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: none;
-    grid-template-rows: auto;
-  }
-
-  .libraries-groups.is-2 > .libraries-section {
-    grid-area: auto;
-  }
-}
-
-/* One group: it takes the page, and its rows flow into columns. */
-.libraries-groups.is-1 {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: none;
-  grid-template-rows: auto;
-}
-
-.libraries-groups.is-1 > .libraries-section {
-  grid-area: auto;
-}
-
-.libraries-groups.is-1 .library-rows {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
-  column-gap: clamp(var(--s6), 3vw, 64px);
-}
-
-.libraries .library-row.is-entry,
-.libraries .library-row.is-entry.is-own {
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--s3);
-  padding: 11px var(--s2);
-}
-
-.libraries .library-row.is-entry > .strand,
-.libraries .library-row.is-entry > span[aria-hidden="true"]:first-child {
-  margin-top: 3px;
-}
-
-.lr-main {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.lr-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--s3);
-  min-width: 0;
-}
-
-.library-row.is-entry .library-row-summary {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  white-space: normal;
-  line-height: 1.4;
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
-/* A row speaks up only when something is wrong with it. */
-.lr-facts {
-  margin-top: 2px;
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-}
-
-.lr-go {
-  margin-left: auto;
-  color: var(--ink-faint);
-  transition:
-    color var(--duration) var(--ease),
-    transform var(--duration) var(--ease);
-}
-
-.library-row.is-entry:hover .lr-go,
-.library-row.is-entry:focus-visible .lr-go {
-  color: var(--thread-strong);
-  transform: translateX(3px);
 }
 
 .library-back {
@@ -9615,4 +9331,273 @@ button.chooser-crumb:focus-visible {
 }
 .fork-guide li .btn {
   margin: var(--s2) 0 0;
+}
+
+/* ---------- Libraries: your libraries as a ledger, the catalog to explore ---------- */
+
+.libraries-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3) var(--s6);
+}
+
+.libraries-head .lead-sm {
+  max-width: 62ch;
+  margin-top: var(--s2);
+}
+
+.lib-total,
+.lib-explore-count {
+  margin-left: var(--s2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--ink-faint);
+  vertical-align: middle;
+}
+
+.lib-explore-count {
+  margin-left: 2px;
+  font-size: var(--text-2xs);
+}
+
+/* Adding is the page's one primary action. */
+.lib-add .menu-trigger:not(.is-icon) {
+  height: 32px;
+  padding: 0 14px;
+  gap: 6px;
+  border-color: transparent;
+  background: var(--button-ink);
+  font-size: var(--text-md);
+  font-weight: 550;
+  color: var(--button-ink-text);
+}
+
+.lib-add .menu-trigger:not(.is-icon):hover,
+.lib-add .menu-trigger:not(.is-icon)[aria-expanded="true"] {
+  border-color: transparent;
+  background: var(--button-ink-hover);
+}
+
+.lib-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s5);
+}
+
+.lib-tools .libraries-filter {
+  flex: 0 1 340px;
+  margin-top: 0;
+}
+
+.lib-facets button.tone-warn:not(.is-on) {
+  color: var(--warn-ink);
+}
+
+/* One line per library: thread, who, from where, how many skills, where it stands. */
+.lib-cols,
+.lib-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 110px 56px 150px 14px;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.lib-cols {
+  margin-bottom: calc(var(--s5) * -1);
+  padding: 0 var(--s2) var(--s1);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.lib-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.lib-ledger > li {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.lib-row {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px var(--s2);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  color: var(--ink);
+  transition: background var(--duration) var(--ease);
+}
+
+.lib-row:hover,
+.lib-row:focus-visible {
+  background: var(--muted-wash);
+}
+
+.lib-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.lib-name .library-row-repo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-from {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.lib-num {
+  text-align: right;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.lib-state {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+}
+
+.lib-state.tone-muted {
+  color: var(--ink-faint);
+}
+
+.lib-state:not(.tone-muted) {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--muted-wash);
+}
+
+.lib-state.tone-thread {
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+.lib-state.tone-warn {
+  background: var(--warn-wash);
+  color: var(--warn-ink);
+}
+
+.lib-state.tone-danger {
+  background: var(--danger-wash);
+  color: var(--danger-ink);
+}
+
+.lib-card-foot .tone-warn {
+  color: var(--warn-ink);
+}
+
+.lib-go {
+  color: var(--ink-faint);
+  transition:
+    color var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.lib-row:hover .lib-go,
+.lib-row:focus-visible .lib-go,
+.lib-card:hover .lib-go,
+.lib-card:focus-visible .lib-go {
+  color: var(--thread-strong);
+  transform: translateX(3px);
+}
+
+.lib-empty {
+  display: grid;
+  gap: var(--s4);
+  max-width: 640px;
+}
+
+.lib-empty-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* Explore: the catalog as compact cards that reflow with the room there is. */
+.lib-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s3);
+}
+
+.lib-card {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.lib-card:hover,
+.lib-card:focus-visible {
+  border-color: var(--thread);
+  background: var(--paper-raised);
+}
+
+.lib-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.lib-card-summary {
+  display: -webkit-box;
+  margin-top: var(--s1);
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.lib-card-foot {
+  margin-top: var(--s2);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+@media (max-width: 760px) {
+  .lib-cols {
+    display: none;
+  }
+
+  .lib-row {
+    grid-template-columns: 18px minmax(0, 1fr) auto 14px;
+  }
+
+  .lib-from,
+  .lib-num {
+    display: none;
+  }
 }

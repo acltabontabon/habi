@@ -27,6 +27,7 @@ export const keys = {
   machineHistory: ["machineHistory"] as const,
   skillTemplates: ["skillTemplates"] as const,
   knowledge: (projectId: string) => ["knowledge", projectId] as const,
+  skillUsage: (projectId: string) => ["skillUsage", projectId] as const,
 };
 
 export function useAppInfo() {
@@ -254,6 +255,27 @@ export function useKnowledge(projectId: string | undefined, enabled = true) {
   });
 }
 
+/**
+ * Whether a project's skills get used, from agent session transcripts on this machine. They are
+ * read when the list that shows this opens, never in the background; leaving stops the read.
+ */
+export function useSkillUsage(projectId: string) {
+  return useQuery({
+    queryKey: keys.skillUsage(projectId),
+    queryFn: ({ signal }) => {
+      const job = newJobId();
+      signal.addEventListener("abort", () => void api.cancelJob(job));
+      return api.skillUsage(projectId, job);
+    },
+    // Held for a minute after the list closes, and read again only when it opens.
+    staleTime: 60_000,
+    gcTime: 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+}
+
 /** After local skills change: lists, and anything matched against projects. */
 export function invalidateSkills(client: QueryClient) {
   void client.invalidateQueries({ queryKey: keys.skills });
@@ -273,6 +295,8 @@ export function useCheckRuns(projectId: string, itemKey: string) {
 
 /** After anything that may change recommendations, refresh the dependent views. */
 export function invalidateProjectData(client: QueryClient, projectId?: string) {
+  void client.invalidateQueries({ queryKey: keys.machineSkills });
+  void client.invalidateQueries({ queryKey: keys.skillsOverview });
   void client.invalidateQueries({ queryKey: keys.sources });
   void client.invalidateQueries({ queryKey: keys.catalog });
   void client.invalidateQueries({ queryKey: keys.sourceUpdates });

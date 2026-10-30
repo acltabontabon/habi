@@ -1,38 +1,48 @@
 /**
- * Libraries: where knowledge comes from, grouped by who stands behind it.
+ * Libraries: where knowledge comes from.
  *
- * - Connected: what Habi keeps current for you, wherever it came from. A
- *   connected library is not yours: a copy you adopt and edit is.
- * - Bring your own: connect a repository or folder of your own.
- * - From the builders: the organisations behind the tools the skills are about.
- * - From the community: independent maintainers.
+ * - Your libraries: everything Habi keeps current for you, whatever its
+ *   origin (your team's repository or folder, the community, the builders),
+ *   one line each, what needs you first. A connected library is not yours: a
+ *   copy you adopt and edit is.
+ * - Explore: the catalog's public libraries not yet connected, filtered by
+ *   who stands behind them. Grouping says who published a library, not
+ *   whether it is safe: ownership is checked, content is not audited.
+ * - Add a library: your own Git repository or folder, or one from the catalog.
  *
- * Grouping says who published a library, not whether it is safe: ownership is
- * checked, content is not audited, and each row says only what is known. A
- * library is one row whether or not it is connected; opening one shows what
- * is inside it (fetching it first, with your say-so) before anything is
- * connected. A connected library opens in LibraryView.
+ * Opening a catalog library shows what is inside it (fetching it first, with
+ * your say-so) before anything is connected. A connected library opens in
+ * LibraryView.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CatalogEntry } from "../../bindings/CatalogEntry";
 import type { Source } from "../../bindings/Source";
 import type { SourceVersion } from "../../bindings/SourceVersion";
 import { BackLink } from "../../components/BackLink";
 import { Icon } from "../../components/Icon";
+import { Menu } from "../../components/Menu";
 import { useToast } from "../../components/Toasts";
-import { tip } from "../../components/Tooltips";
 import { Button, Empty, ErrorNotice, Notice, Working } from "../../components/ui";
 import { Strand } from "../../components/Weave";
 import { WaitingLoom, Weaving } from "../../components/Weaving";
 import { api, HabiError, newJobId } from "../../lib/api";
 import { groupOfEntry } from "../../lib/catalog";
 import { type Dye, useDyes } from "../../lib/dye";
-import { compactCount, freshnessText, plural, relativeTime } from "../../lib/format";
+import { compactCount, plural, relativeTime } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import {
   invalidateProjectData,
   useCatalog,
+  useRecentProjects,
   useRepoFacts,
   useSkills,
   useSources,
@@ -43,6 +53,25 @@ import { ConnectLibrary } from "./ConnectLibrary";
 import { LibraryView } from "./LibraryView";
 import { repositoryLabel } from "./SourceSheet";
 
+/**
+ * The projects Habi suggests a catalog library's skills for, by name: from
+ * each project's last look (nothing is inspected again to say it).
+ */
+function useFitsProjects(): (entryId: string) => { id: string; name: string }[] {
+  const projects = useRecentProjects();
+  return useMemo(() => {
+    const list = (projects.data ?? []).filter((p) => p.exists);
+    return (entryId: string) =>
+      list.filter((p) => p.summary?.suggested.includes(entryId)).map((p) => ({ id: p.id, name: p.name }));
+  }, [projects.data]);
+}
+
+/** "nextshop", "nextshop and api", "nextshop, api and 2 more". */
+function projectNames(names: string[]): string {
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+}
+
 /** Connect your own library: one intent per page. */
 function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: string }) {
   const { navigate } = useNav();
@@ -50,7 +79,7 @@ function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: str
   return (
     <div className="page connect-page">
       <header className="connect-head">
-        <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
+        <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
         <p className="kicker">Your own library</p>
         <h1 className="page-title">
           {mode === "git" ? "Connect a Git repository" : "Use a folder as a library"}
@@ -85,7 +114,7 @@ function PathSteps({ connected, adopted }: { connected: boolean; adopted: boolea
   const steps = [
     {
       title: "Connect a library",
-      text: "Pick any library below. Habi reads it and keeps it current. Nothing is installed or run.",
+      text: "Bring your own, or pick one from the catalog. Habi reads it and keeps it current. Nothing is installed or run.",
       done: connected,
     },
     {
@@ -119,203 +148,128 @@ function PathSteps({ connected, adopted }: { connected: boolean; adopted: boolea
   );
 }
 
-/* ---------- The ledger ---------- */
+/* ---------- Your libraries: one line each ---------- */
 
 const PREVIEW_DYE: Dye = { color: "var(--ink-faint)", community: true };
 
-/**
- * One library, self-contained so it reads at any column width: who it is,
- * a gist of what it is, and at the right what is known (counts once read).
- * A row speaks only when it differs from its group: a deprecated or
- * unreachable library says so; how an owner was checked is in the library's
- * own masthead.
- */
 /** What a library's row says when its repository has something newer. */
 function newerText(v: SourceVersion): string {
   return v.release ? `${v.label} available` : "new commits available";
 }
 
-function EntryRow({
-  entry,
-  source,
-  dye,
-  newer,
-  onOpen,
+type Origin = "team" | "community" | "builders";
+
+/** Who stands behind a connected library: the catalog's word, or how you connected it. */
+function originOf(source: Source, entry: CatalogEntry | undefined): Origin {
+  if (entry) return groupOfEntry(entry);
+  return source.role === "community" ? "community" : "team";
+}
+
+function originLabel(source: Source, origin: Origin): string {
+  if (origin === "builders") return "Builder";
+  if (origin === "community") return "Community";
+  return source.kind === "directory" ? "Your folder" : "Your team";
+}
+
+/**
+ * Where a library stands, as one word or two, and how much it needs you:
+ * a failed or offline library first, then one with something newer, then
+ * one never read; a current library says nothing.
+ */
+function standing(
+  source: Source,
+  newer: SourceVersion | undefined,
+): { text: string; tone: string; rank: number } {
+  if (source.freshness === "fetchFailed") return { text: "fetch failed", tone: "danger", rank: 0 };
+  if (source.freshness === "stale") return { text: "offline", tone: "warn", rank: 1 };
+  if (newer) return { text: newerText(newer), tone: "thread", rank: 2 };
+  if (source.freshness === "neverFetched") return { text: "not read yet", tone: "unknown", rank: 3 };
+  return { text: "current", tone: "muted", rank: 9 };
+}
+
+const NEEDS_YOU = 3;
+
+type Facet = "all" | "needs" | Origin;
+
+/** A row of single-choice filters; one with nothing in it is not offered. */
+function Facets<T extends string>({
+  label,
+  facets,
+  value,
+  onChange,
 }: {
-  entry: CatalogEntry;
-  source: Source | undefined;
-  dye: Dye;
-  /** The version the repository has now, when it is not the one read. */
-  newer?: SourceVersion;
-  onOpen: () => void;
+  label: string;
+  facets: { id: T; label: string; count: number; tone?: string }[];
+  value: T;
+  onChange: (id: T) => void;
 }) {
-  const warn =
-    entry.status.state !== "active"
-      ? entry.status.state === "archived"
-        ? "archived"
-        : "deprecated"
-      : entry.problem && entry.availability === "notFetched"
-        ? "unreachable"
-        : null;
-  const fresh = source ? freshnessText(source) : null;
-  // What a person weighing a library wants to know: how many people use it
-  // and whether it is alive. Asked of GitHub only once they point at the row.
-  const [curious, setCurious] = useState(false);
-  const facts = useRepoFacts(curious ? entry.id : undefined).data;
-  const problem: { text: string; tone: string } | null = warn
-    ? { text: warn, tone: "warn" }
-    : fresh && entry.availability === "connected" && fresh.tone !== "muted" && fresh.tone !== "ok"
-      ? { text: fresh.text, tone: fresh.tone }
-      : newer && entry.availability === "connected"
-        ? { text: newerText(newer), tone: "thread" }
-        : null;
   return (
-    <li>
-      <button
-        type="button"
-        className={`library-row is-entry${entry.availability === "connected" ? " is-connected" : ""}`}
-        onClick={onOpen}
-        onPointerEnter={() => setCurious(true)}
-        onFocus={() => setCurious(true)}
-        title={entry.problem?.message ?? undefined}
-        {...(facts && !entry.problem
-          ? tip({
-              title: `${compactCount(facts.stars)} stars`,
-              lines: [
-                {
-                  text: [
-                    facts.pushedAt ? `updated ${relativeTime(facts.pushedAt)}` : null,
-                    facts.createdYear ? `since ${facts.createdYear}` : null,
-                    `${compactCount(facts.forks)} forks`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
-                },
-              ],
-              note: facts.archived ? { text: "Archived — no longer maintained", tone: "warn" } : undefined,
-            })
-          : {})}
-      >
-        <Strand dye={dye} size={18} />
-        <span className="lr-main">
-          <span className="lr-head">
-            <span className="library-row-name">{entry.name}</span>
-            <span className="library-row-repo">{entry.repo}</span>
-            <span className="lr-go" aria-hidden="true">
-              →
-            </span>
-          </span>
-          <span className="library-row-summary">{entry.summary}</span>
-          {/* Counts, licence and age live in the library's own header. A row only
-              speaks up when something is wrong. */}
-          {problem ? <span className={`lr-facts tone-${problem.tone}`}>{problem.text}</span> : null}
-        </span>
-      </button>
-    </li>
+    <fieldset className="mys-facets lib-facets">
+      <legend className="visually-hidden">{label}</legend>
+      {facets
+        .filter((f, i) => i === 0 || f.count > 0 || f.id === value)
+        .map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            aria-pressed={value === f.id}
+            className={
+              `${value === f.id ? "is-on" : ""}${f.tone ? ` tone-${f.tone}` : ""}`.trim() || undefined
+            }
+            onClick={() => onChange(f.id)}
+          >
+            {f.label}
+            <span className="mys-count">{f.count}</span>
+          </button>
+        ))}
+    </fieldset>
   );
 }
 
-function OwnRow({
-  source,
-  dye,
-  newer,
-  onOpen,
-}: {
-  source: Source;
-  dye: Dye;
-  newer?: SourceVersion;
-  onOpen: () => void;
-}) {
-  const fresh = freshnessText(source);
-  const local =
-    source.kind === "directory" || source.location.startsWith("/") || source.location.startsWith("~");
-  const kind = source.role === "community" ? "community" : local ? "local" : "team";
-  return (
-    <li>
-      <button type="button" className="library-row is-entry is-connected" onClick={onOpen}>
-        <Strand dye={dye} size={18} />
-        <span className="lr-main">
-          <span className="lr-head">
-            <span className="library-row-name">{source.name}</span>
-            {source.sample ? <span className="sidebar-tag">sample</span> : null}
-            <span className="library-row-repo">{repositoryLabel(source.location)}</span>
-            <span className="lr-go" aria-hidden="true">
-              →
-            </span>
-          </span>
-          <span className="library-row-summary">
-            {kind} · {source.kind === "directory" ? "folder" : "git"}
-          </span>
-          {fresh.tone !== "muted" && fresh.tone !== "ok" ? (
-            <span className={`lr-facts tone-${fresh.tone}`}>{fresh.text}</span>
-          ) : newer ? (
-            <span className="lr-facts tone-thread">{newerText(newer)}</span>
-          ) : null}
-        </span>
-      </button>
-    </li>
-  );
-}
-
-function Group({
-  id,
-  area,
-  title,
-  note,
-  count,
-  children,
-}: {
-  id: string;
-  /** Where the group sits when the page has room for columns. */
-  area: "connected" | "builders" | "community";
-  title: string;
-  note?: string;
-  count?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`libraries-section area-${area}`} aria-labelledby={id}>
-      <div className="libraries-section-head">
-        <h2 id={id} className="kicker">
-          {title}
-          {count !== undefined ? <span className="kicker-count">{count}</span> : null}
-        </h2>
-        {note ? <span className="libraries-note">{note}</span> : null}
-      </div>
-      <ul className="library-rows">{children}</ul>
-    </section>
-  );
-}
-
-function LibrariesOverview() {
-  const catalog = useCatalog();
-  const sources = useSources();
-  const dyes = useDyes();
+/** Bring in a library: your own repository or folder, or one from the catalog (unless it is open). */
+function AddLibrary({ catalog = true }: { catalog?: boolean }) {
   const { navigate } = useNav();
-  // Libraries whose repository has something newer than what they read.
-  const updates = useSourceUpdates();
-  const newer = useMemo(
-    () => new Map((updates.data ?? []).filter((u) => u.available).map((u) => [u.sourceId, u.latest])),
-    [updates.data],
+  return (
+    <Menu
+      label="Add a library"
+      className="lib-add"
+      trigger={
+        <>
+          <Icon name="plus" /> Add a library
+        </>
+      }
+      items={[
+        [
+          {
+            label: "Git repository…",
+            hint: "Your team's skills, from any Git host",
+            icon: "branch",
+            onSelect: () => navigate({ name: "sources", view: "git" }),
+          },
+          {
+            label: "Folder…",
+            hint: "Skills already on this machine",
+            icon: "folder",
+            onSelect: () => navigate({ name: "sources", view: "folder" }),
+          },
+        ],
+        catalog
+          ? [
+              {
+                label: "From the catalog",
+                hint: "Public libraries by builders and the community",
+                icon: "library",
+                onSelect: () => navigate({ name: "sources", view: "explore" }),
+              },
+            ]
+          : [],
+      ]}
+    />
   );
-  const [query, setQuery] = useState("");
-  const filter = useRef<HTMLInputElement>(null);
-  const list = useRef<HTMLDivElement>(null);
+}
 
-  const skills = useSkills();
-  const adoptedAny = (skills.data ?? []).some((s) => s.origin.type === "library");
-  const connected = sources.data;
-  const q = query.trim().toLowerCase();
-  // Connected is everything Habi keeps current, whether it came from the catalog or from
-  // you; the groups below are what is still to explore.
-  const mine = useMemo(() => {
-    if (!connected) return [];
-    return [...connected]
-      .filter((s) => !q || `${s.name} ${s.location}`.toLowerCase().includes(q))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [connected, q]);
-
-  // "/" finds a library from anywhere on the page.
+/** "/" focuses `input` from anywhere on the page that is not already a text field. */
+function useSlashFocus(input: React.RefObject<HTMLInputElement | null>) {
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -324,61 +278,25 @@ function LibrariesOverview() {
       )
         return;
       e.preventDefault();
-      filter.current?.focus();
+      input.current?.focus();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [input]);
+}
 
-  if (catalog.isPending || sources.isPending) return <Working>Loading libraries…</Working>;
-  if (catalog.isError) return <ErrorNotice error={catalog.error} />;
-  if (sources.isError) return <ErrorNotice error={sources.error} />;
-
-  const sourceById = new Map(sources.data.map((s) => [s.id, s]));
-  const visible = catalog.data.filter(
-    (e) => !q || `${e.name} ${e.repo} ${e.summary} ${e.publisher.name}`.toLowerCase().includes(q),
-  );
-  const toExplore = visible.filter((e) => e.availability !== "connected");
-  const builders = toExplore.filter((e) => groupOfEntry(e) === "builders");
-  const community = toExplore.filter((e) => groupOfEntry(e) === "community");
-  const entryOf = new Map(catalog.data.filter((e) => e.sourceId).map((e) => [e.sourceId, e]));
-
-  const openEntry = (e: CatalogEntry) =>
-    navigate(
-      e.availability === "connected" && e.sourceId
-        ? { name: "sources", sourceId: e.sourceId }
-        : { name: "sources", entry: e.id },
-    );
-  const row = (e: CatalogEntry) => {
-    const source = e.sourceId ? sourceById.get(e.sourceId) : undefined;
-    return (
-      <EntryRow
-        key={e.id}
-        entry={e}
-        source={source}
-        dye={source ? dyes(source.id) : PREVIEW_DYE}
-        newer={source ? newer.get(source.id) : undefined}
-        onOpen={() => openEntry(e)}
-      />
-    );
-  };
-
-  // Arrow keys and j/k move through every row, group to group.
-  const rows = () => [...(list.current?.querySelectorAll<HTMLButtonElement>("button.library-row") ?? [])];
-  const onFilterKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "Enter") {
-      e.preventDefault();
-      rows()[0]?.focus();
-    } else if (e.key === "Escape" && query) {
-      e.preventDefault();
-      setQuery("");
-    }
-  };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+/** Arrow keys and j/k move between `selector` rows; typing on a row filters. */
+function rowKeys(
+  box: React.RefObject<HTMLElement | null>,
+  selector: string,
+  filter: React.RefObject<HTMLInputElement | null>,
+  type: (key: string) => void,
+) {
+  return (e: KeyboardEvent<HTMLElement>) => {
     const t = e.target as HTMLElement;
-    if (!t.classList.contains("library-row")) return;
-    const all = rows();
-    const at = all.indexOf(t as HTMLButtonElement);
+    const all = [...(box.current?.querySelectorAll<HTMLElement>(selector) ?? [])];
+    const at = all.indexOf(t);
+    if (at < 0) return;
     const move = (n: number) => {
       e.preventDefault();
       all[Math.max(0, Math.min(all.length - 1, n))]?.focus();
@@ -392,118 +310,392 @@ function LibrariesOverview() {
     } else if (e.key === "Home") move(0);
     else if (e.key === "End") move(all.length - 1);
     else if (e.key.length === 1 && /\S/.test(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      // Typing on a row filters, like the index of a library.
       e.preventDefault();
-      setQuery((cur) => cur + e.key);
+      type(e.key);
       filter.current?.focus();
     }
   };
+}
 
+function Filter({
+  input,
+  label,
+  query,
+  onQuery,
+  onDown,
+}: {
+  input: React.RefObject<HTMLInputElement | null>;
+  label: string;
+  query: string;
+  onQuery: (q: string) => void;
+  onDown: () => void;
+}) {
   return (
-    <div className="page narrow libraries">
-      <header className="libraries-head">
-        <p className="kicker">Libraries</p>
-        <h1 className="page-title">Where your knowledge comes from</h1>
-        {/* Your own library, one glance away on every visit. */}
-        <div className="libraries-bring">
-          <Button icon="branch" onClick={() => navigate({ name: "sources", view: "git" })}>
-            Connect a Git repository
-          </Button>
-          <Button icon="folder" onClick={() => navigate({ name: "sources", view: "folder" })}>
-            Use a folder
-          </Button>
-        </div>
-        {/* The way it works, only until something is connected. */}
-        {sources.data.length === 0 ? <PathSteps connected={false} adopted={adoptedAny} /> : null}
-        <div className="libraries-filter">
-          <Icon name="search" size={12} />
-          <label className="visually-hidden" htmlFor="libraries-filter">
-            Filter libraries
-          </label>
-          <input
-            ref={filter}
-            id="libraries-filter"
-            type="search"
-            placeholder="Filter libraries"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onFilterKey}
-          />
-          {!query ? (
-            <span className="index-kbd" aria-hidden="true">
-              /
-            </span>
-          ) : null}
-        </div>
-      </header>
-
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: arrow-key movement between the rows' own buttons */}
-      <div
-        className={`libraries-groups is-${[mine.length, builders.length, community.length].filter((n) => n > 0).length}`}
-        ref={list}
-        onKeyDown={onKeyDown}
-      >
-        {mine.length === 0 ? null : (
-          <Group
-            id="lib-connected"
-            area="connected"
-            title="Connected"
-            count={mine.length}
-            note="you choose when they update"
-          >
-            {mine.map((s) => {
-              const entry = entryOf.get(s.id);
-              return entry ? (
-                <EntryRow
-                  key={s.id}
-                  entry={entry}
-                  source={s}
-                  dye={dyes(s.id)}
-                  newer={newer.get(s.id)}
-                  onOpen={() => openEntry(entry)}
-                />
-              ) : (
-                <OwnRow
-                  key={s.id}
-                  source={s}
-                  dye={dyes(s.id)}
-                  newer={newer.get(s.id)}
-                  onOpen={() => navigate({ name: "sources", sourceId: s.id })}
-                />
-              );
-            })}
-          </Group>
-        )}
-
-        {builders.length > 0 ? (
-          <Group id="lib-builders" area="builders" title="From the builders" count={builders.length} note="">
-            {builders.map(row)}
-          </Group>
-        ) : null}
-
-        {community.length > 0 ? (
-          <Group
-            id="lib-community"
-            area="community"
-            title="From the community"
-            count={community.length}
-            note="independent maintainers"
-          >
-            {community.map(row)}
-          </Group>
-        ) : null}
-
-        {q && builders.length + community.length + mine.length === 0 ? (
-          <Empty title={`No library matches “${query}”`}>
-            Clear the filter to see them all, or connect one of your own below.
-          </Empty>
-        ) : null}
-      </div>
+    <div className="libraries-filter">
+      <Icon name="search" size={12} />
+      <label className="visually-hidden" htmlFor="libraries-filter">
+        {label}
+      </label>
+      <input
+        ref={input}
+        id="libraries-filter"
+        type="search"
+        placeholder={label}
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" || e.key === "Enter") {
+            e.preventDefault();
+            onDown();
+          } else if (e.key === "Escape" && query) {
+            e.preventDefault();
+            onQuery("");
+          }
+        }}
+      />
+      {!query ? (
+        <span className="index-kbd" aria-hidden="true">
+          /
+        </span>
+      ) : null}
     </div>
   );
 }
 
-/* ---------- A catalog library: its page, then connecting it ---------- */
+/**
+ * Your libraries: everything Habi keeps current for you, whatever its origin,
+ * one line each so fifty read as easily as five. What needs you comes first;
+ * what a library is about lives on its own page.
+ */
+function YourLibraries() {
+  const catalog = useCatalog();
+  const sources = useSources();
+  const skills = useSkills();
+  const dyes = useDyes();
+  const { navigate } = useNav();
+  const updates = useSourceUpdates();
+  const newer = useMemo(
+    () => new Map((updates.data ?? []).filter((u) => u.available).map((u) => [u.sourceId, u.latest])),
+    [updates.data],
+  );
+  const [query, setQuery] = useState("");
+  const [facet, setFacet] = useState<Facet>("all");
+  const filter = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLOListElement>(null);
+  useSlashFocus(filter);
+
+  const rows = useMemo(() => {
+    const entries = new Map((catalog.data ?? []).filter((e) => e.sourceId).map((e) => [e.sourceId, e]));
+    return (sources.data ?? [])
+      .map((source) => {
+        const entry = entries.get(source.id);
+        const origin = originOf(source, entry);
+        return { source, entry, origin, state: standing(source, newer.get(source.id)) };
+      })
+      .sort((a, b) => a.state.rank - b.state.rank || a.source.name.localeCompare(b.source.name));
+  }, [catalog.data, sources.data, newer]);
+
+  if (catalog.isPending || sources.isPending) return <Working>Loading libraries…</Working>;
+  if (sources.isError) return <ErrorNotice error={sources.error} />;
+
+  const adoptedAny = (skills.data ?? []).some((s) => s.origin.type === "library");
+  const explore = (catalog.data ?? []).filter((e) => e.availability !== "connected").length;
+  const q = query.trim().toLowerCase();
+  const inFacet = (r: (typeof rows)[number], f: Facet) =>
+    f === "all" || (f === "needs" ? r.state.rank <= NEEDS_YOU - 1 : r.origin === f);
+  const count = (f: Facet) => rows.filter((r) => inFacet(r, f)).length;
+  const shown = rows.filter(
+    (r) =>
+      inFacet(r, facet) &&
+      (!q || `${r.source.name} ${r.source.location} ${r.entry?.repo ?? ""}`.toLowerCase().includes(q)),
+  );
+
+  return (
+    <div className="page narrow libraries">
+      <header className="libraries-head">
+        <div>
+          <p className="kicker">Libraries</p>
+          <h1 className="page-title">
+            Your libraries{rows.length > 0 ? <span className="lib-total">{rows.length}</span> : null}
+          </h1>
+        </div>
+        <div className="libraries-bring">
+          <Button icon="library" onClick={() => navigate({ name: "sources", view: "explore" })}>
+            Explore{explore > 0 ? <span className="lib-explore-count">{explore}</span> : null}
+          </Button>
+          <AddLibrary />
+        </div>
+      </header>
+
+      {rows.length === 0 ? (
+        <div className="lib-empty">
+          <PathSteps connected={false} adopted={adoptedAny} />
+          <p className="lead-sm">
+            Libraries are where skills come from: your team's repository, a folder on this machine, or a
+            public library from the catalog. Habi reads them and you decide when they update.
+          </p>
+          <div className="lib-empty-acts">
+            <Button
+              variant="primary"
+              icon="library"
+              onClick={() => navigate({ name: "sources", view: "explore" })}
+            >
+              Explore the catalog
+            </Button>
+            <Button icon="branch" onClick={() => navigate({ name: "sources", view: "git" })}>
+              Connect a Git repository
+            </Button>
+            <Button icon="folder" onClick={() => navigate({ name: "sources", view: "folder" })}>
+              Use a folder
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="lib-tools">
+            <Filter
+              input={filter}
+              label="Filter your libraries"
+              query={query}
+              onQuery={setQuery}
+              onDown={() => list.current?.querySelector<HTMLButtonElement>(".lib-row")?.focus()}
+            />
+            <Facets
+              label="Show"
+              value={facet}
+              onChange={setFacet}
+              facets={[
+                { id: "all", label: "All", count: rows.length },
+                { id: "needs", label: "Needs you", count: count("needs"), tone: "warn" },
+                { id: "team", label: "Team", count: count("team") },
+                { id: "community", label: "Community", count: count("community") },
+                { id: "builders", label: "Builders", count: count("builders") },
+              ]}
+            />
+          </div>
+          {shown.length > 0 ? (
+            <>
+              <div className="lib-cols" aria-hidden="true">
+                <span />
+                <span>Library</span>
+                <span>From</span>
+                <span className="lib-num">Skills</span>
+                <span>State</span>
+              </div>
+              <ol
+                className="lib-ledger"
+                ref={list}
+                aria-label="Your libraries"
+                onKeyDown={rowKeys(list, ".lib-row", filter, (k) => setQuery((cur) => cur + k))}
+              >
+                {shown.map(({ source, origin, entry, state }) => (
+                  <li key={source.id}>
+                    <button
+                      type="button"
+                      className="lib-row"
+                      onClick={() => navigate({ name: "sources", sourceId: source.id })}
+                      title={entry?.summary}
+                    >
+                      <Strand dye={dyes(source.id)} size={18} />
+                      <span className="lib-name">
+                        <span className="library-row-name">{source.name}</span>
+                        <span className="library-row-repo">
+                          {entry?.repo ?? repositoryLabel(source.location)}
+                        </span>
+                      </span>
+                      <span className="lib-from">{originLabel(source, origin)}</span>
+                      <span className="lib-num mono">{source.skillCount}</span>
+                      <span className={`lib-state tone-${state.tone}`}>{state.text}</span>
+                      <Icon name="chevronRight" size={14} className="lib-go" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <Empty title={q ? `No library matches “${query}”` : "Nothing here"}>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  setQuery("");
+                  setFacet("all");
+                }}
+              >
+                Show all your libraries
+              </button>
+            </Empty>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Explore: the catalog, still to connect ---------- */
+
+type Shelf = "all" | "builders" | "community";
+
+/**
+ * Public libraries not yet connected, as cards. Grouping says who published
+ * a library, not whether it is safe: ownership is checked, content is not
+ * audited, and a card says only what is known. Opening one shows what is
+ * inside (fetching it first, with your say-so) before anything is connected.
+ */
+function Explore() {
+  const catalog = useCatalog();
+  const fitsProjects = useFitsProjects();
+  const { navigate } = useNav();
+  const [query, setQuery] = useState("");
+  const [shelf, setShelf] = useState<Shelf>("all");
+  const filter = useRef<HTMLInputElement>(null);
+  const grid = useRef<HTMLUListElement>(null);
+  useSlashFocus(filter);
+
+  if (catalog.isPending) return <Working>Loading the catalog…</Working>;
+  if (catalog.isError) return <ErrorNotice error={catalog.error} />;
+
+  // Libraries with something for your projects come first: that is why you would connect one.
+  const open = catalog.data
+    .filter((e) => e.availability !== "connected")
+    .map((e, at) => ({ e, at, fits: fitsProjects(e.id).length }))
+    .sort((a, b) => Number(b.fits > 0) - Number(a.fits > 0) || a.at - b.at)
+    .map(({ e }) => e);
+  const q = query.trim().toLowerCase();
+  const matching = open.filter(
+    (e) => !q || `${e.name} ${e.repo} ${e.summary} ${e.publisher.name}`.toLowerCase().includes(q),
+  );
+  const shown = matching.filter((e) => shelf === "all" || groupOfEntry(e) === shelf);
+
+  return (
+    <div className="page narrow libraries">
+      <header className="libraries-head">
+        <div>
+          <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
+          <p className="kicker">Libraries</p>
+          <h1 className="page-title">Explore</h1>
+          <p className="lead-sm">
+            Public libraries to look inside before you connect one. Builders make the tools their skills are
+            about; the community maintains the rest.
+          </p>
+        </div>
+        <div className="libraries-bring">
+          <AddLibrary catalog={false} />
+        </div>
+      </header>
+      {open.length === 0 ? (
+        <Empty title="Every catalog library is connected">
+          Bring one of your own from a Git repository or a folder with Add a library.
+        </Empty>
+      ) : (
+        <>
+          <div className="lib-tools">
+            <Filter
+              input={filter}
+              label="Filter libraries"
+              query={query}
+              onQuery={setQuery}
+              onDown={() => grid.current?.querySelector<HTMLButtonElement>(".lib-card")?.focus()}
+            />
+            <Facets
+              label="Show"
+              value={shelf}
+              onChange={setShelf}
+              facets={[
+                { id: "all", label: "All", count: matching.length },
+                {
+                  id: "builders",
+                  label: "Builders",
+                  count: matching.filter((e) => groupOfEntry(e) === "builders").length,
+                },
+                {
+                  id: "community",
+                  label: "Community",
+                  count: matching.filter((e) => groupOfEntry(e) === "community").length,
+                },
+              ]}
+            />
+          </div>
+          <ul
+            className="lib-cards"
+            ref={grid}
+            aria-label="Libraries to explore"
+            onKeyDown={rowKeys(grid, ".lib-card", filter, (k) => setQuery((cur) => cur + k))}
+          >
+            {shown.map((e) => (
+              <ExploreCard
+                key={e.id}
+                entry={e}
+                fits={fitsProjects(e.id).map((p) => p.name)}
+                onOpen={() => navigate({ name: "sources", entry: e.id })}
+              />
+            ))}
+          </ul>
+          {shown.length === 0 ? (
+            <Empty title={q ? `No library matches “${query}”` : "Nothing here"}>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  setQuery("");
+                  setShelf("all");
+                }}
+              >
+                Show every library
+              </button>
+            </Empty>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ExploreCard({
+  entry,
+  fits,
+  onOpen,
+}: {
+  entry: CatalogEntry;
+  /** Your projects Habi suggests its skills for. */
+  fits: string[];
+  onOpen: () => void;
+}) {
+  const warn =
+    entry.status.state !== "active"
+      ? entry.status.state
+      : entry.problem && entry.availability === "notFetched"
+        ? "unreachable"
+        : null;
+  // How many people use it and whether it is alive: asked of GitHub only once they point at it.
+  const [curious, setCurious] = useState(false);
+  const facts = useRepoFacts(curious ? entry.id : undefined).data;
+  return (
+    <li>
+      <button
+        type="button"
+        className="lib-card"
+        onClick={onOpen}
+        onPointerEnter={() => setCurious(true)}
+        onFocus={() => setCurious(true)}
+        title={entry.problem?.message ?? undefined}
+      >
+        <span className="lib-card-head">
+          <span className="library-row-name">{entry.name}</span>
+          <Icon name="chevronRight" size={14} className="lib-go" />
+        </span>
+        <span className="library-row-repo">{entry.repo}</span>
+        <span className="lib-card-summary">{entry.summary}</span>
+        {fits.length > 0 ? <span className="lib-card-fits">For {projectNames(fits)}</span> : null}
+        <span className="lib-card-foot">
+          {groupOfEntry(entry) === "builders" ? "Builder" : "Community"}
+          {facts ? ` · ${compactCount(facts.stars)} stars` : ""}
+          {warn ? <span className="tone-warn"> · {warn}</span> : null}
+        </span>
+      </button>
+    </li>
+  );
+}
 
 /**
  * A library's page before it is connected: what the catalog knows (nothing is
@@ -519,6 +711,7 @@ function LibraryPage({ entryId }: { entryId: string }) {
   const { navigate } = useNav();
   const catalog = useCatalog();
   const entry = catalog.data?.find((e) => e.id === entryId);
+  const fitsProjects = useFitsProjects()(entryId);
   // Context from GitHub, when it can be had: never an error, and not needed to connect.
   const facts = useRepoFacts(entry && entry.availability !== "connected" ? entry.id : undefined).data;
   const [job, setJob] = useState<string | null>(null);
@@ -562,7 +755,7 @@ function LibraryPage({ entryId }: { entryId: string }) {
 
   if (catalog.isPending) return <Working>Loading libraries…</Working>;
   if (catalog.isError) return <ErrorNotice error={catalog.error} />;
-  if (!entry) return <LibrariesOverview />;
+  if (!entry) return <Explore />;
 
   const cancelled = error instanceof HabiError && error.code === "cancelled";
   const idle = !job && !error;
@@ -577,7 +770,7 @@ function LibraryPage({ entryId }: { entryId: string }) {
 
   return (
     <div className="page narrow preview-page library-page">
-      <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
+      <BackLink fallback={{ name: "sources", view: "explore" }} fallbackLabel="Explore" />
 
       {/* One aligned dossier on four columns: who it is and the way in, how much it is used,
           how it was checked, and the loom along the foot. */}
@@ -613,6 +806,41 @@ function LibraryPage({ entryId }: { entryId: string }) {
         ) : null}
       </header>
       <p className="lp-gist">{entry.summary}</p>
+
+      {entry.picks.length > 0 ? (
+        <section className="lp-picks" aria-labelledby="lp-picks">
+          <h2 id="lp-picks" className="kicker">
+            Habi's picks
+            {fitsProjects.length > 0 ? (
+              <span className="lp-picks-for">
+                {" "}
+                · suggested for{" "}
+                {fitsProjects.map((p, i) => (
+                  <Fragment key={p.id}>
+                    {i > 0 ? (i === fitsProjects.length - 1 ? " and " : ", ") : null}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => navigate({ name: "project", projectId: p.id, tab: "suggested" })}
+                    >
+                      {p.name}
+                    </button>
+                  </Fragment>
+                ))}
+              </span>
+            ) : null}
+          </h2>
+          <ul className="lp-pick-list">
+            {entry.picks.map((p) => (
+              <li key={p.skill} className="lp-pick">
+                <span className="lp-pick-title">{p.title}</span>
+                <span className="lp-pick-gist">{p.gist}</span>
+                <span className="lp-pick-why">{p.why}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {entry.status.state !== "active" ? (
         <Notice tone="warn" title={entry.status.state === "archived" ? "Archived" : "Deprecated"}>
@@ -743,15 +971,16 @@ export function SourcesView({
 }: {
   sourceId?: string;
   entry?: string;
-  view?: "git" | "folder";
+  view?: "git" | "folder" | "explore";
   location?: string;
   itemId?: string;
   file?: string;
 }) {
   const sources = useSources();
+  if (view === "explore") return <Explore />;
   if (view) return <ConnectOwn key={location} mode={view} location={location} />;
   if (entry) return <LibraryPage key={entry} entryId={entry} />;
   const source = sources.data?.find((s) => s.id === sourceId);
   if (source) return <LibraryView key={source.id} source={source} itemId={itemId} file={file} />;
-  return <LibrariesOverview />;
+  return <YourLibraries />;
 }

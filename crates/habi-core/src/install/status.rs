@@ -158,10 +158,55 @@ pub fn installation(
 /// Skill directories that exist in the project for `name` but are not
 /// recorded in the lock file (installed by hand or by another tool).
 pub fn unmanaged_copies(root: &Path, name: &str, lock: &super::lock::LockFile) -> Vec<String> {
-    layout::PROJECT_SKILL_DIRS
-        .iter()
-        .map(|base| format!("{base}/{name}/SKILL.md"))
-        .filter(|p| matches!(read_project_file(root, p), Ok(Some(_))))
-        .filter(|p| lock.owner_of(p).is_none())
-        .collect()
+    SkillFolders::of(root).unmanaged_copies(root, name, lock)
+}
+
+/// The folder names in each agent's project skill folder, listed once so
+/// that checking many skills does not probe every path for each of them.
+/// A listing only narrows the search: each copy is still confirmed with the
+/// same guarded read as a single check.
+pub struct SkillFolders(Vec<(&'static str, std::collections::HashSet<String>)>);
+
+impl SkillFolders {
+    pub fn of(root: &Path) -> SkillFolders {
+        SkillFolders(
+            layout::PROJECT_SKILL_DIRS
+                .iter()
+                .filter_map(|base| {
+                    let names = std::fs::read_dir(root.join(base))
+                        .ok()?
+                        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+                        .collect();
+                    Some((*base, names))
+                })
+                .collect(),
+        )
+    }
+
+    /// Whether the project has a skill of this name in any agent's folder,
+    /// whoever put it there.
+    pub fn has(&self, root: &Path, name: &str) -> bool {
+        self.0.iter().any(|(base, names)| {
+            names.contains(name)
+                && matches!(
+                    read_project_file(root, &format!("{base}/{name}/SKILL.md")),
+                    Ok(Some(_))
+                )
+        })
+    }
+
+    pub fn unmanaged_copies(
+        &self,
+        root: &Path,
+        name: &str,
+        lock: &super::lock::LockFile,
+    ) -> Vec<String> {
+        self.0
+            .iter()
+            .filter(|(_, names)| names.contains(name))
+            .map(|(base, _)| format!("{base}/{name}/SKILL.md"))
+            .filter(|p| matches!(read_project_file(root, p), Ok(Some(_))))
+            .filter(|p| lock.owner_of(p).is_none())
+            .collect()
+    }
 }

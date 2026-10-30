@@ -20,7 +20,7 @@ import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Working } from "../../components/ui";
 import { api, newJobId } from "../../lib/api";
 import { shortCommit } from "../../lib/catalog";
-import { plural } from "../../lib/format";
+import { plural, relativeTime } from "../../lib/format";
 import {
   invalidateProjectData,
   keys,
@@ -41,10 +41,12 @@ export function VersionName({ version }: { version: SourceVersion }) {
 export function UpdateBar({
   update,
   busy,
+  checking,
   onUpdate,
 }: {
   update: SourceUpdate;
   busy: boolean;
+  checking: boolean;
   onUpdate: () => void;
 }) {
   const { latest, current } = update;
@@ -71,7 +73,7 @@ export function UpdateBar({
       {busy ? (
         <Working>Updating…</Working>
       ) : (
-        <Button variant="primary" size="sm" onClick={onUpdate}>
+        <Button variant="primary" size="sm" disabled={checking} onClick={onUpdate}>
           Update
         </Button>
       )}
@@ -215,10 +217,13 @@ export function LibraryUpdates({
   const check = useCheckUpdate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [manual, setManual] = useState(false);
+  const [refreshed, setRefreshed] = useState(false);
   const update = updates.data?.find((u) => u.sourceId === source.id);
   const asked = useRef<string | null>(null);
 
-  const eligible = source.kind === "git" && !source.preview && !source.sample && source.snapshot !== null;
+  const visible = !source.preview && source.snapshot !== null;
+  const eligible = source.kind === "git" && visible;
   const checkedAt = update ? Date.parse(update.checkedAt) : 0;
   const { mutate } = check;
   useEffect(() => {
@@ -229,9 +234,12 @@ export function LibraryUpdates({
 
   const apply = async () => {
     setBusy(true);
+    setManual(false);
     setError(null);
+    setRefreshed(false);
     try {
       await api.refreshSource(source.id, newJobId());
+      setRefreshed(true);
     } catch (e) {
       setError(e);
     } finally {
@@ -246,12 +254,51 @@ export function LibraryUpdates({
     void client.invalidateQueries({ queryKey: keys.updateReport(source.id) });
   };
 
-  if (!eligible) return null;
+  if (!visible) return null;
   const available = update?.available ? update : null;
-  if (!available && !report && !error) return null;
   return (
     <div className="library-updates">
-      {available ? <UpdateBar update={available} busy={busy} onUpdate={() => void apply()} /> : null}
+      <div className="library-update-check">
+        <Button
+          size="sm"
+          icon="refresh"
+          busy={eligible ? check.isPending : busy}
+          disabled={busy || check.isPending}
+          onClick={() => {
+            if (eligible) {
+              setManual(true);
+              check.mutate(source.id);
+            } else {
+              void apply();
+            }
+          }}
+        >
+          {eligible ? (check.isPending ? "Checking…" : "Check for updates") : "Refresh library"}
+        </Button>
+        <span role="status">
+          {eligible
+            ? check.isPending
+              ? "Checking the library for updates…"
+              : manual && check.isSuccess
+                ? check.data?.available
+                  ? "Update available"
+                  : check.data
+                    ? "Library is up to date"
+                    : "No update information available"
+                : update
+                  ? `Last checked ${relativeTime(update.checkedAt)}`
+                  : null
+            : refreshed
+              ? "Library refreshed"
+              : null}
+        </span>
+      </div>
+      {manual && check.isError ? (
+        <ErrorNotice error={check.error} title="Could not check for updates — try again" />
+      ) : null}
+      {available ? (
+        <UpdateBar update={available} busy={busy} checking={check.isPending} onUpdate={() => void apply()} />
+      ) : null}
       {error ? <ErrorNotice error={error} title="Could not update" /> : null}
       {report ? (
         <ChangeReport report={report} items={items} onOpen={onOpen} onDismiss={() => void dismiss()} />

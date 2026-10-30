@@ -177,6 +177,8 @@ function answer(cmd: string, args: Args): unknown {
       return [];
     case "discover_project":
       return { skills: [], instructions: [], limits: [], inspectedAt: new Date().toISOString() };
+    case "skill_usage":
+      return { partial: false, skills: [] };
     case "plan_install":
       return plan;
     // Skills in the person's own folders: the same plan, rooted at the home folder.

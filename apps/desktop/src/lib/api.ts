@@ -53,13 +53,13 @@ import type { RefreshOutcome } from "../bindings/RefreshOutcome";
 import type { Rehearsal } from "../bindings/Rehearsal";
 import type { RepoFacts } from "../bindings/RepoFacts";
 import type { Resolution } from "../bindings/Resolution";
-import type { SampleWorkspace } from "../bindings/SampleWorkspace";
 import type { Settings } from "../bindings/Settings";
 import type { ShareForm } from "../bindings/ShareForm";
 import type { SkillDocument } from "../bindings/SkillDocument";
 import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
 import type { SkillStanding } from "../bindings/SkillStanding";
+import type { SkillUsageReport } from "../bindings/SkillUsageReport";
 import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
@@ -281,6 +281,8 @@ export const api = {
   suggestConditions: (projectId: string) => call<ConditionSuggestion[]>("suggest_conditions", { projectId }),
   discoverProject: (projectId: string, jobId?: string) =>
     call<ProjectKnowledge>("discover_project", { projectId, jobId: jobId ?? null }),
+  skillUsage: (projectId: string, jobId: string) =>
+    call<SkillUsageReport>("skill_usage", { projectId, jobId }),
   readInstructions: (projectId: string, path: string) =>
     call<InstructionDocument>("read_instructions", { projectId, path }),
   createSkillFromInstructions: (
@@ -322,9 +324,6 @@ export const api = {
 
   diagnosticsPreview: () => call<DiagnosticBundle>("diagnostics_preview"),
   diagnosticsSave: () => call<string | null>("diagnostics_save"),
-  createSampleWorkspace: () => call<SampleWorkspace>("create_sample_workspace"),
-  /** Removes the sample libraries, the sample projects and their folder; nothing else. */
-  removeSampleWorkspace: () => call<void>("remove_sample_workspace"),
   /** Removes old operation records and library snapshots, and stored file versions nothing refers to. */
   freeUpSpace: () => call<PruneReport>("free_up_space"),
 };

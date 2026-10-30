@@ -18,10 +18,14 @@ model needed. When ready, use in a project or on your machine. Share when it's w
 
 ## Creating a skill
 
-Before you have written one, My skills explains what a skill is, and offers a title, an idea or
-skills you already have.
+The sidebar's **Skills** section has two pages: **My skills** for editable skills you keep
+in Habi, and **On this machine** for global skills in your agent folders. A count next to
+either one shows how many of its skills have a newer version in their library.
 
-![My skills when it is empty: a skill is a note your agent can follow, kept as a file; write one, bring some in, or start from an idea.](../media/my-skills.jpg)
+Before you have written one, My skills explains what a skill is, and offers a title,
+an idea or skills you already have.
+
+![My skills before your first skill: a skill is a note your agent can follow, kept as a file; write one, bring some in, or start from an idea.](../media/my-skills.jpg)
 
 **New skill** opens a blank page. Habi auto-names it from your content: the first heading
 becomes the title, and the title becomes the identifier (until you change it or install).
@@ -181,21 +185,44 @@ followed them.
 
 ## On this machine
 
-*On this machine*, in My skills, lists the skills in your own skill folders (`~/.claude/skills`,
+**On this machine**, under Skills in the sidebar, lists the skills in your own skill folders (`~/.claude/skills`,
 `~/.agents/skills`, and each tool's own folder such as `~/.cursor/skills`), with which tools
 read each one and, where a project holds a copy too, which copy a tool uses. A skill in
 several of those folders (installed for Claude Code and Codex, say, it is in both
 `~/.claude/skills` and `~/.agents/skills`) is one entry: its folders are listed together, and
-a row of agent tools lights up the ones that read it. Habi only reads
+the agent badges highlight the tools you selected for installations Habi manages. Other
+agents that can read the shared folders stay unhighlighted, with a separate explanation of
+that access. This is a record of your installation choices, not a way to block an agent from
+reading a shared folder. For skills installed outside Habi, the badges show which tools can
+read the folders, since Habi has no record of your choices.
+
+Skills whose library has a newer version are listed first; **Updates** shows only those.
+Use **Find a global skill** to search by name, description or library; **/** focuses the
+search. Expand the folder line on a skill to see its
+locations and, for managed installs, its library. Habi only reads
 skills it did not install: *Add to My skills* copies one in, and *Use in a project…* installs
 it in a project. The original is never touched.
 
+![The machine collection opens directly to global skills, with selected agents highlighted and shared-folder access explained separately.](../media/my-skills-refresh/after-skills.jpg)
+
 To install a skill there on purpose, choose *Add to this machine…* on a library skill, or **Use
 → On this machine…** on one of yours. The review lists every file under your home folder
-before anything is written. Skills Habi installed say so and name their library, with
+before anything is written. Back in the library, its index marks the skill *on this machine*
+and the reader shows **Installed on this machine**, the tools that read it, and **Manage
+installation** to open My skills. **More → Add for more agents…** lets you review an install
+for additional tools. These marks identify the library item Habi installed; a skill with the
+same name from elsewhere is not marked as that library's installation.
+
+Skills Habi installed say so and name their library in My skills, with
 *Update…* and *Remove from this machine…*. Each of these is journaled like a project install,
-and **History and restore…** previews undoing any completed change. It also checks for
-interrupted operations, and remains available when no skills are left.
+and **History and restore…** previews undoing any completed change. History lists the newest
+changes first, with **All changes**, **Can restore** and **Needs attention** filters. Expand
+a change’s file count to inspect its paths, then choose **Restore…** to review the proposed
+changes before confirming. The check for interrupted operations reports its result inside
+the dialog. History remains available when no skills are left.
+
+![Machine history with restore and attention filters, operation status and expandable file details.](../media/my-skills-refresh/after-history.jpg)
+
 [Agent tools](agent-tools.md#install-on-your-machine)
 lists the folders, the record Habi keeps and which copy each tool uses.
 

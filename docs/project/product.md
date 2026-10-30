@@ -46,8 +46,8 @@ Habi is not a marketplace, agent launcher, chat application or configuration das
 
 | Principle | How Habi keeps it |
 |---|---|
-| Repository first | Opening a project is the primary action; recommendations come from inspection (`inspect`), not from browsing a catalog. With nothing to recommend, the project shows the skills and instructions already in it. |
-| Explain relevance | Every result carries an evaluation tree with fact ids, files and lines (`matching::eval::EvalNode`). Unknown is a first-class outcome; there are no confidence percentages. |
+| Repository first | Opening a project is the primary action; recommendations come from inspection (`inspect`), not from browsing a catalog. A project opens on **Suggested** (`suggest`): a short, capped answer to "what should my agents have here?" — team requirements, skills for its stack, a few practices — from connected libraries and from Habi's catalog picks, judged from the catalog alone before anything is connected. What the person's other projects already use comes first: each project they open informs the next. |
+| Explain relevance | Every result carries an evaluation tree with fact ids, files and lines (`matching::eval::EvalNode`). Unknown is a first-class outcome; there are no confidence percentages. A rule has one of three authors and says which: the skill's author (`habi.yaml`), Habi's catalog (a hint or a pick), or the skill's own description (`matching::described`: the technologies its name and description name, read with a fixed lexicon — Habi's reading of the author's words, never presented as the author's rule). |
 | Create where the work is | `skills`: local drafts and imported copies as plain Agent Skills folders; a condition builder over the matching schema; an applicability preview across registered projects. No model, account or library required. |
 | Pay it forward | `contribute`: refinements go back to the library they came from (or any connected library) with an explicit file selection, a preview of exactly what leaves the machine, and a reviewed branch, request or patch. A prepared branch, a pushed branch and an opened request are reported as different things. Copies keep their origin (`SkillOrigin`), and library updates to a copy are reviewed three ways (`skills::upstream`). |
 | Allow justified differences | Local edits to installed files are detected and kept; updates are three-way; users can declare facts per project (`Declaration`). |
@@ -66,6 +66,11 @@ Habi is not a marketplace, agent launcher, chat application or configuration das
 - **Evidence:** declared by author · checked here · partially checked · check failed · check out of date · not evaluated.
 
 They are never collapsed into a single "green" status.
+
+**Use** sits beside them and feeds none of them: *Used 12× in Claude Code here in 30 days* or *Not
+used in Claude Code here in 30 days* on an installed skill, counted from Claude Code's history on
+this machine when a project's All skills list opens. It helps a person prune what they no longer
+need; it does not rank or recommend anything, and says nothing when there is nothing to go on.
 
 Readiness is reported per compatible agent and installation previews assess the selected
 agents. A project MCP entry establishes configuration only, not startup or authentication.
@@ -89,6 +94,12 @@ Known gaps are listed in one place:
 A workflow execution engine, model routing or proxies, a marketplace, conversation
 monitoring, autonomous agents, LLM-generated applicability presented as fact, and
 effectiveness scores without evidence.
+
+Counting skill use is not conversation monitoring, and it stays that way: it runs when a project's
+All skills list opens (as it does on opening a project with something installed), never in the
+background, takes only skill names and times from an agent's local history, and keeps nothing
+([exactly what is read](security-model.md#claude-code-session-history)). A count is not an
+effectiveness score, and is not presented as one.
 
 ## Future direction
 

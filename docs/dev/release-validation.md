@@ -55,7 +55,7 @@ follow the documented first-launch steps for unsigned builds.
 | Evidence field | Required observation |
 |---|---|
 | `cleanInstall` | Install each recorded installer on a clean machine/profile. Uninstall and reinstall without losing data. |
-| `launch` | The packaged app opens, native folder/save dialogs work, the sample works, and errors are readable. |
+| `launch` | The packaged app opens, native folder/save dialogs work, opening a project and connecting a library work, and errors are readable. |
 | `upgradePreservesData` | Upgrade from the recorded previous release with existing drafts, contributions, history, installs and local edits. Verify content and modes after restart. |
 | `updaterRejectsTampering` | In a disposable build/profile with a local test update endpoint, alter one byte in the update payload while retaining its original signature. Update must fail without replacing the app. Then install the unmodified signed update. Habi updater signatures remain separate from OS signing. |
 | `offlineEditing` | Disconnect networking; create/edit/import/install/export a skill. Failed network operations must leave drafts and the last good snapshot intact. |

@@ -2,7 +2,6 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { useState } from "react";
 import type { LibraryIndex } from "../bindings/LibraryIndex";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
 import { Icon } from "../components/Icon";
@@ -19,7 +18,6 @@ import { useOpenExternal } from "../lib/safeInvoke";
 import { useScreenCommands } from "../lib/screenCommands";
 import { summarize } from "../lib/skillFacts";
 import { useUpdates } from "../lib/updates";
-import { RemoveSampleDialog, useCreateSample, useHasSample } from "./SampleWorkspace";
 
 export function CommandPalette({
   open,
@@ -28,23 +26,11 @@ export function CommandPalette({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const [removingSample, setRemovingSample] = useState(false);
-  return (
-    <>
-      {/* Mounted only while open: its lists and lookups cost nothing until it is asked for. */}
-      {open ? <Palette onOpenChange={onOpenChange} onRemoveSample={() => setRemovingSample(true)} /> : null}
-      {removingSample ? <RemoveSampleDialog open onOpenChange={setRemovingSample} /> : null}
-    </>
-  );
+  // Mounted only while open: its lists and lookups cost nothing until it is asked for.
+  return open ? <Palette onOpenChange={onOpenChange} /> : null;
 }
 
-function Palette({
-  onOpenChange,
-  onRemoveSample,
-}: {
-  onOpenChange: (o: boolean) => void;
-  onRemoveSample: () => void;
-}) {
+function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
   const { route, navigate } = useNav();
   const projects = useRecentProjects();
   const sources = useSources();
@@ -52,10 +38,8 @@ function Palette({
   const { openProject, newSkill, addSkills, showWelcome } = useActions();
   const client = useQueryClient();
   const toast = useToast();
-  const sample = useCreateSample();
   const updates = useUpdates();
   const openExternal = useOpenExternal();
-  const hasSample = useHasSample();
   const screen = useScreenCommands();
   const projectId = route.name === "project" ? route.projectId : undefined;
   const overview = projectId ? client.getQueryData<ProjectOverview>(keys.overview(projectId)) : undefined;
@@ -235,16 +219,28 @@ function Palette({
                   <Icon name="plus" /> <span>Add existing skills…</span>
                 </Command.Item>
                 <Command.Item
-                  value="my skills drafts"
-                  onSelect={() => run(() => navigate({ name: "skills" }))}
+                  value="my skills drafts copies"
+                  onSelect={() => run(() => navigate({ name: "skills", tab: "collection" }))}
                 >
                   <Icon name="pencil" /> <span>My skills</span>
                 </Command.Item>
                 <Command.Item
-                  value="libraries browse connect discover community"
+                  value="on this machine global skills agent folders updates"
+                  onSelect={() => run(() => navigate({ name: "skills", tab: "machine" }))}
+                >
+                  <Icon name="layers" /> <span>On this machine</span>
+                </Command.Item>
+                <Command.Item
+                  value="your libraries connected manage updates"
                   onSelect={() => run(() => navigate({ name: "sources" }))}
                 >
-                  <Icon name="library" /> <span>Browse & connect libraries…</span>
+                  <Icon name="library" /> <span>Your libraries</span>
+                </Command.Item>
+                <Command.Item
+                  value="explore libraries browse connect discover catalog community builders"
+                  onSelect={() => run(() => navigate({ name: "sources", view: "explore" }))}
+                >
+                  <Icon name="library" /> <span>Explore libraries</span>
                 </Command.Item>
                 <Command.Item
                   value="connect git repository library team url"
@@ -329,20 +325,6 @@ function Palette({
                 >
                   <Icon name="arrowLeft" /> <span>Start screen</span>
                 </Command.Item>
-                <Command.Item
-                  value="try sample workspace example demo"
-                  onSelect={() => run(() => void sample.create())}
-                >
-                  <Icon name="layers" /> <span>Try the sample workspace</span>
-                </Command.Item>
-                {hasSample ? (
-                  <Command.Item
-                    value="remove sample workspace example demo delete"
-                    onSelect={() => run(onRemoveSample)}
-                  >
-                    <Icon name="trash" /> <span>Remove sample workspace…</span>
-                  </Command.Item>
-                ) : null}
               </Command.Group>
             </Command.List>
           </Command>

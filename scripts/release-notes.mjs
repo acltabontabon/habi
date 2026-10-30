@@ -23,9 +23,9 @@ const SITE = "https://acltabontabon.com/habi/";
 /** What a first look at the app shows, in the order a person meets it. Pictures are in docs/media. */
 export const GALLERY = [
   ["project.jpg", "Fits, and why", "Every skill matched to the repository, with the files and lines behind it."],
-  ["explore.jpg", "Every library in one place", "Your team's, the community's and the tool builders'."],
+  ["explore.jpg", "Explore the catalog", "Fifteen public libraries from the tool builders and the community. Look inside before you connect."],
+  ["my-skills-refresh/after-skills.jpg", "Skills, in the sidebar", "My skills and On this machine are pages of their own, with what has a newer version first."],
   ["install-review.jpg", "See every file first", "Install for seven agent tools; nothing is written until you say so."],
-  ["update-review.jpg", "Updates you choose", "Review exactly what changes, per agent tool, before it is written."],
   ["skill-studio.jpg", "The Skill Studio", "Write a skill as one document and test when it would be suggested."],
   ["share-review.jpg", "Send it back", "Preview what leaves your machine, then open a pull request."],
 ];
@@ -214,7 +214,7 @@ ${[
     ...(previous ? [`<a href="https://github.com/${repo}/compare/v${previous}...${tag}">All changes since ${previous}</a>`] : []),
   ].join(" · ")}
 
-<sub>Habi ${version}, released ${date}. Made by <a href="https://github.com/acltabontabon">Alvin Cris Tabontabon</a> in their own time. If it saves you some, <a href="https://ko-fi.com/aclt_attic">buy them a coffee</a>.</sub>
+<sub>Habi ${version}, released ${date}. If Habi saves you time, <a href="https://ko-fi.com/aclt_attic">buy me a coffee</a>.</sub>
 
 </div>
 `;

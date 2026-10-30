@@ -3109,20 +3109,43 @@ button.rd-word:hover,
 
 /* ---------- On this machine: skills that belong to the agents, not to Habi ---------- */
 
+.mach-total {
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--thread-wash);
+  font: 12px var(--font-mono);
+  color: var(--ink-muted);
+}
+
 .mach {
-  margin-top: var(--s7);
-  padding-top: var(--s5);
-  border-top: 1px solid var(--hairline);
+  margin-top: var(--s4);
+}
+
+/* As its own page, the header is the page's. */
+.mach.is-page {
+  margin-top: 0;
 }
 
 .mach-head {
   display: grid;
-  gap: 4px;
-  margin-bottom: var(--s3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  margin-bottom: var(--s4);
+}
+
+.mach-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
 }
 
 .mach-lead {
-  max-width: 64ch;
+  grid-column: 1 / -1;
+  max-width: 78ch;
   margin: 0;
   font-size: var(--text-sm);
   color: var(--ink-muted);
@@ -3141,6 +3164,28 @@ button.rd-word:hover,
   align-items: start;
   gap: var(--s2) var(--s4);
   padding: 14px var(--s2) 14px var(--s5);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.mach-shared {
+  margin: 2px 0 4px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.mach-locations {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.mach-locations summary {
+  cursor: pointer;
+}
+
+.mach-locations > div {
+  margin: 6px 0 0 14px;
 }
 
 /* Stitched, like every library that is someone else's: Habi reads these files, it does not keep them. */
@@ -3162,6 +3207,7 @@ button.rd-word:hover,
 
 .mach-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
   min-width: 0;
@@ -3392,4 +3438,14 @@ button.rd-word:hover,
 .wu-section .wu-radios {
   min-height: 34px;
   align-items: center;
+}
+
+.mach-search {
+  max-width: 360px;
+  margin-bottom: var(--s3);
+}
+
+.mach-tools .mach-search {
+  flex: 1;
+  margin-bottom: 0;
 }

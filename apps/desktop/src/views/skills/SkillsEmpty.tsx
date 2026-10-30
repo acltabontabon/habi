@@ -10,7 +10,6 @@ import { Icon, type IconName } from "../../components/Icon";
 import { Button, Kbd } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { modShortcut } from "../../lib/platform";
-import { slugify } from "../../lib/skills";
 import type { AddSkillsStart } from "./AddSkillsDialog";
 
 type Part = "name" | "when" | "steps";
@@ -31,42 +30,36 @@ const WAYS: { label: string; icon: IconName; start: AddSkillsStart }[] = [
  * Common things teams write down. Each opens the new-skill dialog already filled in.
  * Add or remove entries freely: the row reflows to 2, 3 or 6 columns (keep a multiple of 6 or 3 for a tidy end).
  */
-const IDEAS: { title: string; template: SkillTemplate; kind: string; bars: number[] }[] = [
+const IDEAS: { title: string; template: SkillTemplate; kind: string }[] = [
   {
     title: "Review a pull request",
     template: "reviewProcedure",
     kind: "Code review",
-    bars: [9, 14, 11, 6],
   },
   {
     title: "Ship a release",
     template: "workflow",
     kind: "Workflow",
-    bars: [12, 8, 13, 7],
   },
   {
     title: "Add an API endpoint",
     template: "workflow",
     kind: "Workflow",
-    bars: [7, 13, 9, 12],
   },
   {
     title: "Triage a flaky test",
     template: "troubleshooting",
     kind: "Troubleshooting",
-    bars: [13, 7, 12, 9],
   },
   {
     title: "Write a migration",
     template: "toolAssisted",
     kind: "Tool-assisted",
-    bars: [8, 12, 7, 13],
   },
   {
     title: "Review a dependency update",
     template: "reviewProcedure",
     kind: "Code review",
-    bars: [11, 9, 14, 8],
   },
 ];
 
@@ -229,24 +222,14 @@ export function SkillsEmpty() {
                 className="skills-idea"
                 onClick={() => newSkill({ title: idea.title, template: idea.template })}
               >
-                <span className="skills-idea-bars" aria-hidden="true">
-                  {idea.bars.map((w, i) => (
-                    <span key={i} style={{ width: `${w * 6}%`, background: `var(--dye-${(i * 2) % 8})` }} />
-                  ))}
-                </span>
                 <span className="skills-idea-title">{idea.title}</span>
-                <span className="skills-idea-slug">{slugify(idea.title)}</span>
                 <span className="skills-idea-kind">{idea.kind}</span>
+                <Icon name="chevronRight" size={14} className="skills-idea-go" />
               </button>
             </li>
           ))}
         </ul>
       </section>
-
-      <div className="skills-unwoven" aria-hidden="true">
-        <span className="skills-unwoven-weft" />
-        <span className="skills-unwoven-note">your first skill is the first thread</span>
-      </div>
     </div>
   );
 }

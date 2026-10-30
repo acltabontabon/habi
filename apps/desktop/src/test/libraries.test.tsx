@@ -5,6 +5,7 @@ import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CatalogEntry } from "../bindings/CatalogEntry";
 import type { LibraryIndex } from "../bindings/LibraryIndex";
+import type { MachineSkill } from "../bindings/MachineSkill";
 import type { RepoFacts } from "../bindings/RepoFacts";
 import type { Source } from "../bindings/Source";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
@@ -13,11 +14,13 @@ import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { setInspectorOpen } from "../lib/inspector";
 import { NavProvider, type Route, useNav } from "../lib/nav";
+import { invalidateSkills } from "../lib/queries";
 import { SourcesView } from "../views/sources/SourcesView";
 import catalogFixture from "./fixtures/catalog.json";
 import previewedEntry from "./fixtures/catalog-entry-previewed.json";
 import previewLibrary from "./fixtures/catalog-library-preview.json";
 import previewSource from "./fixtures/catalog-source-preview.json";
+import machineFixture from "./fixtures/machine-skills.json";
 
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invoke(...args) }));
@@ -74,8 +77,10 @@ function Host() {
   );
 }
 
-function wrap(initial: Route = { name: "sources" }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function wrap(
+  initial: Route = { name: "sources" },
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
@@ -110,6 +115,10 @@ type World = {
   report?: UpdateReport | null;
   /** The report an update leaves behind. */
   afterUpdate?: UpdateReport;
+  machine?: MachineSkill[];
+  checkError?: boolean;
+  holdCheck?: boolean;
+  releaseCheck?: () => void;
 };
 
 /** A stand-in for the core: what the catalog says changes as libraries are previewed and connected. */
@@ -154,7 +163,14 @@ function world(initial: World) {
       case "source_updates":
         return state.update ? [state.update] : [];
       case "check_source_update":
+        if (state.holdCheck)
+          await new Promise<void>((resolve) => {
+            state.releaseCheck = resolve;
+          });
+        if (state.checkError) throw { code: "gitNetwork", message: "Network unavailable" };
         return state.update ?? null;
+      case "machine_skills":
+        return state.machine ?? [];
       case "refresh_source":
         if (state.update) state.update = { ...state.update, available: false };
         state.report = state.afterUpdate ?? null;
@@ -195,124 +211,207 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe("libraries, by who stands behind them", () => {
+describe("your libraries, one line each", () => {
+  const offline: Source = {
+    ...own,
+    id: "offline",
+    name: "Zeta offline",
+    kind: "directory",
+    location: "/work/zeta-skills",
+    freshness: "stale",
+    skillCount: 3,
+  };
+  const anthropic: Source = {
+    ...own,
+    id: "s-anthropic",
+    name: "Anthropic",
+    catalogId: "anthropic",
+    skillCount: 17,
+  };
+  const connectedAnthropic = {
+    ...(catalog.find((e) => e.id === "anthropic") as CatalogEntry),
+    availability: "connected" as const,
+    sourceId: "s-anthropic",
+  };
+
+  beforeEach(() => {
+    world({ entry: catalog[0] as CatalogEntry, sources: [own, offline, anthropic] });
+    const base = invoke.getMockImplementation();
+    invoke.mockImplementation(async (cmd: string, args?: Record<string, unknown>) =>
+      cmd === "catalog"
+        ? catalog.map((e) => (e.id === "anthropic" ? connectedAnthropic : e))
+        : base?.(cmd, args),
+    );
+  });
+
+  it("lists every connected library on one line, what needs you first, with the catalog a click away", async () => {
+    wrap();
+    const ledger = await screen.findByRole("list", { name: "Your libraries" });
+    const rows = within(ledger).getAllByRole("button");
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/^Zeta offline.*Your folder3offline/),
+      expect.stringMatching(/^Anthropic.*anthropics\/skills.*Builder17current/),
+      expect.stringMatching(/^Team skills.*Your team7current/),
+    ]);
+    // The catalog is its own page; this one lists only what is connected.
+    expect(screen.queryByRole("button", { name: /OpenAI/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Explore/ })).toHaveTextContent("14");
+    // Your own library, and one from the catalog, are one menu away.
+    await userEvent.click(screen.getByRole("button", { name: /Add a library/ }));
+    const menu = screen.getByRole("menu", { name: "Add a library" });
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((i) => i.textContent),
+    ).toEqual([
+      expect.stringMatching(/^Git repository…/),
+      expect.stringMatching(/^Folder…/),
+      expect.stringMatching(/^From the catalog/),
+    ]);
+    // How it works is shown only until something is connected.
+    expect(screen.queryByText("Put skills to work")).toBeNull();
+  });
+
+  it("narrows to what needs you, or to where libraries come from", async () => {
+    const user = userEvent.setup();
+    wrap();
+    const ledger = await screen.findByRole("list", { name: "Your libraries" });
+    await user.click(screen.getByRole("button", { name: /^Needs you/ }));
+    expect(within(ledger).getAllByRole("button")).toHaveLength(1);
+    expect(within(ledger).getByText("Zeta offline")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Builders/ }));
+    expect(within(ledger).getByText("Anthropic")).toBeInTheDocument();
+    expect(within(ledger).getAllByRole("button")).toHaveLength(1);
+    // No library is from the community, so there is no such filter.
+    expect(screen.queryByRole("button", { name: /^Community/ })).toBeNull();
+  });
+
+  it("filters by name and moves between rows with the keyboard", async () => {
+    const user = userEvent.setup();
+    wrap();
+    await screen.findByRole("list", { name: "Your libraries" });
+    await user.keyboard("/");
+    const filter = screen.getByRole("searchbox", { name: "Filter your libraries" });
+    expect(filter).toHaveFocus();
+    await user.type(filter, "team sk");
+    expect(screen.queryByRole("button", { name: /Anthropic/ })).toBeNull();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: /Team skills/ })).toHaveFocus();
+    await user.clear(filter);
+    const first = screen.getByRole("button", { name: /Zeta offline/ });
+    first.focus();
+    await user.keyboard("j");
+    expect(screen.getByRole("button", { name: /^Anthropic/ })).toHaveFocus();
+    await user.keyboard("k");
+    expect(first).toHaveFocus();
+  });
+
+  it("opens a library from its row", async () => {
+    const user = userEvent.setup();
+    wrap();
+    await user.click(await screen.findByRole("button", { name: /Team skills/ }));
+    await waitFor(() => expect(route()).toMatchObject({ name: "sources", sourceId: "team" }));
+  });
+
+  it("explains the way in before anything is connected", async () => {
+    world({ entry: catalog[0] as CatalogEntry, sources: [] });
+    wrap();
+    expect(await screen.findByText("Put skills to work")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Explore the catalog" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect a Git repository" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use a folder" })).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = wrap();
+    await screen.findByRole("list", { name: "Your libraries" });
+    const result = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
+    expect(result.violations).toEqual([]);
+  });
+});
+
+describe("exploring the catalog", () => {
+  const explore: Route = { name: "sources", view: "explore" };
   beforeEach(() => {
     world({ entry: catalog[0] as CatalogEntry, sources: [own] });
   });
 
-  it("groups the catalog by provenance, with what is connected first", async () => {
-    wrap();
-    expect(await screen.findByRole("heading", { name: /From the builders/ })).toBeInTheDocument();
-    const builders = screen.getByRole("region", { name: /From the builders/ });
-    const community = screen.getByRole("region", { name: /From the community/ });
-    const connectedGroup = screen.getByRole("region", { name: /Connected/ });
-    for (const name of [
-      "Anthropic",
-      "OpenAI",
-      "Microsoft",
-      "Google",
-      "GitHub",
-      "Cloudflare",
-      "Vercel",
-      "Sentry",
-    ]) {
-      expect(within(builders).getByText(name)).toBeInTheDocument();
+  it("shows the libraries not yet connected as cards, by who stands behind them", async () => {
+    const user = userEvent.setup();
+    wrap(explore);
+    const cards = await screen.findByRole("list", { name: "Libraries to explore" });
+    for (const name of ["Anthropic", "OpenAI", "Cloudflare", "Superpowers", "Addy Osmani", "wshobson"]) {
+      expect(within(cards).getByText(name)).toBeInTheDocument();
     }
-    for (const name of ["Superpowers", "Addy Osmani", "wshobson"]) {
-      expect(within(community).getByText(name)).toBeInTheDocument();
-    }
-    // What is connected comes first, then what others built.
-    expect(connectedGroup.compareDocumentPosition(builders) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(connectedGroup).getByText("Team skills")).toBeInTheDocument();
-    // Bringing your own is in the header, on every visit.
-    expect(screen.getByRole("button", { name: "Connect a Git repository" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Use a folder" })).toBeInTheDocument();
-    // How it works is shown only until something is connected.
-    expect(screen.queryByText("Put skills to work")).toBeNull();
-    // Connecting is not owning: nothing is called "yours" until a skill is adopted.
-    expect(screen.queryByRole("region", { name: /^Yours/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Builders/ }));
+    expect(within(cards).getByText("Anthropic")).toBeInTheDocument();
+    expect(within(cards).queryByText("Superpowers")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Community/ }));
+    expect(within(cards).getByText("Superpowers")).toBeInTheDocument();
+    expect(within(cards).queryByText("Anthropic")).toBeNull();
+    // Bringing your own is still one menu away; the catalog is not offered on its own page.
+    await user.click(screen.getByRole("button", { name: /Add a library/ }));
+    expect(screen.queryByRole("menuitem", { name: /From the catalog/ })).toBeNull();
   });
 
   it("says only what is known: no counts before anything is fetched, and ownership is not a safety claim", async () => {
-    wrap();
-    const builders = await screen.findByRole("region", { name: /From the builders/ });
-    // Nothing was fetched, so there is no skill count to show.
-    expect(within(builders).queryByText(/\d+ skills/)).toBeNull();
-    // The group says "builders"; a row speaks only when it differs. Cloudflare's
-    // organisation is not verified by GitHub, so its row says so, with the evidence.
-    expect(within(builders).queryAllByText("official")).toHaveLength(0);
-    // How an organisation was checked belongs to its own page, not to every row.
-    expect(within(builders).queryByText(/GitHub-verified/)).toBeNull();
-    expect(within(builders).queryByText(/Look inside/)).toBeNull();
+    wrap(explore);
+    const cards = await screen.findByRole("list", { name: "Libraries to explore" });
+    expect(within(cards).queryByText(/\d+ skills/)).toBeNull();
+    expect(within(cards).queryAllByText("official")).toHaveLength(0);
+    expect(within(cards).queryByText(/GitHub-verified/)).toBeNull();
     expect(screen.queryByText(/\bsafe\b/i)).toBeNull();
     expect(screen.queryByText(/\btrusted\b/i)).toBeNull();
-    const community = screen.getByRole("region", { name: /From the community/ });
-    expect(within(community).queryByText(/GitHub-verified/)).toBeNull();
-    // The page invents no review.
     expect(screen.queryByText(/reviewed/i)).toBeNull();
   });
 
-  it("opens a library's page when its row is chosen, and connects nothing yet", async () => {
+  it("opens a library's page when its card is chosen, and connects nothing yet", async () => {
     const user = userEvent.setup();
-    wrap();
+    wrap(explore);
     await user.click(await screen.findByRole("button", { name: /OpenAI/ }));
     await waitFor(() => expect(route()).toMatchObject({ name: "sources", entry: "openai" }));
     expect(await screen.findByRole("button", { name: "Connect library" })).toBeInTheDocument();
     expect(invoke.mock.calls.some(([cmd]) => cmd === "connect_catalog_entry")).toBe(false);
   });
 
-  it("filters by name and moves between rows with the keyboard", async () => {
+  it("filters by name and walks the cards with the keyboard", async () => {
     const user = userEvent.setup();
-    wrap();
-    await screen.findByRole("region", { name: /From the builders/ });
+    wrap(explore);
+    await screen.findByRole("list", { name: "Libraries to explore" });
     await user.keyboard("/");
     const filter = screen.getByRole("searchbox", { name: "Filter libraries" });
     expect(filter).toHaveFocus();
     await user.type(filter, "cloudflare");
-    expect(screen.getByRole("button", { name: /Cloudflare/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /OpenAI/ })).toBeNull();
     await user.keyboard("{Enter}");
     expect(screen.getByRole("button", { name: /Cloudflare/ })).toHaveFocus();
-    await user.keyboard("{Escape}");
     await user.clear(filter);
-    await user.click(await screen.findByRole("button", { name: /Anthropic/ }));
-  });
-
-  it("walks the rows with j and k, group to group", async () => {
-    const user = userEvent.setup();
-    wrap();
-    const first = await screen.findByRole("button", { name: /Anthropic/ });
+    const first = screen.getByRole("button", { name: /^Anthropic/ });
     first.focus();
     await user.keyboard("j");
-    expect(screen.getByRole("button", { name: /OpenAI/ })).toHaveFocus();
-    await user.keyboard("k");
-    expect(first).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^OpenAI/ })).toHaveFocus();
   });
 
-  it("moves a library you connected from the catalog into Connected, and out of what is left to explore", async () => {
+  it("leaves out a library once it is connected", async () => {
     const connectedOpenai: CatalogEntry = {
       ...(catalog.find((e) => e.id === "openai") as CatalogEntry),
       availability: "connected",
       sourceId: "s-openai",
     };
-    world({ entry: catalog[0] as CatalogEntry, sources: [] });
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "catalog") return catalog.map((e) => (e.id === "openai" ? connectedOpenai : e));
       if (cmd === "list_sources") return [{ ...own, id: "s-openai", name: "OpenAI", catalogId: "openai" }];
       return [];
     });
-    wrap();
-    const connectedGroup = await screen.findByRole("region", { name: /Connected/ });
-    expect(within(connectedGroup).getByText("OpenAI")).toBeInTheDocument();
-    // What is left to explore no longer lists it.
-    const builders = screen.getByRole("region", { name: /From the builders/ });
-    expect(within(builders).queryByText("OpenAI")).toBeNull();
-    expect(within(builders).getByText("Anthropic")).toBeInTheDocument();
+    wrap(explore);
+    const cards = await screen.findByRole("list", { name: "Libraries to explore" });
+    expect(within(cards).queryByText("OpenAI")).toBeNull();
+    expect(within(cards).getByText("Anthropic")).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
-    const { container } = wrap();
-    await screen.findByRole("region", { name: /From the builders/ });
+    const { container } = wrap(explore);
+    await screen.findByRole("list", { name: "Libraries to explore" });
     const result = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(result.violations).toEqual([]);
   });
@@ -580,7 +679,7 @@ describe("a connected catalog library", () => {
     const user = userEvent.setup();
     wrap(inLibrary());
     const strip = await screen.findByRole("region", { name: "About Acme" });
-    await user.click(within(strip).getByRole("button", { name: /Libraries/ }));
+    await user.click(within(strip).getByRole("button", { name: /Your libraries/ }));
     await waitFor(() => expect(route()).toEqual({ name: "sources" }));
   });
 
@@ -631,6 +730,56 @@ const changed: UpdateReport = {
 };
 
 describe("updating a library is the user's choice", () => {
+  it("checks on demand even within the automatic check interval, without refreshing", async () => {
+    const state = world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      update: { ...newer, available: false },
+      holdCheck: true,
+    });
+    wrap(inLibrary());
+    await userEvent.click(await screen.findByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByRole("button", { name: "Checking…" })).toBeDisabled();
+    await waitFor(() => expect(state.releaseCheck).toBeTypeOf("function"));
+    state.releaseCheck?.();
+    expect(await screen.findByText("Library is up to date")).toBeInTheDocument();
+    expect(calls("check_source_update")).toHaveLength(1);
+    expect(calls("refresh_source")).toHaveLength(0);
+
+    state.update = newer;
+    await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    state.releaseCheck?.();
+    expect(await screen.findByText("Update available")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Update" })).toBeInTheDocument();
+    expect(calls("refresh_source")).toHaveLength(0);
+  });
+
+  it("shows manual check failures, keeps the cached skills, and allows retry", async () => {
+    const state = world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      update: { ...newer, available: false },
+      checkError: true,
+    });
+    wrap(inLibrary());
+    await userEvent.click(await screen.findByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText("Could not check for updates — try again")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: /Skills in/ })).toBeInTheDocument();
+    state.checkError = false;
+    await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText("Library is up to date")).toBeInTheDocument();
+    expect(screen.queryByText("Could not check for updates — try again")).toBeNull();
+  });
+
+  it("refreshes a folder library directly without a remote update check", async () => {
+    world({ entry: entryConnected, sources: [{ ...sourceConnected, kind: "directory" }] });
+    wrap(inLibrary());
+    await userEvent.click(await screen.findByRole("button", { name: "Refresh library" }));
+    expect(await screen.findByText("Library refreshed")).toBeInTheDocument();
+    expect(calls("refresh_source")).toHaveLength(1);
+    expect(calls("check_source_update")).toHaveLength(0);
+  });
+
   it("offers a newer release, and moves nothing until asked", async () => {
     const user = userEvent.setup();
     world({ entry: entryConnected, sources: [sourceConnected], update: newer, afterUpdate: changed });
@@ -711,7 +860,86 @@ describe("updating a library is the user's choice", () => {
   it("says in the list which libraries have something newer", async () => {
     world({ entry: entryConnected, sources: [sourceConnected], update: newer });
     wrap();
-    const connected = await screen.findByRole("region", { name: /Connected/ });
-    expect(await within(connected).findByText("v1.1.0 available")).toBeInTheDocument();
+    const ledger = await screen.findByRole("list", { name: "Your libraries" });
+    expect(await within(ledger).findByText("v1.1.0 available")).toBeInTheDocument();
+  });
+});
+
+describe("machine installations in a library", () => {
+  const item = library.items.find((i) => i.id === "migrations");
+  if (!item) throw new Error("missing migrations fixture");
+  const managed = {
+    clients: ["claude-code", "codex"] as MachineSkill["readers"],
+    key: "remote#migrations",
+    library: "Acme",
+    libraryItemKey: item.key,
+    state: "current" as const,
+  };
+  const installed: MachineSkill = {
+    ...(machineFixture[0] as MachineSkill),
+    managed,
+  };
+
+  it("marks the installed skill in the index and reader, with its agents and management link", async () => {
+    world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      machine: [installed, { ...installed, id: "agents/migrations", readers: ["codex"] }],
+    });
+    wrap(inLibrary({ itemId: "migrations" }));
+    expect(await screen.findByText("Installed on this machine")).toBeInTheDocument();
+    const index = screen.getByRole("list", { name: /Skills in/ });
+    expect(within(index).getByRole("button", { name: /Migrations.*on this machine/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Available to .*Codex/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^More$/ }));
+    expect(await screen.findByRole("menuitem", { name: /Add for more agents/ })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Manage installation" }));
+    expect(await screen.findByText("elsewhere: skills")).toBeInTheDocument();
+  });
+
+  it("uses item identity, never a matching library or skill name", async () => {
+    world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      machine: [
+        { ...installed, managed: { ...managed, libraryItemKey: "other/migrations" } },
+        { ...installed, managed: null },
+      ],
+    });
+    wrap(inLibrary({ itemId: "migrations" }));
+    await screen.findByRole("heading", { name: "Migrations", level: 2 });
+    await waitFor(() => expect(calls("machine_skills")).toHaveLength(1));
+    expect(screen.queryByText("Installed on this machine")).toBeNull();
+    expect(screen.queryByText("on this machine")).toBeNull();
+  });
+
+  it("updates the marks after install or removal without reopening the library", async () => {
+    const state = world({ entry: entryConnected, sources: [sourceConnected] });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    wrap(inLibrary({ itemId: "migrations" }), client);
+    await screen.findByRole("heading", { name: "Migrations", level: 2 });
+    state.machine = [installed];
+    invalidateSkills(client);
+    expect(await screen.findByText("Installed on this machine")).toBeInTheDocument();
+    state.machine = [];
+    invalidateSkills(client);
+    await waitFor(() => expect(screen.queryByText("Installed on this machine")).toBeNull());
+    expect(screen.queryByText("on this machine")).toBeNull();
+  });
+
+  it("rechecks installation state after refreshing the library", async () => {
+    const state = world({
+      entry: entryConnected,
+      sources: [sourceConnected],
+      machine: [installed],
+      update: newer,
+    });
+    wrap(inLibrary({ itemId: "migrations" }));
+    await screen.findByText("Installed on this machine");
+    state.machine = [{ ...installed, managed: { ...managed, state: "updateAvailable" } }];
+    await userEvent.click(await screen.findByRole("button", { name: "Update" }));
+    expect(await screen.findByText("Update available")).toBeInTheDocument();
+    expect(calls("machine_skills").length).toBeGreaterThan(1);
   });
 });

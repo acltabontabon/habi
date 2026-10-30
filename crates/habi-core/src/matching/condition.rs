@@ -116,7 +116,11 @@ impl Condition {
                 }
                 s
             }
-            Condition::File { glob } => format!("has files matching {glob}"),
+            // A file by name, anywhere ("**/manage.py"), reads as that name.
+            Condition::File { glob } => match glob.strip_prefix("**/").unwrap_or(glob) {
+                name if !name.contains(['*', '?', '[', '{', '/']) => format!("has {name}"),
+                _ => format!("has files matching {glob}"),
+            },
             Condition::Tag { tag } => crate::inspect::tags::phrase(tag),
         }
     }

@@ -10,6 +10,7 @@ import type { Plan } from "../bindings/Plan";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider } from "../lib/nav";
+import { History } from "../views/project/History";
 import { ChangeTree, groupChanges, ReviewDialog, type ReviewRequest } from "../views/review/ReviewDialog";
 import { OnThisMachine } from "../views/skills/OnThisMachine";
 import { UseSkillDialog } from "../views/skills/UseSkillDialog";
@@ -357,7 +358,13 @@ function managedSkill(state: NonNullable<MachineSkill["managed"]>["state"]) {
     importedAs: null,
     mentionsHome: [],
     inProjects: [],
-    managed: { key: "lib#liquibase", library: "Team library", state },
+    managed: {
+      clients: ["claude-code"],
+      key: "lib#liquibase",
+      library: "Team library",
+      libraryItemKey: "lib/liquibase",
+      state,
+    },
   };
   return skill;
 }
@@ -498,5 +505,60 @@ describe("using one of My skills on this machine", () => {
         decisions: {},
       }),
     );
+  });
+});
+
+describe("history organization", () => {
+  it("filters restorable and interrupted changes and expands their files", async () => {
+    const op = {
+      id: "old",
+      title: "Old installation",
+      action: "install",
+      state: "committed",
+      createdAt: "2026-10-01T00:00:00Z",
+      finishedAt: null,
+      files: [".claude/skills/alpha/SKILL.md"],
+      problems: [],
+    };
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "machine_history")
+        return [
+          op,
+          {
+            ...op,
+            id: "new",
+            title: "Interrupted update",
+            action: "update",
+            state: "applying",
+            createdAt: "2026-10-03T00:00:00Z",
+          },
+          {
+            ...op,
+            id: "rolled",
+            title: "Rolled back removal",
+            action: "remove",
+            state: "rolledBack",
+            createdAt: "2026-10-02T00:00:00Z",
+          },
+        ];
+      if (cmd === "machine_recover") return [];
+      return [];
+    });
+    const user = userEvent.setup();
+    wrap(<History overview={null} onClose={() => {}} />);
+    const changes = await screen.findByRole("list", { name: "Changes made by Habi" });
+    await screen.findByText("Old installation");
+    expect(within(changes).getAllByRole("listitem")[0]).toHaveTextContent("Interrupted update");
+    expect(within(changes).getAllByRole("button", { name: "Restore…" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: /Can restore/ }));
+    expect(changes.children).toHaveLength(1);
+    expect(screen.queryByText("Interrupted update")).toBeNull();
+    await user.click(screen.getByText("1 file changed"));
+    expect(screen.getByText(".claude/skills/alpha/SKILL.md")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /Needs attention/ }));
+    expect(screen.getByText("Interrupted update")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Restore…" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Check for interrupted operations" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("No interrupted operations.");
   });
 });

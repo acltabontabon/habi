@@ -37,6 +37,7 @@ use crate::skills::{
 };
 use crate::source::{Freshness, Source, SourceKind, Sources, TrackedRef, portable_identity};
 use crate::store::{AppPaths, Store};
+use crate::usage::{self, SkillUsageReport};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -89,8 +90,6 @@ pub struct ProjectRecord {
     pub exists: bool,
     pub last_opened_at: String,
     pub exclusions: Vec<String>,
-    /// Part of the explicitly labeled sample workspace.
-    pub sample: bool,
     /// What fit when the project was last looked at; `None` until then.
     pub summary: Option<ProjectSummary>,
     #[serde(skip)]
@@ -138,6 +137,9 @@ pub struct ProjectSummary {
     /// thread solid where something from it is installed, and loose where it only fits.
     #[serde(default)]
     pub tally: Vec<SourceTally>,
+    /// Catalog libraries, not connected, that Habi's suggestions for the project come from.
+    #[serde(default)]
+    pub suggested: Vec<String>,
     pub at: String,
 }
 
@@ -176,6 +178,8 @@ pub struct ProjectOverview {
     pub sources: Vec<Source>,
     /// Installed items whose source or item is not available on this machine.
     pub orphaned: Vec<Installation>,
+    /// Habi's short answer to "what should my agents have here?"
+    pub kit: crate::suggest::Kit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -404,7 +408,7 @@ pub enum SuggestionKind {
 }
 
 /// For reviewers: where a contribution's rules apply among the author's own
-/// projects (sample projects are not counted). Plain text, inserted into the
+/// projects. Plain text, inserted into the
 /// message only when the author chooses; it names projects, never paths.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -414,7 +418,6 @@ pub struct Rehearsal {
     pub text: String,
     /// Projects the rules were evaluated against.
     pub projects: u32,
-    pub samples_skipped: u32,
 }
 
 /// A fact observed in a project that could become a condition. Suggestions
@@ -471,10 +474,6 @@ impl Habi {
         paths.ensure()?;
         let store = Store::open(&paths.db())?;
         let sources = Sources::new(&paths, &store);
-        // Sample libraries created before libraries carried a sample flag.
-        if let Err(e) = sources.mark_samples_under(&crate::sample::root(&paths)) {
-            tracing::warn!(error = %e, "could not mark the sample libraries");
-        }
         // Snapshots fetched before item counts were recorded.
         if let Err(e) = sources.count_uncounted() {
             tracing::warn!(error = %e, "could not count library items");
@@ -485,7 +484,7 @@ impl Habi {
             cwd: Some(paths.empty_dir()),
             ..ReviewTools::from_path()
         };
-        Ok(Habi {
+        let habi = Habi {
             paths,
             store,
             sources,
@@ -497,7 +496,12 @@ impl Habi {
             user_home: directories::BaseDirs::new()
                 .map(|b| b.home_dir().to_path_buf())
                 .unwrap_or_default(),
-        })
+        };
+        // The sample workspace earlier versions could create.
+        if let Err(e) = crate::sample::remove_leftovers(&habi) {
+            tracing::warn!(error = %e, "could not remove the sample workspace");
+        }
+        Ok(habi)
     }
 
     /// Reads the person's own skill folders under `home` instead of the real
@@ -577,7 +581,6 @@ impl Habi {
 
     pub fn project(&self, id: &str) -> Result<ProjectRecord> {
         let conn = self.store.conn()?;
-        let sample_root = crate::sample::root(&self.paths);
         let (mut record, exclusions) = conn
             .query_row(
                 "SELECT id, path, name, last_opened_at, exclusions_json FROM projects WHERE id = ?1",
@@ -588,7 +591,6 @@ impl Habi {
                     Ok((
                         ProjectRecord {
                             summary: None,
-                            sample: root.starts_with(&sample_root),
                             id: r.get(0)?,
                             name: r.get(2)?,
                             path: crate::paths::display_path(&root),
@@ -903,16 +905,14 @@ impl Habi {
 
     /// Skills of catalog libraries that fit a project, from libraries already
     /// fetched or connected (nothing is downloaded). Only skills with a rule
-    /// to evaluate are considered: their author's, or the catalog's hint.
+    /// to evaluate can fit: their author's, the catalog's, or one read from
+    /// what the skill says it is for.
     pub fn catalog_fits(
         &self,
         project_id: &str,
         cancel: &CancelToken,
     ) -> Result<Vec<crate::catalog::CatalogFit>> {
         let project = self.existing_project(project_id)?;
-        if project.sample {
-            return Ok(Vec::new());
-        }
         let inspection = self.inspect(project_id, false, cancel)?;
         let declarations = self.declarations(project_id)?;
         let lock = read_lock(&project.root)?;
@@ -925,18 +925,25 @@ impl Habi {
             let index = self.sources.index(source_id)?;
             let hints = crate::catalog::hints_for_source(&source);
             let identity = portable_identity(&source);
+            // Only what has a rule can fit: the author's, the catalog's, or its own words.
+            let ruled = |item: &&crate::library::model::LibraryItem| {
+                item.applies_when.is_some()
+                    || hints.as_ref().is_some_and(|h| h.find(&item.path).is_some())
+                    || crate::matching::described::described_rule(&item.name, &item.description)
+                        .is_some()
+            };
             let candidates: Vec<Candidate> = index
                 .items
                 .iter()
-                .map(|item| (item, hints.as_ref().and_then(|h| h.find(&item.path))))
-                .filter(|(item, hint)| item.applies_when.is_some() || hint.is_some())
-                .map(|(item, hint)| Candidate {
+                .filter(ruled)
+                .map(|item| Candidate {
                     item,
                     source_name: &source.name,
                     source_identity: &identity,
                     snapshot: &index.snapshot,
                     runs: Vec::new(),
-                    hint,
+                    hint: hints.as_ref().and_then(|h| h.find(&item.path)),
+                    pick: hints.as_ref().and_then(|h| h.pick(&item.path)),
                 })
                 .collect();
             if candidates.is_empty() {
@@ -965,6 +972,28 @@ impl Habi {
             }
         }
         Ok(out)
+    }
+
+    /// What Habi installed in the person's other projects, by lock key, with
+    /// those projects' names: read from each project's own record, so what
+    /// one project adopts can be offered to the next.
+    fn installed_elsewhere(&self, except: &str) -> HashMap<String, Vec<String>> {
+        let mut out: HashMap<String, Vec<String>> = HashMap::new();
+        for project in self.recent_projects().unwrap_or_default() {
+            if project.id == except || !project.exists {
+                continue;
+            }
+            let Ok(lock) = read_lock(&project.root) else {
+                continue;
+            };
+            for item in &lock.items {
+                let names = out.entry(item.key()).or_default();
+                if !names.contains(&project.name) {
+                    names.push(project.name.clone());
+                }
+            }
+        }
+        out
     }
 
     /// The catalog of public libraries Habi suggests.
@@ -996,7 +1025,6 @@ impl Habi {
             last_error: None,
             warning: None,
             freshness: Freshness::Current,
-            sample: false,
             skill_count: u32::try_from(items).unwrap_or(u32::MAX),
             preview: false,
             catalog_id: None,
@@ -1183,10 +1211,7 @@ impl Habi {
         let inspection = self.inspect(id, rescan, cancel)?;
         let declarations = self.declarations(id)?;
         let lock = read_lock(&project.root)?;
-        let mut libraries = self.libraries()?;
-        // The sample workspace's libraries are for its sample projects only;
-        // they never show up in the user's own projects.
-        libraries.retain(|(source, _)| project.sample || !source.sample);
+        let libraries = self.libraries()?;
         let installations = self.installations(&project.root, &lock, &libraries);
         let mut candidates = Vec::new();
         let identities: Vec<String> = libraries
@@ -1210,6 +1235,7 @@ impl Habi {
                     snapshot: &index.snapshot,
                     runs: runs.get(&item.key).cloned().unwrap_or_default(),
                     hint: hints.as_ref().and_then(|h| h.find(&item.path)),
+                    pick: hints.as_ref().and_then(|h| h.pick(&item.path)),
                 });
             }
         }
@@ -1221,6 +1247,29 @@ impl Habi {
             &installations,
             &candidates,
         );
+        let kit = {
+            let connected: Vec<crate::suggest::Connected> = libraries
+                .iter()
+                .map(|(source, index)| crate::suggest::Connected {
+                    source,
+                    index,
+                    entry: crate::catalog::entry_for_source(source),
+                })
+                .collect();
+            let views = crate::matching::Views::new(&inspection, &declarations);
+            let catalog = crate::catalog::registry::Registry::embedded()
+                .map(|r| r.entries.as_slice())
+                .unwrap_or_default();
+            crate::suggest::kit(&crate::suggest::KitInput {
+                root: &project.root,
+                folders: &crate::install::status::SkillFolders::of(&project.root),
+                views: &views,
+                recommendations: &recommendations,
+                connected: &connected,
+                catalog,
+                elsewhere: &self.installed_elsewhere(&project.id),
+            })
+        };
         let orphaned = installations
             .iter()
             .filter(|i| {
@@ -1308,6 +1357,7 @@ impl Habi {
                     languages
                 },
                 tally,
+                suggested: kit.unconnected_entries(),
                 at: crate::time::now(),
             }
         };
@@ -1325,6 +1375,7 @@ impl Habi {
             recommendations,
             sources: libraries.into_iter().map(|(s, _)| s).collect(),
             orphaned,
+            kit,
         })
     }
 
@@ -1599,6 +1650,26 @@ impl Habi {
             &skills.list()?,
             &skills.origin_digests()?,
         ))
+    }
+
+    /// Whether a project's skills get used, from Claude Code's session
+    /// transcripts on this machine, and what each costs in context. The
+    /// transcripts are read when this is called, and nothing is kept.
+    pub fn skill_usage(&self, project: &str, cancel: &CancelToken) -> Result<SkillUsageReport> {
+        let p = self.existing_project(project)?;
+        let knowledge = self.discover(project, cancel)?;
+        // No home folder is no history: an empty path reads as a missing folder.
+        let transcripts = self
+            .machine_root()
+            .map_or_else(|_| PathBuf::new(), |home| home.join(usage::TRANSCRIPTS_DIR));
+        usage::read_usage(
+            &transcripts,
+            &p.root,
+            &knowledge.skills,
+            time::OffsetDateTime::now_utc(),
+            &usage::UsageLimits::DEFAULT,
+            cancel,
+        )
     }
 
     pub fn read_instructions(&self, project: &str, path: &str) -> Result<InstructionDocument> {
@@ -1967,14 +2038,15 @@ impl Habi {
             .collect();
         // What Habi itself installed here, from its record under the home folder.
         let lock = read_lock(&self.user_home).unwrap_or_default();
+        let libraries = if lock.items.is_empty() {
+            Vec::new()
+        } else {
+            self.libraries().unwrap_or_default()
+        };
         let installs = if lock.items.is_empty() {
             Vec::new()
         } else {
-            self.installations(
-                &self.user_home,
-                &lock,
-                &self.libraries().unwrap_or_default(),
-            )
+            self.installations(&self.user_home, &lock, &libraries)
         };
         for skill in &mut found {
             skill.imported_as = intake::already_imported(&skill.digest, &local, &digests);
@@ -1987,6 +2059,13 @@ impl Habi {
                         machine::ManagedInstall {
                             key: i.key.clone(),
                             library: i.source_name.clone(),
+                            clients: i.clients.clone(),
+                            library_item_key: libraries.iter().find_map(|(source, index)| {
+                                (portable_identity(source) == owner.source.identity)
+                                    .then(|| index.items.iter().find(|item| item.id == owner.id))
+                                    .flatten()
+                                    .map(|item| item.key.clone())
+                            }),
                             state: i.state,
                         }
                     })
@@ -2395,7 +2474,6 @@ impl Habi {
             Rehearsal {
             text: "Where it applies: no applicability rules are declared, so Habi does not match this skill to projects; teams use it deliberately.".into(),
             projects: 0,
-            samples_skipped: 0,
         }
         };
         let Some(text) = self.contributions().staged_metadata(id)? else {
@@ -2419,12 +2497,8 @@ impl Habi {
             return Ok(no_rules());
         }
         let (mut applies, mut needs) = (Vec::new(), Vec::new());
-        let (mut not, mut unreadable, mut samples) = (0u32, 0u32, 0u32);
+        let (mut not, mut unreadable) = (0u32, 0u32);
         for p in &preview.projects {
-            if p.project.sample {
-                samples += 1;
-                continue;
-            }
             match p.result.as_ref().map(|r| r.applicability) {
                 Some(Applicability::Applies) => applies.push(p.project.name.clone()),
                 Some(Applicability::NeedsInformation) => needs.push(p.project.name.clone()),
@@ -2438,7 +2512,6 @@ impl Habi {
             return Ok(Rehearsal {
                 text: String::new(),
                 projects: 0,
-                samples_skipped: samples,
             });
         }
         let projects = |n: u32| format!("{n} project{}", if n == 1 { "" } else { "s" });
@@ -2467,7 +2540,6 @@ impl Habi {
         Ok(Rehearsal {
             text: lines.join("\n"),
             projects: total,
-            samples_skipped: samples,
         })
     }
 

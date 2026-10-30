@@ -2,7 +2,7 @@
 
 /**
  * For reviewers: where a contribution's rules apply among the author's own
- * projects (sample projects are not counted). Plain text, inserted into the
+ * projects. Plain text, inserted into the
  * message only when the author chooses; it names projects, never paths.
  */
 export type Rehearsal = { 
@@ -13,4 +13,4 @@ text: string,
 /**
  * Projects the rules were evaluated against.
  */
-projects: number, samplesSkipped: number, };
+projects: number, };

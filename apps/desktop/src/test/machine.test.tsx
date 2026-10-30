@@ -9,7 +9,7 @@ import type { MachineSkill } from "../bindings/MachineSkill";
 import type { ProjectCopy } from "../bindings/ProjectCopy";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
-import { copyState, precedenceNote } from "../lib/machine";
+import { copyState, installedClients, precedenceNote } from "../lib/machine";
 import { NavProvider } from "../lib/nav";
 import { AlreadyHere } from "../views/project/AlreadyHere";
 import { OnThisMachine } from "../views/skills/OnThisMachine";
@@ -152,6 +152,7 @@ beforeEach(() => {
     switch (cmd) {
       case "machine_skills":
         return machine;
+      case "machine_history":
       case "recent_projects":
       case "list_skills":
       case "list_sources":
@@ -245,6 +246,8 @@ describe("On this machine", () => {
     const managed = {
       key: "machine:mattpocock/code-review",
       library: "Matt Pocock",
+      clients: ["claude-code", "cursor", "codex"] as MachineSkill["readers"],
+      libraryItemKey: "lib/code-review",
       state: "current" as const,
     };
     machine = [
@@ -264,7 +267,10 @@ describe("On this machine", () => {
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(1);
     const row = rows[0] as HTMLElement;
-    const reach = within(row).getByRole("img", { name: "Read by Claude Code, Cursor, Codex and Junie" });
+    const reach = within(row).getByRole("img", { name: "Installed for Claude Code, Cursor and Codex" });
+    expect(within(reach).getByText("Junie")).not.toHaveClass("is-on");
+    expect(within(reach).getByText("Codex")).toHaveClass("is-on");
+    expect(within(row).getByText(/Shared folders also make this available to Junie/)).toBeTruthy();
     // Cursor reads both folders, so its tooltip names both.
     const cursor = within(reach).getByText("Cursor").getAttribute("data-tip") ?? "";
     expect(cursor).toContain("~/.claude/skills/alpha");
@@ -381,26 +387,69 @@ describe("On this machine", () => {
 });
 
 describe("My skills page", () => {
-  it("shows the section even before the person has any skills of their own", async () => {
+  it("opens machine management as its own page even when drafts exist", async () => {
     machine = [machineSkill()];
-    wrap(<SkillsView />);
-    expect(await screen.findByText("On this machine")).toBeTruthy();
-    expect(screen.getByRole("list", { name: "Skills on this machine" })).toHaveTextContent("alpha");
-  });
-
-  it("shows it below the skills Habi owns", async () => {
-    machine = [machineSkill()];
-    const own = localSkill().summary;
     invoke.mockImplementation(async (cmd: string) => {
       if (cmd === "machine_skills") return machine;
-      if (cmd === "list_skills") return [own];
-      if (cmd === "skills_overview" || cmd === "list_sources" || cmd === "recent_projects") return [];
-      throw { code: "notFound", message: `no mock for ${cmd}` };
+      if (cmd === "list_skills") return [localSkill().summary];
+      return [];
     });
+    wrap(<SkillsView tab="machine" />);
+    expect(await screen.findByRole("heading", { level: 1, name: "On this machine" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(await screen.findByRole("list", { name: "Skills on this machine" })).toBeVisible();
+    await userEvent.type(screen.getByRole("searchbox", { name: "Find a global skill" }), "absent");
+    const globals = screen.getByRole("list", { name: "Skills on this machine" });
+    expect(within(globals).queryByText("alpha")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(within(globals).getByText("alpha")).toBeVisible();
+  });
+
+  it("lists skills with a newer version first, and can show only those", async () => {
+    const managed = (state: "current" | "updateAvailable") => ({
+      key: `lib#${state}`,
+      library: "Team library",
+      libraryItemKey: null,
+      clients: ["claude-code" as const],
+      state,
+    });
+    machine = [
+      machineSkill({ id: "m-alpha", name: "alpha", managed: managed("current") }),
+      machineSkill({ id: "m-beta", name: "beta", digest: "beta", managed: managed("updateAvailable") }),
+    ];
+    wrap(<SkillsView tab="machine" />);
+    const globals = await screen.findByRole("list", { name: "Skills on this machine" });
+    const names = () =>
+      within(globals)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent ?? "");
+    await waitFor(() => expect(names()).toHaveLength(2));
+    expect(names()[0]).toMatch(/^beta/);
+    await userEvent.click(screen.getByRole("button", { name: /^Updates/ }));
+    expect(names()).toHaveLength(1);
+    expect(names()[0]).toMatch(/update available/);
+    await userEvent.click(screen.getByRole("button", { name: /^All/ }));
+    expect(names()).toHaveLength(2);
+  });
+
+  it("does not light a selected agent whose readable copy is missing", () => {
+    const copy = machineSkill({
+      managed: {
+        key: "lib#alpha",
+        library: "Team library",
+        libraryItemKey: null,
+        clients: ["claude-code", "codex"],
+        state: "locallyModified",
+      },
+    });
+    expect(installedClients([copy])).toEqual(["claude-code"]);
+  });
+
+  it("opens My skills by default, with the creation guide when there are no drafts", async () => {
+    machine = [machineSkill()];
     wrap(<SkillsView />);
-    const mine = await screen.findByRole("list", { name: "Skills" });
-    const here = await screen.findByRole("list", { name: "Skills on this machine" });
-    expect(mine.compareDocumentPosition(here) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "My skills" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Skills on this machine" })).toBeNull();
   });
 });
 
@@ -412,7 +461,6 @@ describe("the project page", () => {
     exists: true,
     lastOpenedAt: "2026-10-02T00:00:00Z",
     exclusions: [],
-    sample: false,
     summary: null,
   };
   const found = (path: string) => ({

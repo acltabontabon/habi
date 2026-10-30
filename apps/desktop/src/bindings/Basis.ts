@@ -3,4 +3,4 @@
 /**
  * Where an item's applicability rule comes from.
  */
-export type Basis = "declared" | "catalogHint";
+export type Basis = "declared" | "catalogHint" | "described";

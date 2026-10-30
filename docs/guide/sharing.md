@@ -21,7 +21,7 @@ Without the CLI tools, Habi still pushes the branch—you open the PR manually o
 
 ## Step 1: Connect your library
 
-**Once per library.** Go to Connect a library → Connect a Git repository and paste its address.
+**Once per library.** Go to Libraries → **Add a library** → **Git repository…** and paste its address.
 Habi reads the host, repository, and default branch. It uses your existing Git credentials.
 
 ![Connect a Git repository: an SSH address read as acme/team-skills on github.com, following the default branch, to be listed as a team library named team-skills.](../media/share-connect.jpg)
@@ -135,8 +135,8 @@ contribution. More about revising is under [Revising in detail](#revising-in-det
 - It never merges, and never pushes to the branch your team tracks.
 - It never overwrites commits on the contribution branch.
 - It never reports a remote success it did not observe.
-- It never sends anything you have not confirmed, and never collects conversations or files
-  other than the skill's own folder.
+- It never sends anything you have not confirmed, and a contribution never takes in
+  conversations or files other than the skill's own folder.
 
 Git hosts decide who may push, whether branches are protected and who must review. The
 configured source and ref are the team's chosen baseline; Habi does not label every commit

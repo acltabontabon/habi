@@ -9,8 +9,10 @@ import { Kbd } from "../components/ui";
 import { ProjectMark, Strand } from "../components/Weave";
 import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
+import { groupOfEntry } from "../lib/catalog";
 import { type Dye, useDyes } from "../lib/dye";
 import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
+import { groupMachineSkills, hasUpdate } from "../lib/machine";
 import { lastProject, useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
 import {
@@ -18,8 +20,10 @@ import {
   useAppInfo,
   useCatalog,
   useContributions,
+  useMachineSkills,
   useRecentProjects,
   useRepoFacts,
+  useSkillsOverview,
   useSources,
 } from "../lib/queries";
 import { useNewVersionMark, useUpdates } from "../lib/updates";
@@ -31,12 +35,15 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const recent = useRecentProjects();
   const sources = useSources();
   const contributions = useContributions();
+  const skillsOverview = useSkillsOverview();
+  const machine = useMachineSkills();
   const info = useAppInfo();
   const { state: update } = useUpdates();
   const version = info.data?.version;
   const unseen = useNewVersionMark(version);
   const offered = update.phase === "available" || update.phase === "installing" || update.phase === "ready";
   const [allProjects, setAllProjects] = useState(false);
+  const [allLibraries, setAllLibraries] = useState(false);
   const client = useQueryClient();
   const toast = useToast();
 
@@ -44,6 +51,11 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     (c) => c.state === "draft" || c.state === "committed",
   ).length;
   const hasSharing = (contributions.data ?? []).length > 0;
+  // Skills whose library has a newer version, so they are seen without opening each page.
+  const draftUpdates = (skillsOverview.data ?? []).filter((s) => s.upstream === "changed").length;
+  const machineUpdates = groupMachineSkills(machine.data ?? []).filter(hasUpdate).length;
+  const skillsArea =
+    route.name === "skills" ? (route.tab === "machine" && !route.skillId ? "machine" : "collection") : null;
   const PROJECTS_SHOWN = 8;
   const allRecent = recent.data ?? [];
   const projects = allProjects ? allRecent : allRecent.slice(0, PROJECTS_SHOWN);
@@ -63,9 +75,17 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const community = libraries.filter((l) => l.role === "community");
   const dyes = useDyes();
   const activeLibrary = route.name === "sources" ? route.sourceId : undefined;
-  // Looking around (the overview, a catalog preview, connecting your own).
-  const connecting = route.name === "sources" && !route.sourceId;
+  // Your libraries, the overview; exploring is the catalog or a preview of one from it.
+  const overview = route.name === "sources" && !route.sourceId && !route.view && !route.entry;
+  const connecting =
+    route.name === "sources" && !route.sourceId && (route.view === "explore" || route.entry !== undefined);
   const openLibrary = (id: string) => navigate({ name: "sources", sourceId: id });
+  // As many as projects show; the one open stays in view, and the rest are a click away.
+  const LIBRARIES_SHOWN = 8;
+  const ordered = [...team, ...community];
+  const shownLibraries = allLibraries
+    ? ordered
+    : ordered.filter((s, i) => i < LIBRARIES_SHOWN || s.id === activeLibrary);
 
   return (
     <nav className="sidebar" aria-label="Habi">
@@ -149,7 +169,6 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                   >
                     <ProjectMark name={p.name} languages={p.summary?.languages ?? []} />
                     <span className="sidebar-item-text">{p.name}</span>
-                    {p.sample ? <span className="sidebar-tag">sample</span> : null}
                     {!p.exists ? <span className="sidebar-tag">missing</span> : null}
                   </button>
                   {/* A missing folder cannot be opened, so its row is the only place to let it go;
@@ -188,15 +207,29 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
       </div>
 
       <div className="sidebar-group">
-        <button
-          type="button"
-          className={`sidebar-item${route.name === "skills" ? " is-active" : ""}`}
-          aria-current={route.name === "skills" ? "page" : undefined}
-          onClick={() => navigate({ name: "skills" })}
-        >
-          <Icon name="pencil" />
-          <span className="sidebar-item-text">My skills</span>
-        </button>
+        <div className="sidebar-heading">
+          <span>Skills</span>
+        </div>
+        <ul className="sidebar-list">
+          <li>
+            <SkillsItem
+              icon="pencil"
+              label="My skills"
+              active={skillsArea === "collection"}
+              updates={draftUpdates}
+              onOpen={() => navigate({ name: "skills", tab: "collection" })}
+            />
+          </li>
+          <li>
+            <SkillsItem
+              icon="layers"
+              label="On this machine"
+              active={skillsArea === "machine"}
+              updates={machineUpdates}
+              onOpen={() => navigate({ name: "skills", tab: "machine" })}
+            />
+          </li>
+        </ul>
       </div>
 
       <div className="sidebar-group">
@@ -204,7 +237,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           <button
             type="button"
             className="sidebar-heading-link"
-            aria-current={route.name === "sources" && !route.sourceId ? "page" : undefined}
+            aria-current={overview ? "page" : undefined}
             onClick={() => navigate({ name: "sources" })}
           >
             Libraries
@@ -214,7 +247,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
             "Explore libraries". Provenance is in each thread (stitched for
             community) and in the tooltip, not in headings. */}
         <ul className="sidebar-list sidebar-spine">
-          {[...team, ...community].map((s) => (
+          {shownLibraries.map((s) => (
             <LibraryItem
               key={s.id}
               source={s}
@@ -224,12 +257,29 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               onOpen={openLibrary}
             />
           ))}
+          {allLibraries || shownLibraries.length < ordered.length ? (
+            <li>
+              <button
+                type="button"
+                className="sidebar-item sidebar-item-quiet"
+                aria-expanded={allLibraries}
+                onClick={() => setAllLibraries((v) => !v)}
+              >
+                <Icon name={allLibraries ? "chevronDown" : "chevronRight"} />
+                <span className="sidebar-item-text">
+                  {allLibraries ? "Show fewer libraries" : `Show all ${ordered.length} libraries`}
+                </span>
+              </button>
+            </li>
+          ) : null}
           <li>
             <button
               type="button"
               className={`sidebar-explore${connecting ? " is-here" : ""}`}
               aria-current={connecting ? "page" : undefined}
-              onClick={() => navigate({ name: "sources" })}
+              onClick={() =>
+                navigate(libraries.length === 0 ? { name: "sources" } : { name: "sources", view: "explore" })
+              }
             >
               <span className="sidebar-knot" aria-hidden="true" />
               <span className="sidebar-item-text">
@@ -324,6 +374,8 @@ function LibraryItem({
   );
   const installed = fits?.filter((r) => r.installState !== "notInstalled").length ?? 0;
   const community = source.role === "community";
+  // The catalog's word on who stands behind it wins: a builder's library is connected as community.
+  const builder = entry !== undefined && groupOfEntry(entry) === "builders";
   // A community library says so with a badge (and its stitched thread); the others in a line.
   const kind = community
     ? null
@@ -348,7 +400,7 @@ function LibraryItem({
           title: source.name,
           mark: dye.color,
           stitched: dye.community,
-          badge: community ? "community" : undefined,
+          badge: builder ? "builder" : community ? "community" : undefined,
           lines: [
             ...(entry?.summary ? [{ text: entry.summary }] : []),
             { text: counts.join(" · ") },
@@ -376,7 +428,6 @@ function LibraryItem({
       >
         <Strand dye={dye} />
         <span className="sidebar-item-text">{source.name}</span>
-        {source.sample ? <span className="sidebar-tag">sample</span> : null}
         {fresh.tone !== "muted" ? (
           <span className={`sidebar-dot tone-${fresh.tone}`}>
             <span className="visually-hidden">{fresh.text}</span>
@@ -384,5 +435,38 @@ function LibraryItem({
         ) : null}
       </button>
     </li>
+  );
+}
+
+function SkillsItem({
+  icon,
+  label,
+  active,
+  updates,
+  onOpen,
+}: {
+  icon: "pencil" | "layers";
+  label: string;
+  active: boolean;
+  updates: number;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`sidebar-item${active ? " is-active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      title={updates > 0 ? `${label} · ${plural(updates, "update")} available` : undefined}
+      onClick={onOpen}
+    >
+      <Icon name={icon} />
+      <span className="sidebar-item-text">{label}</span>
+      {updates > 0 ? (
+        <span className="sidebar-count">
+          {updates}
+          <span className="visually-hidden"> {updates === 1 ? "update" : "updates"} available</span>
+        </span>
+      ) : null}
+    </button>
   );
 }

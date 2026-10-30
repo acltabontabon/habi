@@ -1,16 +1,16 @@
 {
-  "id": "0dd1b52f-a93b-4803-9d36-225f0905756b",
+  "id": "0520e1c8-b1e6-491d-ae06-5c22b35624b1",
   "action": "install",
   "title": "Install for Claude Code on this machine",
   "project": "~",
-  "createdAt": "2026-10-04T13:45:13Z",
+  "createdAt": "2026-10-30T10:04:35Z",
   "items": [
     {
       "key": "local:Example team library#liquibase-migration-review",
       "title": "Liquibase migration review",
       "kind": "workflow",
       "source": "Example team library",
-      "version": "d1087c10c6",
+      "version": "f08e4250ef",
       "clients": [
         "claude-code"
       ],
@@ -637,7 +637,7 @@
       "items": [],
       "clients": [],
       "before": null,
-      "after": "sha256:9a0e9160a34bcfbbb5f62a1f7e065142fdde4670eb98338c256bb58028e01107",
+      "after": "sha256:29352ece5c1b00a2d1ad4c7ec0a8ae2fc25476bf140a1bde2c6ab3f779ad8beb",
       "explanation": "Records what Habi installed on this machine (sources, versions, file digests) so it can detect updates and local edits. Personal to this machine; contains no absolute paths or secrets.",
       "diff": {
         "hunks": [
@@ -720,7 +720,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 13,
-                "text": "      \"snapshot\": \"d1087c10c67d06b784610b7203b9f4a0d15ca56e\","
+                "text": "      \"snapshot\": \"f08e4250ef49baf9d33090b5ce1929f1b289c2e1\","
               },
               {
                 "tag": "added",
@@ -732,7 +732,7 @@
                 "tag": "added",
                 "oldLine": null,
                 "newLine": 15,
-                "text": "      \"installedAt\": \"2026-10-04T13:45:13Z\","
+                "text": "      \"installedAt\": \"2026-10-30T10:04:35Z\","
               },
               {
                 "tag": "added",

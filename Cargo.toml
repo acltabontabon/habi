@@ -4,7 +4,7 @@ members = ["crates/habi-core", "crates/habi-cli", "apps/desktop/src-tauri"]
 default-members = ["crates/habi-core", "crates/habi-cli", "apps/desktop/src-tauri"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.98"
 publish = false
@@ -23,15 +23,15 @@ clap = { version = "4.6.7", features = ["derive"] }
 globset = "0.4.20"
 hex = "0.4.3"
 ignore = "0.4.33"
-jsonschema = { version = "0.58.4", default-features = false }
+jsonschema = { version = "0.60.2", default-features = false }
 libc = "0.2.189"
 regex = "1.13.1"
 roxmltree = "0.21.1"
-rusqlite = { version = "0.40.2", features = ["bundled"] }
+rusqlite = { version = "0.41.0", features = ["bundled"] }
 semver = "1.0.28"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
-serde-saphyr = "1.3.0"
+serde-saphyr = "2.0.0"
 sha2 = "0.11.0"
 similar = "3.2.0"
 tempfile = "3.27.0"
@@ -51,7 +51,8 @@ tauri-build = "2.7.1"
 tauri-plugin-dialog = "2.8.1"
 tauri-plugin-opener = "2.7.0"
 # The operating system's TLS (Security.framework, Schannel) rather than a bundled one.
-tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
+# Updates use raw Windows installers and macOS tar archives; legacy ZIP support is unused.
+tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy"] }
 notify-debouncer-mini = "0.7.0"
 ctrlc = "3.5.2"
 

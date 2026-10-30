@@ -258,7 +258,7 @@ export function LibraryStrip({
         </Notice>
       ) : null}
       <div className="strip-top">
-        <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
+        <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
         <DisconnectButton source={source} />
       </div>
       <p

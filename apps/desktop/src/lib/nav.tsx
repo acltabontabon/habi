@@ -4,21 +4,25 @@ import { Dialog } from "../components/Dialog";
 import { Button } from "../components/ui";
 import { flushAutosaves, hasPendingEdits, hasUnsavedEdits } from "./useAutosave";
 
-/** How a project opens: its recommendations, or with its history showing. */
-export type ProjectTab = "recommendations" | "history";
+/**
+ * How a project opens: as it suits the project ("recommendations": the kit
+ * while nothing from Habi is there yet, else every skill), on the kit, on
+ * every skill, or with its history showing.
+ */
+export type ProjectTab = "recommendations" | "suggested" | "workbench" | "history";
 
 export type Route =
   | { name: "welcome" }
   | { name: "project"; projectId: string; tab: ProjectTab; itemKey?: string }
-  | { name: "skills"; skillId?: string }
+  | { name: "skills"; skillId?: string; tab?: "collection" | "machine" }
   | {
       name: "sources";
       /** A connected library. */
       sourceId?: string;
       /** A catalog library, connected or only being previewed. */
       entry?: string;
-      /** A page for bringing in a library of your own. */
-      view?: "git" | "folder";
+      /** A page for bringing in a library of your own, or the catalog to explore. */
+      view?: "git" | "folder" | "explore";
       /** A folder already chosen, for the folder page. */
       location?: string;
       itemId?: string;

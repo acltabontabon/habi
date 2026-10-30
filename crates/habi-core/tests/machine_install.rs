@@ -156,7 +156,24 @@ fn a_machine_install_writes_only_the_chosen_folders_and_records_them() {
         .as_ref()
         .expect("recorded as installed by Habi");
     assert_eq!(managed.library, "Team library");
+    assert_eq!(managed.clients, vec![ClientId::ClaudeCode]);
+    assert!(ours.readers.contains(&ClientId::Cursor));
+    assert_eq!(
+        managed.library_item_key.as_deref(),
+        Some(format!("{}/{SKILL}", env.source_id).as_str())
+    );
     assert_eq!(managed.state, InstallState::Current);
+}
+
+#[test]
+fn a_disconnected_library_keeps_its_installation_without_linking_another_library_item() {
+    let env = setup();
+    install(&env, &[ClientId::ClaudeCode]);
+    env.habi.sources().remove(&env.source_id).unwrap();
+    let listed = env.habi.machine_skills().unwrap();
+    let managed = listed[0].managed.as_ref().unwrap();
+    assert_eq!(managed.library_item_key, None);
+    assert_eq!(managed.state, InstallState::SourceUnavailable);
 }
 
 #[test]

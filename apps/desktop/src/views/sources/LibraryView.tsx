@@ -25,8 +25,10 @@ import {
 } from "react";
 import type { CatalogEntry } from "../../bindings/CatalogEntry";
 import type { LibraryItem } from "../../bindings/LibraryItem";
+import type { MachineSkill } from "../../bindings/MachineSkill";
 import type { Recommendation } from "../../bindings/Recommendation";
 import type { Source } from "../../bindings/Source";
+import { AgentReach } from "../../components/AgentReach";
 import { BackLink } from "../../components/BackLink";
 import { Icon } from "../../components/Icon";
 import { Menu } from "../../components/Menu";
@@ -42,6 +44,7 @@ import {
   useCatalog,
   useCatalogFitsFor,
   useLibrary,
+  useMachineSkills,
   useRecentProjects,
   useRefreshSource,
   useSkills,
@@ -58,7 +61,6 @@ import {
 import { useMedia } from "../../lib/useMedia";
 import { ContentsToggle, SkillReader, usePackage } from "../reader/SkillReader";
 import { ReviewDialog } from "../review/ReviewDialog";
-import { SampleBanner } from "../SampleWorkspace";
 import { AddToProjectDialog } from "./AddToProjectDialog";
 import { DisconnectButton } from "./DisconnectButton";
 import { LibraryStrip } from "./LibraryStrip";
@@ -85,6 +87,7 @@ function IndexRow({
   active,
   fits,
   changed,
+  installed,
   onSelect,
   onKeyDown,
 }: {
@@ -96,6 +99,7 @@ function IndexRow({
   fits: boolean;
   /** New or changed in the last update, until it is marked as seen. */
   changed: "new" | "changed" | undefined;
+  installed: boolean;
   onSelect: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
 }) {
@@ -136,6 +140,7 @@ function IndexRow({
             </span>
           ) : null}
         </span>
+        {installed ? <span className="index-installed mono">on this machine</span> : null}
         <span className="index-desc">{summarize(item.description).text}</span>
       </button>
     </li>
@@ -155,6 +160,7 @@ const IndexPanel = memo(function IndexPanel({
   groupSegment,
   fitIds,
   changes,
+  installedIds,
   id,
 }: {
   source: Source;
@@ -173,6 +179,7 @@ const IndexPanel = memo(function IndexPanel({
   fitIds: ReadonlySet<string>;
   /** What the last update changed, by skill. */
   changes: ReadonlyMap<string, "new" | "changed">;
+  installedIds: ReadonlySet<string>;
   id?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -353,6 +360,7 @@ const IndexPanel = memo(function IndexPanel({
                     active={i.id === selectedId}
                     fits={fitIds.has(i.id)}
                     changed={changes.get(i.id)}
+                    installed={installedIds.has(i.key)}
                     onSelect={() => onOpen(i)}
                     onKeyDown={onKeyDown}
                   />
@@ -378,6 +386,7 @@ function SkillHead({
   position,
   details,
   fits,
+  installed,
   onDetails,
   onOpenDetails,
   onFocusIndex,
@@ -392,12 +401,14 @@ function SkillHead({
   details: boolean;
   /** The projects this skill fits, the one being worked on first, each with Habi's reason. */
   fits: { projectName: string | null; fit: Recommendation }[];
+  installed: MachineSkill[];
   onDetails: () => void;
   onOpenDetails: () => void;
   onFocusIndex: () => void;
   onOpenFile: (path: string) => void;
 }) {
   const { addSkills } = useActions();
+  const { navigate } = useNav();
   const pkg = usePackage();
   const [adding, setAdding] = useState(false);
   const [onMachine, setOnMachine] = useState(false);
@@ -407,7 +418,9 @@ function SkillHead({
         `${projectName ?? "Your project"}: ${fit.applicability.reason}. ${
           fit.basis === "catalogHint"
             ? "Suggested by Habi's catalog; the author declared no rules."
-            : "From the author's own rules."
+            : fit.basis === "described"
+              ? "Read from the skill's description; the author declared no rules."
+              : "From the author's own rules."
         }`,
     )
     .join("\n");
@@ -536,7 +549,7 @@ function SkillHead({
               }
               items={[
                 {
-                  label: "Add to this machine…",
+                  label: installed.length ? "Add for more agents…" : "Add to this machine…",
                   hint: "Your own agent folders: every project reads it",
                   onSelect: () => setOnMachine(true),
                 },
@@ -550,6 +563,26 @@ function SkillHead({
           ) : null}
         </div>
       </div>
+      {installed.length > 0 ? (
+        <div className="skill-installed" role="status">
+          <Icon name="check" size={14} />
+          <span>Installed on this machine</span>
+          <AgentReach lit={[...new Set(installed.flatMap((s) => s.readers))]} label="Available to" onlyLit />
+          {installed.some((s) => s.managed?.state === "updateAvailable") ? (
+            <span>Update available</span>
+          ) : null}
+          {installed.some((s) => ["locallyModified", "conflict"].includes(s.managed?.state ?? "")) ? (
+            <span>Edited here</span>
+          ) : null}
+          <button
+            type="button"
+            className="link-quiet"
+            onClick={() => navigate({ name: "skills", tab: "machine" })}
+          >
+            Manage installation
+          </button>
+        </div>
+      ) : null}
       <p className="skill-purpose">{summary.text}</p>
       <div className="skill-sig">
         <p className="sig mono">{signature}</p>
@@ -676,6 +709,11 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
   const catalog = useCatalog();
   const entry = catalog.data?.find((e) => e.sourceId === source.id);
   const skills = useSkills();
+  const machine = useMachineSkills();
+  const installedIds = useMemo(
+    () => new Set((machine.data ?? []).flatMap((s) => s.managed?.libraryItemKey ?? [])),
+    [machine.data],
+  );
   const projects = useRecentProjects();
   const currentId = lastProject() ?? undefined;
   // The project being worked on is checked first, then a few other recent ones: each
@@ -800,6 +838,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
       groupSegment={groupSegment}
       fitIds={fitIds}
       changes={changes}
+      installedIds={installedIds}
     />
   ) : null;
 
@@ -850,12 +889,11 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
       </aside>
 
       <section className="library-reader" ref={readerBox}>
-        {source.sample ? <SampleBanner /> : null}
         {/* A catalog library carries its back link in its header; others get one of their own. */}
         {(entry && library.data) || (entry && library.isPending) ? null : (
           <div className="library-back">
-            <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
-            {source.sample ? null : <DisconnectButton source={source} />}
+            <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
+            <DisconnectButton source={source} />
           </div>
         )}
         {entry && library.data ? (
@@ -868,6 +906,9 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
           />
         ) : null}
         <LibraryUpdates source={source} items={all} onOpen={(item) => navigate(route(item.id))} />
+        {machine.isError ? (
+          <ErrorNotice error={machine.error} title="Could not check installations on this machine" />
+        ) : null}
         {!source.snapshot ? (
           <>
             <Empty
@@ -901,6 +942,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
                 libraryName={name}
                 position={position}
                 details={details}
+                installed={(machine.data ?? []).filter((s) => s.managed?.libraryItemKey === selected.key)}
                 fits={fitsByProject.flatMap((f) => {
                   const fit = f.byItem.get(selected.id);
                   return fit ? [{ projectName: f.projectName, fit }] : [];

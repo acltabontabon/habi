@@ -17,7 +17,7 @@ import {
   kindLabel,
 } from "../../lib/format";
 import { useNav } from "../../lib/nav";
-import { useKnowledge } from "../../lib/queries";
+import { useKnowledge, useSkillUsage } from "../../lib/queries";
 import { useMedia } from "../../lib/useMedia";
 import {
   emptyWorkbenchFilters,
@@ -28,6 +28,7 @@ import {
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { HereDetail, hereItems } from "./AlreadyHere";
 import { ItemDetailPane } from "./ItemDetailPane";
+import { SkillUse } from "./SkillUse";
 
 const GROUPS: Group[] = ["required", "relevant", "needsInformation", "available", "notApplicable"];
 
@@ -93,6 +94,9 @@ export function Workbench({
   const knowledge = useKnowledge(overview.project.id);
   const listRef = useRef<HTMLDivElement>(null);
   const projectId = overview.project.id;
+  const usage = useSkillUsage(projectId);
+  const usageOf = useMemo(() => new Map((usage.data?.skills ?? []).map((s) => [s.name, s])), [usage.data]);
+  const usagePartial = usage.data?.partial ?? false;
   useEffect(() => saveWorkbenchFilters(projectId, filters), [projectId, filters]);
   const libraries = [
     ...new Map(overview.recommendations.map((r) => [r.item.sourceId, r.item.sourceName])).entries(),
@@ -101,7 +105,7 @@ export function Workbench({
   // Narrow windows show the list or one item, not both squeezed side by side.
   const narrow = useMedia("(max-width: 1020px)");
   const mode = narrow ? (itemKey ? " is-narrow is-detail" : " is-narrow is-list") : "";
-  const toList = () => navigate({ name: "project", projectId, tab: "recommendations" });
+  const toList = () => navigate({ name: "project", projectId, tab: "workbench" });
   useEffect(() => {
     if (!narrow || !itemKey) return;
     let later: number | undefined;
@@ -113,7 +117,7 @@ export function Workbench({
       // marks the key as used: back to the list only once every listener has had its turn.
       window.clearTimeout(later);
       later = window.setTimeout(() => {
-        if (!e.defaultPrevented) navigate({ name: "project", projectId, tab: "recommendations" });
+        if (!e.defaultPrevented) navigate({ name: "project", projectId, tab: "workbench" });
       }, 0);
     };
     window.addEventListener("keydown", onKey);
@@ -194,8 +198,7 @@ export function Workbench({
     else setShowAvailable(true);
   }, [chosen]);
 
-  const open = (key: string) =>
-    navigate({ name: "project", projectId, tab: "recommendations", itemKey: key });
+  const open = (key: string) => navigate({ name: "project", projectId, tab: "workbench", itemKey: key });
   const select = (r: Recommendation) => open(r.item.key);
 
   const order = [...navigable.map((r) => r.item.key), ...here.map((h) => h.key)];
@@ -244,6 +247,15 @@ export function Workbench({
             {/* A plain skill is the default; only the other kinds are worth saying. */}
             {r.item.kind !== "skill" ? <span>{kindLabel[r.item.kind]}</span> : null}
             {r.item.requirement === "required" ? <span>required</span> : null}
+            {/* Whose rule it is, when it is not the author's. */}
+            {r.pick ? (
+              <span>Habi's pick</span>
+            ) : r.basis === "described" && r.applicability.applicability !== "undeclared" ? (
+              <span>from its description</span>
+            ) : null}
+            {r.installState !== "notInstalled" && r.item.kind !== "instructions" ? (
+              <SkillUse entry={usageOf.get(r.item.name)} partial={usagePartial} />
+            ) : null}
           </span>
         </button>
       </li>
@@ -455,6 +467,9 @@ export function Workbench({
                       <span className="rec-row-reason">{h.gist}</span>
                       <span className="rec-row-meta">
                         <span>{h.kind === "skill" ? "Skill in this project" : "Agent instructions"}</span>
+                        {h.kind === "skill" ? (
+                          <SkillUse entry={usageOf.get(h.skill.name)} partial={usagePartial} />
+                        ) : null}
                       </span>
                     </button>
                   </li>
@@ -468,7 +483,7 @@ export function Workbench({
         {narrow && itemKey ? (
           <button type="button" className="reader-back workbench-back" onClick={toList}>
             <Icon name="arrowLeft" size={14} />
-            Recommendations
+            All skills
           </button>
         ) : null}
         {selectedHere ? (

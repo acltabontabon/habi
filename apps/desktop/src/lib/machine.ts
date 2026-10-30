@@ -53,6 +53,13 @@ export type MachineGroup = {
   importedAs: string | null;
 };
 
+/** Chosen agents that still have a readable copy; shared-folder access is separate. */
+export function installedClients(copies: MachineSkill[]): ClientId[] {
+  const readers = new Set(copies.flatMap((s) => s.readers));
+  const selected = new Set(copies.flatMap((s) => s.managed?.clients ?? []));
+  return ALL_CLIENTS.filter((c) => selected.has(c) && readers.has(c));
+}
+
 /**
  * Folds copies of one skill together: those Habi installed in one go (the
  * same install), or, for skills Habi did not install, those with the same
@@ -95,6 +102,11 @@ export function groupMachineSkills(skills: MachineSkill[]): MachineGroup[] {
       importedAs: copies.find((s) => s.importedAs)?.importedAs ?? null,
     };
   });
+}
+
+/** Whether a skill Habi installed here has a newer version in its library (edited here or not). */
+export function hasUpdate(group: MachineGroup): boolean {
+  return group.copies.some((c) => c.managed?.state === "updateAvailable" || c.managed?.state === "conflict");
 }
 
 /** The files of a skill whose text points into a home folder, for the warning before it is shared. */

@@ -41,39 +41,47 @@ never does.
 
 ![The welcome: a headline beside the three threads, find, improve and share, and a card of what Habi works with: Git found, the project stacks it reads, and the seven agent tools.](../media/welcome.jpg)
 
-## Try the sample workspace
-
-Try the sample workspace to explore without touching your repos. Habi creates two example
-libraries and seven example projects—all isolated and labeled as samples.
+## The home page
 
 The home page shows your projects as rows, with library skills woven across them: solid lines
 show installed skills, faded lines show skills that fit but aren't installed yet.
 
 ![The home page of a workspace with seven projects: each project is a row, each library and My skills a thread across them. A solid float marks where a library's skill is installed in a project, a washed-out one where a skill fits but is not installed yet.](../media/home.jpg)
 
-When you are done, choose **Remove sample workspace** on the banner in any sample project or
-library, with **Remove sample** in Settings → Storage, or in the command palette. It
-removes only the examples.
-
 ## Where libraries come from
 
-The **Libraries** page lists what is connected (your team's Git repositories and folders), what
-the community publishes, and what the builders of the tools publish. Connecting any of them
-fetches a copy; Habi tells you when something newer exists and updates it only when you say so.
+**Libraries** lists every library you have connected, one line each: your team's Git
+repositories and folders, and the public libraries you picked. Those that need you (an update
+waiting, offline, a failed fetch) come first. **Add a library** connects a Git repository, a
+folder, or one from the catalog.
 
-![The Libraries page: two connected libraries, team-skills and security-guild, beside the catalog's libraries from the community and from the builders of the tools.](../media/explore.jpg)
+**Explore** is the catalog: public libraries from the builders of the tools and from the
+community, filtered by either. Opening one shows what is inside before you connect it.
+Connecting fetches a copy; Habi tells you when something newer exists and updates it only when
+you say so.
+
+![Explore: the catalog's libraries from the builders of the tools and from the community, as cards, with a filter for each.](../media/explore.jpg)
 
 ## Your first project
 
 1. **Open a project** and pick a repository. Habi reads build files and structure (no execution).
 
-2. **Connect a library** to get recommendations. Choose from:
-   - A Git repository (team-curated or public)
-   - A public library from the catalog
-   - A folder on your machine
+2. **Start from what Habi suggests.** A new project opens on **Suggested**: a short list of
+   skills for it, before you connect anything. Each says why it fits (*Uses React ·
+   package.json:4*) and whose word that is: the author's rule, a team requirement, *Habi's pick*,
+   or *From its description* when Habi read the skill's own words. A skill your other projects
+   already use comes first (*Also in …*). The strongest few start ticked, since every skill costs
+   a little context in every agent session; rows say about how much, and whether a skill comes with
+   scripts. Tick what else you want, then **Review and add…**. Libraries the picks come from are
+   connected first (read only, nothing runs).
 
-3. **Read the recommendations.** Each shows why it fits, down to the file and line. Missing info
-   (e.g., dependencies inherited from outside the repo) can be answered by you.
+3. **All skills** lists everything your connected libraries hold for the project, grouped by how
+   well it fits, with the full reasoning down to the file and line. Missing info (e.g.,
+   dependencies inherited from outside the repo) can be answered by you. Connect more from
+   **Libraries**: a Git repository, a folder, or a public library from the catalog. If you use
+   Claude Code here, an installed skill also says whether it gets used (*Used 12× in Claude Code
+   here in 30 days*, *Not used in Claude Code here in 30 days*), so you can remove what you no longer
+   need: [what Habi reads for that](../project/security-model.md#claude-code-session-history).
 
 4. **Install:** Review preselected agent tools, check the files that will change, and confirm.
    You see every file before anything is written.
@@ -81,11 +89,28 @@ fetches a copy; Habi tells you when something newer exists and updates it only w
 5. **Keep it current.** When a library publishes something newer, the project says *Update
    available*. **Review update…** shows what changed, file by file, before anything is written,
    and keeps your own edits. Skills installed on your machine update the same way, from
-   [My skills](my-skills.md#on-this-machine).
+   [Skills → On this machine](my-skills.md#on-this-machine).
 
 ![Reviewing an update to Liquibase migration review in billing-service: the files that change for each agent tool, with the lines added and removed, before anything is written.](../media/update-review.jpg)
 
 Next: [My skills](my-skills.md) (write and edit skills) or [Sharing](sharing.md) (send improvements back).
+
+### Check a library for updates
+
+Open a connected library and choose **Check for updates** above the skill reader. You can
+check again at any time, even if Habi checked recently. The button shows progress, then says
+whether an update is available or the library is up to date. If the check fails, the cached
+skills stay readable and you can try again.
+
+When an update is available, **Update** fetches the library's latest contents and shows what
+changed. Installed skills are updated separately through their reviewed plans. For a folder
+library, **Refresh library** reads its current contents directly.
+
+The library also marks skills **on this machine**. Open one to see the agent tools that
+can read it, then choose **Manage installation** to reach its controls in
+[Skills → On this machine](my-skills.md#on-this-machine).
+
+![A connected library showing a manual update check, an available update, and a skill installed on this machine with a link to manage it.](../media/pr-library-status/after.jpg)
 
 ### Focus the recommendations
 

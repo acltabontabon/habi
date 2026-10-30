@@ -334,6 +334,7 @@ pub fn run() {
             commands::preview_skill,
             commands::suggest_conditions,
             commands::discover_project,
+            commands::skill_usage,
             commands::read_instructions,
             commands::create_skill_from_instructions,
             commands::pick_import_folder,
@@ -352,8 +353,6 @@ pub fn run() {
             commands::apply_upstream_sync,
             commands::diagnostics_preview,
             commands::diagnostics_save,
-            commands::create_sample_workspace,
-            commands::remove_sample_workspace,
             commands::free_up_space,
         ])
         .run(tauri::generate_context!())

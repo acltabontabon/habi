@@ -34,10 +34,24 @@
 #                    covered. Being official or popular is not a review.
 #   hints            skills that apply to a project with specific, checkable
 #                    features, in the same condition language as habi.yaml.
-#                    A skill with no hint is never called relevant.
+#   picks            skills Habi stands behind: offered in a project's
+#                    Suggested list before the library is connected, so each
+#                    carries a title, a gist in Habi's words and why. Its
+#                    `applies_when` is also its rule once connected; a pick
+#                    without one is a practice for any codebase. Few, and each
+#                    folder checked at the revision Habi reads. `name` is the
+#                    SKILL.md name, when it is not the folder's.
+#                    Measured at that revision, so a row can be honest before
+#                    its library is connected: `tokens` (what its name and
+#                    description cost in every agent session), `scripts` (it
+#                    comes with code an agent could run), `caution` (what the
+#                    scan of its files flags as caution).
+#                    A skill with no hint, pick or author's rule is matched
+#                    only by what its own description names.
 #
-# Verified 2026-10-03 against GitHub: each repository exists, is public, is
-# not archived, and the paths below hold the skills.
+# Verified 2026-10-03 against GitHub (Trail of Bits, UI/UX Pro Max and
+# Impeccable on 2026-10-30): each repository exists, is public, is not
+# archived, and the paths below hold the skills.
 
 version: 1
 
@@ -52,6 +66,72 @@ sources:
       include: ["skills/**"]
     notes:
       - "Licences differ per skill; the Word, PDF, PowerPoint and Excel skills are proprietary."
+    # Picks checked at ca45fc496a3436251f191354091d557da31c15b5 on 2026-10-30.
+    picks:
+      - skill: skills/frontend-design
+        title: Frontend design
+        gist: "Commit to a clear visual direction instead of default-looking UI."
+        why: "Web frontends that need a point of view"
+        tokens: 55
+        applies_when:
+          any:
+            - tag: "framework:react"
+            - tag: "framework:vue"
+            - tag: "framework:angular"
+            - tag: "framework:svelte"
+            - tag: "framework:next"
+      - skill: skills/mcp-builder
+        title: MCP server builder
+        gist: "Design MCP tools an agent can use well, then test them with real questions."
+        why: "MCP server projects"
+        tokens: 72
+        scripts: true
+        applies_when:
+          any:
+            - dependency: { name: "@modelcontextprotocol/sdk", ecosystem: npm }
+            - dependency: { name: "@modelcontextprotocol/server", ecosystem: npm }
+            - dependency: { name: mcp, ecosystem: pypi }
+            - dependency: { name: fastmcp, ecosystem: pypi }
+      - skill: skills/skill-creator
+        title: Skill creator
+        gist: "Draft a skill, run it on test prompts, and tighten when it triggers."
+        why: "Repositories that publish agent skills"
+        tokens: 83
+        scripts: true
+        # Skills the repository publishes, not ones installed into it.
+        applies_when:
+          any:
+            - file: "skills/*/SKILL.md"
+            - file: "skills/*/*/SKILL.md"
+            - file: "plugins/*/skills/*/SKILL.md"
+      - skill: skills/webapp-testing
+        title: Web app testing
+        gist: "Drive the running app in a real browser to check behaviour and read logs."
+        why: "Web frontends you can run locally"
+        tokens: 55
+        scripts: true
+        applies_when:
+          any:
+            - tag: "framework:react"
+            - tag: "framework:vue"
+            - tag: "framework:angular"
+            - tag: "framework:svelte"
+            - tag: "framework:next"
+            - tag: "test:playwright"
+      - skill: skills/claude-api
+        title: Claude API
+        gist: "Up-to-date model names and SDK usage for code that calls Claude."
+        why: "Code that calls the Claude API"
+        tokens: 270
+        scripts: true
+        applies_when:
+          any:
+            - dependency: { name: "@anthropic-ai/sdk", ecosystem: npm }
+            - dependency: { name: "@anthropic-ai/claude-agent-sdk", ecosystem: npm }
+            - dependency: { name: anthropic, ecosystem: pypi }
+            - dependency: { name: claude-agent-sdk, ecosystem: pypi }
+            - dependency: { name: "com.anthropic:*", ecosystem: jvm }
+            - dependency: { name: "github.com/anthropics/anthropic-sdk-go", ecosystem: go }
 
   - id: openai
     name: OpenAI
@@ -67,6 +147,47 @@ sources:
       - "Replaces openai/skills, which OpenAI has deprecated in favour of this repository."
       - "A plugin is more than its skills: connectors and apps in a plugin are not skills and are not read."
       - "Some skills mirror other publishers' skills; the same name can appear in several plugins."
+    # Picks checked at 0722921d5542fc593105c27bd52630babd8b8c2a on 2026-10-30.
+    picks:
+      - skill: plugins/vercel/skills/ai-sdk
+        title: AI SDK
+        gist: "Use today's AI SDK APIs for chat UIs, agents and typed model output."
+        why: "Apps built on the AI SDK"
+        tokens: 64
+        applies_when:
+          any:
+            - dependency: { name: ai, ecosystem: npm }
+            - dependency: { name: "@ai-sdk/*", ecosystem: npm }
+      - skill: plugins/supabase/skills/supabase
+        title: Supabase
+        gist: "Set up Supabase clients, auth and row-level security without common mistakes."
+        why: "Projects built on Supabase"
+        tokens: 121
+        applies_when:
+          any:
+            - dependency: { name: "@supabase/*", ecosystem: npm }
+            - dependency: { name: supabase, ecosystem: pypi }
+            - file: "**/supabase/config.toml"
+      - skill: plugins/temporal/skills/temporal-developer
+        title: Temporal workflows
+        gist: "Write deterministic workflows and activities; debug stuck or failing runs."
+        why: "Projects using a Temporal SDK"
+        tokens: 190
+        applies_when:
+          any:
+            - dependency: { name: temporalio, ecosystem: pypi }
+            - dependency: { name: "@temporalio/*", ecosystem: npm }
+            - dependency: { name: "go.temporal.io/sdk", ecosystem: go }
+            - dependency: { name: "io.temporal:*", ecosystem: jvm }
+      - skill: plugins/vercel/skills/vercel-cli
+        title: Vercel CLI
+        gist: "Work with Vercel from the terminal instead of the dashboard."
+        why: "Projects deployed on Vercel"
+        tokens: 55
+        applies_when:
+          any:
+            - file: "**/vercel.json"
+            - dependency: { name: "@vercel/*", ecosystem: npm }
 
   - id: microsoft
     name: Microsoft
@@ -82,6 +203,26 @@ sources:
         applies_when: { dependency: { name: "com.azure:*", ecosystem: jvm } }
       - path: ".github/plugins/azure-sdk-typescript/**"
         applies_when: { dependency: { name: "@azure/*", ecosystem: npm } }
+    # Picks checked at 41138f3cb4825d1ba9812d35358d5513be08c20e on 2026-10-30.
+    picks:
+      - skill: .github/plugins/azure-sdk-typescript/skills/azure-identity-ts
+        title: Azure Identity for JavaScript
+        gist: "Authenticate Azure SDK clients with DefaultAzureCredential and managed identity."
+        why: "JavaScript code using Azure SDKs"
+        tokens: 61
+        applies_when: { dependency: { name: "@azure/*", ecosystem: npm } }
+      - skill: .github/plugins/azure-sdk-python/skills/azure-identity-py
+        title: Azure Identity for Python
+        gist: "Pick the right Azure credential for local dev, CI and managed identity."
+        why: "Python code using Azure SDKs"
+        tokens: 76
+        applies_when: { dependency: { name: "azure-*", ecosystem: pypi } }
+      - skill: .github/plugins/azure-sdk-java/skills/azure-identity-java
+        title: Azure Identity for Java
+        gist: "Credential chains, managed identity and service principals for Azure in Java."
+        why: "Java code using Azure SDKs"
+        tokens: 57
+        applies_when: { dependency: { name: "com.azure:*", ecosystem: jvm } }
 
   - id: google
     name: Google
@@ -98,8 +239,44 @@ sources:
           any:
             - dependency: { name: "@google-cloud/bigquery", ecosystem: npm }
             - dependency: { name: "com.google.cloud:google-cloud-bigquery", ecosystem: jvm }
+            - dependency: { name: google-cloud-bigquery, ecosystem: pypi }
       - path: "skills/cloud/cloud-build-basics"
         applies_when: { file: "**/cloudbuild.{yaml,yml,json}" }
+    # Picks checked at c1578116ec34d574e5df618bb02849ecc717d329 on 2026-10-30.
+    picks:
+      - skill: skills/cloud/gcloud
+        title: gcloud CLI
+        gist: "Check real gcloud syntax before running a command, and keep output small."
+        why: "Projects deployed on Google Cloud"
+        tokens: 109
+        applies_when:
+          any:
+            - dependency: { name: "@google-cloud/*", ecosystem: npm }
+            - dependency: { name: "google-cloud-*", ecosystem: pypi }
+            - dependency: { name: "com.google.cloud:*", ecosystem: jvm }
+            - dependency: { name: "cloud.google.com/go*", ecosystem: go }
+            - file: "**/cloudbuild.{yaml,yml,json}"
+      - skill: skills/cloud/bigquery-basics
+        title: BigQuery basics
+        gist: "Run and manage BigQuery work from the bq tool and client libraries."
+        why: "Code that talks to BigQuery"
+        tokens: 56
+        applies_when:
+          any:
+            - dependency: { name: "@google-cloud/bigquery", ecosystem: npm }
+            - dependency: { name: "com.google.cloud:google-cloud-bigquery", ecosystem: jvm }
+            - dependency: { name: google-cloud-bigquery, ecosystem: pypi }
+      - skill: skills/cloud/gemini-api
+        title: Gemini on Google Cloud
+        gist: "Call Gemini through the Gen AI SDK on Google Cloud, not legacy Vertex SDKs."
+        why: "Code using the Vertex AI SDK"
+        tokens: 95
+        applies_when:
+          any:
+            - dependency: { name: google-cloud-aiplatform, ecosystem: pypi }
+            - dependency: { name: "@google-cloud/vertexai", ecosystem: npm }
+            - dependency: { name: "com.google.cloud:google-cloud-vertexai", ecosystem: jvm }
+            - dependency: { name: "cloud.google.com/go/vertexai", ecosystem: go }
 
   - id: github
     name: GitHub
@@ -112,6 +289,45 @@ sources:
     notes:
       - "GitHub hosts this collection; its skills are contributed by many people."
       - "The agents, instructions and extensions in the same repository are not skills and are not read."
+    # Picks checked at 5269f7ea2d6c3a9bfda5ed878b6726cf509121fd on 2026-10-30.
+    picks:
+      - skill: skills/spring-boot-testing
+        title: Spring Boot testing
+        gist: "Test Spring Boot with focused slices, not a full context for every test."
+        why: "Spring Boot services"
+        tokens: 39
+        applies_when: { tag: "framework:spring-boot" }
+      - skill: skills/kotlin-springboot
+        title: Spring Boot with Kotlin
+        gist: "Idiomatic Kotlin for Spring: constructor injection, data classes, null safety."
+        why: "Spring Boot written in Kotlin"
+        tokens: 23
+        applies_when:
+          all:
+            - tag: "framework:spring-boot"
+            - tag: "lang:kotlin"
+      - skill: skills/multi-stage-dockerfile
+        title: Multi-stage Dockerfiles
+        gist: "Build in one stage, ship only the runtime in another, and run as non-root."
+        why: "Projects with a Dockerfile"
+        tokens: 23
+        applies_when: { tag: "container:docker" }
+      - skill: skills/unit-test-vue-pinia
+        title: Vue and Pinia unit tests
+        gist: "Test Vue components and Pinia stores through what users see, not internals."
+        why: "Vue apps using Pinia"
+        tokens: 78
+        applies_when:
+          all:
+            - tag: "framework:vue"
+            - dependency: { name: pinia, ecosystem: npm }
+      - skill: skills/cypress-flake-fixer
+        title: Cypress flake fixer
+        gist: "Scan a Cypress suite for the habits that make tests flaky, and remove them."
+        why: "Projects with Cypress tests"
+        tokens: 150
+        scripts: true
+        applies_when: { tag: "test:cypress" }
 
   - id: cloudflare
     name: Cloudflare
@@ -127,8 +343,35 @@ sources:
           any:
             - file: "**/wrangler.{toml,json,jsonc}"
             - dependency: { name: wrangler, ecosystem: npm }
+      # Next.js deployed to Cloudflare, not every Next.js app.
       - path: "skills/nextjs-on-cloudflare"
-        applies_when: { tag: "framework:next" }
+        applies_when:
+          all:
+            - tag: "framework:next"
+            - any:
+                - file: "**/wrangler.{toml,json,jsonc}"
+                - dependency: { name: wrangler, ecosystem: npm }
+                - dependency: { name: "@opennextjs/cloudflare", ecosystem: npm }
+    # Picks checked at 83a27eb901c2c63f6caaf0eca6168993a322d268 on 2026-10-30.
+    picks:
+      - skill: skills/workers-best-practices
+        title: Workers best practices
+        gist: "Production patterns for Workers: bindings, streaming, limits and config."
+        why: "Cloudflare Workers projects"
+        tokens: 35
+        applies_when:
+          any:
+            - file: "**/wrangler.{toml,json,jsonc}"
+            - dependency: { name: wrangler, ecosystem: npm }
+      - skill: skills/wrangler
+        title: Wrangler
+        gist: "Get Wrangler commands right the first time, from local dev to deploy."
+        why: "Projects with a Wrangler config"
+        tokens: 74
+        applies_when:
+          any:
+            - file: "**/wrangler.{toml,json,jsonc}"
+            - dependency: { name: wrangler, ecosystem: npm }
 
   - id: vercel
     name: Vercel
@@ -150,6 +393,22 @@ sources:
           any:
             - file: "**/vercel.json"
             - dependency: { name: "@vercel/*", ecosystem: npm }
+    # Picks checked at 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62 on 2026-10-30.
+    picks:
+      - skill: skills/react-best-practices
+        name: vercel-react-best-practices
+        title: React best practices
+        gist: "Performance rules for React and Next.js: waterfalls, bundles, re-renders."
+        why: "React and Next.js apps"
+        tokens: 89
+        applies_when: { tag: "framework:react" }
+      - skill: skills/react-native-skills
+        name: vercel-react-native-skills
+        title: React Native best practices
+        gist: "Keep React Native screens fast on real devices, from lists to animations."
+        why: "React Native and Expo apps"
+        tokens: 81
+        applies_when: { dependency: { name: react-native, ecosystem: npm } }
 
   - id: sentry
     name: Sentry
@@ -164,6 +423,56 @@ sources:
         applies_when: { file: "**/manage.py" }
       - path: "skills/gha-security-review"
         applies_when: { tag: "ci:github-actions" }
+    # Picks checked at d12f250460ffd961f549dbebf7eeb0cf4afd4c2e on 2026-10-30.
+    picks:
+      - skill: skills/security-review
+        title: Security review
+        gist: "Trace untrusted input through the code and report flaws it can back up."
+        why: "Web apps that handle untrusted input"
+        tokens: 82
+        applies_when:
+          any:
+            - tag: "framework:express"
+            - tag: "framework:nestjs"
+            - tag: "framework:next"
+            - tag: "framework:django"
+            - tag: "framework:flask"
+            - tag: "framework:fastapi"
+            - tag: "framework:spring-boot"
+            - tag: "framework:quarkus"
+            - tag: "framework:micronaut"
+            - tag: "framework:laravel"
+            - tag: "framework:symfony"
+            - tag: "framework:gin"
+            - tag: "framework:echo"
+            - tag: "framework:fiber"
+            - tag: "framework:axum"
+            - tag: "framework:actix"
+      - skill: skills/gha-security-review
+        title: GitHub Actions security review
+        gist: "Check workflows for ways a fork's pull request could run code or read secrets."
+        why: "Repositories with GitHub Actions"
+        tokens: 96
+        applies_when: { tag: "ci:github-actions" }
+      - skill: skills/django-perf-review
+        title: Django performance review
+        gist: "Find N+1 queries and slow querysets in Django code before they ship."
+        why: "Django projects"
+        tokens: 65
+        applies_when: { file: "**/manage.py" }
+      - skill: skills/skill-scanner
+        title: Skill scanner
+        gist: "Vet a skill before it runs: injected prompts, risky scripts, leaked keys."
+        why: "Repositories that publish agent skills"
+        tokens: 86
+        scripts: true
+        caution: "Contains invisible characters; Refers to credential files or keychains"
+        # Skills the repository publishes, not ones installed into it.
+        applies_when:
+          any:
+            - file: "skills/*/SKILL.md"
+            - file: "skills/*/*/SKILL.md"
+            - file: "plugins/*/skills/*/SKILL.md"
 
   - id: superpowers
     name: Superpowers
@@ -175,6 +484,30 @@ sources:
       include: ["skills/**"]
     notes:
       - "Skills call each other by name; adopt the ones they reference together."
+    # Picks checked at v7.0.1 on 2026-10-30.
+    picks:
+      - skill: skills/test-driven-development
+        title: Test-driven development
+        gist: "Write the failing test first, then the code that makes it pass."
+        why: "Any project with tests"
+        tokens: 26
+        applies_when:
+          any:
+            - tag: "test:jest"
+            - tag: "test:vitest"
+            - tag: "test:pytest"
+            - tag: "test:junit"
+            - tag: "test:phpunit"
+            - tag: "test:playwright"
+            - tag: "test:cypress"
+            - file: "**/*_test.go"
+            - file: "**/tests/*.rs"
+            - file: "**/*Tests.csproj"
+      - skill: skills/verification-before-completion
+        title: Verification before completion
+        gist: "Run the checks and read their output before calling the work done."
+        why: "Any codebase: evidence before claims"
+        tokens: 64
 
   - id: addyosmani
     name: Addy Osmani
@@ -184,6 +517,23 @@ sources:
     discovery:
       track: latest-release
       include: ["skills/**"]
+    # Picks checked at 0.6.14 on 2026-10-30.
+    picks:
+      - skill: skills/code-review-and-quality
+        title: Code review
+        gist: "Read a diff the way a careful senior reviewer would, before it merges."
+        why: "Any codebase, before merging"
+        tokens: 87
+      - skill: skills/api-and-interface-design
+        title: API and interface design
+        gist: "Design endpoints and module contracts that stay stable and are hard to misuse."
+        why: "Projects that define an API"
+        tokens: 69
+        applies_when:
+          any:
+            - tag: "api:openapi"
+            - tag: "api:springdoc"
+            - file: "**/*.graphql"
 
   - id: wshobson
     name: wshobson
@@ -195,6 +545,46 @@ sources:
       group: 1
     notes:
       - "Broad and uneven; read a skill before adopting it."
+    # Picks checked at 0874a27b17a22e2b7c2e2bcd725768e0803cad06 on 2026-10-30.
+    picks:
+      - skill: plugins/javascript-typescript/skills/nodejs-backend-patterns
+        title: Node.js backend patterns
+        gist: "Lay out a Node.js service so errors, auth and data access each have a home."
+        why: "Node.js API servers"
+        tokens: 77
+        applies_when:
+          any:
+            - tag: "framework:express"
+            - tag: "framework:nestjs"
+            - dependency: { name: fastify, ecosystem: npm }
+            - dependency: { name: koa, ecosystem: npm }
+      - skill: plugins/dotnet-contribution/skills/dotnet-backend-patterns
+        title: .NET backend patterns
+        gist: "Structure a C# API so data access, DI and tests stay simple."
+        why: "ASP.NET Core services"
+        tokens: 86
+        applies_when:
+          all:
+            - tag: "lang:csharp"
+            - file: "**/appsettings.json"
+      - skill: plugins/systems-programming/skills/go-concurrency-patterns
+        title: Go concurrency
+        gist: "Worker pools, cancellation and shutdown in Go without leaks or data races."
+        why: "Go code"
+        tokens: 51
+        applies_when: { tag: "lang:go" }
+      - skill: plugins/data-engineering/skills/dbt-transformation-patterns
+        title: dbt model patterns
+        gist: "Layer models from staging to marts, test them, and build big ones incrementally."
+        why: "dbt projects"
+        tokens: 69
+        applies_when: { tag: "data:dbt" }
+      - skill: plugins/data-engineering/skills/airflow-dag-patterns
+        title: Airflow DAG patterns
+        gist: "DAGs that rerun safely, with tasks small enough to retry and test."
+        why: "Airflow pipelines"
+        tokens: 53
+        applies_when: { tag: "data:airflow" }
 
   - id: mattpocock
     name: Matt Pocock
@@ -207,3 +597,88 @@ sources:
       # Unfinished skills, by the author's own label.
       exclude: ["skills/in-progress/**"]
       group: 1
+    # Picks checked at v1.3.2 on 2026-10-30.
+    picks:
+      - skill: skills/engineering/diagnosing-bugs
+        title: Diagnosing bugs
+        gist: "Build a fast pass/fail loop for the bug first; the fix follows from it."
+        why: "Any codebase, when something breaks"
+        tokens: 43
+        scripts: true
+      - skill: skills/productivity/grilling
+        title: Grill the plan
+        gist: "Question a plan decision by decision until nothing is left assumed."
+        why: "Any codebase, before building"
+        tokens: 40
+      - skill: skills/productivity/writing-for-agents
+        title: Writing for agents
+        gist: "Keep AGENTS.md, CLAUDE.md and skills short, well-pointed and cheap on context."
+        why: "Repositories with agent instructions"
+        tokens: 31
+        applies_when:
+          any:
+            - tag: "agents:agents-md"
+            - tag: "agents:claude-md"
+
+  - id: trailofbits
+    name: Trail of Bits
+    url: https://github.com/trailofbits/skills
+    summary: "Security research, vulnerability detection and audit workflows, grouped by plugin."
+    publisher: { name: Trail of Bits, kind: community, owner: trailofbits }
+    discovery:
+      include: ["plugins/*/skills/**"]
+      group: 1
+    notes:
+      - "Licensed CC BY-SA 4.0: an adapted copy you share must keep that licence."
+      - "Mostly security and testing; a few plugins are general tooling."
+    # Picks checked at 2be6433b39e009cd2b6fd3be1895f6b1faa5af9a on 2026-10-30.
+    picks:
+      - skill: plugins/modern-python/skills/modern-python
+        title: Modern Python tooling
+        gist: "One fast Python toolchain: uv for packages, ruff for lint, ty for types."
+        why: "Python projects"
+        tokens: 43
+        applies_when: { tag: "lang:python" }
+      - skill: plugins/property-based-testing/skills/property-based-testing
+        title: Property-based testing
+        gist: "Let generated inputs find the edge cases hand-written examples miss."
+        why: "Projects with a property-testing library"
+        tokens: 217
+        applies_when:
+          any:
+            - dependency: { name: hypothesis, ecosystem: pypi }
+            - dependency: { name: fast-check, ecosystem: npm }
+            - dependency: { name: proptest, ecosystem: cargo }
+            - dependency: { name: quickcheck, ecosystem: cargo }
+            - dependency: { name: "net.jqwik:*", ecosystem: jvm }
+            - dependency: { name: "pgregory.net/rapid", ecosystem: go }
+      - skill: plugins/rust-review/skills/rust-review
+        title: Rust security review
+        gist: "A security pass where Rust's guarantees stop: unsafe, FFI, panics."
+        why: "Rust crates"
+        tokens: 79
+        applies_when: { tag: "lang:rust" }
+
+  - id: ui-ux-pro-max
+    name: UI/UX Pro Max
+    url: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+    summary: "Design intelligence for building UI: styles, palettes, type pairings, design systems and slides."
+    publisher: { name: nextlevelbuilder, kind: community, owner: nextlevelbuilder }
+    discovery:
+      track: latest-release
+      # The same skills are bundled again under cli/assets for its installer.
+      include: [".claude/skills/**"]
+    notes:
+      - "The skills carry large data files (font and icon catalogs), about 10 MB in all."
+
+  - id: impeccable
+    name: Impeccable
+    url: https://github.com/pbakaus/impeccable
+    summary: "A design vocabulary for coding agents: shape, critique, audit and polish frontend work."
+    publisher: { name: Paul Bakaus, kind: community, owner: pbakaus }
+    discovery:
+      # One skill, built for each agent's folder; the .agents copy finds its scripts wherever it is installed.
+      include: [".agents/skills/**"]
+    notes:
+      - "Its launcher downloads a binary the first time the skill runs it."
+      - "Releases are tagged skill-v4.8.0 and the like, which are not plain versions, so the default branch is read."

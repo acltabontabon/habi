@@ -18,7 +18,6 @@ use habi_core::install::plan::{Decisions, Plan};
 use habi_core::library::model::LibraryIndex;
 use habi_core::matching::eval::{Declaration, DeclaredSubject};
 use habi_core::paths::RelPath;
-use habi_core::sample::SampleWorkspace;
 use habi_core::service::{
     ConditionSuggestion, Excerpt, FileContent, Habi, ImportFrom, ItemDetail, ItemRef,
     PreviewRequest, ProjectOverview, ProjectPick, ProjectRecord, Rehearsal, SkillPreview,
@@ -30,11 +29,12 @@ use habi_core::skills::{LocalSkill, LocalSkillSummary, NewSkill, SkillDocument, 
 use habi_core::source::{
     NewSource, RefreshOutcome, Source, SourceRole, SourceUpdate, UpdateReport,
 };
+use habi_core::usage::SkillUsageReport;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, PoisonError};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use ts_rs::TS;
@@ -1511,6 +1511,17 @@ pub async fn discover_project(
 }
 
 #[tauri::command]
+pub async fn skill_usage(
+    state: State<'_, AppState>,
+    project_id: String,
+    job_id: Option<String>,
+) -> CmdResult<SkillUsageReport> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.skill_usage(&project_id, &cancel)).await
+}
+
+#[tauri::command]
 pub async fn read_instructions(
     state: State<'_, AppState>,
     project_id: String,
@@ -1728,7 +1739,7 @@ pub async fn apply_upstream_sync(
     .await
 }
 
-// ----- diagnostics and sample ------------------------------------------------------------
+// ----- diagnostics -----------------------------------------------------------------------
 
 #[tauri::command]
 pub async fn diagnostics_preview(state: State<'_, AppState>) -> CmdResult<DiagnosticBundle> {
@@ -1765,27 +1776,6 @@ pub async fn diagnostics_save(
     let path = target.into_path().map_err(|e| internal(e.to_string()))?;
     habi_core::fsutil::atomic_write(&path, bundle.text.as_bytes()).map_err(|e| e.to_info())?;
     Ok(Some(habi_core::paths::display_path(&path)))
-}
-
-#[tauri::command]
-pub async fn create_sample_workspace(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> CmdResult<SampleWorkspace> {
-    let habi = state.habi()?;
-    let bundled = app
-        .path()
-        .resource_dir()
-        .map_err(|e| internal(format!("bundled samples not found: {e}")))?
-        .join("samples");
-    blocking(habi, move |h| habi_core::sample::create(h, &bundled)).await
-}
-
-/// Removes the sample libraries and projects and `<data>/sample`.
-#[tauri::command]
-pub async fn remove_sample_workspace(state: State<'_, AppState>) -> CmdResult<()> {
-    let habi = state.habi()?;
-    blocking(habi, habi_core::sample::remove).await
 }
 
 // ----- maintenance -------------------------------------------------------------------

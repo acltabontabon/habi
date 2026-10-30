@@ -1,17 +1,16 @@
 {
   "project": {
-    "id": "82fcc97115bffa31",
+    "id": "a4dba3a7ccb902ac",
     "name": "platform-monorepo",
     "path": "~/work/platform-monorepo",
     "exists": true,
-    "lastOpenedAt": "2026-10-04T13:45:13Z",
+    "lastOpenedAt": "2026-10-30T10:04:35Z",
     "exclusions": [],
-    "sample": false,
     "summary": {
       "fits": 7,
       "needsInformation": 0,
       "sources": [
-        "b577aeab8d11"
+        "1526b695b1eb"
       ],
       "installed": 0,
       "languages": [
@@ -20,12 +19,18 @@
       ],
       "tally": [
         {
-          "sourceId": "b577aeab8d11",
+          "sourceId": "1526b695b1eb",
           "fits": 7,
           "installed": []
         }
       ],
-      "at": "2026-10-04T13:45:13Z"
+      "suggested": [
+        "github",
+        "superpowers",
+        "addyosmani",
+        "mattpocock"
+      ],
+      "at": "2026-10-30T10:04:35Z"
     }
   },
   "inspection": {
@@ -34,8 +39,8 @@
     "description": "Mixed repository: a React web app (apps/web) and two Java services (services/*).",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "main",
-      "repositoryRoot": "~/Workspace/habi",
+      "branch": "feat/ai-skill-project-recommendations-7a7040",
+      "repositoryRoot": "~/Workspace/habi/.claude/worktrees/ai-skill-project-recommendations-7a7040",
       "isMonorepo": true,
       "workspaceSignals": [
         "npm workspaces in package.json"
@@ -799,17 +804,17 @@
       "unreadable": [],
       "symlinksSkipped": 0,
       "largeFilesSkipped": 0,
-      "elapsedMs": 3
+      "elapsedMs": 2
     },
-    "fingerprint": "sha256:ac7bb4ccc3c759a0ed4029962188338341164a53cc89ef55ccb4395dc1f00de8",
-    "inspectedAt": "2026-10-04T13:45:13Z"
+    "fingerprint": "sha256:5c10277098730d0446cea81e44ece7923af4e72c68110aaf98ca566e9e9da274",
+    "inspectedAt": "2026-10-30T10:04:35Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "b577aeab8d11/java-service-conventions",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/java-service-conventions",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -819,7 +824,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -966,12 +971,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/service-observability",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/service-observability",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -981,7 +987,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1152,12 +1158,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/liquibase-migration-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/liquibase-migration-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -1167,7 +1174,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1736,12 +1743,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/react-component-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/react-component-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1751,7 +1759,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1909,12 +1917,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/jooq-query-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/jooq-query-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1924,7 +1933,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2090,12 +2099,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/frontend-test-practices",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/frontend-test-practices",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -2105,7 +2115,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2614,12 +2624,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/github-pr-summary",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/github-pr-summary",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -2629,7 +2640,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2865,12 +2876,13 @@
         }
       },
       "nextAction": "setUpPrerequisites",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/incident-notes",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/incident-notes",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -2880,7 +2892,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -2954,12 +2966,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/api-contract-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/api-contract-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -2969,7 +2982,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -3140,12 +3153,13 @@
         }
       },
       "nextAction": "none",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/jpa-entity-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/jpa-entity-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -3155,7 +3169,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -3373,12 +3387,13 @@
         }
       },
       "nextAction": "none",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     }
   ],
   "sources": [
     {
-      "id": "b577aeab8d11",
+      "id": "1526b695b1eb",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -3388,15 +3403,14 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-04T13:45:12Z",
-      "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
-      "snapshotAt": "2026-10-04T13:45:12Z",
-      "commitSummary": "Example library — Example, 2026-10-04",
-      "lastAttemptAt": "2026-10-04T13:45:12Z",
+      "createdAt": "2026-10-30T10:04:34Z",
+      "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
+      "snapshotAt": "2026-10-30T10:04:34Z",
+      "commitSummary": "Example library — Example, 2026-10-30",
+      "lastAttemptAt": "2026-10-30T10:04:34Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",
-      "sample": false,
       "skillCount": 10,
       "preview": false,
       "catalogId": null,
@@ -3405,5 +3419,1733 @@
       "defaultBranch": null
     }
   ],
-  "orphaned": []
+  "orphaned": [],
+  "kit": {
+    "suggestions": [
+      {
+        "key": "1526b695b1eb/service-observability",
+        "group": "required",
+        "title": "Service observability",
+        "name": "service-observability",
+        "gist": "Add metrics, structured logs and traces to a Spring Boot service following team conventions. Use when adding endpoints or background jobs.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "service-observability"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": "services/catalog",
+              "moduleName": "catalog-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "true",
+                "reason": "detected from services/catalog/pom.xml:12",
+                "facts": [
+                  "tag:services/catalog:framework:spring-boot",
+                  "dep:services/catalog:maven:org.springframework.boot:spring-boot-starter-web"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "services/catalog/pom.xml:12",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses Spring Boot (pom.xml:12)"
+            },
+            {
+              "module": "services/inventory",
+              "moduleName": "inventory-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "true",
+                "reason": "detected from services/inventory/pom.xml:4",
+                "facts": [
+                  "tag:services/inventory:framework:spring-boot",
+                  "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-parent",
+                  "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-web",
+                  "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-jdbc"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "services/inventory/pom.xml:4",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses Spring Boot (pom.xml:4)"
+            },
+            {
+              "module": ".",
+              "moduleName": "platform-monorepo",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "false",
+                "reason": "not detected in the root module",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses Spring Boot: not detected in the root module"
+            },
+            {
+              "module": "apps/web",
+              "moduleName": "@platform/web",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "false",
+                "reason": "not detected in module apps/web",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses Spring Boot: not detected in module apps/web"
+            }
+          ],
+          "reason": "Applies to 2 of 4 modules (catalog-service, inventory-service) — Uses Spring Boot (pom.xml:12)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 40,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/java-service-conventions",
+        "group": "required",
+        "title": "Java service conventions",
+        "name": "java-service-conventions",
+        "gist": "Baseline conventions every Java service follows. Installed as a managed section of AGENTS.md.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "java-service-conventions"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "repository",
+          "modules": [
+            {
+              "module": "*",
+              "moduleName": "platform-monorepo",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "any",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "lang:java"
+                    },
+                    {
+                      "op": "dependency",
+                      "name": "org.springframework.boot:*",
+                      "ecosystem": "jvm",
+                      "version": null
+                    }
+                  ]
+                },
+                "summary": "any of 2 conditions",
+                "outcome": "true",
+                "reason": "at least one alternative holds",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "lang:java"
+                    },
+                    "summary": "contains Java code",
+                    "outcome": "true",
+                    "reason": "detected from services/catalog/src/main/java/com/example/catalog/CatalogApplication.java",
+                    "facts": [
+                      "tag:services/catalog:lang:java",
+                      "tag:services/inventory:lang:java"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "services/catalog/src/main/java/com/example/catalog/CatalogApplication.java",
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "dependency",
+                      "name": "org.springframework.boot:*",
+                      "ecosystem": "jvm",
+                      "version": null
+                    },
+                    "summary": "declares org.springframework.boot:*",
+                    "outcome": "true",
+                    "reason": "declared in services/catalog/pom.xml:12",
+                    "facts": [
+                      "dep:services/catalog:maven:org.springframework.boot:spring-boot-starter-web",
+                      "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-jdbc",
+                      "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-parent",
+                      "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-web"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "services/catalog/pom.xml:12",
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 2,
+              "reason": "Contains Java code (CatalogApplication.java) · declares org.springframework.boot:* (pom.xml:12)"
+            }
+          ],
+          "reason": "Contains Java code (CatalogApplication.java) · declares org.springframework.boot:* (pom.xml:12)",
+          "specificity": 2
+        },
+        "elsewhere": [],
+        "tokens": 30,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/liquibase-migration-review",
+        "group": "stack",
+        "title": "Liquibase migration review",
+        "name": "liquibase-migration-review",
+        "gist": "Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "liquibase-migration-review"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": "services/inventory",
+              "moduleName": "inventory-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "true",
+                "reason": "every condition holds",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    "summary": "uses Spring Boot",
+                    "outcome": "true",
+                    "reason": "detected from services/inventory/pom.xml:4",
+                    "facts": [
+                      "tag:services/inventory:framework:spring-boot",
+                      "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-parent",
+                      "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-web",
+                      "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-jdbc"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "services/inventory/pom.xml:4",
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "true",
+                    "reason": "at least one alternative holds",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        "summary": "declares org.liquibase:liquibase-core",
+                        "outcome": "true",
+                        "reason": "declared in services/inventory/pom.xml:22",
+                        "facts": [
+                          "dep:services/inventory:maven:org.liquibase:liquibase-core"
+                        ],
+                        "declarations": [],
+                        "files": [],
+                        "location": "services/inventory/pom.xml:22",
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        },
+                        "summary": "uses Liquibase",
+                        "outcome": "true",
+                        "reason": "detected from services/inventory/pom.xml:22",
+                        "facts": [
+                          "tag:services/inventory:db:liquibase",
+                          "dep:services/inventory:maven:org.liquibase:liquibase-core",
+                          "file:services/inventory/src/main/resources/db/changelog/db.changelog-master.xml:liquibase-changelog"
+                        ],
+                        "declarations": [],
+                        "files": [],
+                        "location": "services/inventory/pom.xml:22",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 3,
+              "reason": "Uses Spring Boot (pom.xml:4) · declares org.liquibase:liquibase-core (pom.xml:22) · uses Liquibase (pom.xml:22)"
+            },
+            {
+              "module": "services/catalog",
+              "moduleName": "catalog-service",
+              "applicability": "needsInformation",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "unknown",
+                "reason": "no condition fails, but some could not be established",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    "summary": "uses Spring Boot",
+                    "outcome": "true",
+                    "reason": "detected from services/catalog/pom.xml:12",
+                    "facts": [
+                      "tag:services/catalog:framework:spring-boot",
+                      "dep:services/catalog:maven:org.springframework.boot:spring-boot-starter-web"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "services/catalog/pom.xml:12",
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "unknown",
+                    "reason": "no alternative is confirmed, and some could not be established",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        "summary": "declares org.liquibase:liquibase-core",
+                        "outcome": "unknown",
+                        "reason": "not found, but absence is not established: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible.",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        },
+                        "summary": "uses Liquibase",
+                        "outcome": "unknown",
+                        "reason": "not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible.",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Not established — declares org.liquibase:liquibase-core: not found, but absence is not established: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible."
+            },
+            {
+              "module": ".",
+              "moduleName": "platform-monorepo",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "false",
+                "reason": "at least one condition does not hold",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    "summary": "uses Spring Boot",
+                    "outcome": "false",
+                    "reason": "not detected in the root module",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "false",
+                    "reason": "none of the alternatives hold",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        "summary": "declares org.liquibase:liquibase-core",
+                        "outcome": "false",
+                        "reason": "the root module has no Maven or Gradle build manifest that could declare it",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        },
+                        "summary": "uses Liquibase",
+                        "outcome": "false",
+                        "reason": "not detected in the root module",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses Spring Boot: not detected in the root module"
+            },
+            {
+              "module": "apps/web",
+              "moduleName": "@platform/web",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "false",
+                "reason": "at least one condition does not hold",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    "summary": "uses Spring Boot",
+                    "outcome": "false",
+                    "reason": "not detected in module apps/web",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "false",
+                    "reason": "none of the alternatives hold",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        "summary": "declares org.liquibase:liquibase-core",
+                        "outcome": "false",
+                        "reason": "module apps/web has no Maven or Gradle build manifest that could declare it",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        },
+                        "summary": "uses Liquibase",
+                        "outcome": "false",
+                        "reason": "not detected in module apps/web",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses Spring Boot: not detected in module apps/web"
+            }
+          ],
+          "reason": "Applies to 1 of 4 modules (inventory-service) — Uses Spring Boot (pom.xml:4) · declares org.liquibase:liquibase-core (pom.xml:22) · uses Liquibase (pom.xml:22)",
+          "specificity": 3
+        },
+        "elsewhere": [],
+        "tokens": 50,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/frontend-test-practices",
+        "group": "stack",
+        "title": "Front-end test practices",
+        "name": "frontend-test-practices",
+        "gist": "Write and review Vitest/Testing Library tests for web front ends. Use when adding or changing front-end tests.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "frontend-test-practices"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": "apps/web",
+              "moduleName": "@platform/web",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "true",
+                "reason": "every condition holds",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "true",
+                    "reason": "at least one alternative holds",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        "summary": "uses React",
+                        "outcome": "true",
+                        "reason": "detected from apps/web/package.json:5",
+                        "facts": [
+                          "tag:apps/web:framework:react",
+                          "dep:apps/web:npm:react"
+                        ],
+                        "declarations": [],
+                        "files": [],
+                        "location": "apps/web/package.json:5",
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        },
+                        "summary": "uses Vue",
+                        "outcome": "false",
+                        "reason": "not detected in module apps/web",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    },
+                    "summary": "uses Vitest",
+                    "outcome": "true",
+                    "reason": "detected from apps/web/package.json:6",
+                    "facts": [
+                      "tag:apps/web:test:vitest",
+                      "dep:apps/web:npm:vitest"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "apps/web/package.json:6",
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 2,
+              "reason": "Uses React (package.json:5) · uses Vitest (package.json:6)"
+            },
+            {
+              "module": "services/catalog",
+              "moduleName": "catalog-service",
+              "applicability": "needsInformation",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "unknown",
+                "reason": "no condition fails, but some could not be established",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "unknown",
+                    "reason": "no alternative is confirmed, and some could not be established",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        "summary": "uses React",
+                        "outcome": "unknown",
+                        "reason": "not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible.",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        },
+                        "summary": "uses Vue",
+                        "outcome": "unknown",
+                        "reason": "not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible.",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    },
+                    "summary": "uses Vitest",
+                    "outcome": "unknown",
+                    "reason": "not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible.",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Not established — uses React: not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible."
+            },
+            {
+              "module": ".",
+              "moduleName": "platform-monorepo",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "false",
+                "reason": "at least one condition does not hold",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "false",
+                    "reason": "none of the alternatives hold",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        "summary": "uses React",
+                        "outcome": "false",
+                        "reason": "not detected in the root module",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        },
+                        "summary": "uses Vue",
+                        "outcome": "false",
+                        "reason": "not detected in the root module",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    },
+                    "summary": "uses Vitest",
+                    "outcome": "false",
+                    "reason": "not detected in the root module",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses React: not detected in the root module"
+            },
+            {
+              "module": "services/inventory",
+              "moduleName": "inventory-service",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "false",
+                "reason": "at least one condition does not hold",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "false",
+                    "reason": "none of the alternatives hold",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:react"
+                        },
+                        "summary": "uses React",
+                        "outcome": "false",
+                        "reason": "not detected in module services/inventory",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "framework:vue"
+                        },
+                        "summary": "uses Vue",
+                        "outcome": "false",
+                        "reason": "not detected in module services/inventory",
+                        "facts": [],
+                        "declarations": [],
+                        "files": [],
+                        "location": null,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "test:vitest"
+                    },
+                    "summary": "uses Vitest",
+                    "outcome": "false",
+                    "reason": "not detected in module services/inventory",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses React: not detected in module services/inventory"
+            }
+          ],
+          "reason": "Applies to 1 of 4 modules (@platform/web) — Uses React (package.json:5) · uses Vitest (package.json:6)",
+          "specificity": 2
+        },
+        "elsewhere": [],
+        "tokens": 34,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/jooq-query-review",
+        "group": "stack",
+        "title": "jOOQ query review",
+        "name": "jooq-query-review",
+        "gist": "Review jOOQ queries for correctness, index use and generated-code drift. Use when repository or query classes using jOOQ change.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "jooq-query-review"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": "services/catalog",
+              "moduleName": "catalog-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "db:jooq"
+                },
+                "summary": "uses jOOQ",
+                "outcome": "true",
+                "reason": "detected from services/catalog/pom.xml:16",
+                "facts": [
+                  "tag:services/catalog:db:jooq",
+                  "dep:services/catalog:maven:org.jooq:jooq"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "services/catalog/pom.xml:16",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses jOOQ (pom.xml:16)"
+            },
+            {
+              "module": ".",
+              "moduleName": "platform-monorepo",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "db:jooq"
+                },
+                "summary": "uses jOOQ",
+                "outcome": "false",
+                "reason": "not detected in the root module",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses jOOQ: not detected in the root module"
+            },
+            {
+              "module": "apps/web",
+              "moduleName": "@platform/web",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "db:jooq"
+                },
+                "summary": "uses jOOQ",
+                "outcome": "false",
+                "reason": "not detected in module apps/web",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses jOOQ: not detected in module apps/web"
+            },
+            {
+              "module": "services/inventory",
+              "moduleName": "inventory-service",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "db:jooq"
+                },
+                "summary": "uses jOOQ",
+                "outcome": "false",
+                "reason": "not detected in module services/inventory",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses jOOQ: not detected in module services/inventory"
+            }
+          ],
+          "reason": "Applies to 1 of 4 modules (catalog-service) — Uses jOOQ (pom.xml:16)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 37,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/react-component-review",
+        "group": "stack",
+        "title": "React component review",
+        "name": "react-component-review",
+        "gist": "Review React components for accessibility, state management and rendering cost. Use when .tsx/.jsx components change.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "react-component-review"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": "apps/web",
+              "moduleName": "@platform/web",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:react"
+                },
+                "summary": "uses React",
+                "outcome": "true",
+                "reason": "detected from apps/web/package.json:5",
+                "facts": [
+                  "tag:apps/web:framework:react",
+                  "dep:apps/web:npm:react"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "apps/web/package.json:5",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses React (package.json:5)"
+            },
+            {
+              "module": "services/catalog",
+              "moduleName": "catalog-service",
+              "applicability": "needsInformation",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:react"
+                },
+                "summary": "uses React",
+                "outcome": "unknown",
+                "reason": "not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible.",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Not established — uses React: not detected, but the evidence is incomplete: Parent POM com.example.platform:corp-parent:7 is not in this repository; dependencies it declares are not visible."
+            },
+            {
+              "module": ".",
+              "moduleName": "platform-monorepo",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:react"
+                },
+                "summary": "uses React",
+                "outcome": "false",
+                "reason": "not detected in the root module",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses React: not detected in the root module"
+            },
+            {
+              "module": "services/inventory",
+              "moduleName": "inventory-service",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:react"
+                },
+                "summary": "uses React",
+                "outcome": "false",
+                "reason": "not detected in module services/inventory",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses React: not detected in module services/inventory"
+            }
+          ],
+          "reason": "Applies to 1 of 4 modules (@platform/web) — Uses React (package.json:5)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 35,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/github-pr-summary",
+        "group": "stack",
+        "title": "GitHub PR summary",
+        "name": "github-pr-summary",
+        "gist": "Summarize a GitHub pull request — intent, risk and review focus — using the GitHub MCP server. Use when asked to summarize or triage a PR.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "github-pr-summary"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "repository",
+          "modules": [
+            {
+              "module": "*",
+              "moduleName": "platform-monorepo",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "ci:github-actions"
+                },
+                "summary": "uses GitHub Actions",
+                "outcome": "true",
+                "reason": "detected from .github/workflows/ci.yml",
+                "facts": [
+                  "tag:.:ci:github-actions",
+                  "file:.github/workflows/ci.yml:ci:github-actions"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": ".github/workflows/ci.yml",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses GitHub Actions (ci.yml)"
+            }
+          ],
+          "reason": "Uses GitHub Actions (ci.yml)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 39,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:github/skills/spring-boot-testing",
+        "group": "stack",
+        "title": "Spring Boot testing",
+        "name": "spring-boot-testing",
+        "gist": "Test Spring Boot with focused slices, not a full context for every test.",
+        "library": {
+          "name": "GitHub",
+          "entryId": "github",
+          "sourceId": null,
+          "community": true,
+          "builder": true,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Spring Boot services",
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": "services/catalog",
+              "moduleName": "catalog-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "true",
+                "reason": "detected from services/catalog/pom.xml:12",
+                "facts": [
+                  "tag:services/catalog:framework:spring-boot",
+                  "dep:services/catalog:maven:org.springframework.boot:spring-boot-starter-web"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "services/catalog/pom.xml:12",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses Spring Boot (pom.xml:12)"
+            },
+            {
+              "module": "services/inventory",
+              "moduleName": "inventory-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "true",
+                "reason": "detected from services/inventory/pom.xml:4",
+                "facts": [
+                  "tag:services/inventory:framework:spring-boot",
+                  "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-parent",
+                  "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-web",
+                  "dep:services/inventory:maven:org.springframework.boot:spring-boot-starter-jdbc"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "services/inventory/pom.xml:4",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses Spring Boot (pom.xml:4)"
+            },
+            {
+              "module": ".",
+              "moduleName": "platform-monorepo",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "false",
+                "reason": "not detected in the root module",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses Spring Boot: not detected in the root module"
+            },
+            {
+              "module": "apps/web",
+              "moduleName": "@platform/web",
+              "applicability": "doesNotApply",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "false",
+                "reason": "not detected in module apps/web",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 0,
+              "reason": "Conditions not met — uses Spring Boot: not detected in module apps/web"
+            }
+          ],
+          "reason": "Applies to 2 of 4 modules (catalog-service, inventory-service) — Uses Spring Boot (pom.xml:12)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 39,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:superpowers/skills/verification-before-completion",
+        "group": "practice",
+        "title": "Verification before completion",
+        "name": "verification-before-completion",
+        "gist": "Run the checks and read their output before calling the work done.",
+        "library": {
+          "name": "Superpowers",
+          "entryId": "superpowers",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Any codebase: evidence before claims",
+        "applicability": null,
+        "elsewhere": [],
+        "tokens": 64,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:addyosmani/skills/code-review-and-quality",
+        "group": "practice",
+        "title": "Code review",
+        "name": "code-review-and-quality",
+        "gist": "Read a diff the way a careful senior reviewer would, before it merges.",
+        "library": {
+          "name": "Addy Osmani",
+          "entryId": "addyosmani",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Any codebase, before merging",
+        "applicability": null,
+        "elsewhere": [],
+        "tokens": 87,
+        "scripts": false,
+        "caution": [],
+        "chosen": false
+      },
+      {
+        "key": "catalog:mattpocock/skills/engineering/diagnosing-bugs",
+        "group": "practice",
+        "title": "Diagnosing bugs",
+        "name": "diagnosing-bugs",
+        "gist": "Build a fast pass/fail loop for the bug first; the fix follows from it.",
+        "library": {
+          "name": "Matt Pocock",
+          "entryId": "mattpocock",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Any codebase, when something breaks",
+        "applicability": null,
+        "elsewhere": [],
+        "tokens": 43,
+        "scripts": true,
+        "caution": [],
+        "chosen": false
+      }
+    ],
+    "more": 0
+  }
 }

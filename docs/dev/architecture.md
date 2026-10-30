@@ -12,6 +12,7 @@
                  ├──────────┬──────────┬───────────┬──────────┬────────────┤
                  │ inspect  │ matching │ library   │ source   │ install    │
                  │ recommend│ checks   │ contribute│ review   │ clients    │
+                 │ suggest  │          │           │          │            │
                  │ skills   │ catalog  │ browse    │ sample   │ maintenance│
                  ├──────────┴──────────┴───────────┴──────────┴────────────┤
                  │ store (SQLite, blobs, locks) · paths · process · redact │
@@ -27,7 +28,7 @@
 | `apps/desktop/src-tauri` | Tauri 2 shell: commands, file watcher, native dialogs, updater, logging. |
 | `apps/desktop/src` | React 19 + TypeScript (strict). Types in `src/bindings` are generated from Rust by `ts-rs`. |
 | `schema/` | JSON Schemas for Habi metadata (compiled into the core). |
-| `fixtures/` | Example libraries and repositories for tests, the sample workspace and UI fixtures ([test data](test-data.md)). |
+| `fixtures/` | Example libraries and repositories for tests and UI fixtures ([test data](test-data.md)). |
 | `website/` | The project site at acltabontabon.com/habi (Astro). `pnpm dev` in `website/`; it renders `docs/` and `docs/media/` ([website.md](website.md)). |
 
 ## Core modules
@@ -38,10 +39,12 @@
   report and a fingerprint. What each detector reads is in
   [Detectors](../library-authors/detectors.md).
 - **`matching`**: `Condition` (all/any/not + dependency/file/tag), three-valued evaluation
-  with explanation trees, user `Declaration`s, per-module assessment.
+  with explanation trees, user `Declaration`s, per-module assessment. `described` reads a rule
+  from a skill's name and description (a fixed lexicon of the technologies Habi detects) for
+  skills with no rule from their author or the catalog.
 - **`library`**: reads a snapshot into a `LibraryIndex`: `SKILL.md` frontmatter, optional
-  `habi.yaml`, `habi-library.yaml` instructions, diagnostics, provenance and the static
-  `signals` read from a skill's files.
+  `habi.yaml`, `habi-library.yaml` instructions, diagnostics, provenance, the static `signals`
+  read from a skill's files, and which siblings a skill calls by name (`calls`).
 - **`source`**: registration, refresh (Git into a bare cache, or folder), release tags,
   moved-tag and rewritten-history warnings, offline cache, snapshot listings in SQLite,
   contents in the blob store.
@@ -59,6 +62,11 @@
   Readiness includes each compatible agent's project prerequisites and the agents assessed
   for the aggregate. Evidence summarizes the latest completed check/module pairs. Indexed
   file timestamps participate in freshness without reading source bodies.
+- **`suggest`**: a project's *Suggested* list: team requirements, skills for its stack and a
+  few practices, capped and ordered by stated rules, from connected libraries' recommendations
+  and from the catalog's picks for libraries not connected (evaluated against the inspection;
+  nothing is fetched). It also says what each costs in context (`tokens_of`), what it brings, and
+  which start ticked.
 - **`skills`**: My skills. Package storage, document and applicability saving with
   external-edit detection, validation, zip export (`archive`), lineage and three-way library
   updates (`lineage`, `upstream`), the skills in your home folder (`machine`), and `intake`,
@@ -71,8 +79,10 @@
   reading its state and comments as untrusted text.
 - **`checks`**: previewed, user-run verification commands; recorded results.
 - **`browse`**: the project chooser's read-only look at likely repository folders.
-- **`sample`**: the labeled sample workspace.
+- **`sample`**: removes what is left of the sample workspace earlier versions could create.
 - **`maintenance`**: pruning old journals, snapshots and unreferenced blobs (`habi gc`).
+- **`usage`**: whether a project's skills get used, from Claude Code's session transcripts, read
+  on demand and bounded; the estimate of what a skill costs every session.
 - **`service`**: the facade; projects, declarations, plans by id, overview.
 
 ## Install scopes
@@ -123,7 +133,6 @@ where `ErrorInfo { code, message }` has a stable code the UI maps to guidance.
 | Bare Git caches | `<data>/sources/<id>/repo.git` | machine-local cache |
 | Operation journals | `<data>/journal/<id>/*.json` (one folder per project, one for this machine) | machine-local |
 | Contribution staging | `<data>/contributions/` | machine-local |
-| Sample workspace | `<data>/sample/` | machine-local |
 | Logs (desktop app) | `<data>/logs/habi.*.log`, one per day, the last 7 kept | machine-local |
 
 `<data>` is the platform data directory from `directories::ProjectDirs` with the qualifier in

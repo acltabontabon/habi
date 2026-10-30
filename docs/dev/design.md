@@ -56,7 +56,7 @@ its one signature — used only where it carries meaning.
   source columns, seven rows, "+N more") and stays composed when empty: faint rows keep the
   cloth's texture, and a first run shows undyed threads with a faint twill. Creating and
   adding skills live in the sidebar, palette and project views; their shortcuts sit at the
-  foot with the labeled sample workspace on a first run.
+  foot with a link to connect a library on a first run.
 - **Already here** — skills and instruction files already in the repository, read-only,
   with real next actions (read, edit a copy, turn part into a skill). Shown in place of
   recommendations when there is nothing to recommend yet.
@@ -92,13 +92,34 @@ its one signature — used only where it carries meaning.
   choices said apart: *Make my own copy* (read once, nothing connected) and *Connect as a
   library* (nothing copied). Then an inspection list with origin, problems and duplicate
   handling before anything is copied.
+- **Suggested** — a project opens here while nothing from Habi is in it (else on *All skills*;
+  both are tabs under the header, and Suggested carries a saffron knot while it has something to
+  add). A headline with the real count ("7 skills for django-shop"), then three short groups —
+  *Your team requires*, *For this stack*, *For how you work* — each a run of knots on one
+  thread. A knot is a checkbox: saffron when chosen, hollow when left out, ink once the project
+  has it (*Added*). Each row: title, the library's strand (an undyed loose thread until it is
+  connected), the gist in Habi's words, and the reason on a short saffron weft with its
+  file:line; a quiet chip says whose word it is only when it is not Habi's pick (*Team
+  requirement*, *Author's rule*, *Habi's rule*, *From its description*). A skill another of the
+  person's projects uses comes first and says so on a saffron knot (*Also in nextshop*); one
+  already in their own skill folders starts unticked (*On this machine*). A row also says what it
+  brings: *Comes with scripts*, what the scan flags as caution (an icon and words), and its cost
+  at the end of the line (*~55 tokens*). Beside the list, a sticky card says how many are chosen,
+  about what they cost in every session, and which libraries are connected first; its one button
+  (*Review and add…*) weaves while they connect (Cancel stops it; leaving the page stops it too),
+  then opens the usual review. Below 760 px the card docks at the foot. Only the strongest few
+  start ticked (`suggest::tick`): team requirements and rules, what other projects use, three
+  narrow rules for the stack and one practice. Never what the scan flags, nor community code to run.
 - **Project home** — below 1020 px the header compacts (icon actions on the title row) and the
   workbench shows the list or one item with "← Recommendations", never both squeezed. The
   wide layout: the project's swatch, identity (name, path, branch), the recognized
   stack as mono tokens, the composition strip (which libraries fit, how much), and a
   list-and-detail workbench grouped by *Team requirements → Fits this project → Needs
   information → Available → Does not apply*. *Available* (no applicability rules) and *Does
-  not apply* are collapsed, never hidden; installed items always stay listed.
+  not apply* are collapsed, never hidden; installed items always stay listed. An installed
+  skill's meta line says *Used 12× in Claude Code here in 30 days* or *Not used in Claude Code here
+  in 30 days · ~40 tokens*, in the same quiet type as its library, and says nothing when the session
+  history gives nothing to go on: no badge, no warning color, no score.
 - **Item header** — kicker, title and every action on one line: the actions sit at the top
   right, the primary one last, rarer ones (*Remove from this project…*) behind "⋯". Once
   installed, an *Installed for* strip shows the agent tools (all seven, the chosen ones lit)
@@ -112,8 +133,9 @@ its one signature — used only where it carries meaning.
 - **Workflow** — numbered steps on a vertical thread, references opening inline, "Prepare
   for my agent" kept apart from "Run a check".
 - **Review** — clients and scope, every file with an expandable diff and plain explanation,
-  conflicts with explicit choices, notes, the recovery promise, and a final button that names
-  the action ("Install for Cursor in this project").
+  conflicts with explicit choices, skills the chosen ones call by name (with one button to add
+  them), notes, the recovery promise, and a final button that names the action ("Install for
+  Cursor in this project").
 - **Sidebar** — navigation first: projects, My skills, *Libraries*, Contributions when there
   are any. Connected libraries are one family on one warp — a hairline spine through each
   source's thread (stitched for community) — that continues into a small open knot, *Explore
@@ -132,7 +154,11 @@ its one signature — used only where it carries meaning.
   knots on one thread (*Connect a library → Put skills to work*) say what to do and light up
   only for what is true on this machine; until something is connected the first knot breathes
   and an arrow bobs toward the list. `/` filters, ↑/↓ or j/k move, Enter opens.
-  Choosing a library opens its page (what the catalog knows, one **Connect library** button);
+  On Explore, libraries with picks for your projects come first, with a saffron knot and the
+  projects' names ("For nextshop").
+  Choosing a library opens its page (what the catalog knows — Habi's picks first, each on a
+  saffron thread with its gist and why, and which of your projects they are suggested for — one
+  **Connect library** button);
   pressing it reads the library while a loom weaves (cancel, stopped and failed states stay
   inside the weaving), then opens the connected library. Nothing is installed, copied or run.
   **A library moves forward when the user says so.** Opening a Git library (and the scheduled
