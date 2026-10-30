@@ -7,21 +7,11 @@ import { Setting, SettingAction, SettingGroup } from "../components/SettingGroup
 import { ThreadChoice } from "../components/ThreadChoice";
 import { useToast } from "../components/Toasts";
 import { ToolInstall } from "../components/ToolInstall";
-import { Button, ErrorNotice, Status, Working } from "../components/ui";
+import { Button, ErrorNotice, Status, Switch, Working } from "../components/ui";
 import { api } from "../lib/api";
 import { pruneSummary } from "../lib/format";
 import { keys, useAppInfo, useSettings } from "../lib/queries";
 import { isFound, TOOLS } from "../lib/tools";
-
-const UPDATE_CHOICES = [
-  { value: "manual", label: "Manual", description: "Only when I ask" },
-  { value: "auto", label: "Automatic", description: "Look for updates while the app is open" },
-];
-
-const WELCOME_CHOICES = [
-  { value: "show", label: "Show", description: "Open the welcome each time Habi starts" },
-  { value: "hide", label: "Hide", description: "Go straight to the home page" },
-];
 
 const REFRESH_CHOICES = [
   { value: 0, label: "Manual", description: "Only when I ask" },
@@ -104,11 +94,14 @@ export function SettingsView() {
 
   return (
     <div className="page settings">
-      <h1 className="page-title">Settings</h1>
+      <header className="settings-head">
+        <h1 className="page-title">Settings</h1>
+        <p className="lead-sm">Each change is kept as you make it.</p>
+      </header>
 
       <div className="set-warp">
         <SettingGroup title="Updates" id="updates">
-          <Setting label="Check libraries" hint="Nothing changes until you press Update.">
+          <Setting label="Check libraries for new versions" hint="Nothing changes until you press Update.">
             <ThreadChoice
               label="Check connected libraries for new versions"
               value={s.autoRefreshHours}
@@ -117,26 +110,14 @@ export function SettingsView() {
             />
           </Setting>
           <Setting
-            label="Check for new releases"
+            label="Check for new releases of Habi"
             hint="One small signed file from GitHub; nothing about you is sent."
           >
-            <ThreadChoice
-              label="Look for a newer version"
-              value={s.checkForUpdates ? "auto" : "manual"}
-              options={UPDATE_CHOICES}
-              onChange={(mode) => save((current) => ({ ...current, checkForUpdates: mode === "auto" }))}
+            <Switch
+              label="Check for new releases of Habi"
+              checked={s.checkForUpdates}
+              onChange={(on) => save((current) => ({ ...current, checkForUpdates: on }))}
             />
-          </Setting>
-        </SettingGroup>
-
-        <SettingGroup title="Storage" id="storage">
-          <Setting
-            label="Old history"
-            hint="Clears history beyond the latest 20 operations per project and 20 snapshots per library. Unfinished work stays."
-          >
-            <SettingAction busy={freeing} onClick={() => void freeUpSpace()}>
-              Free up space
-            </SettingAction>
           </Setting>
         </SettingGroup>
 
@@ -144,6 +125,7 @@ export function SettingsView() {
           <Setting
             label="Command-line tools"
             hint="Git pulls libraries. The GitHub and GitLab CLIs are optional, for pull and merge requests."
+            wide
           >
             <ul className="tool-list">
               {info.data
@@ -168,20 +150,30 @@ export function SettingsView() {
               Check again
             </SettingAction>
           </Setting>
-          <Setting label="Welcome" hint="What Habi is for, and whether Git is on this machine.">
-            <ThreadChoice
-              label="Welcome when Habi starts"
-              value={s.showWelcome === false ? "hide" : "show"}
-              options={WELCOME_CHOICES}
-              onChange={(mode) => save((current) => ({ ...current, showWelcome: mode === "show" }))}
+          <Setting
+            label="Welcome when Habi starts"
+            hint="What Habi is for, and whether Git is on this machine."
+          >
+            <Switch
+              label="Show the welcome when Habi starts"
+              checked={s.showWelcome !== false}
+              onChange={(on) => save((current) => ({ ...current, showWelcome: on }))}
             />
           </Setting>
-          <Setting label="Data folder">
+          <Setting label="Data folder" hint="Libraries, history and these settings live here.">
             <code className="data-path">{info.data?.dataDir}</code>
           </Setting>
         </SettingGroup>
 
-        <SettingGroup title="Diagnostics" id="diagnostics">
+        <SettingGroup title="Housekeeping" id="housekeeping">
+          <Setting
+            label="Old history"
+            hint="Clears history beyond the latest 20 operations per project and 20 snapshots per library. Unfinished work stays."
+          >
+            <SettingAction busy={freeing} onClick={() => void freeUpSpace()}>
+              Free up space
+            </SettingAction>
+          </Setting>
           <Setting
             label="Troubleshooting report"
             hint="Versions, library health and recent log lines, redacted. Never any content, files or credentials."
