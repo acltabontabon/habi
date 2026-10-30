@@ -145,18 +145,46 @@ fn isolate(cmd: &mut Command) {
     }
 }
 
-/// Kills the child and every process in its group (Unix) or tree (Windows).
+/// How long a process group gets to act on SIGTERM before SIGKILL.
+#[cfg(unix)]
+const TERM_GRACE: Duration = Duration::from_secs(2);
+
+/// Sends `signal` to a process group. False once nothing is left in it.
+#[cfg(unix)]
+fn signal_group(pgid: libc::pid_t, signal: libc::c_int) -> bool {
+    // SAFETY: a plain system call with no memory arguments. `pgid` is the group
+    // `isolate` created for this child; it is called before the child is
+    // reaped, or while a group member remains, so the id cannot have been
+    // reused.
+    #[allow(unsafe_code)] // The standard library cannot signal a process group.
+    unsafe {
+        libc::killpg(pgid, signal) == 0
+    }
+}
+
+/// Stops the child and every process in its group (Unix) or tree (Windows).
+///
+/// On Unix the group is asked first. Git removes `shallow.lock` and its
+/// temporary packs when it receives SIGTERM; SIGKILL would leave them, and a
+/// lock left behind fails every later fetch. Whatever is still running after
+/// `TERM_GRACE` is killed. Windows has no such request for a process without a
+/// console window, so there what is left behind is cleared before the next
+/// fetch (`source::git::clear_interrupted_fetch`).
 fn kill_tree(child: &mut Child) {
     #[cfg(unix)]
     {
         if let Ok(pgid) = libc::pid_t::try_from(child.id()) {
-            // SAFETY: a plain system call with no memory arguments. `pgid` is
-            // the group `isolate` created for this child; it is called before
-            // the child is reaped, or while a group member still holds its
-            // pipes, so the id cannot have been reused.
-            #[allow(unsafe_code)] // The standard library cannot signal a process group.
-            unsafe {
-                libc::killpg(pgid, libc::SIGKILL);
+            let mut running = signal_group(pgid, libc::SIGTERM);
+            let deadline = Instant::now() + TERM_GRACE;
+            while running && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(15));
+                // A child that ended stays in its group until it is reaped. Its
+                // status is kept for the caller's `wait`.
+                let _ = child.try_wait();
+                running = signal_group(pgid, 0);
+            }
+            if running {
+                signal_group(pgid, libc::SIGKILL);
             }
         }
     }
@@ -411,6 +439,51 @@ mod tests {
         assert!(out.timed_out);
         assert!(
             started.elapsed() < Duration::from_secs(5),
+            "took {:?}",
+            started.elapsed()
+        );
+    }
+
+    #[test]
+    fn cancellation_lets_a_process_clean_up_first() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("cleaned");
+        let script = format!(
+            "trap 'touch \"{}\"; exit 0' TERM; sleep 30 & wait",
+            marker.display()
+        );
+        let cancel = CancelToken::new();
+        let c2 = cancel.clone();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(200));
+            c2.cancel();
+        });
+        let result = run(Spec::new("sh", vec!["-c".into(), script]), &cancel);
+        assert!(matches!(result, Err(HabiError::Cancelled)));
+        assert!(marker.exists(), "SIGTERM was not sent, or not waited for");
+    }
+
+    #[test]
+    fn a_process_that_ignores_sigterm_is_killed_after_the_grace() {
+        let cancel = CancelToken::new();
+        let c2 = cancel.clone();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(100));
+            c2.cancel();
+        });
+        let started = Instant::now();
+        let result = run(
+            Spec::new("sh", vec!["-c".into(), "trap '' TERM; sleep 30".into()]),
+            &cancel,
+        );
+        assert!(matches!(result, Err(HabiError::Cancelled)));
+        assert!(
+            started.elapsed() >= TERM_GRACE,
+            "took {:?}",
+            started.elapsed()
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
             "took {:?}",
             started.elapsed()
         );
