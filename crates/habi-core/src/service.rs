@@ -1797,12 +1797,16 @@ impl Habi {
                     let Some(dir) = crate::paths::resolve_for_read(&p.root, &rel)? else {
                         continue;
                     };
+                    // One package that cannot be read is that package's problem:
+                    // it is shown as incomplete, and the others can be imported.
+                    let tree = crate::skills::read_tree(&dir, &TreeLimits::PACKAGE)
+                        .unwrap_or_else(|e| crate::skills::unread_package(&dir, &e));
                     let skill_md = format!("{}/{}", found.path, crate::library::SKILL_FILE);
                     let installed = lock.items.iter().find(|i| {
                         i.source.identity != mine && i.files.iter().any(|f| f.path == skill_md)
                     });
                     packages.push(Package {
-                        tree: crate::skills::read_tree(&dir, &TreeLimits::PACKAGE)?,
+                        tree,
                         origin: match installed {
                             Some(i) => SkillOrigin::Library {
                                 source_name: i.source.name.clone(),
@@ -1900,6 +1904,9 @@ impl Habi {
                             Some("a file"),
                         ));
                     }
+                    // A Git tree can hold names one volume cannot: copying both
+                    // onto macOS or Windows would lose one.
+                    crate::skills::note_collisions(&mut tree);
                     packages.push(Package {
                         path: item.id.clone(),
                         tree,

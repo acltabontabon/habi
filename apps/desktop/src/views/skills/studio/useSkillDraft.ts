@@ -96,7 +96,9 @@ export function useSkillDraft(initial: LocalSkill) {
   // flushes every autosave, and the rules form must not overwrite the YAML
   // typed in its place (nor the other way round).
   const docOn = !trashed && !broken;
-  const formOn = !trashed && !yamlMode;
+  // Rules that cannot be read have no form to save: a title edit must not try,
+  // and the title still reaches SKILL.md through the document save.
+  const formOn = !trashed && !yamlMode && skill.metadataStatus !== "invalid";
   const yamlOn = !trashed && yamlMode;
   const modes = useRef({ doc: docOn, form: formOn, yaml: yamlOn });
   modes.current = { doc: docOn, form: formOn, yaml: yamlOn };
