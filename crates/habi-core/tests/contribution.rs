@@ -1438,15 +1438,16 @@ fn preparing_works_when_the_cache_lacks_a_blob_elsewhere_in_the_library() {
     let s = setup();
     let cancel = CancelToken::new();
     s.change_library(|lib| {
-        std::fs::create_dir_all(lib.join("other")).unwrap();
-        std::fs::write(lib.join("other/huge.bin"), vec![b'z'; 1024]).unwrap();
+        // At the top: Git checks the entries of every tree a commit rewrites,
+        // and that one always is.
+        std::fs::write(lib.join("huge.bin"), vec![b'z'; 1024]).unwrap();
     });
     let c = s.library_item(ITEM);
     // As after a filtered fetch: the tree names the blob, the cache lacks it.
     let cache = s.cache();
     let oid = git(
         &cache,
-        &["rev-parse", &format!("{}:other/huge.bin", c.base_commit)],
+        &["rev-parse", &format!("{}:huge.bin", c.base_commit)],
     );
     let (head, rest) = oid.split_at(2);
     let object = cache.join("objects").join(head).join(rest);
