@@ -60,6 +60,11 @@ clients: Array<ClientId> | null, workflow: WorkflowSpec | null, bindings: Array<
  */
 signals: Array<Signal>, 
 /**
+ * Ids of sibling skills this one calls by name in its instructions
+ * (`superpowers:writing-plans`). Without them those steps do not work.
+ */
+calls: Array<string>, 
+/**
  * False if some of the item's files were skipped while reading the
  * library (too large, symbolic links). Incomplete items are not installable.
  */

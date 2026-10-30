@@ -184,6 +184,22 @@ fn candidate_score(path: &str) -> u8 {
     }
 }
 
+/// Whether a file is part of a skill package in an agent's skill folder
+/// (`.claude/skills/review/scripts/check.py`), other than its `SKILL.md`.
+/// A skill's own scripts, instructions and manifests are its material, not
+/// the project's: they say nothing about what the project is written in or
+/// how it is instructed.
+pub fn inside_skill_package(path: &str) -> bool {
+    crate::clients::layout::PROJECT_SKILL_DIRS
+        .iter()
+        .any(|base| {
+            path.strip_prefix(base)
+                .and_then(|rest| rest.strip_prefix('/'))
+                .and_then(|rest| rest.split_once('/'))
+                .is_some_and(|(_, inside)| inside != "SKILL.md")
+        })
+}
+
 pub fn collect(
     root: &Path,
     files: &[(String, u64)],
@@ -192,7 +208,7 @@ pub fn collect(
 ) {
     let (set, roles) = &*NAME_SET;
     let mut matched = Vec::new();
-    for (path, _) in files {
+    for (path, _) in files.iter().filter(|(p, _)| !inside_skill_package(p)) {
         for idx in set.matches(path) {
             matched.extend(roles.get(idx).map(|role| (path.clone(), *role)));
         }
@@ -206,7 +222,9 @@ pub fn collect(
     // Content checks for OpenAPI documents and Liquibase changelogs.
     let mut candidates: Vec<&(String, u64)> = files
         .iter()
-        .filter(|(p, size)| content_candidate(p) && *size <= MAX_CANDIDATE_SIZE)
+        .filter(|(p, size)| {
+            content_candidate(p) && *size <= MAX_CANDIDATE_SIZE && !inside_skill_package(p)
+        })
         .collect();
     candidates.sort_by(|a, b| {
         candidate_score(&b.0)
@@ -296,6 +314,27 @@ pub fn evidence(path: &str, line: Option<u32>) -> Evidence {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_skill_packages_own_files_are_its_material_not_the_projects() {
+        for p in [
+            ".claude/skills/review/scripts/check.py",
+            ".claude/skills/review/AGENTS.md",
+            ".agents/skills/plan/package.json",
+            ".github/skills/x/references/openapi.yaml",
+        ] {
+            assert!(inside_skill_package(p), "{p}");
+        }
+        for p in [
+            ".claude/skills/review/SKILL.md",
+            ".claude/settings.json",
+            ".github/workflows/ci.yml",
+            "skills/review/scripts/check.py",
+            "AGENTS.md",
+        ] {
+            assert!(!inside_skill_package(p), "{p}");
+        }
+    }
 
     #[test]
     fn openapi_detection_reads_content_not_names() {

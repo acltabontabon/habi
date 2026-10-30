@@ -66,13 +66,19 @@ you say so.
 
 1. **Open a project** and pick a repository. Habi reads build files and structure (no execution).
 
-2. **Connect a library** to get recommendations. Choose from:
-   - A Git repository (team-curated or public)
-   - A public library from the catalog
-   - A folder on your machine
+2. **Start from what Habi suggests.** A new project opens on **Suggested**: a short list of
+   skills for it, before you connect anything. Each says why it fits (*Uses React ·
+   package.json:4*) and whose word that is: the author's rule, a team requirement, *Habi's pick*,
+   or *From its description* when Habi read the skill's own words. A skill your other projects
+   already use comes first (*Also in …*). The strongest few start ticked, since every skill costs
+   a little context in every agent session; rows say about how much, and whether a skill comes with
+   scripts. Tick what else you want, then **Review and add…**. Libraries the picks come from are
+   connected first (read only, nothing runs).
 
-3. **Read the recommendations.** Each shows why it fits, down to the file and line. Missing info
-   (e.g., dependencies inherited from outside the repo) can be answered by you.
+3. **All skills** lists everything your connected libraries hold for the project, grouped by how
+   well it fits, with the full reasoning down to the file and line. Missing info (e.g.,
+   dependencies inherited from outside the repo) can be answered by you. Connect more from
+   **Libraries**: a Git repository, a folder, or a public library from the catalog.
 
 4. **Install:** Review preselected agent tools, check the files that will change, and confirm.
    You see every file before anything is written.

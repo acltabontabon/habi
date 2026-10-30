@@ -31,6 +31,8 @@ it("opens project install review with the shipped fixture contract", async () =>
   render(<App />);
   await user.click(await screen.findByRole("button", { name: "Get started" }));
   await user.click((await screen.findAllByRole("button", { name: "billing-service" }))[0] as HTMLElement);
+  // A project with nothing from Habi in it opens on Habi's suggestions; every skill is one tab away.
+  await user.click(await screen.findByRole("tab", { name: "All skills" }));
   await user.click(await screen.findByRole("button", { name: "Review and install…" }));
   const dialog = await screen.findByRole("dialog");
   expect(await within(dialog).findByText(/files will change/)).toBeInTheDocument();

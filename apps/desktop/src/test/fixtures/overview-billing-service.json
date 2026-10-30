@@ -1,16 +1,16 @@
 {
   "project": {
-    "id": "c5b763a006878793",
+    "id": "5e705a2b73043db8",
     "name": "billing-service",
     "path": "~/work/billing-service",
     "exists": true,
-    "lastOpenedAt": "2026-10-04T13:45:13Z",
+    "lastOpenedAt": "2026-10-30T10:04:35Z",
     "exclusions": [],
     "summary": {
       "fits": 5,
       "needsInformation": 0,
       "sources": [
-        "b577aeab8d11"
+        "1526b695b1eb"
       ],
       "installed": 0,
       "languages": [
@@ -18,12 +18,18 @@
       ],
       "tally": [
         {
-          "sourceId": "b577aeab8d11",
+          "sourceId": "1526b695b1eb",
           "fits": 5,
           "installed": []
         }
       ],
-      "at": "2026-10-04T13:45:13Z"
+      "suggested": [
+        "github",
+        "sentry",
+        "mattpocock",
+        "superpowers"
+      ],
+      "at": "2026-10-30T10:04:35Z"
     }
   },
   "inspection": {
@@ -32,8 +38,8 @@
     "description": "Invoices and payments. Spring Boot 3, PostgreSQL, Liquibase migrations.",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "main",
-      "repositoryRoot": "~/Workspace/habi",
+      "branch": "feat/ai-skill-project-recommendations-7a7040",
+      "repositoryRoot": "~/Workspace/habi/.claude/worktrees/ai-skill-project-recommendations-7a7040",
       "isMonorepo": false,
       "workspaceSignals": []
     },
@@ -606,17 +612,17 @@
       "unreadable": [],
       "symlinksSkipped": 0,
       "largeFilesSkipped": 0,
-      "elapsedMs": 4
+      "elapsedMs": 3
     },
-    "fingerprint": "sha256:5b6b38602355f616c9d3106d3b17e61e898d5591848c94270aa947b4d0b5657b",
-    "inspectedAt": "2026-10-04T13:45:13Z"
+    "fingerprint": "sha256:b28939ebffffa7d062249c4feb7b6b8058eae73feb6124c0755a7294c3eb860a",
+    "inspectedAt": "2026-10-30T10:04:35Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "b577aeab8d11/java-service-conventions",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/java-service-conventions",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -626,7 +632,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -775,12 +781,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/service-observability",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/service-observability",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -790,7 +797,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -894,12 +901,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/liquibase-migration-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/liquibase-migration-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -909,7 +917,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1139,12 +1147,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/jpa-entity-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/jpa-entity-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -1154,7 +1163,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1269,12 +1278,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/github-pr-summary",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/github-pr-summary",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -1284,7 +1294,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1522,12 +1532,13 @@
         }
       },
       "nextAction": "setUpPrerequisites",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/incident-notes",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/incident-notes",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -1537,7 +1548,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -1613,12 +1624,13 @@
         }
       },
       "nextAction": "install",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/api-contract-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/api-contract-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -1628,7 +1640,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1735,12 +1747,13 @@
         }
       },
       "nextAction": "none",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/react-component-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/react-component-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1750,7 +1763,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1841,12 +1854,13 @@
         }
       },
       "nextAction": "none",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/jooq-query-review",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/jooq-query-review",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1856,7 +1870,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1955,12 +1969,13 @@
         }
       },
       "nextAction": "none",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     },
     {
       "item": {
-        "key": "b577aeab8d11/frontend-test-practices",
-        "sourceId": "b577aeab8d11",
+        "key": "1526b695b1eb/frontend-test-practices",
+        "sourceId": "1526b695b1eb",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -1970,7 +1985,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
+        "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2154,12 +2169,13 @@
         }
       },
       "nextAction": "none",
-      "unmanagedCopies": []
+      "unmanagedCopies": [],
+      "pick": null
     }
   ],
   "sources": [
     {
-      "id": "b577aeab8d11",
+      "id": "1526b695b1eb",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -2169,11 +2185,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-04T13:45:12Z",
-      "snapshot": "d1087c10c67d06b784610b7203b9f4a0d15ca56e",
-      "snapshotAt": "2026-10-04T13:45:12Z",
-      "commitSummary": "Example library — Example, 2026-10-04",
-      "lastAttemptAt": "2026-10-04T13:45:12Z",
+      "createdAt": "2026-10-30T10:04:34Z",
+      "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
+      "snapshotAt": "2026-10-30T10:04:34Z",
+      "commitSummary": "Example library — Example, 2026-10-30",
+      "lastAttemptAt": "2026-10-30T10:04:34Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",
@@ -2185,5 +2201,758 @@
       "defaultBranch": null
     }
   ],
-  "orphaned": []
+  "orphaned": [],
+  "kit": {
+    "suggestions": [
+      {
+        "key": "1526b695b1eb/service-observability",
+        "group": "required",
+        "title": "Service observability",
+        "name": "service-observability",
+        "gist": "Add metrics, structured logs and traces to a Spring Boot service following team conventions. Use when adding endpoints or background jobs.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "service-observability"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": ".",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "true",
+                "reason": "detected from pom.xml:6",
+                "facts": [
+                  "tag:.:framework:spring-boot",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-parent",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-web",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "pom.xml:6",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses Spring Boot (pom.xml:6)"
+            }
+          ],
+          "reason": "Uses Spring Boot (pom.xml:6)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 40,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/java-service-conventions",
+        "group": "required",
+        "title": "Java service conventions",
+        "name": "java-service-conventions",
+        "gist": "Baseline conventions every Java service follows. Installed as a managed section of AGENTS.md.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "java-service-conventions"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "repository",
+          "modules": [
+            {
+              "module": "*",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "any",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "lang:java"
+                    },
+                    {
+                      "op": "dependency",
+                      "name": "org.springframework.boot:*",
+                      "ecosystem": "jvm",
+                      "version": null
+                    }
+                  ]
+                },
+                "summary": "any of 2 conditions",
+                "outcome": "true",
+                "reason": "at least one alternative holds",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "lang:java"
+                    },
+                    "summary": "contains Java code",
+                    "outcome": "true",
+                    "reason": "detected from src/main/java/com/example/billing/BillingApplication.java",
+                    "facts": [
+                      "tag:.:lang:java"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "src/main/java/com/example/billing/BillingApplication.java",
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "dependency",
+                      "name": "org.springframework.boot:*",
+                      "ecosystem": "jvm",
+                      "version": null
+                    },
+                    "summary": "declares org.springframework.boot:*",
+                    "outcome": "true",
+                    "reason": "declared in pom.xml:50",
+                    "facts": [
+                      "dep:.:maven:org.springframework.boot:spring-boot-maven-plugin",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-parent",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-test",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-web"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "pom.xml:50",
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 2,
+              "reason": "Contains Java code (BillingApplication.java) · declares org.springframework.boot:* (pom.xml:50)"
+            }
+          ],
+          "reason": "Contains Java code (BillingApplication.java) · declares org.springframework.boot:* (pom.xml:50)",
+          "specificity": 2
+        },
+        "elsewhere": [],
+        "tokens": 30,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/liquibase-migration-review",
+        "group": "stack",
+        "title": "Liquibase migration review",
+        "name": "liquibase-migration-review",
+        "gist": "Review Liquibase changelogs for safe, reversible database migrations. Use when a change adds or edits files under db/changelog, or when asked to review a schema migration.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "liquibase-migration-review"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": ".",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "all",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "summary": "all of 2 conditions",
+                "outcome": "true",
+                "reason": "every condition holds",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "framework:spring-boot"
+                    },
+                    "summary": "uses Spring Boot",
+                    "outcome": "true",
+                    "reason": "detected from pom.xml:6",
+                    "facts": [
+                      "tag:.:framework:spring-boot",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-parent",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-web",
+                      "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "pom.xml:6",
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "any",
+                      "items": [
+                        {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        }
+                      ]
+                    },
+                    "summary": "any of 2 conditions",
+                    "outcome": "true",
+                    "reason": "at least one alternative holds",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": [
+                      {
+                        "condition": {
+                          "op": "dependency",
+                          "name": "org.liquibase:liquibase-core",
+                          "ecosystem": "jvm",
+                          "version": null
+                        },
+                        "summary": "declares org.liquibase:liquibase-core",
+                        "outcome": "true",
+                        "reason": "declared in pom.xml:31",
+                        "facts": [
+                          "dep:.:maven:org.liquibase:liquibase-core"
+                        ],
+                        "declarations": [],
+                        "files": [],
+                        "location": "pom.xml:31",
+                        "children": []
+                      },
+                      {
+                        "condition": {
+                          "op": "tag",
+                          "tag": "db:liquibase"
+                        },
+                        "summary": "uses Liquibase",
+                        "outcome": "true",
+                        "reason": "detected from pom.xml:31",
+                        "facts": [
+                          "tag:.:db:liquibase",
+                          "dep:.:maven:org.liquibase:liquibase-core",
+                          "dep:.:maven:org.liquibase:liquibase-maven-plugin",
+                          "file:src/main/resources/db/changelog/changes/001-create-invoice.yaml:liquibase-changelog"
+                        ],
+                        "declarations": [],
+                        "files": [],
+                        "location": "pom.xml:31",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 3,
+              "reason": "Uses Spring Boot (pom.xml:6) · declares org.liquibase:liquibase-core (pom.xml:31) · uses Liquibase (pom.xml:31)"
+            }
+          ],
+          "reason": "Uses Spring Boot (pom.xml:6) · declares org.liquibase:liquibase-core (pom.xml:31) · uses Liquibase (pom.xml:31)",
+          "specificity": 3
+        },
+        "elsewhere": [],
+        "tokens": 50,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/jpa-entity-review",
+        "group": "stack",
+        "title": "JPA entity review",
+        "name": "jpa-entity-review",
+        "gist": "Review JPA/Hibernate entity mappings for N+1 queries, fetch strategy and transaction boundaries. Use when entity classes or repositories change.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "jpa-entity-review"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": ".",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "orm:jpa"
+                },
+                "summary": "uses JPA / Hibernate",
+                "outcome": "true",
+                "reason": "detected from pom.xml:27",
+                "facts": [
+                  "tag:.:orm:jpa",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "pom.xml:27",
+                "children": []
+              },
+              "excludes": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "db:jooq"
+                },
+                "summary": "uses jOOQ",
+                "outcome": "false",
+                "reason": "not detected in the root module",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": []
+              },
+              "specificity": 1,
+              "reason": "Uses JPA / Hibernate (pom.xml:27)"
+            }
+          ],
+          "reason": "Uses JPA / Hibernate (pom.xml:27)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 41,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "1526b695b1eb/github-pr-summary",
+        "group": "stack",
+        "title": "GitHub PR summary",
+        "name": "github-pr-summary",
+        "gist": "Summarize a GitHub pull request — intent, risk and review focus — using the GitHub MCP server. Use when asked to summarize or triage a PR.",
+        "library": {
+          "name": "Example team library",
+          "entryId": null,
+          "sourceId": "1526b695b1eb",
+          "community": false,
+          "builder": false,
+          "connected": true
+        },
+        "item": {
+          "sourceId": "1526b695b1eb",
+          "itemId": "github-pr-summary"
+        },
+        "installed": false,
+        "basis": "declared",
+        "pick": null,
+        "applicability": {
+          "applicability": "applies",
+          "scope": "repository",
+          "modules": [
+            {
+              "module": "*",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "ci:github-actions"
+                },
+                "summary": "uses GitHub Actions",
+                "outcome": "true",
+                "reason": "detected from .github/workflows/ci.yml",
+                "facts": [
+                  "tag:.:ci:github-actions",
+                  "file:.github/workflows/ci.yml:ci:github-actions"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": ".github/workflows/ci.yml",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses GitHub Actions (ci.yml)"
+            }
+          ],
+          "reason": "Uses GitHub Actions (ci.yml)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 39,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:github/skills/spring-boot-testing",
+        "group": "stack",
+        "title": "Spring Boot testing",
+        "name": "spring-boot-testing",
+        "gist": "Test Spring Boot with focused slices, not a full context for every test.",
+        "library": {
+          "name": "GitHub",
+          "entryId": "github",
+          "sourceId": null,
+          "community": true,
+          "builder": true,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Spring Boot services",
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": ".",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "framework:spring-boot"
+                },
+                "summary": "uses Spring Boot",
+                "outcome": "true",
+                "reason": "detected from pom.xml:6",
+                "facts": [
+                  "tag:.:framework:spring-boot",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-parent",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-web",
+                  "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": "pom.xml:6",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses Spring Boot (pom.xml:6)"
+            }
+          ],
+          "reason": "Uses Spring Boot (pom.xml:6)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 39,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:sentry/skills/gha-security-review",
+        "group": "stack",
+        "title": "GitHub Actions security review",
+        "name": "gha-security-review",
+        "gist": "Check workflows for ways a fork's pull request could run code or read secrets.",
+        "library": {
+          "name": "Sentry",
+          "entryId": "sentry",
+          "sourceId": null,
+          "community": true,
+          "builder": true,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Repositories with GitHub Actions",
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": ".",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "tag",
+                  "tag": "ci:github-actions"
+                },
+                "summary": "uses GitHub Actions",
+                "outcome": "true",
+                "reason": "detected from .github/workflows/ci.yml",
+                "facts": [
+                  "tag:.:ci:github-actions",
+                  "file:.github/workflows/ci.yml:ci:github-actions"
+                ],
+                "declarations": [],
+                "files": [],
+                "location": ".github/workflows/ci.yml",
+                "children": []
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Uses GitHub Actions (ci.yml)"
+            }
+          ],
+          "reason": "Uses GitHub Actions (ci.yml)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 96,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:mattpocock/skills/productivity/writing-for-agents",
+        "group": "stack",
+        "title": "Writing for agents",
+        "name": "writing-for-agents",
+        "gist": "Keep AGENTS.md, CLAUDE.md and skills short, well-pointed and cheap on context.",
+        "library": {
+          "name": "Matt Pocock",
+          "entryId": "mattpocock",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Repositories with agent instructions",
+        "applicability": {
+          "applicability": "applies",
+          "scope": "module",
+          "modules": [
+            {
+              "module": ".",
+              "moduleName": "billing-service",
+              "applicability": "applies",
+              "applies": {
+                "condition": {
+                  "op": "any",
+                  "items": [
+                    {
+                      "op": "tag",
+                      "tag": "agents:agents-md"
+                    },
+                    {
+                      "op": "tag",
+                      "tag": "agents:claude-md"
+                    }
+                  ]
+                },
+                "summary": "any of 2 conditions",
+                "outcome": "true",
+                "reason": "at least one alternative holds",
+                "facts": [],
+                "declarations": [],
+                "files": [],
+                "location": null,
+                "children": [
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "agents:agents-md"
+                    },
+                    "summary": "has AGENTS.md instructions",
+                    "outcome": "false",
+                    "reason": "not detected in the root module",
+                    "facts": [],
+                    "declarations": [],
+                    "files": [],
+                    "location": null,
+                    "children": []
+                  },
+                  {
+                    "condition": {
+                      "op": "tag",
+                      "tag": "agents:claude-md"
+                    },
+                    "summary": "has CLAUDE.md instructions",
+                    "outcome": "true",
+                    "reason": "detected from CLAUDE.md",
+                    "facts": [
+                      "tag:.:agents:claude-md",
+                      "file:CLAUDE.md:agent-instructions:claude-md"
+                    ],
+                    "declarations": [],
+                    "files": [],
+                    "location": "CLAUDE.md",
+                    "children": []
+                  }
+                ]
+              },
+              "excludes": null,
+              "specificity": 1,
+              "reason": "Has CLAUDE.md instructions (CLAUDE.md)"
+            }
+          ],
+          "reason": "Has CLAUDE.md instructions (CLAUDE.md)",
+          "specificity": 1
+        },
+        "elsewhere": [],
+        "tokens": 31,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:mattpocock/skills/engineering/diagnosing-bugs",
+        "group": "practice",
+        "title": "Diagnosing bugs",
+        "name": "diagnosing-bugs",
+        "gist": "Build a fast pass/fail loop for the bug first; the fix follows from it.",
+        "library": {
+          "name": "Matt Pocock",
+          "entryId": "mattpocock",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Any codebase, when something breaks",
+        "applicability": null,
+        "elsewhere": [],
+        "tokens": 43,
+        "scripts": true,
+        "caution": [],
+        "chosen": false
+      },
+      {
+        "key": "catalog:mattpocock/skills/productivity/grilling",
+        "group": "practice",
+        "title": "Grill the plan",
+        "name": "grilling",
+        "gist": "Question a plan decision by decision until nothing is left assumed.",
+        "library": {
+          "name": "Matt Pocock",
+          "entryId": "mattpocock",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Any codebase, before building",
+        "applicability": null,
+        "elsewhere": [],
+        "tokens": 40,
+        "scripts": false,
+        "caution": [],
+        "chosen": true
+      },
+      {
+        "key": "catalog:superpowers/skills/verification-before-completion",
+        "group": "practice",
+        "title": "Verification before completion",
+        "name": "verification-before-completion",
+        "gist": "Run the checks and read their output before calling the work done.",
+        "library": {
+          "name": "Superpowers",
+          "entryId": "superpowers",
+          "sourceId": null,
+          "community": true,
+          "builder": false,
+          "connected": false
+        },
+        "item": null,
+        "installed": false,
+        "basis": "catalogHint",
+        "pick": "Any codebase: evidence before claims",
+        "applicability": null,
+        "elsewhere": [],
+        "tokens": 64,
+        "scripts": false,
+        "caution": [],
+        "chosen": false
+      }
+    ],
+    "more": 0
+  }
 }

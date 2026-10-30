@@ -2,6 +2,7 @@
 import type { CatalogAvailability } from "./CatalogAvailability";
 import type { CatalogFetched } from "./CatalogFetched";
 import type { CatalogOwnership } from "./CatalogOwnership";
+import type { CatalogPick } from "./CatalogPick";
 import type { CatalogPublisher } from "./CatalogPublisher";
 import type { CatalogReview } from "./CatalogReview";
 import type { CatalogStatus } from "./CatalogStatus";
@@ -34,6 +35,10 @@ followsReleases: boolean,
  * What in a project makes the catalog suggest this library's skills.
  */
 fitsWhen: Array<CatalogTrigger>, 
+/**
+ * The skills Habi stands behind in this library.
+ */
+picks: Array<CatalogPick>, 
 /**
  * Path segment whose folder names group the skills.
  */
