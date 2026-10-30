@@ -123,7 +123,8 @@ impl World {
     }
 
     fn install(&self, p: &Payload) {
-        let plan = plan::plan_install(&self.root, std::slice::from_ref(p), CODEX, false, &none()).unwrap();
+        let plan =
+            plan::plan_install(&self.root, std::slice::from_ref(p), CODEX, false, &none()).unwrap();
         self.applier().apply(&plan).unwrap();
     }
 
@@ -481,7 +482,10 @@ fn secrets_are_redacted_whole() {
 #[test]
 fn a_home_folder_or_a_whole_disk_is_not_a_project() {
     let w = World::new();
-    let home = directories::BaseDirs::new().unwrap().home_dir().to_path_buf();
+    let home = directories::BaseDirs::new()
+        .unwrap()
+        .home_dir()
+        .to_path_buf();
     assert!(w.habi.open_project(&home).is_err());
     assert!(w.habi.open_project(Path::new("/")).is_err());
     assert!(w.habi.open_project(&w.root).is_ok());

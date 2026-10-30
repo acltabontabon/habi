@@ -82,21 +82,36 @@ pub fn prune_keeping(paths: &AppPaths, store: &Store, keep: usize) -> Result<Pru
     prune_previews(paths, store, &mut report)?;
     prune_snapshots(paths, store, keep, &mut report, &mut referenced)?;
     add_baseline_refs(store, &mut referenced)?;
-    remove_unreferenced(paths, &referenced, &mut report)?;
+    // A record Habi cannot read may be repaired, and it can no longer say which backups it needs:
+    // nothing is "unreferenced" while one exists.
+    if journals_all_readable(paths) {
+        remove_unreferenced(paths, &referenced, &mut report)?;
+    } else {
+        tracing::warn!("an operation record is unreadable; stored backups were left in place");
+    }
     store.set_setting(LAST_FULL_KEY, &crate::time::now())?;
     tracing::info!(?report, "pruned Habi's data");
     Ok(report)
 }
 
-/// Upkeep after a successful apply: the project's own journals beyond the
-/// newest `KEEP`, and everything else at most once a day.
-pub fn after_apply(paths: &AppPaths, store: &Store, project_id: &str) -> Result<PruneReport> {
+/// A full pass, at most once a day.
+pub fn prune_if_due(paths: &AppPaths, store: &Store) -> Result<Option<PruneReport>> {
     let due = store
         .setting(LAST_FULL_KEY)?
         .and_then(|last| crate::time::seconds_between(&last, &crate::time::now()))
         .is_none_or(|elapsed| !(0..FULL_INTERVAL_SECONDS).contains(&elapsed));
     if due {
-        return prune(paths, store);
+        prune(paths, store).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+/// Upkeep after a successful apply: the project's own journals beyond the
+/// newest `KEEP`, and everything else at most once a day.
+pub fn after_apply(paths: &AppPaths, store: &Store, project_id: &str) -> Result<PruneReport> {
+    if let Some(report) = prune_if_due(paths, store)? {
+        return Ok(report);
     }
     let mut report = PruneReport::default();
     prune_journals(
@@ -139,6 +154,18 @@ fn journal_projects(paths: &AppPaths) -> Vec<String> {
         .filter(|e| e.path().is_dir())
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect()
+}
+
+fn journals_all_readable(paths: &AppPaths) -> bool {
+    if paths.journal().exists() && std::fs::read_dir(paths.journal()).is_err() {
+        return false;
+    }
+    journal_projects(paths).iter().all(|project_id| {
+        std::fs::read_dir(apply::journal_dir(paths, project_id)).is_ok()
+            && !apply::load_all(paths, project_id)
+                .iter()
+                .any(apply::is_unreadable)
+    })
 }
 
 fn add_journal_refs(journal: &apply::Journal, referenced: &mut HashSet<String>) {

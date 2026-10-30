@@ -147,6 +147,23 @@ pub struct JobGuard<'a> {
     token: CancelToken,
 }
 
+impl AppState {
+    /// Waits, briefly, for cancelled jobs to finish. Exiting while one is still stopping a command
+    /// would leave that command running, with no timeout and nothing watching it.
+    pub fn wait_for_jobs(&self, limit: std::time::Duration) {
+        let started = std::time::Instant::now();
+        while started.elapsed() < limit
+            && !self
+                .jobs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .is_empty()
+        {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    }
+}
+
 impl Drop for JobGuard<'_> {
     fn drop(&mut self) {
         let Some(id) = &self.id else { return };

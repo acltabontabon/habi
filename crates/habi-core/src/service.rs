@@ -481,9 +481,12 @@ impl Habi {
         paths.ensure()?;
         let store = Store::open(&paths.db())?;
         let sources = Sources::new(&paths, &store);
-        // Snapshots fetched before item counts were recorded.
-        if let Err(e) = sources.count_uncounted() {
-            tracing::warn!(error = %e, "could not count library items");
+        // Snapshots fetched before item counts were recorded. This reads library content on every
+        // start, so a bug it trips over must not stop Habi from opening at all.
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| sources.count_uncounted())) {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => tracing::warn!(error = %e, "could not count library items"),
+            Err(_) => tracing::error!("counting library items panicked"),
         }
         // `gh`/`glab` run in an empty folder of Habi's own, never in whatever
         // repository Habi was started from.
@@ -560,6 +563,16 @@ impl Habi {
     /// Registers (or re-opens) a project directory and returns its record.
     pub fn open_project(&self, path: &Path) -> Result<ProjectRecord> {
         let root = crate::paths::canonical_dir(path)?;
+        // The home folder or a whole disk is not a project. Reading one as such would be slow for
+        // no answer, and would make every file in it readable as a project file.
+        let home =
+            directories::BaseDirs::new().and_then(|b| crate::paths::canonical(b.home_dir()).ok());
+        if root.parent().is_none() || home.is_some_and(|h| h.starts_with(&root)) {
+            return Err(HabiError::invalid(format!(
+                "{} holds much more than one project. Choose a project folder inside it.",
+                crate::paths::display_path(&root)
+            )));
+        }
         let id = project_id(&root);
         let name = root
             .file_name()
@@ -1522,6 +1535,13 @@ impl Habi {
 
     /// Frees disk space: old operation records and library snapshots beyond
     /// the newest of each, and stored content nothing kept refers to.
+    /// Clears old records if a full pass is due. Someone who only browses and refreshes never
+    /// applies anything, and their data would otherwise grow for good.
+    pub fn upkeep(&self) -> Result<()> {
+        crate::maintenance::prune_if_due(&self.paths, &self.store)?;
+        Ok(())
+    }
+
     pub fn prune(&self) -> Result<crate::maintenance::PruneReport> {
         crate::maintenance::prune(&self.paths, &self.store)
     }
@@ -1544,11 +1564,22 @@ impl Habi {
         let (source_id, id) = key
             .split_once('/')
             .ok_or_else(|| HabiError::invalid(format!("invalid item key {key}")))?;
+        // Checks run code: a library only being previewed, or fetched only to copy from, has no say.
+        self.sources.connected(source_id)?;
         self.index_of(source_id)?
             .items
             .into_iter()
             .find(|i| i.id == id)
             .ok_or_else(|| HabiError::NotFound(format!("item {key}")))
+    }
+
+    /// What a preview id would run, without using it up.
+    pub fn check_preview(&self, preview_id: &str) -> Option<CheckPreview> {
+        self.check_previews
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(preview_id)
+            .map(|stored| stored.preview.clone())
     }
 
     pub fn prepare_check(
