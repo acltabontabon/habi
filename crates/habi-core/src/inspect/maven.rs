@@ -5,11 +5,17 @@
 //! and reports anything it cannot see (external parents, imported BOMs,
 //! undefined properties) as unresolved rather than guessing.
 
-use super::Collector;
 use super::model::{CoverageStatus, Ecosystem, Evidence, FactOrigin, VersionInfo, VersionState};
+use super::{Collector, FACTS_NOTE, LineStarts};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 const DETECTOR: &str = "maven";
+
+/// A property value longer than this is left unresolved. Children all read their
+/// parents' properties, so one long value is copied for every dependency.
+const MAX_PROPERTY: usize = 1024;
+/// Imported BOMs and parents named in one version note.
+const MAX_MANAGERS_SHOWN: usize = 5;
 
 /// External parents known to declare no `<dependencies>` of their own (they
 /// only manage versions), so inheriting from them does not hide dependencies.
@@ -79,12 +85,12 @@ fn child_text(node: roxmltree::Node, name: &str) -> Option<String> {
         .filter(|t| !t.is_empty())
 }
 
-fn line_of(doc: &roxmltree::Document, node: roxmltree::Node) -> u32 {
-    doc.text_pos_at(node.range().start).row
+fn line_of(lines: &LineStarts, node: roxmltree::Node) -> u32 {
+    lines.line_at(node.range().start)
 }
 
 fn read_decls(
-    doc: &roxmltree::Document,
+    lines: &LineStarts,
     container: Option<roxmltree::Node>,
     element: &str,
     profile: Option<&str>,
@@ -103,7 +109,7 @@ fn read_decls(
                 version: child_text(d, "version"),
                 scope: child_text(d, "scope"),
                 kind: child_text(d, "type"),
-                line: line_of(doc, d),
+                line: line_of(lines, d),
                 profile: profile.map(str::to_string),
             })
         })
@@ -126,6 +132,7 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<Pom, String> {
         return Err(format!("{path} has no <project> root element"));
     }
 
+    let lines = LineStarts::new(text);
     let parent = child(project, "parent").and_then(|p| {
         Some(ParentRef {
             group: child_text(p, "groupId")?,
@@ -133,7 +140,7 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<Pom, String> {
             version: child_text(p, "version"),
             relative_path: child(p, "relativePath")
                 .map(|n| n.text().unwrap_or("").trim().to_string()),
-            line: line_of(&doc, p),
+            line: line_of(&lines, p),
         })
     });
 
@@ -155,15 +162,15 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<Pom, String> {
         })
         .unwrap_or_default();
 
-    let mut dependencies = read_decls(&doc, child(project, "dependencies"), "dependency", None);
+    let mut dependencies = read_decls(&lines, child(project, "dependencies"), "dependency", None);
     let managed = read_decls(
-        &doc,
+        &lines,
         child(project, "dependencyManagement").and_then(|n| child(n, "dependencies")),
         "dependency",
         None,
     );
     let mut plugins = read_decls(
-        &doc,
+        &lines,
         child(project, "build").and_then(|n| child(n, "plugins")),
         "plugin",
         None,
@@ -173,13 +180,13 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<Pom, String> {
         for profile in children(profiles, "profile") {
             let id = child_text(profile, "id").unwrap_or_else(|| "unnamed".into());
             dependencies.extend(read_decls(
-                &doc,
+                &lines,
                 child(profile, "dependencies"),
                 "dependency",
                 Some(&id),
             ));
             plugins.extend(read_decls(
-                &doc,
+                &lines,
                 child(profile, "build").and_then(|n| child(n, "plugins")),
                 "plugin",
                 Some(&id),
@@ -238,6 +245,12 @@ enum ParentLink {
 struct Resolver<'a> {
     poms: &'a [Pom],
     by_path: HashMap<&'a str, usize>,
+    /// Each POM's `dependencyManagement`, read once: a child looks through its
+    /// parents' instead of copying them, and a parent can have thousands of
+    /// children.
+    managed: Vec<HashMap<String, &'a str>>,
+    /// Each POM's imported BOMs.
+    imports: Vec<Vec<String>>,
 }
 
 impl<'a> Resolver<'a> {
@@ -247,7 +260,27 @@ impl<'a> Resolver<'a> {
             .enumerate()
             .map(|(i, p)| (p.path.as_str(), i))
             .collect();
-        Resolver { poms, by_path }
+        let mut managed = Vec::with_capacity(poms.len());
+        let mut imports = Vec::with_capacity(poms.len());
+        for pom in poms {
+            let mut versions = HashMap::new();
+            let mut boms = Vec::new();
+            for m in &pom.managed {
+                if m.scope.as_deref() == Some("import") {
+                    boms.push(format!("imported BOM {}", m.coordinate()));
+                } else if let Some(v) = &m.version {
+                    versions.insert(m.coordinate(), v.as_str());
+                }
+            }
+            managed.push(versions);
+            imports.push(boms);
+        }
+        Resolver {
+            poms,
+            by_path,
+            managed,
+            imports,
+        }
     }
 
     #[allow(
@@ -317,38 +350,69 @@ impl<'a> Resolver<'a> {
         clippy::indexing_slicing,
         reason = "POM indexes are positions in the same list, made when it was built"
     )]
-    fn properties(&self, chain: &[usize]) -> HashMap<String, String> {
-        let mut props = HashMap::new();
-        // Apply from the farthest ancestor so children override.
-        for &i in chain.iter().rev() {
-            let pom = &self.poms[i];
-            for (k, v) in &pom.properties {
-                props.insert(k.clone(), v.clone());
-            }
-        }
+    fn properties<'c>(&self, chain: &'c [usize]) -> Properties<'a, 'c> {
+        let mut own = HashMap::new();
         let me = &self.poms[chain[0]];
         let version = me
             .version
             .clone()
             .or_else(|| me.parent.as_ref().and_then(|p| p.version.clone()));
         if let Some(v) = version {
-            props.insert("project.version".into(), v.clone());
-            props.insert("pom.version".into(), v);
+            own.insert("project.version", v.clone());
+            own.insert("pom.version", v);
         }
         if let Some(pv) = me.parent.as_ref().and_then(|p| p.version.clone()) {
-            props.insert("project.parent.version".into(), pv);
+            own.insert("project.parent.version", pv);
         }
         if let Some(g) = me
             .group
             .clone()
             .or_else(|| me.parent.as_ref().map(|p| p.group.clone()))
         {
-            props.insert("project.groupId".into(), g);
+            own.insert("project.groupId", g);
         }
         if let Some(a) = &me.artifact {
-            props.insert("project.artifactId".into(), a.clone());
+            own.insert("project.artifactId", a.clone());
         }
-        props
+        Properties {
+            poms: self.poms,
+            chain,
+            own,
+        }
+    }
+}
+
+/// What `${name}` can stand for.
+pub trait PropertySource {
+    fn property(&self, name: &str) -> Option<&str>;
+}
+
+impl PropertySource for HashMap<String, String> {
+    fn property(&self, name: &str) -> Option<&str> {
+        self.get(name).map(String::as_str)
+    }
+}
+
+/// One POM's properties: its own `project.*` values, then its parents', nearest
+/// first. Looked up rather than merged, because a parent with thousands of
+/// properties can have thousands of children.
+struct Properties<'a, 'c> {
+    poms: &'a [Pom],
+    chain: &'c [usize],
+    own: HashMap<&'static str, String>,
+}
+
+impl PropertySource for Properties<'_, '_> {
+    fn property(&self, name: &str) -> Option<&str> {
+        if let Some(v) = self.own.get(name) {
+            return Some(v);
+        }
+        self.chain
+            .iter()
+            .filter_map(|&i| self.poms.get(i))
+            .find_map(|pom| pom.properties.get(name))
+            .map(String::as_str)
+            .filter(|v| v.len() <= MAX_PROPERTY)
     }
 }
 
@@ -357,7 +421,7 @@ impl<'a> Resolver<'a> {
     clippy::string_slice,
     reason = "bounds come from find() of ASCII `${` and `}` in the same string"
 )]
-pub fn interpolate(value: &str, props: &HashMap<String, String>) -> Result<String, String> {
+pub fn interpolate(value: &str, props: &impl PropertySource) -> Result<String, String> {
     let mut current = value.to_string();
     for _ in 0..8 {
         let Some(start) = current.find("${") else {
@@ -367,7 +431,7 @@ pub fn interpolate(value: &str, props: &HashMap<String, String>) -> Result<Strin
             return Err(current[start..].to_string());
         };
         let name = &current[start + 2..start + len];
-        match props.get(name) {
+        match props.property(name) {
             Some(v) => {
                 current = format!("{}{}{}", &current[..start], v, &current[start + len + 1..]);
             }
@@ -381,11 +445,11 @@ fn is_range(version: &str) -> bool {
     version.starts_with('[') || version.starts_with('(')
 }
 
-fn version_info(
+fn version_info<'a>(
     decl: &DepDecl,
-    props: &HashMap<String, String>,
-    managed: &HashMap<String, (String, String)>,
-    external_managers: &[String],
+    props: &impl PropertySource,
+    managed: &dyn Fn(&str) -> Option<(&'a str, &'a str)>,
+    managed_externally: Option<&str>,
 ) -> VersionInfo {
     match &decl.version {
         Some(raw) => match interpolate(raw, props) {
@@ -413,7 +477,7 @@ fn version_info(
             },
         },
         None => {
-            if let Some((v, from)) = managed.get(&decl.coordinate()) {
+            if let Some((v, from)) = managed(&decl.coordinate()) {
                 match interpolate(v, props) {
                     Ok(resolved) => VersionInfo {
                         state: VersionState::Resolved,
@@ -430,15 +494,12 @@ fn version_info(
                         )),
                     },
                 }
-            } else if !external_managers.is_empty() {
+            } else if let Some(managers) = managed_externally {
                 VersionInfo {
                     state: VersionState::Managed,
                     declared: None,
                     resolved: None,
-                    note: Some(format!(
-                        "version managed by {}",
-                        external_managers.join(", ")
-                    )),
+                    note: Some(format!("version managed by {managers}")),
                 }
             } else {
                 VersionInfo {
@@ -470,25 +531,31 @@ fn scope_label(decl: &DepDecl, base: &str) -> Option<String> {
 pub fn collect(poms: &[Pom], out: &mut Collector) {
     let resolver = Resolver::new(poms);
     for (index, pom) in poms.iter().enumerate() {
+        if out.stopped() {
+            out.coverage(
+                &pom.module,
+                "maven",
+                CoverageStatus::Partial,
+                vec![FACTS_NOTE.into()],
+            );
+            continue;
+        }
         let (chain, external) = resolver.chain(index);
         let props = resolver.properties(&chain);
         let mut notes = Vec::new();
         let mut status = CoverageStatus::Complete;
 
         // Managed versions from local dependencyManagement, nearest wins.
-        let mut managed: HashMap<String, (String, String)> = HashMap::new();
-        let mut external_managers = Vec::new();
-        for &i in chain.iter().rev() {
-            for m in &poms[i].managed {
-                if m.scope.as_deref() == Some("import") {
-                    external_managers.push(format!("imported BOM {}", m.coordinate()));
-                    continue;
-                }
-                if let Some(v) = &m.version {
-                    managed.insert(m.coordinate(), (v.clone(), poms[i].path.clone()));
-                }
-            }
-        }
+        let managed = |coordinate: &str| {
+            chain.iter().find_map(|&i| {
+                let version = *resolver.managed[i].get(coordinate)?;
+                Some((version, poms[i].path.as_str()))
+            })
+        };
+        let imports = chain.iter().rev().flat_map(|&i| &resolver.imports[i]);
+        let imported_boms = imports.clone().count();
+        let mut external_managers: Vec<String> =
+            imports.take(MAX_MANAGERS_SHOWN).cloned().collect();
 
         if let Some((coordinate, version)) = &external {
             let label = match version {
@@ -499,6 +566,7 @@ pub fn collect(poms: &[Pom], out: &mut Collector) {
                 None => coordinate.clone(),
             };
             external_managers.insert(0, label.clone());
+            external_managers.truncate(MAX_MANAGERS_SHOWN);
             if !VERSION_ONLY_PARENTS.contains(&coordinate.as_str()) {
                 status = CoverageStatus::Partial;
                 notes.push(format!(
@@ -540,10 +608,18 @@ pub fn collect(poms: &[Pom], out: &mut Collector) {
                 );
             }
         }
-        if external_managers
-            .iter()
-            .any(|m| m.starts_with("imported BOM"))
-        {
+        // Made once: a BOM list this long would otherwise be copied per dependency.
+        let managers_left_out = (imported_boms + usize::from(external.is_some()))
+            .saturating_sub(external_managers.len());
+        let managed_externally = (!external_managers.is_empty()).then(|| {
+            let shown = external_managers.join(", ");
+            if managers_left_out > 0 {
+                format!("{shown} and {managers_left_out} more")
+            } else {
+                shown
+            }
+        });
+        if imported_boms > 0 {
             notes.push(
                 "Imported BOMs manage some versions; those versions are not resolved without Maven."
                     .into(),
@@ -565,7 +641,7 @@ pub fn collect(poms: &[Pom], out: &mut Collector) {
                     Ecosystem::Maven,
                     &decl.coordinate(),
                     scope_label(decl, "compile"),
-                    version_info(decl, &props, &managed, &external_managers),
+                    version_info(decl, &props, &managed, managed_externally.as_deref()),
                     origin,
                     DETECTOR,
                     Evidence {
@@ -581,7 +657,7 @@ pub fn collect(poms: &[Pom], out: &mut Collector) {
                     Ecosystem::Maven,
                     &decl.coordinate(),
                     scope_label(decl, "plugin"),
-                    version_info(decl, &props, &HashMap::new(), &external_managers),
+                    version_info(decl, &props, &|_| None, managed_externally.as_deref()),
                     origin,
                     DETECTOR,
                     Evidence {

@@ -1,17 +1,18 @@
 //! Bounded, read-only traversal of a project directory.
 //!
-//! Respects `.gitignore`, `.ignore` and `.habiignore`, never follows symbolic
-//! links, skips dependency and build-output directories, and stops at
-//! explicit limits. When a limit stops the walk the report says so, and
-//! matching then treats "no file matched" as unknown.
+//! Respects `.gitignore`, `.ignore`, `.habiignore` and `.git/info/exclude` (see
+//! `ignores`), never follows symbolic links, skips dependency and build-output
+//! directories, and stops at explicit limits. When a limit stops the walk the
+//! report says so, and matching then treats "no file matched" as unknown.
 
+use super::ignores::IgnoreStack;
 use super::model::ScanReport;
 use crate::cancel::CancelToken;
 use crate::error::Result;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 /// Directory names skipped by default: dependencies, build output, VCS data.
@@ -205,6 +206,9 @@ pub struct WalkResult {
     /// Directories or entries that could not be read. When non-zero, the file
     /// listing is incomplete.
     pub errors: u32,
+    /// Ignore files that could not be applied. The listing may hold files they
+    /// would leave out, so what it says is not established either.
+    pub ignore_gaps: Vec<String>,
     pub report: ScanReport,
 }
 
@@ -244,21 +248,36 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
     let max_depth = options.max_depth;
     let too_deep = Arc::new(AtomicBool::new(false));
     let too_deep_flag = Arc::clone(&too_deep);
+    let ignores = Arc::new(Mutex::new(IgnoreStack::new(root, cancel.clone())));
+    let filter_ignores = Arc::clone(&ignores);
+    let filter_cancel = cancel.clone();
+    // Every ignore file option is off: the crate opens those files with no
+    // limit, and follows links to do so. `IgnoreStack` reads them instead.
     let walker = ignore::WalkBuilder::new(root)
         .hidden(false)
-        .git_ignore(true)
-        .git_exclude(true)
+        .git_ignore(false)
+        .git_exclude(false)
         .git_global(false)
-        .ignore(true)
-        .parents(true)
+        .ignore(false)
+        .parents(false)
         .require_git(false)
         .follow_links(false)
-        .add_custom_ignore_filename(".habiignore")
         .filter_entry(move |entry| {
             if entry.depth() == 0 {
                 return true;
             }
+            // In a tree where everything is ignored nothing reaches the loop
+            // below, so this is the only place to notice.
+            if filter_cancel.is_cancelled() {
+                return false;
+            }
             let is_dir = entry.file_type().is_some_and(|t| t.is_dir());
+            let ignored = filter_ignores
+                .lock()
+                .is_ok_and(|mut rules| rules.ignored(entry.path(), entry.depth(), is_dir));
+            if ignored {
+                return false;
+            }
             if is_dir {
                 let name = entry.file_name().to_string_lossy();
                 let parent = entry.path().parent().unwrap_or(&root_owned);
@@ -289,8 +308,7 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
         let entry = match entry {
             Ok(e) => e,
             Err(err) => {
-                // Unreadable directories or entries leave the listing
-                // incomplete; problems in ignore files do not.
+                // Unreadable directories or entries leave the listing incomplete.
                 if err.io_error().is_some() || err.is_io() {
                     errors += 1;
                 }
@@ -340,6 +358,18 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
         files.push((rel, size));
     }
 
+    // Cancelled while everything was being left out: the loop saw nothing.
+    cancel.check()?;
+    let (ignore_gaps, ignore_problems) = match ignores.lock() {
+        Ok(mut rules) => (rules.take_gaps(), rules.take_problems()),
+        Err(_) => (Vec::new(), Vec::new()),
+    };
+    for shown in ignore_gaps.iter().chain(&ignore_problems) {
+        if report.unreadable.len() < 100 {
+            report.unreadable.push(crate::redact::redact(shown));
+        }
+    }
+
     // Record which default-skipped directories exist at the top levels so the
     // UI can explain what was not looked at.
     for name in DEFAULT_SKIPPED_DIRS {
@@ -367,6 +397,7 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
         files,
         dirs,
         errors,
+        ignore_gaps,
         report,
     })
 }
@@ -507,6 +538,181 @@ mod tests {
                 "docs/out/guide.md",
             ]
         );
+    }
+
+    /// What the `ignore` crate lists when it reads the ignore files itself.
+    fn listed_by_the_crate(root: &Path) -> Vec<String> {
+        let mut out: Vec<String> = ignore::WalkBuilder::new(root)
+            .hidden(false)
+            .git_ignore(true)
+            .git_exclude(true)
+            .git_global(false)
+            .ignore(true)
+            .parents(false)
+            .require_git(false)
+            .follow_links(false)
+            .add_custom_ignore_filename(".habiignore")
+            .filter_entry(|e| e.file_name() != ".git")
+            .build()
+            .flatten()
+            .filter(|e| e.file_type().is_some_and(|t| t.is_file()))
+            .map(|e| {
+                e.path()
+                    .strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            })
+            .collect();
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn nested_ignore_files_decide_what_the_crate_would_have() {
+        const PATTERNS: &[&str] = &[
+            "*.log",
+            "!keep.log",
+            "x.txt",
+            "!x.txt",
+            "/y.log",
+            "c/",
+            "!c/",
+            "d/*",
+            "!d/keep.log",
+            "**/z.md",
+            "!z.md",
+            "c/*.txt",
+            "/a/c/*.md",
+            "e",
+            "# a comment",
+            "\\!odd",
+        ];
+        const DIRS: &[&str] = &[".", "a", "b", "a/c", "a/c/d", "b/e"];
+        const FILES: &[&str] = &["x.txt", "y.log", "z.md", "keep.log"];
+        let mut seed = 0x2545_f491_u64;
+        let mut next = move |n: usize| {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((seed >> 33) as usize) % n
+        };
+        for _ in 0..60 {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path();
+            fs::create_dir_all(root.join(".git/info")).unwrap();
+            for d in DIRS {
+                fs::create_dir_all(root.join(d)).unwrap();
+                for f in FILES {
+                    fs::write(root.join(d).join(f), "").unwrap();
+                }
+                // Every kind of ignore file, in a few places each.
+                for name in [".gitignore", ".ignore", ".habiignore"] {
+                    if next(3) == 0 {
+                        let lines: Vec<&str> = (0..1 + next(4))
+                            .map(|_| *PATTERNS.get(next(PATTERNS.len())).unwrap())
+                            .collect();
+                        fs::write(root.join(d).join(name), lines.join("\n")).unwrap();
+                    }
+                }
+            }
+            let lines: Vec<&str> = (0..next(3))
+                .map(|_| *PATTERNS.get(next(PATTERNS.len())).unwrap())
+                .collect();
+            fs::write(root.join(".git/info/exclude"), lines.join("\n")).unwrap();
+
+            let walked = walk(root, &WalkOptions::default(), &CancelToken::new()).unwrap();
+            let names: Vec<String> = walked.files.into_iter().map(|(p, _)| p).collect();
+            assert_eq!(names, listed_by_the_crate(root));
+            assert!(walked.ignore_gaps.is_empty(), "{:?}", walked.ignore_gaps);
+        }
+    }
+
+    #[test]
+    fn ignore_files_above_the_repository_have_no_say() {
+        let dir = tempfile::tempdir().unwrap();
+        let outer = dir.path();
+        fs::write(outer.join(".gitignore"), "*\n").unwrap();
+        fs::write(outer.join(".ignore"), "*\n").unwrap();
+        fs::write(outer.join(".habiignore"), "*\n").unwrap();
+        let repo = outer.join("repo");
+        fs::create_dir_all(repo.join(".git/info")).unwrap();
+        fs::write(repo.join("app.txt"), "").unwrap();
+        fs::write(repo.join("noisy.log"), "").unwrap();
+        fs::write(repo.join(".gitignore"), "*.log\n").unwrap();
+        fs::write(repo.join(".git/info/exclude"), "*.tmp\n").unwrap();
+
+        // Opened at its root: the `*` above it is someone's home folder.
+        let listed = |folder: &Path| -> Vec<String> {
+            walk(folder, &WalkOptions::default(), &CancelToken::new())
+                .unwrap()
+                .files
+                .into_iter()
+                .map(|(p, _)| p)
+                .collect()
+        };
+        assert_eq!(listed(&repo), vec![".gitignore", "app.txt"]);
+
+        // Opened below its root: the repository's rules hold, the outer ones still do not.
+        let api = repo.join("svc/api");
+        fs::create_dir_all(&api).unwrap();
+        fs::write(repo.join("svc/.ignore"), "*.bak\n").unwrap();
+        for f in ["a.log", "b.bak", "c.tmp", "d.txt"] {
+            fs::write(api.join(f), "").unwrap();
+        }
+        assert_eq!(listed(&api), vec!["d.txt"]);
+        // The nearer `!` wins, as it would one level further down.
+        fs::write(api.join(".gitignore"), "!a.log\n").unwrap();
+        assert_eq!(listed(&api), vec![".gitignore", "a.log", "d.txt"]);
+
+        // No repository at all: nothing above the folder counts.
+        let plain = outer.join("plain");
+        fs::create_dir_all(&plain).unwrap();
+        fs::write(plain.join("kept.txt"), "").unwrap();
+        // A temp dir could be inside a repo on some machines; only assert when not.
+        if crate::inspect::repo::enclosing_root(&plain).is_none() {
+            assert_eq!(listed(&plain), vec!["kept.txt"]);
+        }
+    }
+
+    #[test]
+    fn an_oversized_ignore_file_is_reported_and_not_applied() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("sub")).unwrap();
+        fs::write(root.join("sub/noise.log"), "").unwrap();
+        let mut rules = "*.log\n".to_string();
+        rules.push_str(&"# padding\n".repeat(120_000));
+        fs::write(root.join("sub/.gitignore"), rules).unwrap();
+        let result = walk(root, &WalkOptions::default(), &CancelToken::new()).unwrap();
+        assert!(result.files.iter().any(|(p, _)| p == "sub/noise.log"));
+        assert_eq!(result.ignore_gaps.len(), 1, "{:?}", result.ignore_gaps);
+        assert!(result.ignore_gaps[0].contains("sub/.gitignore"));
+        assert!(result.ignore_gaps[0].contains("limit"));
+    }
+
+    #[test]
+    fn a_bad_pattern_costs_only_itself() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(".gitignore"), "a{b\n*.log\n").unwrap();
+        fs::write(dir.path().join("x.log"), "").unwrap();
+        fs::write(dir.path().join("y.txt"), "").unwrap();
+        let result = walk(dir.path(), &WalkOptions::default(), &CancelToken::new()).unwrap();
+        let names: Vec<&str> = result.files.iter().map(|(p, _)| p.as_str()).collect();
+        // `a{b` is an error to the glob parser. The next line still counts.
+        assert_eq!(names, vec![".gitignore", "y.txt"]);
+        assert!(result.ignore_gaps.is_empty());
+        assert!(!result.report.unreadable.is_empty());
+    }
+
+    #[test]
+    fn a_folder_named_like_an_ignore_file_is_not_one() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join(".ignore")).unwrap();
+        fs::write(dir.path().join(".ignore/notes.txt"), "").unwrap();
+        let result = walk(dir.path(), &WalkOptions::default(), &CancelToken::new()).unwrap();
+        assert_eq!(result.files.len(), 1);
+        assert!(result.ignore_gaps.is_empty());
     }
 
     #[test]

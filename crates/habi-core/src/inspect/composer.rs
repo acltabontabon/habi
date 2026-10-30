@@ -3,8 +3,8 @@
 //! Platform requirements (`php`, `ext-*`, `lib-*`, `composer-*`) describe
 //! the runtime, not packages, and are left out.
 
-use super::Collector;
 use super::model::{CoverageStatus, Ecosystem, Evidence, FactOrigin, VersionInfo, VersionState};
+use super::{Collector, JsonStrings};
 use std::collections::HashMap;
 
 const DETECTOR: &str = "composer";
@@ -36,6 +36,7 @@ fn platform(name: &str) -> bool {
 pub fn parse(path: &str, module: &str, text: &str) -> Result<ComposerJson, String> {
     let doc: serde_json::Value =
         serde_json::from_str(text).map_err(|e| format!("{path} could not be read: {e}"))?;
+    let strings = JsonStrings::new(text);
     let mut dependencies = Vec::new();
     for (key, section) in [("require", "require"), ("require-dev", "require-dev")] {
         for (name, constraint) in doc
@@ -47,15 +48,11 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<ComposerJson, Strin
             if platform(name) {
                 continue;
             }
-            let line = text
-                .lines()
-                .position(|l| l.contains(&format!("\"{name}\"")))
-                .map(|i| i as u32 + 1);
             dependencies.push((
                 name.to_lowercase(),
                 constraint.as_str().unwrap_or("*").to_string(),
                 section,
-                line,
+                strings.line_after(0, name),
             ));
         }
     }
