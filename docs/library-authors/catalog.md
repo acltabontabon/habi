@@ -28,6 +28,7 @@ in the registry). Nothing is fetched until preview.
       applies_when: { file: "**/wrangler.{toml,json,jsonc}" }
   picks:
     - skill: skills/wrangler                 # one skill folder, exact
+      name: wrangler                         # optional: the SKILL.md name, when it is not the folder's
       title: Wrangler
       gist: "Configure, run and deploy Workers with Wrangler."   # Habi's words, 100 characters at most
       why: "Projects with a Wrangler config"                    # 60 characters at most

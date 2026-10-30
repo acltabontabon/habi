@@ -7,7 +7,7 @@
  * in the usual review: agents, every file, confirm.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import type { ItemRef } from "../../bindings/ItemRef";
 import type { Kit as KitData } from "../../bindings/Kit";
 import type { KitGroup } from "../../bindings/KitGroup";
@@ -23,7 +23,7 @@ import { api, HabiError, newJobId } from "../../lib/api";
 import { type Dye, useDyes } from "../../lib/dye";
 import { plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
-import { invalidateProjectData, keys } from "../../lib/queries";
+import { invalidateProjectData, keys, useMachineSkills } from "../../lib/queries";
 import { summarize } from "../../lib/skillFacts";
 import { ReviewDialog } from "../review/ReviewDialog";
 
@@ -42,7 +42,7 @@ const LOOSE: Dye = { color: "var(--ink-faint)", community: true };
  */
 export function basisWord(s: Suggestion): string | null {
   if (s.group === "required") return "Team requirement";
-  if (s.pick) return null;
+  if (s.pick || !s.applicability) return null;
   switch (s.basis) {
     case "declared":
       return "Author's rule";
@@ -60,7 +60,7 @@ export function reasonOf(s: Suggestion): string {
 }
 
 /** Names as a sentence: "Vercel, Sentry and Superpowers". */
-function names(list: string[]): string {
+export function names(list: string[]): string {
   if (list.length <= 1) return list.join("");
   return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
 }
@@ -69,8 +69,9 @@ type Phase =
   | { step: "idle" }
   | { step: "connecting"; name: string; at: number; of: number; job: string }
   | { step: "reading" }
-  | { step: "failed"; error: unknown; stopped: boolean }
-  | { step: "reviewing"; items: ItemRef[]; missing: string[] };
+  | { step: "reviewing"; items: ItemRef[] }
+  | { step: "failed"; error: unknown; during: "connecting" | "reading" }
+  | { step: "stopped" };
 
 /**
  * The item a chosen suggestion is, once its library is connected: from the
@@ -100,37 +101,65 @@ async function resolve(
 
 export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () => void }) {
   const { project } = overview;
-  // While skills are being added the kit holds still: what was chosen is what is added.
-  const [frozen, setFrozen] = useState<KitData | null>(null);
-  const kit = frozen ?? overview.kit;
   const client = useQueryClient();
   const dyes = useDyes();
   const { navigate } = useNav();
   const { newSkill } = useActions();
+  // Skills already in the person's own folders reach every project: adding a copy here is a choice, not a default.
+  const machine = useMachineSkills();
+  const onMachine = new Set((machine.data ?? []).map((m) => m.name.toLowerCase()));
+  const everywhere = (s: Suggestion) => !s.installed && onMachine.has(s.name.toLowerCase());
+
+  // While skills are being added the kit holds still: what was chosen is what is added. After an
+  // install it shows them as added until the project has been read again.
+  const [frozen, setFrozen] = useState<{ kit: KitData; until: ProjectOverview | null } | null>(null);
+  useEffect(() => {
+    if (frozen?.until && overview !== frozen.until) setFrozen(null);
+  }, [overview, frozen]);
+  const kit = frozen?.kit ?? overview.kit;
+
+  // Chosen to start with, except copies of skills already on this machine; a knot flips that.
+  const [flipped, setFlipped] = useState<Set<string>>(() => new Set());
+  const isOn = (s: Suggestion) => !s.installed && flipped.has(s.key) === everywhere(s);
   const open = kit.suggestions.filter((s) => !s.installed);
-  // Everything is chosen to start with: these are Habi's suggestions, not a menu.
-  const [left, setLeft] = useState<Set<string>>(() => new Set());
-  const chosen = open.filter((s) => !left.has(s.key));
+  const chosen = open.filter(isOn);
+  const toConnect = [
+    ...new Map(
+      chosen
+        .filter((s) => !s.library.connected && s.library.entryId)
+        .map((s) => [s.library.entryId as string, s.library.name]),
+    ).entries(),
+  ].map(([entryId, name]) => ({ entryId, name }));
+
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
+  const [missing, setMissing] = useState<string[]>([]);
+  const adding = useRef<string[]>([]);
+  const job = useRef<string | null>(null);
   const cancelled = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
     return () => {
+      // Leaving stops the work: nothing more is connected, and no review opens on another page.
       mounted.current = false;
+      cancelled.current = true;
+      if (job.current) void api.cancelJob(job.current);
     };
   }, []);
 
-  const toConnect = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const s of chosen) {
-      if (!s.library.connected && s.library.entryId) seen.set(s.library.entryId, s.library.name);
-    }
-    return [...seen.entries()].map(([entryId, name]) => ({ entryId, name }));
-  }, [chosen]);
+  // Focus follows the work: to Cancel while it runs, back to the button after.
+  const cart = useRef<HTMLElement>(null);
+  const busy = phase.step === "connecting" || phase.step === "reading";
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    const focus = (selector: string) => cart.current?.querySelector<HTMLElement>(selector)?.focus();
+    if (phase.step === "connecting" && !wasBusy.current) focus(".weaving button");
+    if (!busy && wasBusy.current && phase.step !== "reviewing") focus(".kit-go");
+    wasBusy.current = busy;
+  }, [phase.step, busy]);
 
   const toggle = (key: string) =>
-    setLeft((was) => {
+    setFlipped((was) => {
       const next = new Set(was);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -139,41 +168,56 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
 
   const add = async () => {
     const picked = chosen;
+    adding.current = picked.map((s) => s.key);
     cancelled.current = false;
-    setFrozen(kit);
+    setMissing([]);
+    setFrozen({ kit, until: null });
+    const stop = () => {
+      throw new HabiError({ code: "cancelled", message: "Stopped before adding." });
+    };
+    let during: "connecting" | "reading" = "connecting";
     const items: ItemRef[] = [];
-    const missing: string[] = [];
+    const lost: string[] = [];
     try {
       for (const [i, library] of toConnect.entries()) {
-        const job = newJobId();
-        setPhase({ step: "connecting", name: library.name, at: i + 1, of: toConnect.length, job });
-        await api.connectCatalogEntry(library.entryId, job);
-        if (cancelled.current) throw new HabiError({ code: "cancelled", message: "Stopped before adding." });
+        if (cancelled.current) stop();
+        const id = newJobId();
+        job.current = id;
+        setPhase({ step: "connecting", name: library.name, at: i + 1, of: toConnect.length, job: id });
+        await api.connectCatalogEntry(library.entryId, id);
+        job.current = null;
       }
+      if (cancelled.current) stop();
+      during = "reading";
       let fresh = overview;
       if (toConnect.length > 0) {
         setPhase({ step: "reading" });
-        fresh = await api.projectOverview(project.id, false);
-        client.setQueryData(keys.overview(project.id), fresh);
+        // New libraries change what fits every project; this one is read once, now.
         invalidateProjectData(client);
+        fresh = await client.fetchQuery({
+          queryKey: keys.overview(project.id),
+          queryFn: () => api.projectOverview(project.id, false),
+        });
       }
       const libraries = new Map<string, Promise<LibraryIndex>>();
       for (const s of picked) {
         const found = await resolve(s, fresh, libraries);
-        if (found === null) missing.push(s.title);
+        if (found === null) lost.push(s.title);
         else if (found !== "installed") items.push(found);
       }
     } catch (error) {
-      if (mounted.current) {
-        setPhase({ step: "failed", error, stopped: cancelled.current });
-        setFrozen(null);
-      }
-      // What was connected before the failure stays connected; the kit shows it.
+      job.current = null;
+      if (!mounted.current) return;
+      setFrozen(null);
+      // What was connected before it stopped stays connected; the kit shows it.
       invalidateProjectData(client);
+      const stopped = cancelled.current || (error instanceof HabiError && error.code === "cancelled");
+      setPhase(stopped ? { step: "stopped" } : { step: "failed", error, during });
       return;
     }
-    if (!mounted.current) return;
-    if (items.length > 0) setPhase({ step: "reviewing", items, missing });
+    if (!mounted.current || cancelled.current) return;
+    setMissing(lost);
+    if (items.length > 0) setPhase({ step: "reviewing", items });
     else {
       setPhase({ step: "idle" });
       setFrozen(null);
@@ -181,9 +225,8 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
   };
 
   const cancel = () => {
-    if (phase.step !== "connecting") return;
     cancelled.current = true;
-    void api.cancelJob(phase.job);
+    if (job.current) void api.cancelJob(job.current);
   };
 
   const look = (s: Suggestion) => {
@@ -199,9 +242,8 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
     }
   };
 
-  const busy = phase.step === "connecting" || phase.step === "reading";
-  const done = open.length === 0;
-  const missing = phase.step === "reviewing" ? phase.missing : [];
+  const empty = kit.suggestions.length === 0;
+  const done = !empty && open.length === 0;
 
   return (
     <div className="kit">
@@ -209,14 +251,18 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
         <div className="kit-list">
           <header className="kit-lead">
             <h2 className="kit-headline">
-              {done
-                ? `${project.name} has everything Habi suggests`
-                : `${plural(open.length, "skill")} for ${project.name}`}
+              {empty
+                ? `Nothing to suggest for ${project.name} yet`
+                : done
+                  ? `${project.name} has everything Habi suggests`
+                  : `${plural(open.length, "skill")} for ${project.name}`}
             </h2>
             <p className="kit-sub">
-              {done
-                ? "New suggestions appear when the project or your libraries change."
-                : "Habi's picks for what it read in this repository, each with the reason it fits."}
+              {empty
+                ? "Habi found nothing it would pick for this project. Explore libraries, or write a skill of your own."
+                : done
+                  ? "New suggestions appear when the project, your libraries or your other projects change."
+                  : "Habi's picks for what it read in this repository, each with the reason it fits."}
             </p>
           </header>
 
@@ -228,9 +274,10 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                 <h3 className="kit-section-title">{title}</h3>
                 <ul className="kit-rows">
                   {rows.map((s, i) => {
-                    const on = !s.installed && !left.has(s.key);
+                    const on = isOn(s);
                     const dye = s.library.sourceId ? dyes(s.library.sourceId) : LOOSE;
                     const reason = reasonOf(s);
+                    const basis = basisWord(s);
                     return (
                       <li
                         key={s.key}
@@ -246,7 +293,9 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                             checked={on || s.installed}
                             disabled={s.installed || busy}
                             onChange={() => toggle(s.key)}
-                            aria-label={`Add ${s.title}`}
+                            aria-label={
+                              s.installed ? `${s.title}, already in ${project.name}` : `Add ${s.title}`
+                            }
                           />
                           <span className="kit-knot-mark" aria-hidden="true">
                             {s.installed || on ? <Icon name="check" size={11} /> : null}
@@ -258,6 +307,14 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                               {s.title}
                             </button>
                             {s.installed ? <span className="kit-added">Added</span> : null}
+                            {everywhere(s) ? (
+                              <span
+                                className="kit-basis"
+                                data-tip="Already in your own skill folders, which your agents read in every project"
+                              >
+                                On this machine
+                              </span>
+                            ) : null}
                             <span
                               className="kit-from"
                               data-tip={
@@ -273,10 +330,15 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                           {s.gist ? (
                             <p className="kit-gist">{s.pick ? s.gist : summarize(s.gist).text}</p>
                           ) : null}
-                          {reason ? (
+                          {reason || s.elsewhere.length > 0 ? (
                             <p className="kit-why">
-                              <span className="kit-why-text">{reason}</span>
-                              {basisWord(s) ? <span className="kit-basis">{basisWord(s)}</span> : null}
+                              {reason ? <span className="kit-why-text">{reason}</span> : null}
+                              {s.elsewhere.length > 0 ? (
+                                <span className="kit-elsewhere">
+                                  {reason ? "Also in" : "In"} {names(s.elsewhere)}
+                                </span>
+                              ) : null}
+                              {basis ? <span className="kit-basis">{basis}</span> : null}
                             </p>
                           ) : null}
                         </div>
@@ -295,6 +357,16 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                 <Icon name="chevronRight" size={12} />
               </button>
             ) : null}
+            {empty ? (
+              <button
+                type="button"
+                className="kit-link"
+                onClick={() => navigate({ name: "sources", view: "explore" })}
+              >
+                Explore libraries
+                <Icon name="chevronRight" size={12} />
+              </button>
+            ) : null}
             <button
               type="button"
               className="kit-link"
@@ -306,9 +378,8 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
           </footer>
         </div>
 
-        {done ? null : (
-          <aside className="kit-cart" aria-label={`Add to ${project.name}`}>
-            <p className="kicker">Add to {project.name}</p>
+        {empty || done ? null : (
+          <aside className="kit-cart" aria-label={`Add to ${project.name}`} ref={cart}>
             <p className="kit-cart-count">
               {chosen.length === 0 ? "Nothing chosen" : plural(chosen.length, "skill")}
             </p>
@@ -318,7 +389,7 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                   Connects {toConnect.length === 1 ? "this library" : `these ${toConnect.length} libraries`}{" "}
                   first. Read only, nothing runs.
                 </p>
-                <ul className="kit-threads" aria-hidden="true">
+                <ul className="kit-threads">
                   {toConnect.map((l) => (
                     <li
                       key={l.entryId}
@@ -334,8 +405,7 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
             {phase.step === "connecting" ? (
               <Weaving
                 slim
-                label={`Connecting ${phase.name}`}
-                hint={phase.of > 1 ? `${phase.at} of ${phase.of}` : undefined}
+                label={`Connecting ${phase.name}${phase.of > 1 ? ` (${phase.at} of ${phase.of})` : ""}`}
                 onCancel={cancel}
               />
             ) : phase.step === "reading" ? (
@@ -347,18 +417,27 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
                 disabled={chosen.length === 0}
                 onClick={() => void add()}
               >
-                {chosen.length === 0 ? "Choose skills to add" : `Add ${plural(chosen.length, "skill")}…`}
+                {chosen.length === 0 ? "Choose skills to add" : "Review and add…"}
               </Button>
             )}
+            {phase.step === "stopped" ? (
+              <p className="kit-cart-note" role="status">
+                Stopped. Libraries already connected stay connected; nothing was installed.
+              </p>
+            ) : null}
             {phase.step === "failed" ? (
               <ErrorNotice
                 error={phase.error}
-                title={phase.stopped ? "Stopped before adding" : "A library could not be connected"}
+                title={
+                  phase.during === "connecting"
+                    ? "A library could not be connected"
+                    : "The connected libraries could not be read"
+                }
               />
             ) : null}
             {missing.length > 0 ? (
-              <p className="kit-cart-note is-warn">
-                Not in its library any more: {names(missing)}. The rest are in the review.
+              <p className="kit-cart-note is-warn" role="status">
+                Not found in {missing.length === 1 ? "its library" : "their libraries"}: {names(missing)}.
               </p>
             ) : null}
             <p className="kit-cart-note">
@@ -376,10 +455,21 @@ export function Kit({ overview, onAll }: { overview: ProjectOverview; onAll: () 
             items: phase.items,
             title: plural(phase.items.length, "skill"),
           }}
+          onApplied={() => {
+            const added = new Set(adding.current);
+            setFrozen({
+              kit: {
+                ...kit,
+                suggestions: kit.suggestions.map((s) => (added.has(s.key) ? { ...s, installed: true } : s)),
+              },
+              until: overview,
+            });
+            setFlipped(new Set());
+          }}
           onClose={() => {
             setPhase({ step: "idle" });
-            setFrozen(null);
-            setLeft(new Set());
+            // Closed without installing: back to the live kit, with the person's choices kept.
+            setFrozen((f) => (f?.until ? f : null));
           }}
         />
       ) : null}

@@ -304,11 +304,14 @@ export function ReviewDialog({
   projectId,
   request,
   onClose,
+  onApplied,
 }: {
   /** The project to change, or `null` for the person's own skill folders ("this machine"). */
   projectId: string | null;
   request: ReviewRequest;
   onClose: () => void;
+  /** The change was written; called just before `onClose`. */
+  onApplied?: () => void;
 }) {
   const machine = projectId === null;
   const sources = useSources();
@@ -452,6 +455,7 @@ export function ReviewDialog({
           `${p.title}: done (${plural(op.files.length, "file")}). Restore it from On this machine → History and restore.`,
         );
       }
+      onApplied?.();
       onClose();
     } catch (e) {
       setApplyError(e);

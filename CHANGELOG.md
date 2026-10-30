@@ -19,12 +19,18 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Habi's picks.** The catalog names the skills Habi stands behind in each library, with when
   each fits, so suggestions work before anything is connected. A catalog library's page lists
   its picks; Explore puts the libraries with something for your projects first and says which.
+- **Projects learn from each other.** A skill one of your projects already uses comes first in
+  the next project's suggestions, marked *Also in nextshop*, so every project you open makes the
+  others' suggestions better. A skill already on this machine starts unticked (*On this
+  machine*): your agents read it in every project already.
 - **Matching by what a skill says it is for.** A skill with no rules of its own fits a project
   when its description names a technology the project uses (*From its description*). It is
   listed under All skills, said as Habi's reading; the team's own libraries also feed Suggested.
 
 ### Fixed
 
+- **A project's page opens faster** with many libraries connected: what a skill says it is for is
+  read once, and a project's skill folders are listed once instead of probed per skill.
 - **Installed skills no longer change what a project is.** Scripts and instruction files inside
   a skill folder no longer count as the project's languages or agent instructions.
 - **Next.js on Cloudflare** fits Next.js apps deployed with Wrangler, not every Next.js app, and

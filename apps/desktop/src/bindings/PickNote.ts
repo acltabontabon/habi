@@ -15,4 +15,8 @@ why: string,
 /**
  * What it does, in Habi's words.
  */
-gist: string, };
+gist: string, 
+/**
+ * A practice for any codebase: the pick has no rule of its own.
+ */
+anywhere: boolean, };

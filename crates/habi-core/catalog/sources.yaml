@@ -39,7 +39,8 @@
 #                    carries a title, a gist in Habi's words and why. Its
 #                    `applies_when` is also its rule once connected; a pick
 #                    without one is a practice for any codebase. Few, and each
-#                    folder checked at the revision Habi reads.
+#                    folder checked at the revision Habi reads. `name` is the
+#                    SKILL.md name, when it is not the folder's.
 #                    A skill with no hint, pick or author's rule is matched
 #                    only by what its own description names.
 #
@@ -363,11 +364,13 @@ sources:
     # Picks checked at 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62 on 2026-10-30.
     picks:
       - skill: skills/react-best-practices
+        name: vercel-react-best-practices
         title: React best practices
         gist: "Performance rules for React and Next.js: waterfalls, bundles, re-renders."
         why: "React and Next.js apps"
         applies_when: { tag: "framework:react" }
       - skill: skills/react-native-skills
+        name: vercel-react-native-skills
         title: React Native best practices
         gist: "Keep React Native screens fast on real devices, from lists to animations."
         why: "React Native and Expo apps"

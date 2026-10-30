@@ -43,11 +43,6 @@ import { WorkflowPanel } from "./WorkflowPanel";
 
 type Panel = "why" | "workflow" | "content" | "checks";
 
-/**
- * Where an installation lives, as the person would look for it: skill
- * folders (".claude/skills/grilling") rather than every file in them, and
- * other files (AGENTS.md, .mcp.json) by name. Habi's own record is left out.
- */
 /** The technologies a rule read from a skill's description names, as people say them. */
 function describedTags(a: Recommendation["applicability"]): string[] {
   const out: string[] = [];
@@ -59,6 +54,11 @@ function describedTags(a: Recommendation["applicability"]): string[] {
   return out.length > 0 ? out : ["a technology"];
 }
 
+/**
+ * Where an installation lives, as the person would look for it: skill
+ * folders (".claude/skills/grilling") rather than every file in them, and
+ * other files (AGENTS.md, .mcp.json) by name. Habi's own record is left out.
+ */
 function installedPlaces(files: { path: string }[]): string[] {
   const places = files
     .map((f) => f.path)
@@ -415,11 +415,7 @@ export function ItemDetailPane({
                   read the skill.
                 </p>
               ) : null}
-              {r.pick ? (
-                <p className="muted why-basis">
-                  One of Habi's picks: {r.pick.why.charAt(0).toLowerCase() + r.pick.why.slice(1)}.
-                </p>
-              ) : null}
+              {r.pick ? <p className="muted why-basis">One of Habi's picks — {r.pick.why}.</p> : null}
               {a.applicability === "undeclared" ? (
                 <p className="muted">
                   {NO_RULES_PHRASE}, and its description names nothing Habi can look for. You can still

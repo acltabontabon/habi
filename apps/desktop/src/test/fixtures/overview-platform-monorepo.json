@@ -4,13 +4,13 @@
     "name": "platform-monorepo",
     "path": "~/work/platform-monorepo",
     "exists": true,
-    "lastOpenedAt": "2026-10-30T05:39:42Z",
+    "lastOpenedAt": "2026-10-30T08:00:02Z",
     "exclusions": [],
     "summary": {
       "fits": 7,
       "needsInformation": 0,
       "sources": [
-        "12927e1aa43b"
+        "58a0c60aa949"
       ],
       "installed": 0,
       "languages": [
@@ -19,7 +19,7 @@
       ],
       "tally": [
         {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "fits": 7,
           "installed": []
         }
@@ -30,8 +30,7 @@
         "addyosmani",
         "mattpocock"
       ],
-      "toAdd": 11,
-      "at": "2026-10-30T05:39:42Z"
+      "at": "2026-10-30T08:00:02Z"
     }
   },
   "inspection": {
@@ -805,17 +804,17 @@
       "unreadable": [],
       "symlinksSkipped": 0,
       "largeFilesSkipped": 0,
-      "elapsedMs": 2
+      "elapsedMs": 3
     },
     "fingerprint": "sha256:5c10277098730d0446cea81e44ece7923af4e72c68110aaf98ca566e9e9da274",
-    "inspectedAt": "2026-10-30T05:39:42Z"
+    "inspectedAt": "2026-10-30T08:00:02Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "12927e1aa43b/java-service-conventions",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/java-service-conventions",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -825,7 +824,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -977,8 +976,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/service-observability",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/service-observability",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -988,7 +987,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1164,8 +1163,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/liquibase-migration-review",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/liquibase-migration-review",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -1175,7 +1174,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1749,8 +1748,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/react-component-review",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/react-component-review",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1760,7 +1759,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1923,8 +1922,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/jooq-query-review",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/jooq-query-review",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1934,7 +1933,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2105,8 +2104,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/frontend-test-practices",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/frontend-test-practices",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -2116,7 +2115,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2630,8 +2629,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/github-pr-summary",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/github-pr-summary",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -2641,7 +2640,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2882,8 +2881,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/incident-notes",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/incident-notes",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -2893,7 +2892,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -2972,8 +2971,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/api-contract-review",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/api-contract-review",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -2983,7 +2982,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -3159,8 +3158,8 @@
     },
     {
       "item": {
-        "key": "12927e1aa43b/jpa-entity-review",
-        "sourceId": "12927e1aa43b",
+        "key": "58a0c60aa949/jpa-entity-review",
+        "sourceId": "58a0c60aa949",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -3170,7 +3169,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
+        "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -3394,7 +3393,7 @@
   ],
   "sources": [
     {
-      "id": "12927e1aa43b",
+      "id": "58a0c60aa949",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -3404,11 +3403,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-30T05:39:41Z",
-      "snapshot": "c7e35db26abe204db2ea85ad34180eb1da20dc6f",
-      "snapshotAt": "2026-10-30T05:39:41Z",
+      "createdAt": "2026-10-30T08:00:02Z",
+      "snapshot": "3c11a9bf35c2dead15e56856dc900ea2969c3004",
+      "snapshotAt": "2026-10-30T08:00:02Z",
       "commitSummary": "Example library — Example, 2026-10-30",
-      "lastAttemptAt": "2026-10-30T05:39:41Z",
+      "lastAttemptAt": "2026-10-30T08:00:02Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",
@@ -3424,7 +3423,7 @@
   "kit": {
     "suggestions": [
       {
-        "key": "12927e1aa43b/service-observability",
+        "key": "58a0c60aa949/service-observability",
         "group": "required",
         "title": "Service observability",
         "name": "service-observability",
@@ -3432,13 +3431,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "service-observability"
         },
         "installed": false,
@@ -3547,10 +3546,11 @@
           ],
           "reason": "Applies to 2 of 4 modules (catalog-service, inventory-service) — Uses Spring Boot (pom.xml:12)",
           "specificity": 1
-        }
+        },
+        "elsewhere": []
       },
       {
-        "key": "12927e1aa43b/java-service-conventions",
+        "key": "58a0c60aa949/java-service-conventions",
         "group": "required",
         "title": "Java service conventions",
         "name": "java-service-conventions",
@@ -3558,13 +3558,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "java-service-conventions"
         },
         "installed": false,
@@ -3649,10 +3649,11 @@
           ],
           "reason": "Contains Java code (CatalogApplication.java) · declares org.springframework.boot:* (pom.xml:12)",
           "specificity": 2
-        }
+        },
+        "elsewhere": []
       },
       {
-        "key": "12927e1aa43b/liquibase-migration-review",
+        "key": "58a0c60aa949/liquibase-migration-review",
         "group": "stack",
         "title": "Liquibase migration review",
         "name": "liquibase-migration-review",
@@ -3660,13 +3661,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "liquibase-migration-review"
         },
         "installed": false,
@@ -4145,10 +4146,11 @@
           ],
           "reason": "Applies to 1 of 4 modules (inventory-service) — Uses Spring Boot (pom.xml:4) · declares org.liquibase:liquibase-core (pom.xml:22) · uses Liquibase (pom.xml:22)",
           "specificity": 3
-        }
+        },
+        "elsewhere": []
       },
       {
-        "key": "12927e1aa43b/frontend-test-practices",
+        "key": "58a0c60aa949/frontend-test-practices",
         "group": "stack",
         "title": "Front-end test practices",
         "name": "frontend-test-practices",
@@ -4156,13 +4158,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "frontend-test-practices"
         },
         "installed": false,
@@ -4609,10 +4611,11 @@
           ],
           "reason": "Applies to 1 of 4 modules (@platform/web) — Uses React (package.json:5) · uses Vitest (package.json:6)",
           "specificity": 2
-        }
+        },
+        "elsewhere": []
       },
       {
-        "key": "12927e1aa43b/jooq-query-review",
+        "key": "58a0c60aa949/jooq-query-review",
         "group": "stack",
         "title": "jOOQ query review",
         "name": "jooq-query-review",
@@ -4620,13 +4623,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "jooq-query-review"
         },
         "installed": false,
@@ -4730,10 +4733,11 @@
           ],
           "reason": "Applies to 1 of 4 modules (catalog-service) — Uses jOOQ (pom.xml:16)",
           "specificity": 1
-        }
+        },
+        "elsewhere": []
       },
       {
-        "key": "12927e1aa43b/react-component-review",
+        "key": "58a0c60aa949/react-component-review",
         "group": "stack",
         "title": "React component review",
         "name": "react-component-review",
@@ -4741,13 +4745,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "react-component-review"
         },
         "installed": false,
@@ -4851,10 +4855,11 @@
           ],
           "reason": "Applies to 1 of 4 modules (@platform/web) — Uses React (package.json:5)",
           "specificity": 1
-        }
+        },
+        "elsewhere": []
       },
       {
-        "key": "12927e1aa43b/github-pr-summary",
+        "key": "58a0c60aa949/github-pr-summary",
         "group": "stack",
         "title": "GitHub PR summary",
         "name": "github-pr-summary",
@@ -4862,13 +4867,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "12927e1aa43b",
+          "sourceId": "58a0c60aa949",
           "itemId": "github-pr-summary"
         },
         "installed": false,
@@ -4906,7 +4911,8 @@
           ],
           "reason": "Uses GitHub Actions (ci.yml)",
           "specificity": 1
-        }
+        },
+        "elsewhere": []
       },
       {
         "key": "catalog:github/skills/spring-boot-testing",
@@ -5029,7 +5035,8 @@
           ],
           "reason": "Applies to 2 of 4 modules (catalog-service, inventory-service) — Uses Spring Boot (pom.xml:12)",
           "specificity": 1
-        }
+        },
+        "elsewhere": []
       },
       {
         "key": "catalog:superpowers/skills/verification-before-completion",
@@ -5049,7 +5056,8 @@
         "installed": false,
         "basis": "catalogHint",
         "pick": "Any codebase: evidence before claims",
-        "applicability": null
+        "applicability": null,
+        "elsewhere": []
       },
       {
         "key": "catalog:addyosmani/skills/code-review-and-quality",
@@ -5069,7 +5077,8 @@
         "installed": false,
         "basis": "catalogHint",
         "pick": "Any codebase, before merging",
-        "applicability": null
+        "applicability": null,
+        "elsewhere": []
       },
       {
         "key": "catalog:mattpocock/skills/engineering/diagnosing-bugs",
@@ -5089,7 +5098,8 @@
         "installed": false,
         "basis": "catalogHint",
         "pick": "Any codebase, when something breaks",
-        "applicability": null
+        "applicability": null,
+        "elsewhere": []
       }
     ],
     "more": 0

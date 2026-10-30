@@ -12,6 +12,7 @@ import { useDyes } from "../../lib/dye";
 import { type ProjectTab, useNav } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
 import { useSafeInvoke } from "../../lib/safeInvoke";
+import { tabKeyHandler } from "../../lib/tabs";
 import { tagLabel } from "../../lib/tags";
 
 export { tagLabel };
@@ -137,8 +138,9 @@ export function ProjectView({
   // Nothing fits, and the person asked to see the skills to use by hand.
   const [browsing, setBrowsing] = useState(false);
   // How the project first showed: the kit while nothing from Habi is in it, else every skill. Kept
-  // while the project is open, so adding from the kit does not swap the page underneath.
-  const [opened, setOpened] = useState<{ projectId: string; view: "kit" | "all" } | null>(null);
+  // while the project is open (this view is remounted per project), so adding from the kit does not
+  // swap the page underneath.
+  const [first, setFirst] = useState<"kit" | "all" | null>(null);
   const [settings, setSettings] = useState(false);
   // "history" opens the project with its history showing.
   const [history, setHistory] = useState(tab === "history");
@@ -160,12 +162,17 @@ export function ProjectView({
   };
 
   const data = overview.data;
+  // Decided while rendering, so the first paint is already the right view; then kept.
+  const firstView: "kit" | "all" | null =
+    first ??
+    (data
+      ? !data.recommendations.some((r) => r.installation) && data.kit.suggestions.some((s) => !s.installed)
+        ? "kit"
+        : "all"
+      : null);
   useEffect(() => {
-    if (!data || data.project.id !== projectId || opened?.projectId === projectId) return;
-    const fresh =
-      !data.recommendations.some((r) => r.installation) && data.kit.suggestions.some((s) => !s.installed);
-    setOpened({ projectId, view: fresh ? "kit" : "all" });
-  }, [data, projectId, opened]);
+    if (first === null && firstView !== null) setFirst(firstView);
+  }, [first, firstView]);
   const byHand = (data?.recommendations ?? []).filter(
     (r) => r.group === "available" && r.installState === "notInstalled",
   ).length;
@@ -217,18 +224,14 @@ export function ProjectView({
 
   const { project, inspection } = data;
   const view: "kit" | "all" =
-    tab === "suggested"
-      ? "kit"
-      : tab === "workbench" || itemKey
-        ? "all"
-        : opened?.projectId === projectId
-          ? opened.view
-          : "all";
+    tab === "suggested" ? "kit" : tab === "workbench" || itemKey ? "all" : (firstView ?? "all");
   const toAdd = data.kit.suggestions.filter((s) => !s.installed).length;
   const show = (next: "kit" | "all") => {
-    setOpened({ projectId, view: next });
+    setFirst(next);
     navigate({ name: "project", projectId, tab: next === "kit" ? "suggested" : "workbench" });
   };
+  const tabId = (v: "kit" | "all") => `project-tab-${v}`;
+  const onTabKey = tabKeyHandler(["kit", "all"] as const, view, show, tabId);
   const coverageGaps = inspection.coverage.filter((c) => c.status !== "complete");
   const gapModules = new Set(coverageGaps.map((c) => c.module)).size;
   // What it is written in, then what it is built on, then the tooling around it.
@@ -402,13 +405,17 @@ export function ProjectView({
         </Notice>
       ) : null}
 
-      <div className="project-views" role="tablist" aria-label="Show">
+      <div className="project-views" role="tablist" aria-label="Skills for this project">
         <button
           type="button"
           role="tab"
+          id={tabId("kit")}
           aria-selected={view === "kit"}
+          aria-controls="project-panel"
+          tabIndex={view === "kit" ? 0 : -1}
           className={`project-view${view === "kit" ? " is-active" : ""}`}
           onClick={() => show("kit")}
+          onKeyDown={onTabKey}
         >
           Suggested
           {toAdd > 0 && view !== "kit" ? (
@@ -421,15 +428,19 @@ export function ProjectView({
         <button
           type="button"
           role="tab"
+          id={tabId("all")}
           aria-selected={view === "all"}
+          aria-controls="project-panel"
+          tabIndex={view === "all" ? 0 : -1}
           className={`project-view${view === "all" ? " is-active" : ""}`}
           onClick={() => show("all")}
+          onKeyDown={onTabKey}
         >
           All skills
         </button>
       </div>
 
-      <div className="project-body">
+      <div className="project-body" role="tabpanel" id="project-panel" aria-labelledby={tabId(view)}>
         {view === "kit" ? (
           <Kit key={project.id} overview={data} onAll={() => show("all")} />
         ) : !itemKey && !browsing && !data.recommendations.some(fitsProject) ? (

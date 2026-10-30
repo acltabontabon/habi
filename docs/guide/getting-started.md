@@ -69,9 +69,9 @@ you say so.
 2. **Start from what Habi suggests.** A new project opens on **Suggested**: a short list of
    skills for it, before you connect anything. Each says why it fits (*Uses React ·
    package.json:4*) and whose word that is: the author's rule, a team requirement, *Habi's pick*,
-   or *From its description* when Habi read the skill's own words. Untick what you don't want,
-   then **Add N skills…**. Libraries the picks come from are connected first (read only, nothing
-   runs).
+   or *From its description* when Habi read the skill's own words. A skill your other projects
+   already use comes first (*Also in …*). Untick what you don't want, then **Review and add…**.
+   Libraries the picks come from are connected first (read only, nothing runs).
 
 3. **All skills** lists everything your connected libraries hold for the project, grouped by how
    well it fits, with the full reasoning down to the file and line. Missing info (e.g.,

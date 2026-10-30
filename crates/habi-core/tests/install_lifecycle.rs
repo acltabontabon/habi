@@ -984,3 +984,54 @@ fn a_terminated_process_recovers_every_write_boundary() {
     }
     env.habi.apply(&plan.id).unwrap();
 }
+
+/// What one project adopts is offered to the next: a skill with no rules,
+/// installed in billing-service, is suggested for storefront-web, first among
+/// the practices and named as in use there.
+#[test]
+fn a_skill_one_project_uses_is_offered_to_the_next() {
+    let env = setup("repos/billing-service");
+    let other = tempfile::tempdir().unwrap();
+    copy_tree(&fixture("repos/storefront-web"), other.path());
+    let storefront = env.habi.open_project(other.path()).unwrap();
+    let cancel = CancelToken::new();
+    let offered = |habi: &Habi| {
+        habi.overview(&storefront.id, false, &cancel)
+            .unwrap()
+            .kit
+            .suggestions
+            .into_iter()
+            .find(|s| s.name == "incident-notes")
+    };
+    // No rule and not one of Habi's picks: nothing to offer it on.
+    assert!(offered(&env.habi).is_none());
+
+    let plan = env
+        .habi
+        .plan_install(
+            &env.project_id,
+            &[item(&env, "incident-notes")],
+            &[ClientId::ClaudeCode],
+            false,
+            &Decisions::default(),
+        )
+        .unwrap();
+    env.habi.apply(&plan.id).unwrap();
+
+    let billing = env.habi.project(&env.project_id).unwrap().name;
+    let suggestion = offered(&env.habi).expect("offered once another project uses it");
+    assert_eq!(suggestion.elsewhere, [billing]);
+    assert!(!suggestion.installed);
+    assert!(suggestion.item.is_some());
+    let kit = env
+        .habi
+        .overview(&storefront.id, false, &cancel)
+        .unwrap()
+        .kit;
+    let first_practice = kit
+        .suggestions
+        .iter()
+        .find(|s| s.group == habi_core::suggest::KitGroup::Practice)
+        .unwrap();
+    assert_eq!(first_practice.name, "incident-notes");
+}

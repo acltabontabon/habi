@@ -17,14 +17,16 @@
 //! library. What the project already has stays listed and takes no place.
 
 use crate::catalog::registry::{Entry, Pick, PublisherKind, StatusState};
-use crate::install::lock::LockFile;
+use crate::install::lock::lock_key;
+use crate::install::status::SkillFolders;
 use crate::library::model::LibraryIndex;
 use crate::matching::condition::Condition;
 use crate::matching::{Applicability, ApplicabilityResult, Scope, Views, assess_in};
 use crate::recommend::{Basis, Group, Recommendation};
 use crate::service::ItemRef;
-use crate::source::{Source, SourceRole};
+use crate::source::{Source, SourceRole, portable_identity};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 use ts_rs::TS;
 
@@ -91,6 +93,8 @@ pub struct Suggestion {
     pub pick: Option<String>,
     /// How its rule held here: the evaluation the workbench explains. `None` for a practice.
     pub applicability: Option<ApplicabilityResult>,
+    /// The person's other projects that have it, installed by Habi.
+    pub elsewhere: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
@@ -127,12 +131,15 @@ pub struct Connected<'a> {
 /// Everything the kit is drawn from.
 pub struct KitInput<'a> {
     pub root: &'a Path,
-    pub lock: &'a LockFile,
+    /// The skill folders the project has, listed once.
+    pub folders: &'a SkillFolders,
     pub views: &'a Views<'a>,
     pub recommendations: &'a [Recommendation],
     pub connected: &'a [Connected<'a>],
     /// Every catalog entry; those not connected contribute their picks.
     pub catalog: &'a [Entry],
+    /// What the person's other projects have installed, by lock key, with their names.
+    pub elsewhere: &'a HashMap<String, Vec<String>>,
 }
 
 struct Candidate {
@@ -153,21 +160,15 @@ struct Candidate {
 pub fn kit(input: &KitInput) -> Kit {
     let mut candidates: Vec<Candidate> = Vec::new();
     let mut fitting = 0usize;
+    // Where each connected item lives in its library, to key it as the catalog does.
+    let paths: HashMap<&str, &str> = input
+        .connected
+        .iter()
+        .flat_map(|c| c.index.items.iter())
+        .map(|i| (i.key.as_str(), i.path.as_str()))
+        .collect();
 
     for r in input.recommendations {
-        let kind = match (r.group, r.applicability.applicability) {
-            (Group::Required, _) => KitGroup::Required,
-            (Group::Relevant, _) => KitGroup::Stack,
-            (_, Applicability::Undeclared) if r.pick.is_some() => KitGroup::Practice,
-            _ => continue,
-        };
-        if kind != KitGroup::Practice {
-            fitting += 1;
-        }
-        let installed = r.installation.is_some() || !r.unmanaged_copies.is_empty();
-        if !r.item.installable && !installed {
-            continue;
-        }
         let Some(library) = input
             .connected
             .iter()
@@ -175,23 +176,40 @@ pub fn kit(input: &KitInput) -> Kit {
         else {
             continue;
         };
-        let path = library
-            .index
-            .items
-            .iter()
-            .find(|i| i.key == r.item.key)
-            .map(|i| i.path.as_str());
-        let key = match (library.entry, path) {
-            (Some(entry), Some(path)) => catalog_key(&entry.id, path),
-            _ => r.item.key.clone(),
+        let elsewhere = input
+            .elsewhere
+            .get(&lock_key(&portable_identity(library.source), &r.item.id))
+            .cloned()
+            .unwrap_or_default();
+        // A skill with no rule is still worth offering when Habi picks it for
+        // any codebase, or when the person's other projects already use it.
+        let anywhere = r.pick.as_ref().is_some_and(|p| p.anywhere);
+        let kind = match (r.group, r.applicability.applicability) {
+            (Group::Required, _) => KitGroup::Required,
+            (Group::Relevant, _) => KitGroup::Stack,
+            (_, Applicability::Undeclared) if anywhere || !elsewhere.is_empty() => {
+                KitGroup::Practice
+            }
+            _ => continue,
         };
-        let order = match (library.entry, path) {
-            (Some(entry), Some(path)) => entry
-                .picks
-                .iter()
-                .position(|p| p.skill == path)
-                .map_or(usize::MAX, |at| catalog_order(input.catalog, &entry.id, at)),
-            _ => usize::MAX,
+        if kind != KitGroup::Practice {
+            fitting += 1;
+        }
+        let installed = r.installation.is_some() || input.folders.has(input.root, &r.item.name);
+        if !r.item.installable && !installed {
+            continue;
+        }
+        let path = paths.get(r.item.key.as_str()).copied();
+        let (key, order) = match (library.entry, path) {
+            (Some(entry), Some(path)) => (
+                catalog_key(&entry.id, path),
+                entry
+                    .picks
+                    .iter()
+                    .position(|p| p.skill == path)
+                    .map_or(usize::MAX, |at| catalog_order(input.catalog, &entry.id, at)),
+            ),
+            _ => (r.item.key.clone(), usize::MAX),
         };
         let practice = kind == KitGroup::Practice;
         let broad = !practice && names_only_languages(&r.applicability);
@@ -221,8 +239,7 @@ pub fn kit(input: &KitInput) -> Kit {
                 gist: r
                     .pick
                     .as_ref()
-                    .map(|p| p.gist.clone())
-                    .unwrap_or_else(|| r.item.description.clone()),
+                    .map_or_else(|| r.item.description.clone(), |p| p.gist.clone()),
                 library: SuggestedLibrary {
                     name: r.item.source_name.clone(),
                     entry_id: library.entry.map(|e| e.id.clone()),
@@ -241,6 +258,7 @@ pub fn kit(input: &KitInput) -> Kit {
                 basis: r.basis,
                 pick: r.pick.as_ref().map(|p| p.why.clone()),
                 applicability: (!practice).then(|| r.applicability.clone()),
+                elsewhere,
             },
         });
     }
@@ -278,125 +296,132 @@ pub fn kit(input: &KitInput) -> Kit {
         }
     }
 
-    // One suggestion per skill name: what is already here, then what is
-    // connected, then the makers' own over the community's.
-    candidates.sort_by_key(|c| {
+    // One order, stated: the group; within it what could be added before
+    // what the project has; what the person's other projects use; whose rule
+    // it is (the author's, Habi's pick, Habi's other rules, the skill's own
+    // words); one technology before a few before many; what the project is
+    // built on before how it is shipped; then Habi's order in the catalog.
+    candidates.sort_by_cached_key(|c| {
         (
-            !c.suggestion.installed,
-            !c.suggestion.library.connected,
-            !c.suggestion.library.builder,
+            (
+                c.suggestion.group,
+                c.suggestion.installed,
+                c.suggestion.elsewhere.is_empty(),
+                basis_rank(c.suggestion.basis),
+                c.suggestion.pick.is_none(),
+                c.broad,
+            ),
+            (
+                match c.breadth {
+                    0 | 1 => 0,
+                    2 | 3 => 1,
+                    _ => 2,
+                },
+                c.tooling,
+                c.breadth,
+                std::cmp::Reverse(c.specificity),
+            ),
+            (
+                c.order,
+                !c.suggestion.library.connected,
+                !c.suggestion.library.builder,
+                c.suggestion.title.to_lowercase(),
+            ),
         )
     });
-    let mut seen: Vec<String> = Vec::new();
-    candidates.retain(|c| {
-        let name = c.suggestion.name.to_ascii_lowercase();
-        if seen.contains(&name) {
-            false
-        } else {
-            seen.push(name);
-            true
-        }
-    });
 
-    let rank = |c: &Candidate| {
-        (
-            c.suggestion.group,
-            basis_rank(c.suggestion.basis),
-            c.suggestion.pick.is_none(),
-            c.broad,
-            // One technology, a few, or many; then what it is built on
-            // before how it is shipped; then the narrower.
-            match c.breadth {
-                0 | 1 => 0,
-                2 | 3 => 1,
-                _ => 2,
-            },
-            c.tooling,
-            c.breadth,
-            std::cmp::Reverse(c.specificity),
-            c.order,
-            !c.suggestion.library.connected,
-            !c.suggestion.library.builder,
-            c.suggestion.title.to_lowercase(),
-        )
-    };
-    candidates.sort_by_cached_key(rank);
-
-    // Team requirements and the stack first, each list capped; a rule Habi
-    // suggests without standing behind the skill fills one place per library.
-    // Within a group, what the project has goes after what it could add.
-    let candidates = {
-        let mut c = candidates;
-        c.sort_by_key(|c| (c.suggestion.group, c.suggestion.installed));
-        c
-    };
+    // Each list is capped. A rule Habi suggests without standing behind the
+    // skill fills one place per library. What the project already has stays
+    // listed, as done, and takes no place. One suggestion per skill name.
     let (mut practices, candidates): (Vec<Candidate>, Vec<Candidate>) = candidates
         .into_iter()
         .partition(|c| c.suggestion.group == KitGroup::Practice);
     let mut out: Vec<Suggestion> = Vec::new();
+    let named = |out: &[Suggestion], s: &Suggestion| {
+        out.iter().any(|o| o.name.eq_ignore_ascii_case(&s.name))
+    };
     let (mut required, mut stack) = (0usize, 0usize);
-    let mut described: Vec<(String, usize)> = Vec::new();
+    let mut unpicked: HashMap<String, usize> = HashMap::new();
     for c in candidates {
         let s = c.suggestion;
-        // What the project already has stays listed, as done, and takes no place.
-        if s.installed {
-            out.push(s);
+        if named(&out, &s) {
             continue;
         }
-        let room = match s.group {
-            KitGroup::Required => {
-                required += 1;
-                required <= MAX_REQUIRED
-            }
-            _ => {
-                if s.basis != Basis::Declared && s.pick.is_none() {
-                    let n = match described.iter_mut().find(|(l, _)| *l == s.library.name) {
-                        Some((_, n)) => n,
-                        None => {
-                            described.push((s.library.name.clone(), 0));
-                            match described.last_mut() {
-                                Some((_, n)) => n,
-                                None => continue,
-                            }
-                        }
-                    };
-                    *n += 1;
-                    if *n > MAX_UNPICKED_PER_LIBRARY {
-                        continue;
-                    }
+        if !s.installed {
+            let room = match s.group {
+                KitGroup::Required => {
+                    required += 1;
+                    required <= MAX_REQUIRED
                 }
-                stack += 1;
-                stack <= MAX_STACK
+                _ => {
+                    if s.basis != Basis::Declared && s.pick.is_none() {
+                        let n = unpicked.entry(library_key(&s.library)).or_default();
+                        *n += 1;
+                        if *n > MAX_UNPICKED_PER_LIBRARY {
+                            continue;
+                        }
+                    }
+                    stack += 1;
+                    stack <= MAX_STACK
+                }
+            };
+            if !room {
+                continue;
             }
-        };
-        if room {
-            out.push(s);
         }
+        out.push(s);
     }
-    // Practices from libraries the kit already uses come first, so adding
-    // the kit connects as few libraries as it must; then Habi's order.
-    for _ in 0..MAX_PRACTICE {
+    // Practices: those already here, then up to a few more — what other
+    // projects use first, then from libraries the kit already uses, so adding
+    // it connects as few libraries as it must, then Habi's order.
+    practices.retain(|c| !named(&out, &c.suggestion));
+    let (here, mut practices): (Vec<Candidate>, Vec<Candidate>) =
+        practices.into_iter().partition(|c| c.suggestion.installed);
+    let mut added = 0usize;
+    while added < MAX_PRACTICE {
         let uses = |c: &Candidate| {
             out.iter()
-                .any(|s| s.library.name == c.suggestion.library.name)
+                .any(|s| library_key(&s.library) == library_key(&c.suggestion.library))
         };
         let Some(at) = (0..practices.len()).min_by_key(|&i| {
-            practices
-                .get(i)
-                .map(|c| (!c.suggestion.installed, !uses(c), c.order))
+            practices.get(i).map(|c| {
+                (
+                    std::cmp::Reverse(c.suggestion.elsewhere.len()),
+                    !uses(c),
+                    c.order,
+                )
+            })
         }) else {
             break;
         };
-        out.push(practices.remove(at).suggestion);
+        let s = practices.remove(at).suggestion;
+        if !named(&out, &s) {
+            out.push(s);
+            added += 1;
+        }
+    }
+    for c in here {
+        if !named(&out, &c.suggestion) {
+            out.push(c.suggestion);
+        }
     }
     let shown = out
         .iter()
-        .filter(|s| s.library.connected && s.group != KitGroup::Practice)
+        .filter(|s| s.library.connected && s.group != KitGroup::Practice && !s.installed)
         .count();
     Kit {
         more: u32::try_from(fitting.saturating_sub(shown)).unwrap_or(u32::MAX),
         suggestions: out,
     }
+}
+
+/// One library, however it is reached: its catalog entry, else its source.
+fn library_key(library: &SuggestedLibrary) -> String {
+    library
+        .entry_id
+        .clone()
+        .or_else(|| library.source_id.clone())
+        .unwrap_or_else(|| library.name.clone())
 }
 
 /// `catalog:<entry>/<folder>`: one key for a catalog skill, connected or not.
@@ -472,8 +497,7 @@ fn from_pick(
     kind: KitGroup,
     applicability: Option<ApplicabilityResult>,
 ) -> Suggestion {
-    let installed =
-        !crate::install::status::unmanaged_copies(input.root, pick.name(), input.lock).is_empty();
+    let installed = input.folders.has(input.root, pick.name());
     Suggestion {
         key: catalog_key(&entry.id, &pick.skill),
         group: kind,
@@ -493,6 +517,8 @@ fn from_pick(
         basis: Basis::CatalogHint,
         pick: Some(pick.why.clone()),
         applicability,
+        // Nothing of a library that is not connected is installed through Habi.
+        elsewhere: Vec::new(),
     }
 }
 
@@ -566,7 +592,7 @@ sources:
     ownership: { method: github-verified-org, checked: "2026-10-03" }
     picks:
       - { skill: skills/react-rules, title: React rules, gist: Rules for React., why: React apps, applies_when: { tag: "framework:react" } }
-      - { skill: skills/django-rules, title: Django rules, gist: Rules for Django., why: Django apps, applies_when: { tag: "framework:django" } }
+      - { skill: skills/django-rules, name: makers-django, title: Django rules, gist: Rules for Django., why: Django apps, applies_when: { tag: "framework:django" } }
       - { skill: skills/ts-style, title: TypeScript style, gist: Style., why: TypeScript, applies_when: { tag: "lang:typescript" } }
       - { skill: skills/web-any, title: Any web, gist: Web., why: Web apps, applies_when: { any: [ { tag: "framework:vue" }, { tag: "framework:svelte" }, { tag: "framework:react" } ] } }
       - { skill: skills/makers-way, title: Makers way, gist: How makers work., why: Any codebase }
@@ -590,11 +616,12 @@ sources:
         let entries = catalog(CATALOG);
         kit(&KitInput {
             root,
-            lock: &LockFile::default(),
+            folders: &SkillFolders::of(root),
             views: &views,
             recommendations: &[],
             connected: &[],
             catalog: &entries,
+            elsewhere: &HashMap::new(),
         })
     }
 
@@ -652,5 +679,63 @@ sources:
             .find(|s| s.name == "debugging")
             .unwrap();
         assert!(debugging.installed);
+    }
+
+    #[test]
+    fn a_pick_is_known_by_the_name_it_installs_under() {
+        let mut files = DJANGO.to_vec();
+        files.push((
+            ".claude/skills/makers-django/SKILL.md",
+            "---\nname: makers-django\n---\n",
+        ));
+        let dir = project(&files);
+        let k = run(dir.path());
+        let django = k
+            .suggestions
+            .iter()
+            .find(|s| s.title == "Django rules")
+            .unwrap();
+        assert!(django.installed);
+        assert_eq!(django.name, "makers-django");
+    }
+
+    #[test]
+    fn practices_already_here_take_no_place() {
+        let mut files = REACT.to_vec();
+        for name in ["debugging", "planning", "makers-way"] {
+            files.push(match name {
+                "debugging" => (
+                    ".claude/skills/debugging/SKILL.md",
+                    "---\nname: debugging\n---\n",
+                ),
+                "planning" => (
+                    ".agents/skills/planning/SKILL.md",
+                    "---\nname: planning\n---\n",
+                ),
+                _ => (
+                    ".claude/skills/makers-way/SKILL.md",
+                    "---\nname: makers-way\n---\n",
+                ),
+            });
+        }
+        let dir = project(&files);
+        let k = run(dir.path());
+        let practices: Vec<(&str, bool)> = k
+            .suggestions
+            .iter()
+            .filter(|s| s.group == KitGroup::Practice)
+            .map(|s| (s.title.as_str(), s.installed))
+            .collect();
+        // The two not yet here, then the three that are.
+        assert_eq!(
+            practices,
+            [
+                ("Review", false),
+                ("Verify", false),
+                ("Makers way", true),
+                ("Debugging", true),
+                ("Planning", true),
+            ]
+        );
     }
 }

@@ -38,4 +38,8 @@ pick: string | null,
 /**
  * How its rule held here: the evaluation the workbench explains. `None` for a practice.
  */
-applicability: ApplicabilityResult | null, };
+applicability: ApplicabilityResult | null, 
+/**
+ * The person's other projects that have it, installed by Habi.
+ */
+elsewhere: Array<string>, };

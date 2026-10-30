@@ -133,6 +133,8 @@ pub struct Hint {
 #[serde(deny_unknown_fields)]
 struct RawPick {
     skill: String,
+    /// The SKILL.md `name`, when it is not the folder's.
+    name: Option<String>,
     title: String,
     gist: String,
     why: String,
@@ -145,6 +147,9 @@ struct RawPick {
 pub struct Pick {
     /// Library-relative skill folder (exact, not a glob).
     pub skill: String,
+    /// The SKILL.md `name` when it differs from the folder's; the name it is
+    /// installed under.
+    pub skill_name: Option<String>,
     pub title: String,
     /// What it does, in Habi's words.
     pub gist: String,
@@ -155,9 +160,11 @@ pub struct Pick {
 }
 
 impl Pick {
-    /// The folder name, which is the skill's name.
+    /// The skill's name: what it is installed under in a project.
     pub fn name(&self) -> &str {
-        self.skill.rsplit('/').next().unwrap_or(&self.skill)
+        self.skill_name
+            .as_deref()
+            .unwrap_or_else(|| self.skill.rsplit('/').next().unwrap_or(&self.skill))
     }
 }
 
@@ -435,8 +442,19 @@ fn validate(raw: RawEntry, strict: bool) -> Result<Entry> {
             .map(Condition::parse)
             .transpose()
             .map_err(|e| bad(&id, format!("pick `{skill}`: {e}")))?;
+        if pick
+            .name
+            .as_deref()
+            .is_some_and(|n| crate::library::check_skill_name(n).is_err())
+        {
+            return Err(bad(
+                &id,
+                format!("pick `{skill}` has a name agents cannot use"),
+            ));
+        }
         picks.push(Pick {
             skill,
+            skill_name: pick.name,
             title: pick.title,
             gist: pick.gist,
             why: pick.why,

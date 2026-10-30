@@ -5,6 +5,7 @@ import axe from "axe-core";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
+import type { Suggestion } from "../bindings/Suggestion";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
 import { NavProvider } from "../lib/nav";
@@ -71,9 +72,16 @@ beforeEach(() => {
     if (cmd === "project_overview") return connected();
     if (cmd === "detected_clients") return ["claude-code"];
     if (cmd === "plan_install") return planInstall;
+    if (cmd === "machine_skills") return [];
+    if (cmd === "cancel_job") return true;
     throw { code: "notFound", message: `no mock for ${cmd}` };
   });
 });
+
+/** The overview with these changes to suggestions, by title. */
+function withSuggestions(change: (s: Suggestion) => Suggestion): ProjectOverview {
+  return { ...overview, kit: { ...overview.kit, suggestions: overview.kit.suggestions.map(change) } };
+}
 
 describe("the kit", () => {
   it("says what fits and why, and whose word it is when it is not Habi's pick", async () => {
@@ -110,7 +118,8 @@ describe("the kit", () => {
     wrap(<Kit overview={overview} onAll={vi.fn()} />);
     await user.click(knot("Grill the plan"));
     const chosen = overview.kit.suggestions.filter((s) => !s.installed && s.title !== "Grill the plan");
-    await user.click(within(cart()).getByRole("button", { name: `Add ${chosen.length} skills…` }));
+    expect(within(cart()).getByText(`${chosen.length} skills`)).toBeInTheDocument();
+    await user.click(within(cart()).getByRole("button", { name: "Review and add…" }));
     await screen.findByRole("dialog");
     const connects = invoke.mock.calls
       .filter(([cmd]) => cmd === "connect_catalog_entry")
@@ -133,5 +142,117 @@ describe("the kit", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("complementary")).toBeNull();
     expect(screen.getAllByText("Added")).toHaveLength(overview.kit.suggestions.length);
+  });
+
+  it("stops when asked, leaves what was connected, and opens no review", async () => {
+    const user = userEvent.setup();
+    let release: () => void = () => undefined;
+    invoke.mockImplementation(async (cmd: string, args: Record<string, unknown>) => {
+      if (cmd === "connect_catalog_entry") {
+        await new Promise<void>((r) => {
+          release = r;
+        });
+        return { id: `src-${args.entryId}`, name: args.entryId };
+      }
+      if (cmd === "machine_skills") return [];
+      if (cmd === "cancel_job") return true;
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "list_sources") return [];
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<Kit overview={overview} onAll={vi.fn()} />);
+    await user.click(within(cart()).getByRole("button", { name: "Review and add…" }));
+    const stop = await within(cart()).findByRole("button", { name: "Cancel" });
+    // Focus goes to what can be done now.
+    expect(stop).toHaveFocus();
+    await user.click(stop);
+    release();
+    expect(
+      await within(cart()).findByText(/Stopped\. Libraries already connected stay connected/),
+    ).toBeVisible();
+    expect(invoke.mock.calls.filter(([cmd]) => cmd === "connect_catalog_entry")).toHaveLength(1);
+    expect(invoke.mock.calls.some(([cmd]) => cmd === "cancel_job")).toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("stops connecting when the person leaves the page", async () => {
+    const user = userEvent.setup();
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "connect_catalog_entry") return new Promise(() => undefined);
+      if (cmd === "machine_skills") return [];
+      if (cmd === "cancel_job") return true;
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "list_sources") return [];
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    const view = wrap(<Kit overview={overview} onAll={vi.fn()} />);
+    await user.click(within(cart()).getByRole("button", { name: "Review and add…" }));
+    await within(cart()).findByRole("button", { name: "Cancel" });
+    view.unmount();
+    const job = invoke.mock.calls.find(([cmd]) => cmd === "connect_catalog_entry")?.[1].jobId;
+    expect(invoke).toHaveBeenCalledWith("cancel_job", expect.objectContaining({ jobId: job }));
+  });
+
+  it("says which chosen skills a library turned out not to have", async () => {
+    const user = userEvent.setup();
+    const gone = connected();
+    gone.kit = {
+      ...gone.kit,
+      suggestions: gone.kit.suggestions.filter((s) => s.title !== "Spring Boot testing"),
+    };
+    invoke.mockImplementation(async (cmd: string, args: Record<string, unknown>) => {
+      if (cmd === "connect_catalog_entry") return { id: `src-${args.entryId}`, name: args.entryId };
+      if (cmd === "project_overview") return gone;
+      if (cmd === "library") return { items: [] };
+      if (cmd === "detected_clients") return ["claude-code"];
+      if (cmd === "plan_install") return planInstall;
+      if (cmd === "machine_skills") return [];
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "list_sources") return [];
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<Kit overview={overview} onAll={vi.fn()} />);
+    await user.click(within(cart()).getByRole("button", { name: "Review and add…" }));
+    await screen.findByRole("dialog");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    // Still said once the review is closed.
+    expect(within(cart()).getByText("Not found in its library: Spring Boot testing.")).toBeVisible();
+  });
+
+  it("puts what other projects use first, and says where", () => {
+    wrap(
+      <Kit
+        overview={withSuggestions((s) =>
+          s.title === "Diagnosing bugs" ? { ...s, elsewhere: ["nextshop"] } : s,
+        )}
+        onAll={vi.fn()}
+      />,
+    );
+    const practice = screen.getByRole("region", { name: "For how you work" });
+    expect(within(practice).getByText("Also in nextshop")).toBeInTheDocument();
+  });
+
+  it("leaves a skill already on this machine out unless chosen", async () => {
+    const user = userEvent.setup();
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "machine_skills") return [{ name: "spring-boot-testing" }];
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "list_sources") return [];
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<Kit overview={overview} onAll={vi.fn()} />);
+    expect(await screen.findByText("On this machine")).toBeInTheDocument();
+    expect(knot("Spring Boot testing").checked).toBe(false);
+    await user.click(knot("Spring Boot testing"));
+    expect(knot("Spring Boot testing").checked).toBe(true);
+  });
+
+  it("says plainly when there is nothing to suggest", () => {
+    wrap(<Kit overview={{ ...overview, kit: { suggestions: [], more: 0 } }} onAll={vi.fn()} />);
+    expect(
+      screen.getByRole("heading", { name: "Nothing to suggest for billing-service yet" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Explore libraries/ })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).toBeNull();
   });
 });

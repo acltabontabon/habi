@@ -466,7 +466,7 @@ export function NothingFits({
     <div className="page found is-nothing">
       <div className="found-columns">
         <header className="found-lead">
-          <h2 className="found-headline">No recommendations yet</h2>
+          <h2 className="found-headline">Nothing from your libraries fits yet</h2>
           <p className="lead-sm">{whyNothing(libraries, project.name, byHand, ruled)}</p>
           <div className="found-lead-actions">
             {onSuggested ? (

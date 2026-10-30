@@ -34,8 +34,4 @@ tally: Array<SourceTally>,
 /**
  * Catalog libraries, not connected, that Habi's suggestions for the project come from.
  */
-suggested: Array<string>, 
-/**
- * Suggestions the project does not have yet.
- */
-toAdd: number, at: string, };
+suggested: Array<string>, at: string, };

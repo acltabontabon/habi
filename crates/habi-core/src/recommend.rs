@@ -174,6 +174,8 @@ pub struct PickNote {
     pub why: String,
     /// What it does, in Habi's words.
     pub gist: String,
+    /// A practice for any codebase: the pick has no rule of its own.
+    pub anywhere: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -521,6 +523,7 @@ pub fn recommend(
     candidates: &[Candidate],
 ) -> Vec<Recommendation> {
     let views = Views::new(inspection, declarations);
+    let folders = crate::install::status::SkillFolders::of(root);
     let mut out: Vec<Recommendation> = candidates
         .iter()
         .map(|c| {
@@ -593,7 +596,7 @@ pub fn recommend(
             let unmanaged_copies = if item.kind == ItemKind::Instructions {
                 Vec::new()
             } else {
-                crate::install::status::unmanaged_copies(root, &item.name, lock)
+                folders.unmanaged_copies(root, &item.name, lock)
             };
             Recommendation {
                 item: summarize(item, c.source_name, c.snapshot),
@@ -622,6 +625,7 @@ pub fn recommend(
                     title: p.title.clone(),
                     why: p.why.clone(),
                     gist: p.gist.clone(),
+                    anywhere: p.applies_when.is_none(),
                 }),
             }
         })

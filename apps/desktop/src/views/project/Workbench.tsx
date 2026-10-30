@@ -473,7 +473,7 @@ export function Workbench({
         {narrow && itemKey ? (
           <button type="button" className="reader-back workbench-back" onClick={toList}>
             <Icon name="arrowLeft" size={14} />
-            Recommendations
+            All skills
           </button>
         ) : null}
         {selectedHere ? (

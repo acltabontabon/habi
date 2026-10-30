@@ -646,14 +646,15 @@ impl Hints {
     /// The rule suggested for the skill folder at `path`, if any: a pick's
     /// own, else the first hint whose pattern covers it.
     pub fn find(&self, path: &str) -> Option<&crate::matching::condition::Condition> {
-        self.pick(path)
-            .and_then(|p| p.applies_when.as_ref())
-            .or_else(|| {
-                self.matchers
-                    .iter()
-                    .find(|(m, _)| m.is_match(path))
-                    .map(|(_, c)| c)
-            })
+        match self.pick(path) {
+            // A pick with no rule fits anywhere by Habi's word; no hint widens it.
+            Some(pick) => pick.applies_when.as_ref(),
+            None => self
+                .matchers
+                .iter()
+                .find(|(m, _)| m.is_match(path))
+                .map(|(_, c)| c),
+        }
     }
 
     /// Habi's pick at `path`, if the skill is one.
@@ -690,11 +691,7 @@ pub fn hints_for_source(source: &Source) -> Option<Hints> {
 }
 
 /// The catalog entry a source is the repository of, if any.
-pub fn entry_for_source(source: &Source) -> Option<Entry> {
+pub fn entry_for_source(source: &Source) -> Option<&'static Entry> {
     let registry = Registry::embedded().ok()?;
-    registry
-        .entries
-        .iter()
-        .find(|e| matches_entry(source, e))
-        .cloned()
+    registry.entries.iter().find(|e| matches_entry(source, e))
 }

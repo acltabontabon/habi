@@ -25,9 +25,10 @@
 //!   dropped. A skill naming more than five technologies is about none of them.
 
 use super::condition::Condition;
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use std::cmp::Reverse;
-use std::sync::LazyLock;
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 
 /// One technology a skill's own words name.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -443,6 +444,18 @@ static DESCRIPTION: LazyLock<Vec<(&'static Term, Regex)>> = LazyLock::new(|| {
         .collect()
 });
 
+/// The same terms as one set, so a description is scanned once to learn
+/// which terms appear at all; only those are then located.
+static DESCRIPTION_SET: LazyLock<Option<RegexSet>> =
+    LazyLock::new(|| RegexSet::new(DESCRIPTION.iter().map(|(_, re)| re.as_str())).ok());
+
+/// Rules already read, by name and description: an overview reads every
+/// skill of every library, and the words do not change between reads.
+static READ: LazyLock<Mutex<HashMap<Words, Option<Condition>>>> = LazyLock::new(Default::default);
+
+/// A skill's name and description.
+type Words = (String, String);
+
 /// Words that make the technology right after them an exclusion.
 const NEGATIONS: &[&str] = &[
     "not",
@@ -490,7 +503,10 @@ const LOOKBACK_WORDS: usize = MAX_FILLERS + 2;
 /// specific is named.
 pub fn mentions(name: &str, description: &str) -> Vec<Mention> {
     let mut found: Vec<Mention> = Vec::new();
-    for (tag, term) in in_name(name).into_iter().chain(in_description(description)) {
+    let described = in_description(description)
+        .into_iter()
+        .map(|f| (f.tag, f.term));
+    for (tag, term) in in_name(name).into_iter().chain(described) {
         if !found.iter().any(|m| m.tag == tag) {
             found.push(Mention { tag, term });
         }
@@ -504,7 +520,87 @@ pub fn mentions(name: &str, description: &str) -> Vec<Mention> {
 /// A rule from what the skill says it is for, or `None` when it names no
 /// technology Habi can detect (or so many that it is about none of them).
 pub fn described_rule(name: &str, description: &str) -> Option<Condition> {
-    let tags: Vec<&str> = mentions(name, description).iter().map(|m| m.tag).collect();
+    let key = (name.to_string(), description.to_string());
+    if let Some(rule) = READ.lock().ok().and_then(|read| read.get(&key).cloned()) {
+        return rule;
+    }
+    let rule = read_rule(name, description);
+    if let Ok(mut read) = READ.lock() {
+        read.insert(key, rule.clone());
+    }
+    rule
+}
+
+/// Says the skill works with any technology, so the ones it names are examples.
+static AGNOSTIC: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)\b(?:technology|tech|language|framework|stack|platform)[\s-]+(?:agnostic|independent)\b|\bany (?:programming )?language\b|\bany (?:tech(?:nology)? )?stack\b",
+    )
+    .ok()
+});
+
+/// Tags about how a project is built and shipped, not what it is built on.
+const TOOLING: &[&str] = &["ci:", "container:", "build:"];
+
+/// The rule's tags, from strongest claim to weakest: the frameworks, data
+/// stores, test tools and APIs the skill names; else a language its name
+/// names (`java-development`), since a language a description mentions in
+/// passing ("pure JavaScript", "Python + BigQuery") is true of too many
+/// projects to say one fits; else the CI or container tooling it names.
+fn read_rule(name: &str, description: &str) -> Option<Condition> {
+    if AGNOSTIC.as_ref().is_some_and(|re| re.is_match(description)) {
+        return None;
+    }
+    let tooling = |t: &str| TOOLING.iter().any(|p| t.starts_with(p));
+    let language = |t: &str| t.starts_with("lang:");
+    let stack = |t: &str| !tooling(t) && !language(t);
+    let named: Vec<&'static str> = in_name(name).into_iter().map(|(tag, _)| tag).collect();
+    let hits = in_description(description);
+    // What the name names is what the skill is about; failing that, the first
+    // technology the description names, with any listed alongside it
+    // ("Django, Flask or FastAPI") — not every one it mentions on the way.
+    let listed = |keep: &dyn Fn(&str) -> bool| -> Vec<&'static str> {
+        // In "from Jest to Vitest" the project is leaving Jest behind.
+        let leaving = |h: &Found| {
+            words_before(description, h.start)
+                .first()
+                .map(String::as_str)
+                == Some("from")
+                && hits.iter().any(|o| o.start > h.end && keep(o.tag))
+        };
+        let mut out: Vec<&'static str> = Vec::new();
+        let mut last: Option<usize> = None;
+        for h in hits.iter().filter(|h| keep(h.tag) && !leaving(h)) {
+            match last {
+                Some(end) if !same_list(description, end, h.start) => break,
+                _ => {}
+            }
+            if !out.contains(&h.tag) {
+                out.push(h.tag);
+            }
+            last = Some(h.end);
+        }
+        out
+    };
+    let from_name = |keep: &dyn Fn(&str) -> bool| -> Vec<&'static str> {
+        let mut out: Vec<&'static str> = Vec::new();
+        for t in named.iter().copied().filter(|t| keep(t)) {
+            if !out.contains(&t) {
+                out.push(t);
+            }
+        }
+        out
+    };
+    let tags = [
+        from_name(&stack),
+        listed(&stack),
+        from_name(&language),
+        from_name(&tooling),
+        listed(&tooling),
+    ]
+    .into_iter()
+    .find(|tags| !tags.is_empty())
+    .unwrap_or_default();
     match tags.as_slice() {
         [] => None,
         [one] => Some(Condition::Tag {
@@ -558,7 +654,19 @@ fn name_tokens(name: &str) -> Vec<(usize, usize, String)> {
     let mut tokens = Vec::new();
     let mut start = None;
     let end = std::iter::once((name.len(), '-'));
+    let mut previous: Option<char> = None;
     for (i, c) in name.char_indices().chain(end) {
+        // A version on a name ("vue3", "python3") is not part of the word.
+        if let (Some(p), Some(s)) = (previous, start)
+            && p.is_alphabetic()
+            && c.is_ascii_digit()
+        {
+            if let Some(token) = name.get(s..i) {
+                tokens.push((s, i, token.to_lowercase()));
+            }
+            start = None;
+        }
+        previous = Some(c);
         match (c.is_alphanumeric(), start) {
             (true, None) => start = Some(i),
             (false, Some(s)) => {
@@ -579,14 +687,28 @@ struct Hit {
     tag: &'static str,
 }
 
+/// A technology a description names, where it names it.
+struct Found {
+    tag: &'static str,
+    term: String,
+    start: usize,
+    end: usize,
+}
+
 /// Tags the description names, in order of appearance, without negated ones.
-fn in_description(text: &str) -> Vec<(&'static str, String)> {
+fn in_description(text: &str) -> Vec<Found> {
     let mut hits = Vec::new();
-    for (term, pattern) in DESCRIPTION.iter() {
+    let present = DESCRIPTION_SET.as_ref().map(|set| set.matches(text));
+    for (i, (term, pattern)) in DESCRIPTION.iter().enumerate() {
+        if present.as_ref().is_some_and(|p| !p.matched(i)) {
+            continue;
+        }
         for m in pattern.find_iter(text) {
             let next = next_word(text, m.end());
             let next = next.as_deref();
             let counts = whole_word(text, m.start(), m.end())
+                && !repository_slug(text, m.start(), m.end())
+                && !likeness(text, m.end())
                 && term.allows_next(next)
                 && (term.initial.is_empty()
                     || !starts_sentence(text, m.start())
@@ -611,10 +733,37 @@ fn in_description(text: &str) -> Vec<(&'static str, String)> {
         if negated {
             negated_to = Some(negated_to.map_or(hit.end, |end| end.max(hit.end)));
         } else if let Some(spelled) = text.get(hit.start..hit.end) {
-            found.push((hit.tag, spelled.to_string()));
+            found.push(Found {
+                tag: hit.tag,
+                term: spelled.to_string(),
+                start: hit.start,
+                end: hit.end,
+            });
         }
     }
     found
+}
+
+/// A lowercase name right before a `/` is an owner in a repository address
+/// (`expressjs/express`), not the technology. A scoped package (`@angular/core`)
+/// or prose ("React/Next.js") is not.
+fn repository_slug(text: &str, start: usize, end: usize) -> bool {
+    let word = text.get(start..end).unwrap_or_default();
+    text.get(end..).is_some_and(|rest| rest.starts_with('/'))
+        && word.chars().all(|c| !c.is_uppercase())
+        && !word.starts_with('@')
+        && !text
+            .get(..start)
+            .is_some_and(|before| before.ends_with('@'))
+}
+
+/// "Vue-like" or "Jest-style" compares with the technology; it is not used.
+fn likeness(text: &str, end: usize) -> bool {
+    text.get(end..).is_some_and(|rest| {
+        ["-like", "-style", "-esque", "-inspired"]
+            .iter()
+            .any(|s| rest.starts_with(s))
+    })
 }
 
 fn is_word_char(c: char) -> bool {
@@ -783,6 +932,7 @@ mod tests {
             assert_eq!(t.text, t.text.to_lowercase(), "name term {}", t.text);
         }
         assert_eq!(DESCRIPTION.len(), DESCRIPTION_TERMS.len());
+        assert!(DESCRIPTION_SET.is_some());
     }
 
     /// Descriptions modelled on public skills: (name, description, tags in order).
@@ -1360,6 +1510,100 @@ mod tests {
             ["lang:python", "lang:typescript"]
         );
         assert_eq!(tags("python-django", ""), ["framework:django"]);
+    }
+
+    /// The tags of the rule a skill gets, in order.
+    fn rule_tags(name: &str, description: &str) -> Vec<String> {
+        fn walk(c: &Condition, out: &mut Vec<String>) {
+            match c {
+                Condition::Tag { tag } => out.push(tag.clone()),
+                Condition::Any { items } | Condition::All { items } => {
+                    items.iter().for_each(|i| walk(i, out))
+                }
+                _ => {}
+            }
+        }
+        let mut out = Vec::new();
+        if let Some(rule) = described_rule(name, description) {
+            walk(&rule, &mut out);
+        }
+        out
+    }
+
+    #[test]
+    fn rules_claim_what_the_skill_is_about() {
+        // What it is built on wins over the language and the tooling around it.
+        assert_eq!(
+            rule_tags("x", "Ship React apps in Docker images with GitHub Actions."),
+            ["framework:react"]
+        );
+        // A language its name names is its subject; tooling it mentions is not.
+        assert_eq!(
+            rule_tags(
+                "java-development",
+                "Plain Java without a framework: Maven, Gradle and GitHub Actions."
+            ),
+            ["lang:java"]
+        );
+        // A language mentioned in passing fits too many projects to say one fits.
+        assert!(
+            rule_tags(
+                "freecad-scripts",
+                "Write FreeCAD Python scripts and macros."
+            )
+            .is_empty()
+        );
+        assert!(rule_tags("md-to-docx", "Convert Markdown to Word in pure JavaScript.").is_empty());
+        // Tooling is the subject when nothing else is named.
+        assert_eq!(
+            rule_tags(
+                "codeql",
+                "Set up CodeQL scanning with GitHub Actions workflows."
+            ),
+            ["ci:github-actions"]
+        );
+        // A skill for any technology names examples, not its subject.
+        assert!(rule_tags(
+            "stack-blueprint",
+            "Technology-agnostic generator: detects React, Angular or Spring Boot and documents it."
+        )
+        .is_empty());
+        // The name says what the skill is about; what else it mentions does not widen it.
+        assert_eq!(
+            rule_tags(
+                "fastapi-endpoints",
+                "FastAPI endpoints backed by SQLAlchemy models."
+            ),
+            ["framework:fastapi"]
+        );
+        assert_eq!(
+            rule_tags("vue3-composition", "Composition API patterns."),
+            ["framework:vue"]
+        );
+        // Otherwise the first technology, with the ones listed alongside it.
+        assert_eq!(
+            rule_tags(
+                "x",
+                "Views for Django, Flask or FastAPI, with SQLAlchemy and pytest."
+            ),
+            ["framework:django", "framework:flask", "framework:fastapi"]
+        );
+        // A migration fits the projects that are making it, not those that made it.
+        assert_eq!(
+            rule_tags("x", "Migrate a test suite from Jest to Vitest."),
+            ["test:vitest"]
+        );
+        // A comparison is not a use.
+        assert_eq!(
+            rule_tags("x", "A Vue-like store for Svelte apps."),
+            ["framework:svelte"]
+        );
+        // A repository address is not the technology; a scoped package is.
+        assert!(rule_tags("x", "Checks sponsors of expressjs/express and others.").is_empty());
+        assert_eq!(
+            rule_tags("x", "Upgrades @angular/core."),
+            ["framework:angular"]
+        );
     }
 
     #[test]

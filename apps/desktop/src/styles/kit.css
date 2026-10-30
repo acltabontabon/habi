@@ -161,7 +161,7 @@
   border-radius: 999px;
   border: 1.5px solid var(--ink-faint);
   background: var(--paper);
-  color: #fff;
+  color: var(--paper);
   transition:
     background var(--duration) var(--ease),
     border-color var(--duration) var(--ease),
@@ -189,8 +189,8 @@
 }
 
 .kit-knot input:focus-visible + .kit-knot-mark {
-  box-shadow: 0 0 0 3px var(--focus-halo);
-  border-color: var(--focus);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .kit-main {
@@ -278,6 +278,23 @@
   width: 14px;
   height: 1.5px;
   border-radius: 1px;
+  background: var(--thread);
+}
+
+/* Another of the person's projects has it: the strongest reason there is. */
+.kit-elsewhere {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--thread-strong);
+  white-space: nowrap;
+}
+
+.kit-elsewhere::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
   background: var(--thread);
 }
 
