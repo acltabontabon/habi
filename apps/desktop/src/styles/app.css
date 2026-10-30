@@ -740,6 +740,18 @@
   max-width: 820px;
 }
 
+/* A capped page sits centred in a wide window, as the home page does, so a
+   maximized window is a page with margins, not a column with a void beside it. */
+.page.narrow,
+.page.settings,
+.page.privacy-page,
+.page.about,
+.page.contribution,
+.page.found {
+  width: 100%;
+  margin-inline: auto;
+}
+
 .page-title {
   font-size: 30px;
   font-weight: 620;

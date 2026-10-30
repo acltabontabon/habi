@@ -49,6 +49,9 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **A calmer project mark.** A project's avatar is a few threads on a quiet tile — one warp per
   library that fits, in its dye, crossed by wefts in the project's own languages — with its
   initials set plainly on top, so the letters read at any size.
+- **Wide windows use their width.** Suggested's list and card grow with the window, the All
+  skills list widens, My skills grows and centres, and every capped page (Settings, Privacy,
+  About, Contributions) sits centred like Home instead of leaving a void on the right.
 
 ### Fixed
 

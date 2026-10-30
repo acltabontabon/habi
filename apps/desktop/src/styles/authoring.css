@@ -192,8 +192,11 @@
 
 /* ---------- My skills ---------- */
 
+/* A reading measure that grows a little with the window, so a maximized
+   window does not leave half the page empty. */
 .skills {
-  max-width: 980px;
+  max-width: clamp(980px, 72vw, 1320px);
+  margin-inline: auto;
 }
 
 .skills-head {
@@ -1001,7 +1004,7 @@
 /* ---------- Found in a project ---------- */
 
 .found {
-  max-width: 980px;
+  max-width: clamp(980px, 72vw, 1320px);
   display: grid;
   gap: var(--s7);
   align-content: start;

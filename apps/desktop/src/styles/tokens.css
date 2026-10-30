@@ -107,7 +107,8 @@
   --radius-lg: 10px;
 
   --sidebar-width: 240px;
-  --list-width: 400px;
+  /* The workbench list: grows a little with a wide window, so the detail pane is not the only thing that does. */
+  --list-width: clamp(400px, 26vw, 560px);
   --filter-height: 51px;
 
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
