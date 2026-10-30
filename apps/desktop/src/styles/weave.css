@@ -33,38 +33,33 @@
 
 .swatch {
   background: var(--paper-sunken);
+  box-shadow: inset 0 0 0 1px var(--hairline);
   padding: 0;
 }
 
+/* An empty loom: undyed passes, barely there. */
 .swatch .swatch-weft {
-  fill: var(--hairline-strong);
-  opacity: 0.55;
+  stroke: var(--hairline-strong);
+  opacity: 0.7;
 }
 
-/* A project's own threads: its languages' dyes, softer than the warp floats. */
+/* A project's own threads: its languages' dyes, a shade quieter than the warp. */
 .swatch .swatch-weft.is-dyed {
-  opacity: 0.45;
+  opacity: 0.8;
 }
 
-/* A project's avatar: its initials cut from its own cloth. The tile keeps a
-   whisper of the weave; the letters carry it at full strength. */
+/* A project's avatar: its initials set plainly on the cloth. A paper halo
+   lifts the letters clear of the threads, so they read at any size. */
 .swatch-initials {
   font-family: var(--font-ui);
-  font-size: 50px;
-  font-weight: 760;
-  letter-spacing: -3px;
-}
-
-.swatch-ground {
-  opacity: 0.16;
-}
-
-.swatch-letters .swatch-weft {
-  opacity: 1;
-}
-
-.swatch-letters .swatch-weft:not(.is-dyed) {
-  fill: var(--ink-soft);
+  font-size: 31px;
+  font-weight: 650;
+  letter-spacing: -1px;
+  fill: var(--ink);
+  stroke: var(--paper-sunken);
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
 }
 
 /* ---------- Provenance chip: library name with its thread ---------- */
@@ -77,8 +72,8 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .swatch rect {
-    transition: fill 400ms var(--ease);
+  .swatch line {
+    transition: stroke 400ms var(--ease);
   }
 }
 

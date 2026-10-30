@@ -6,7 +6,7 @@
  *
  * All of these are decorative: the library's name is always next to them.
  */
-import { type CSSProperties, useId } from "react";
+import type { CSSProperties } from "react";
 import type { Dye } from "../lib/dye";
 import { stackDye } from "../lib/stackDye";
 import { tagLabel } from "../lib/tags";
@@ -56,19 +56,22 @@ function hash(text: string): number {
   return h >>> 0;
 }
 
-/** Weave structures: plain, 2/1 twill, 2/2 twill, basket. */
-const STRUCTURES: ((col: number, row: number) => boolean)[] = [
-  (c, r) => (c + r) % 2 === 0,
-  (c, r) => (c + r) % 3 !== 0,
-  (c, r) => (c + r) % 4 < 2,
-  (c, r) => (Math.floor(c / 2) + Math.floor(r / 2)) % 2 === 0,
-];
+/** The swatch's drawing space; threads keep this far from its edge. */
+const BOX = 80;
+const MARGIN = 7;
+/** Warp threads shown at most: more libraries than this share the cloth by turns. */
+const MAX_WARP = 5;
+/** Weft threads: the project's own colors, a few passes across. */
+const WEFTS = 3;
+const THREAD = 2.4;
 
 /**
- * A small woven swatch. Warp threads carry the dyes given (the libraries
- * that contribute to a project); the weave structure comes from `seed`, so
- * each project keeps its own cloth. Weft threads carry `weft` colors (the
- * project's own stack) when given; without either, it is an empty loom.
+ * A small woven swatch, kept quiet so the initials read. A few warp threads
+ * run top to bottom in the dyes given (the libraries that contribute to a
+ * project); a few weft passes cross them in `weft` colors (the project's own
+ * stack) and interlace at the crossings, over one thread and under the next.
+ * Where each thread sits comes from `seed`, so each project keeps its own
+ * cloth. Without dyes or weft it is an empty loom: two undyed passes.
  */
 export function Swatch({
   dyes,
@@ -83,83 +86,91 @@ export function Swatch({
   size?: number;
   label?: string;
   weft?: string[];
-  /** Letters cut from the cloth: the tile is the faint weave, the letters the full one. */
+  /** Letters set plainly on the cloth, in ink with a paper halo. */
   initials?: string;
 }) {
-  const clip = useId();
-  const n = 8;
-  const cell = 10;
   const h = hash(seed);
-  const over = STRUCTURES[h % STRUCTURES.length] as (c: number, r: number) => boolean;
-  const cells = [];
-  // Weft rows first, then the warp floats that pass over them.
-  for (let r = 0; r < n; r++) {
-    cells.push(
-      <rect
-        key={`w${r}`}
-        x="0"
-        y={r * cell + 2}
-        width={n * cell}
-        height={cell - 4}
-        rx="3"
-        className={weft.length > 0 ? "swatch-weft is-dyed" : "swatch-weft"}
-        style={weft.length > 0 ? { fill: weft[(r + h) % weft.length] } : undefined}
-      />,
-    );
-  }
-  for (let c = 0; c < n; c++) {
-    const dye = dyes.length > 0 ? dyes[(c + (h >>> 3)) % dyes.length] : undefined;
-    if (!dye) continue;
-    for (let r = 0; r < n; r++) {
-      if (!over(c, r)) continue;
-      cells.push(
-        <rect
-          key={`${c}-${r}`}
-          x={c * cell + 2}
-          y={r * cell - 0.5}
-          width={cell - 4}
-          height={cell + 1}
-          rx="3"
-          fill={dye.color}
-          opacity={dye.community ? 0.72 : undefined}
-        />,
-      );
-    }
-  }
+  // A small, seeded drift keeps two projects' cloths from lining up.
+  const drift = (k: number, span: number) => ((((h >>> (k * 5)) & 31) / 31) * 2 - 1) * span;
+  const warps = dyes.slice(0, MAX_WARP).map((dye, i, all) => ({
+    dye,
+    x: Math.round((BOX * (i + 1)) / (all.length + 1) + drift(i, 3)),
+  }));
+  const dyed = weft.length > 0;
+  const passes = dyed ? WEFTS : 2;
+  const wefts = Array.from({ length: passes }, (_, j) => ({
+    color: dyed ? (weft[(j + (h >>> 3)) % weft.length] as string) : undefined,
+    y: Math.round((BOX * (j + 1)) / (passes + 1) + drift(j + 7, 4)),
+  }));
   return (
     <svg
       className="swatch"
       width={size}
       height={size}
-      viewBox={`0 0 ${n * cell} ${n * cell}`}
+      viewBox={`0 0 ${BOX} ${BOX}`}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : "true"}
       focusable="false"
     >
-      {initials ? (
-        <>
-          <defs>
-            <clipPath id={clip}>
-              <text
-                x={(n * cell) / 2}
-                y={(n * cell) / 2}
-                textAnchor="middle"
-                dominantBaseline="central"
-                className="swatch-initials"
-              >
-                {initials}
-              </text>
-            </clipPath>
-          </defs>
-          <g className="swatch-ground">{cells}</g>
-          <g className="swatch-letters" clipPath={`url(#${clip})`}>
-            {cells}
-          </g>
-        </>
-      ) : (
-        cells
+      {/* Wefts first, under everything. */}
+      {wefts.map((w, j) => (
+        <line
+          key={`weft-${j}`}
+          x1={MARGIN}
+          y1={w.y}
+          x2={BOX - MARGIN}
+          y2={w.y}
+          className={w.color ? "swatch-weft is-dyed" : "swatch-weft"}
+          style={w.color ? { stroke: w.color } : undefined}
+          strokeWidth={THREAD}
+          strokeLinecap="round"
+        />
+      ))}
+      {/* Warps over them, stitched for a community library. */}
+      {warps.map((w, i) => (
+        <line
+          key={`warp-${i}`}
+          x1={w.x}
+          y1={MARGIN}
+          x2={w.x}
+          y2={BOX - MARGIN}
+          stroke={w.dye.color}
+          strokeWidth={THREAD}
+          strokeLinecap="round"
+          strokeDasharray={w.dye.community ? "3.2 3" : undefined}
+          opacity={w.dye.community ? 0.85 : undefined}
+        />
+      ))}
+      {/* Then the weft back over every other crossing: a plain weave. */}
+      {wefts.flatMap((w, j) =>
+        warps
+          .filter((_, i) => (i + j + (h & 1)) % 2 === 0)
+          .map((warp, i) => (
+            <line
+              key={`over-${j}-${i}`}
+              x1={warp.x - THREAD * 1.1}
+              y1={w.y}
+              x2={warp.x + THREAD * 1.1}
+              y2={w.y}
+              className={w.color ? "swatch-weft is-dyed" : "swatch-weft"}
+              style={w.color ? { stroke: w.color } : undefined}
+              strokeWidth={THREAD}
+              strokeLinecap="butt"
+            />
+          )),
       )}
+      {initials ? (
+        <text
+          x={BOX / 2}
+          y={BOX / 2 + 1}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="swatch-initials"
+        >
+          {initials}
+        </text>
+      ) : null}
     </svg>
   );
 }
