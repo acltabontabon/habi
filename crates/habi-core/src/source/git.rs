@@ -113,13 +113,20 @@ pub struct RemoteHead {
     pub branch: Option<String>,
 }
 
-fn parse_ls_remote(text: &str) -> Option<RemoteHead> {
+/// `ls-remote`'s answer for the ref `source`. Git matches a pattern against the
+/// end of each ref name, so asking for `HEAD` also lists `refs/tags/rel/HEAD`
+/// and `refs/remotes/origin/HEAD`: only the ref asked about counts.
+fn parse_ls_remote(text: &str, source: &str) -> Option<RemoteHead> {
+    let peeled = format!("{source}^{{}}");
     let mut branch = None;
     let mut commit = None;
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("ref: ") {
-            let target = rest.split('\t').next().unwrap_or(rest);
-            branch = target.strip_prefix("refs/heads/").map(str::to_string);
+            if let Some((target, name)) = rest.split_once('\t')
+                && name == source
+            {
+                branch = target.strip_prefix("refs/heads/").map(str::to_string);
+            }
             continue;
         }
         let Some((oid, name)) = line.split_once('\t') else {
@@ -130,7 +137,7 @@ fn parse_ls_remote(text: &str) -> Option<RemoteHead> {
             continue;
         }
         // An annotated tag is listed twice; the peeled `^{}` line is the commit.
-        if name.ends_with("^{}") || commit.is_none() {
+        if name == peeled || (name == source && commit.is_none()) {
             commit = Some(oid.to_string());
         }
     }
@@ -140,6 +147,29 @@ fn parse_ls_remote(text: &str) -> Option<RemoteHead> {
     })
 }
 
+/// Removes what an interrupted fetch left in a cache: `shallow.lock`, the lock
+/// on the ref it was updating (either one fails every later fetch) and its
+/// temporary packs, which nothing else removes while `gc.auto` is off. Only for
+/// a caller that holds the source's lock, so no fetch of its own is running.
+/// What cannot be removed is left for the fetch to report.
+pub fn clear_interrupted_fetch(git_dir: &Path, target_ref: &str) {
+    let remove = |path: &Path| {
+        if let Err(e) = std::fs::remove_file(path)
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            tracing::warn!(path = %path.display(), error = %e, "could not remove what an interrupted fetch left");
+        }
+    };
+    remove(&git_dir.join("shallow.lock"));
+    remove(&git_dir.join(format!("{target_ref}.lock")));
+    let packs = git_dir.join("objects").join("pack");
+    for entry in std::fs::read_dir(packs).into_iter().flatten().flatten() {
+        if entry.file_name().to_string_lossy().starts_with("tmp_") {
+            remove(&entry.path());
+        }
+    }
+}
+
 /// One entry of `git ls-tree -r -l`.
 #[derive(Debug, Clone)]
 pub struct TreeEntry {
@@ -147,7 +177,11 @@ pub struct TreeEntry {
     pub kind: String,
     pub oid: String,
     pub size: Option<u64>,
+    /// With any bytes that are not UTF-8 replaced: see `name_is_utf8`.
     pub path: String,
+    /// False if the name is not UTF-8. `path` then cannot identify the file:
+    /// two names that differ only in those bytes come out the same.
+    pub name_is_utf8: bool,
 }
 
 /// The most `git ls-remote --tags` output `list_tags` reads: room for tens of
@@ -431,7 +465,7 @@ impl Git {
             Duration::from_secs(60),
             cancel,
         )?;
-        parse_ls_remote(&out.stdout_text())
+        parse_ls_remote(&out.stdout_text(), source)
             .ok_or_else(|| HabiError::NotFound(format!("`{source}` in the remote repository")))
     }
 
@@ -565,10 +599,12 @@ impl Git {
         }
         let mut entries = Vec::new();
         for record in out.stdout.split(|b| *b == 0).filter(|r| !r.is_empty()) {
-            let text = String::from_utf8_lossy(record);
-            let Some((meta, path)) = text.split_once('\t') else {
+            let Some(tab) = record.iter().position(|b| *b == b'\t') else {
                 continue;
             };
+            let (meta, path) = record.split_at(tab);
+            let path = path.get(1..).unwrap_or_default();
+            let meta = String::from_utf8_lossy(meta);
             let fields: Vec<&str> = meta.split_whitespace().collect();
             let [mode, kind, oid, size, ..] = fields.as_slice() else {
                 continue;
@@ -578,7 +614,8 @@ impl Git {
                 kind: kind.to_string(),
                 oid: oid.to_string(),
                 size: size.parse().ok(),
-                path: path.to_string(),
+                path: String::from_utf8_lossy(path).into_owned(),
+                name_is_utf8: std::str::from_utf8(path).is_ok(),
             });
         }
         Ok(entries)
@@ -757,7 +794,7 @@ mod tests {
     #[test]
     fn ls_remote_names_the_head_branch() {
         let text = format!("ref: refs/heads/main\tHEAD\n{SHA_A}\tHEAD\n");
-        let head = parse_ls_remote(&text).unwrap();
+        let head = parse_ls_remote(&text, "HEAD").unwrap();
         assert_eq!(head.commit, SHA_A);
         assert_eq!(head.branch.as_deref(), Some("main"));
     }
@@ -765,15 +802,70 @@ mod tests {
     #[test]
     fn ls_remote_peels_annotated_tags() {
         let text = format!("{SHA_A}\trefs/tags/v1\n{SHA_B}\trefs/tags/v1^{{}}\n");
-        let head = parse_ls_remote(&text).unwrap();
+        let head = parse_ls_remote(&text, "refs/tags/v1").unwrap();
         assert_eq!(head.commit, SHA_B, "the commit, not the tag object");
         assert_eq!(head.branch, None);
     }
 
     #[test]
     fn ls_remote_without_the_ref_is_nothing() {
-        assert!(parse_ls_remote("").is_none());
-        assert!(parse_ls_remote("not a ref line\n").is_none());
+        assert!(parse_ls_remote("", "HEAD").is_none());
+        assert!(parse_ls_remote("not a ref line\n", "HEAD").is_none());
+        // Listed only because the name ends in the one asked for.
+        let text = format!("{SHA_A}\trefs/tags/rel/HEAD\n");
+        assert!(parse_ls_remote(&text, "HEAD").is_none());
+    }
+
+    #[test]
+    fn ls_remote_ignores_refs_that_only_end_in_the_name() {
+        // An annotated tag `rel/HEAD`, sorted after the real `HEAD`.
+        let text = format!(
+            "ref: refs/heads/main\tHEAD\n{SHA_A}\tHEAD\n{SHA_B}\trefs/tags/rel/HEAD\n{SHA_B}\trefs/tags/rel/HEAD^{{}}\n"
+        );
+        let head = parse_ls_remote(&text, "HEAD").unwrap();
+        assert_eq!(head.commit, SHA_A);
+        assert_eq!(head.branch.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn ls_remote_keeps_the_branch_when_a_clone_lists_its_remotes_head() {
+        // A local clone: `refs/remotes/origin/HEAD` also ends in `HEAD`.
+        let text = format!(
+            "ref: refs/heads/main\tHEAD\n{SHA_A}\tHEAD\nref: refs/remotes/origin/main\trefs/remotes/origin/HEAD\n{SHA_B}\trefs/remotes/origin/HEAD\n"
+        );
+        let head = parse_ls_remote(&text, "HEAD").unwrap();
+        assert_eq!(head.commit, SHA_A);
+        assert_eq!(head.branch.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn what_an_interrupted_fetch_left_is_cleared() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::locate(&tmp.path().join("hooks")).unwrap();
+        let repo = tmp.path().join("repo.git");
+        git.init_bare(&repo, &CancelToken::new()).unwrap();
+        let pack = repo.join("objects/pack");
+        std::fs::create_dir_all(repo.join("refs/habi")).unwrap();
+        for left in [
+            repo.join("shallow.lock"),
+            repo.join("refs/habi/upstream.lock"),
+            pack.join("tmp_pack_abc123"),
+            pack.join("tmp_idx_abc123"),
+        ] {
+            std::fs::write(left, b"").unwrap();
+        }
+        std::fs::write(pack.join("pack-abc123.pack"), b"kept").unwrap();
+        clear_interrupted_fetch(&repo, "refs/habi/upstream");
+        assert!(!repo.join("shallow.lock").exists());
+        assert!(!repo.join("refs/habi/upstream.lock").exists());
+        let names: Vec<_> = std::fs::read_dir(&pack)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name())
+            .collect();
+        assert_eq!(names, ["pack-abc123.pack"]);
+        // Nothing to clear is not a problem.
+        clear_interrupted_fetch(&tmp.path().join("missing"), "refs/habi/upstream");
     }
 
     #[test]

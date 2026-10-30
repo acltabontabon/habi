@@ -15,14 +15,14 @@ use crate::error::{ErrorInfo, HabiError, Result};
 use crate::fsutil::{Bounded, read_bounded, short, tree_digest};
 use crate::library::model::{Diagnostic, LibraryIndex, SnapshotFile};
 use crate::library::{self};
-use crate::paths::{RelPath, display_path};
+use crate::paths::{RelPath, display_path, resolve_for_read};
 use crate::store::cas::Blobs;
 use crate::store::{AppPaths, ResourceLock, Store};
 use git::{FetchDepth, Git, RemoteHead};
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use rusqlite::{OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
@@ -312,6 +312,59 @@ struct StoredCheck {
 struct SnapshotData {
     files: Vec<SnapshotFile>,
     skipped: Vec<Diagnostic>,
+    /// The folders of skipped entries `skipped` does not name (see `Skips`):
+    /// the skills there are still incomplete.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    unlisted: Vec<String>,
+}
+
+const UNSAFE_NAME: &str = "file name is not a safe relative path; skipped";
+const NOT_UTF8_NAME: &str = "file name is not valid UTF-8; skipped";
+
+/// Entries a read may skip before the library counts as too large. `MAX_FILES`
+/// counts only the files that are kept.
+const MAX_SKIPPED: usize = MAX_FILES;
+/// Skipped entries named one by one. Each is repeated on the library's index and
+/// on the skill it is in, and the whole index goes to the window.
+const MAX_LISTED_SKIPS: usize = 200;
+
+/// What a read of a library left out.
+#[derive(Default)]
+struct Skips {
+    listed: Vec<Diagnostic>,
+    unlisted: BTreeSet<String>,
+    more: usize,
+}
+
+impl Skips {
+    /// Records a skipped entry, or refuses the library if there are too many.
+    fn add(&mut self, message: impl Into<String>, rel: &str) -> Result<()> {
+        if self.listed.len() + self.more >= MAX_SKIPPED {
+            return Err(too_large());
+        }
+        if self.listed.len() < MAX_LISTED_SKIPS {
+            self.listed.push(Diagnostic::warning(message, Some(rel)));
+        } else {
+            self.more += 1;
+            let dir = rel.rsplit_once('/').map(|(d, _)| d).unwrap_or("");
+            self.unlisted.insert(dir.to_string());
+        }
+        Ok(())
+    }
+
+    fn into_snapshot(mut self, files: Vec<SnapshotFile>) -> SnapshotData {
+        if self.more > 0 {
+            self.listed.push(Diagnostic::warning(
+                format!("{} more entries were skipped", self.more),
+                None,
+            ));
+        }
+        SnapshotData {
+            files,
+            skipped: self.listed,
+            unlisted: self.unlisted.into_iter().collect(),
+        }
+    }
 }
 
 /// Where a library comes from.
@@ -339,7 +392,14 @@ pub fn parse_location(input: &str) -> Result<Location> {
             "that location contains characters Habi does not accept",
         ));
     }
-    if s.contains("::") {
+    // Only a prefix names a helper: `/tmp/a::b` and `ssh://[2001:db8::1]/x` do not.
+    let names_helper = s.split_once("::").is_some_and(|(head, _)| {
+        !head.is_empty()
+            && head
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-'))
+    });
+    if names_helper {
         return Err(HabiError::invalid(
             "Git transport helpers (`<transport>::<address>`) are not supported",
         ));
@@ -353,11 +413,9 @@ pub fn parse_location(input: &str) -> Result<Location> {
                 "`{scheme}` URLs are not supported; use https or ssh"
             )));
         }
-        let authority = rest.split('/').next().unwrap_or("");
-        // A host that starts with `-` would be read by ssh as an option
-        // (`-oProxyCommand=…`).
+        let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
         let host = authority.rsplit('@').next().unwrap_or("");
-        if scheme != "file" && host.starts_with('-') {
+        if scheme != "file" && host_is_refused(host) {
             return Err(HabiError::invalid(
                 "that location's host name is not accepted",
             ));
@@ -379,30 +437,52 @@ pub fn parse_location(input: &str) -> Result<Location> {
         if scheme == "file" {
             return local_location(&file_url_path(rest));
         }
-        return Ok(Location::Remote(s.to_string()));
+        // Git refuses an ssh URL without a path when it fetches; https can
+        // serve a repository at the root of a host.
+        if scheme == "ssh" && path.trim_matches('/').is_empty() {
+            return Err(HabiError::invalid(
+                "that location does not name a repository on the host",
+            ));
+        }
+        return remote_location(s);
     }
     // scp-like `user@host:path` or `host:path` (not a Windows drive letter).
-    if let Some((host, _)) = s.split_once(':')
-        && host.len() > 1
-        && !host.contains('/')
-        && !host.contains('\\')
-    {
-        if let Some((user, _)) = host.rsplit_once('@')
-            && !user
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
-        {
+    if let Some((user, host, path)) = scp_parts(s) {
+        let plain_user = |user: &str| {
+            !user.is_empty()
+                && user
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+        };
+        if user.is_some_and(|u| !plain_user(u)) {
             return Err(HabiError::invalid(
                 "that location's user name is not accepted",
             ));
         }
-        // As above: ssh would read `user@-oX:path` as an option.
-        if host.rsplit('@').next().is_some_and(|h| h.starts_with('-')) {
+        // `alice:secret@host:repo` splits at its first colon, so what looks like
+        // a host is the user name and the password is in the path.
+        if user.is_none() && path.contains('@') {
+            return Err(HabiError::invalid(
+                "the URL contains a user name, password or token. Remove it: Habi uses your existing Git credential helper or SSH agent.",
+            ));
+        }
+        if host_is_refused(host) {
             return Err(HabiError::invalid(
                 "that location's host name is not accepted",
             ));
         }
-        return Ok(Location::Remote(s.to_string()));
+        // `https:/example.com/x` is a URL that lost a slash, not a host called `https`.
+        if user.is_none() && URL_SCHEMES.contains(&host.to_ascii_lowercase().as_str()) {
+            return Err(HabiError::invalid(format!(
+                "that does not look like a `{host}://` URL; check the slashes"
+            )));
+        }
+        if path.trim_matches('/').is_empty() {
+            return Err(HabiError::invalid(
+                "that location does not name a repository on the host",
+            ));
+        }
+        return remote_location(s);
     }
     let expanded = if let Some(rest) = s.strip_prefix("~/") {
         directories::BaseDirs::new()
@@ -417,11 +497,88 @@ pub fn parse_location(input: &str) -> Result<Location> {
     local_location(&expanded)
 }
 
+/// Words that are never a host name in an scp-like address.
+const URL_SCHEMES: &[&str] = &["file", "ftp", "ftps", "git", "http", "https", "ssh"];
+
+/// A host Habi will not hand to Git: none at all, or one that would be read as
+/// an option. A host that starts with `-` would be read by ssh as an option
+/// (`-oProxyCommand=…`), and `%2d` is that `-` encoded.
+fn host_is_refused(host: &str) -> bool {
+    let name = if host.starts_with('[') {
+        host
+    } else {
+        host.split(':').next().unwrap_or(host)
+    };
+    name.is_empty() || name.starts_with('-') || name.to_ascii_lowercase().starts_with("%2d")
+}
+
+/// A remote address that has passed the checks of its form. What is refused
+/// here is refused in every form.
+fn remote_location(s: &str) -> Result<Location> {
+    // Git sends a query string to the server, and it is kept with the source in
+    // plain text. It is where a token goes when it is not in the user name.
+    if s.contains(['?', '#']) {
+        return Err(HabiError::invalid(
+            "a repository URL may not end in a query or fragment (`?…`, `#…`). Remove it: Habi uses your existing Git credential helper or SSH agent.",
+        ));
+    }
+    // Two URLs that read the same on screen would be different repositories.
+    let invisible = |c: char| {
+        crate::library::signals::hidden_character(c)
+            || matches!(c, '\u{feff}' | '\u{ad}' | '\u{61c}')
+    };
+    if s.chars().any(invisible) {
+        return Err(HabiError::invalid(
+            "that location contains invisible characters; type the URL again",
+        ));
+    }
+    Ok(Location::Remote(s.to_string()))
+}
+
+/// The parts of an scp-like address, `[user@]host:path`, where the host may be
+/// a bracketed IPv6 address. `None` for anything else, such as a path with a
+/// colon in it or a Windows drive letter.
+fn scp_parts(s: &str) -> Option<(Option<&str>, &str, &str)> {
+    let (left, _) = s.split_once(':')?;
+    if (left.len() <= 1 && left != "[") || left.contains(['/', '\\']) {
+        return None;
+    }
+    let (user, host) = match left.rsplit_once('@') {
+        Some((user, host)) => (Some(user), host),
+        None => (None, left),
+    };
+    let after_user = match user {
+        Some(user) => s.get(user.len() + 1..)?,
+        None => s,
+    };
+    if host.starts_with('[') {
+        let close = after_user.find("]:")?;
+        return Some((
+            user,
+            after_user.get(..=close)?,
+            after_user.get(close + 2..)?,
+        ));
+    }
+    Some((user, host, after_user.get(host.len() + 1..)?))
+}
+
 /// The local path of a `file://` URL (`rest` is what follows `file://`):
-/// `/srv/skills` from `file:///srv/skills`, and `C:/skills` (not
-/// `/C:/skills`) from `file:///C:/skills`.
+/// `/srv/skills` from `file:///srv/skills` or `file://localhost/srv/skills`,
+/// and `C:/skills` (not `/C:/skills`) from `file:///C:/skills`. A `%20` is a
+/// space; text that is not valid percent-encoding is taken as written.
 fn file_url_path(rest: &str) -> PathBuf {
-    let path = rest.trim_start_matches('/');
+    const LOCALHOST: &str = "localhost";
+    let rest = match rest.split_at_checked(LOCALHOST.len()) {
+        Some((host, path))
+            if host.eq_ignore_ascii_case(LOCALHOST)
+                && (path.is_empty() || path.starts_with('/')) =>
+        {
+            path
+        }
+        _ => rest,
+    };
+    let decoded = library::percent_decode(rest).unwrap_or_else(|| rest.to_string());
+    let path = decoded.trim_start_matches('/');
     let drive = path.as_bytes();
     let has_drive = matches!(drive, [letter, b':', ..] if letter.is_ascii_alphabetic())
         && matches!(drive.get(2), None | Some(b'/' | b'\\'));
@@ -464,6 +621,9 @@ pub fn portable_identity(source: &Source) -> String {
 /// `portable_identity` of a remote repository address: credential-free,
 /// without a trailing `.git`, with a lower-case scheme.
 pub fn remote_identity(location: &str) -> String {
+    // New sources cannot have a query or a password in an scp-like address, but
+    // one already stored can, and this goes into a committable file.
+    let location = location.split(['?', '#']).next().unwrap_or(location);
     let mut url = location
         .trim_end_matches('/')
         .trim_end_matches(".git")
@@ -486,15 +646,55 @@ pub fn remote_identity(location: &str) -> String {
                 .to_string(),
         };
         url = format!("{}{}", scheme.to_ascii_lowercase(), rest);
-    } else if let Some((user_host, path)) = url.split_once(':') {
+    } else if let Some((user, host, path)) = scp_parts(&url) {
         // scp-like: drop the user, keep host and path.
-        let host = user_host
-            .rsplit_once('@')
-            .map(|(_, h)| h)
-            .unwrap_or(user_host);
-        url = format!("{host}:{path}");
+        url = match path.rsplit_once('@') {
+            // `alice:secret@host:repo`: everything before the `@` is credentials.
+            Some((_, rest)) if user.is_none() => rest.to_string(),
+            _ => format!("{host}:{path}"),
+        };
     }
     crate::redact::redact(&url)
+}
+
+/// Hosts whose repository paths are not case sensitive.
+const CASE_INSENSITIVE_HOSTS: &[&str] = &["github.com", "gitlab.com"];
+
+/// What is left of a repository's address when everything that varies between
+/// two ways of writing it is taken out: no scheme, user, default port or `.git`,
+/// a lower-case host. For comparing addresses, including the identities in lock
+/// files (written by whoever installed, over whichever protocol they use); it
+/// is never stored. `local:` identities and folders are compared as they are.
+pub fn repository_key(location: &str) -> String {
+    if location.starts_with("local:") || is_local_location(location) {
+        return location.to_string();
+    }
+    let identity = remote_identity(location);
+    let (host, path) = if let Some((scheme, rest)) = identity.split_once("://") {
+        let (host, path) = rest.split_once('/').unwrap_or((rest, ""));
+        let default_port = match scheme {
+            "https" => ":443",
+            "ssh" => ":22",
+            _ => "",
+        };
+        (host.strip_suffix(default_port).unwrap_or(host), path)
+    } else if let Some((_, host, path)) = scp_parts(&identity) {
+        (host, path)
+    } else {
+        return identity;
+    };
+    let host = host.to_ascii_lowercase();
+    let path = path.trim_matches('/');
+    if CASE_INSENSITIVE_HOSTS.contains(&host.as_str()) {
+        format!("{host}/{}", path.to_ascii_lowercase())
+    } else {
+        format!("{host}/{path}")
+    }
+}
+
+/// Whether two addresses or identities name one repository.
+pub fn same_repository(a: &str, b: &str) -> bool {
+    repository_key(a) == repository_key(b)
 }
 
 pub struct Sources {
@@ -511,10 +711,11 @@ pub struct Sources {
 /// verifying each digest, and parses and validates their metadata; every
 /// project overview and install plan needs the index of every library, and
 /// the overview runs again on each change the project watcher reports. A
-/// recorded snapshot never changes (its row is inserted once and its files
-/// are addressed by digest), so its index is built once and then copied.
-/// Each use still looks up the snapshot's row, so a snapshot maintenance
-/// removed is not found here either, and one recorded again is rebuilt.
+/// recorded snapshot does not change (its files are addressed by digest), so
+/// its index is built once and then copied. Each use still looks up the
+/// snapshot's row, so a snapshot maintenance removed is not found here either,
+/// and one recorded again is rebuilt. A refresh that rewrites a row (see
+/// `refresh`) removes its entry.
 #[derive(Default)]
 struct IndexMemo {
     entries: HashMap<(String, String), MemoIndex>,
@@ -799,28 +1000,19 @@ impl Sources {
             )));
         }
         let conn = self.store.conn()?;
-        let taken = |candidate: &str| -> Result<bool> {
-            Ok(conn
-                .query_row(
-                    "SELECT 1 FROM sources WHERE name = ?1 COLLATE NOCASE AND id <> ?2",
-                    params![candidate, id],
-                    |_| Ok(()),
-                )
-                .optional()?
-                .is_some())
-        };
-        let mut chosen = name.trim().to_string();
-        let mut attempt = 1;
-        while taken(&chosen)? {
-            attempt += 1;
-            chosen = format!("{} ({attempt})", name.trim());
-        }
+        let chosen = free_name(&conn, name, Some(id))?;
         conn.execute(
             "UPDATE sources SET preview = 0, name = ?2, role = ?3 WHERE id = ?1",
             params![id, chosen, role.as_str()],
         )?;
         drop(conn);
         self.get(id)
+    }
+
+    /// `name`, or with a number after it if a source goes by that name already:
+    /// for a connection the user confirmed without choosing a name.
+    pub fn available_name(&self, name: &str) -> Result<String> {
+        free_name(&self.store.conn()?, name, None)
     }
 
     /// Registers a source. Does not fetch: fetching is an explicit action.
@@ -875,13 +1067,29 @@ impl Sources {
                 "a source named `{name}` already exists"
             )));
         }
+        let (ref_kind, ref_name) = new.tracked.to_columns();
+        // Connected twice, one library would be listed and suggested twice.
+        // A preview is hidden and may sit beside a connection (reading a
+        // repository to copy from it does not depend on what is connected).
+        if !binding.preview
+            && let Some(existing) = connected_as(
+                &conn,
+                &stored,
+                subdir.as_deref(),
+                ref_kind,
+                ref_name.as_deref(),
+            )?
+        {
+            return Err(HabiError::Conflict(format!(
+                "this library is already connected as `{existing}`, at the same folder and version"
+            )));
+        }
         let id: String = uuid::Uuid::new_v4()
             .simple()
             .to_string()
             .chars()
             .take(12)
             .collect();
-        let (ref_kind, ref_name) = new.tracked.to_columns();
         conn.execute(
             "INSERT INTO sources (id, name, kind, location, subdir, ref_kind, ref_name, created_at,
                                   preview, catalog_id, include_json, exclude_json)
@@ -936,7 +1144,7 @@ impl Sources {
         let remote = probe.as_ref().map(|p| &p.head);
         if let (Some(probe), Some(snapshot)) = (&probe, &before.snapshot)
             && &probe.head.commit == snapshot
-            && self.snapshot_data(id, snapshot).is_ok()
+            && self.snapshot_is_intact(id, snapshot, cancel)?
         {
             let conn = self.store.conn()?;
             conn.execute(
@@ -967,6 +1175,8 @@ impl Sources {
         };
         let conn = self.store.conn()?;
         match result {
+            // Nothing went wrong, so nothing makes the library stale.
+            Err(HabiError::Cancelled) => Err(HabiError::Cancelled),
             Err(e) => {
                 let info = e.to_info();
                 conn.execute(
@@ -977,10 +1187,17 @@ impl Sources {
                 Err(e)
             }
             Ok((snapshot, data, summary, resolved, warning)) => {
+                // Reached with a snapshot already recorded when that record could
+                // not be read, or for a folder, whose digest does not cover what
+                // was skipped. What was just read replaces it.
                 conn.execute(
                     "INSERT INTO snapshots (source_id, snapshot, resolved_ref, commit_summary, created_at, files_json)
                      VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                     ON CONFLICT(source_id, snapshot) DO NOTHING",
+                     ON CONFLICT(source_id, snapshot) DO UPDATE SET
+                       files_json = excluded.files_json,
+                       resolved_ref = COALESCE(excluded.resolved_ref, resolved_ref),
+                       commit_summary = COALESCE(excluded.commit_summary, commit_summary),
+                       summary_json = NULL",
                     params![
                         id,
                         snapshot,
@@ -990,6 +1207,11 @@ impl Sources {
                         serde_json::to_string(&data).map_err(|e| HabiError::Internal(e.to_string()))?
                     ],
                 )?;
+                self.indexes
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .entries
+                    .remove(&(id.to_string(), snapshot.clone()));
                 // A warning about a moved ref persists until the next refresh.
                 conn.execute(
                     "UPDATE sources SET snapshot = ?2, snapshot_at = ?3, last_attempt_at = ?3,
@@ -1006,7 +1228,14 @@ impl Sources {
                 let index = self.index(id)?;
                 set_item_count(&conn, id, &snapshot, index.items.len())?;
                 let source = self.get(id)?;
-                let (added, removed, updated) = diff_indexes(previous_index.as_ref(), &index);
+                // Restoring a record that could not be read adds nothing.
+                let restored = previous_index.is_none()
+                    && before.snapshot.as_deref() == Some(snapshot.as_str());
+                let (added, removed, updated) = if restored {
+                    Default::default()
+                } else {
+                    diff_indexes(previous_index.as_ref(), &index)
+                };
                 if before.kind == SourceKind::Git
                     && before.snapshot.as_deref() != Some(snapshot.as_str())
                 {
@@ -1030,6 +1259,23 @@ impl Sources {
                 })
             }
         }
+    }
+
+    /// Whether a snapshot's record and every file it names can still be read,
+    /// so a refresh that finds no new commit has nothing to restore. Reading is
+    /// what checks a digest: a file of the right size can still be damaged. The
+    /// cost is bounded by `MAX_TOTAL_BYTES`, on a refresh someone asked for.
+    fn snapshot_is_intact(&self, id: &str, snapshot: &str, cancel: &CancelToken) -> Result<bool> {
+        let Ok(data) = self.snapshot_data(id, snapshot) else {
+            return Ok(false);
+        };
+        for file in &data.files {
+            cancel.check()?;
+            if self.blobs.get(&file.digest).is_err() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     /// What the remote's tracked ref points at, or `None` if it cannot be
@@ -1103,6 +1349,8 @@ impl Sources {
             None => self.resolve(source, &git, &url, cancel)?,
         };
         let tracking = format!("{}/upstream", crate::brand::REF_NAMESPACE);
+        // `refresh` holds the source's lock, so these are not a fetch in progress.
+        git::clear_interrupted_fetch(&cache, &tracking);
         // Catalog libraries are read, not developed in: the newest commit is
         // enough. A source once fetched that way keeps being fetched that way.
         let shallow = source.catalog_id.is_some() || git.is_shallow(&cache, cancel)?;
@@ -1180,7 +1428,7 @@ impl Sources {
                 short(&commit)
             )));
         }
-        let mut skipped = Vec::new();
+        let mut skips = Skips::default();
         let mut wanted: Vec<(String, String, u64, bool)> = Vec::new();
         let mut total = 0u64;
         let relative: Vec<(git::TreeEntry, String)> = entries
@@ -1204,40 +1452,38 @@ impl Sources {
             }
             match (entry.kind.as_str(), entry.mode.as_str()) {
                 ("blob", "120000") => {
-                    skipped.push(Diagnostic::warning("symbolic link skipped", Some(&rel)));
+                    skips.add("symbolic link skipped", &rel)?;
                     continue;
                 }
                 ("commit", _) => {
-                    skipped.push(Diagnostic::warning(
-                        "Git submodule skipped (submodules are not supported)",
-                        Some(&rel),
-                    ));
+                    skips.add("Git submodule skipped (submodules are not supported)", &rel)?;
                     continue;
                 }
                 ("blob", _) => {}
                 _ => continue,
             }
+            if !entry.name_is_utf8 {
+                skips.add(NOT_UTF8_NAME, &rel)?;
+                continue;
+            }
             if RelPath::new(&rel).is_err() {
-                skipped.push(Diagnostic::warning(
-                    "file name is not a safe relative path; skipped",
-                    Some(&rel),
-                ));
+                skips.add(UNSAFE_NAME, &rel)?;
                 continue;
             }
             // A file larger than Habi reads is not downloaded by a shallow
             // fetch, so git cannot say how large it is.
             let Some(size) = entry.size else {
-                skipped.push(Diagnostic::warning(
+                skips.add(
                     format!("file is above the {MAX_FILE_BYTES}-byte limit; skipped"),
-                    Some(&rel),
-                ));
+                    &rel,
+                )?;
                 continue;
             };
             if size > MAX_FILE_BYTES {
-                skipped.push(Diagnostic::warning(
+                skips.add(
                     format!("file is {size} bytes, above the {MAX_FILE_BYTES}-byte limit; skipped"),
-                    Some(&rel),
-                ));
+                    &rel,
+                )?;
                 continue;
             }
             if wanted.len() >= MAX_FILES || total + size > MAX_TOTAL_BYTES {
@@ -1271,7 +1517,7 @@ impl Sources {
         let summary = git.describe_commit(&cache, &commit, cancel).ok();
         Ok((
             commit,
-            SnapshotData { files, skipped },
+            skips.into_snapshot(files),
             summary,
             Some(resolved.label),
             warning,
@@ -1290,10 +1536,14 @@ impl Sources {
         Option<String>,
         Option<String>,
     )> {
-        let root = PathBuf::from(self.raw_location(&source.id)?);
+        let base = PathBuf::from(self.raw_location(&source.id)?);
         let root = match &source.subdir {
-            Some(s) => RelPath::new(s)?.to_path(&root),
-            None => root,
+            // Folder reads do not follow links, and that includes the way in.
+            Some(s) => {
+                let subdir = RelPath::new(s)?;
+                resolve_for_read(&base, &subdir)?.unwrap_or_else(|| subdir.to_path(&base))
+            }
+            None => base,
         };
         if !root.is_dir() {
             return Err(HabiError::NotFound(format!(
@@ -1303,7 +1553,7 @@ impl Sources {
         }
         let scope = Scope::new(&source.include, &source.exclude)?;
         let mut files = Vec::new();
-        let mut skipped = Vec::new();
+        let mut skips = Skips::default();
         let mut total = 0u64;
         let mut stack = vec![root.clone()];
         while let Some(dir) = stack.pop() {
@@ -1320,11 +1570,11 @@ impl Sources {
                     .map(|p| p.to_string_lossy().replace('\\', "/"))
                     .unwrap_or_default();
                 let Ok(meta) = std::fs::symlink_metadata(&path) else {
-                    skipped.push(Diagnostic::warning("could not be read", Some(&rel)));
+                    skips.add("could not be read", &rel)?;
                     continue;
                 };
                 if meta.file_type().is_symlink() {
-                    skipped.push(Diagnostic::warning("symbolic link skipped", Some(&rel)));
+                    skips.add("symbolic link skipped", &rel)?;
                 } else if meta.is_dir() {
                     if entry.file_name() != ".git" {
                         stack.push(path);
@@ -1333,7 +1583,28 @@ impl Sources {
                     let name = rel.rsplit('/').next().unwrap_or(&rel);
                     let admitted = scope.admits(&rel)
                         || (library::is_license_file(name) && !scope.exclude.is_match(&rel));
-                    if RelPath::new(&rel).is_err() || !admitted {
+                    if !admitted {
+                        continue;
+                    }
+                    // `rel` is lossy: two such names could come out the same.
+                    if path.strip_prefix(&root).is_ok_and(|p| p.to_str().is_none()) {
+                        skips.add(NOT_UTF8_NAME, &rel)?;
+                        continue;
+                    }
+                    if RelPath::new(&rel).is_err() {
+                        skips.add(UNSAFE_NAME, &rel)?;
+                        continue;
+                    }
+                    // Tested first: one file too large is that file's problem,
+                    // not a reason to refuse the library.
+                    if meta.len() > MAX_FILE_BYTES {
+                        skips.add(
+                            format!(
+                                "file is {} bytes, above the {MAX_FILE_BYTES}-byte limit; skipped",
+                                meta.len()
+                            ),
+                            &rel,
+                        )?;
                         continue;
                     }
                     if files.len() >= MAX_FILES || total + meta.len() > MAX_TOTAL_BYTES {
@@ -1351,10 +1622,10 @@ impl Sources {
                                 executable: crate::fsutil::is_executable(&path),
                             });
                         }
-                        Bounded::TooLarge(size) => skipped.push(Diagnostic::warning(
+                        Bounded::TooLarge(size) => skips.add(
                             format!("file is {size} bytes, above the limit; skipped"),
-                            Some(&rel),
-                        )),
+                            &rel,
+                        )?,
                     }
                 }
             }
@@ -1374,7 +1645,7 @@ impl Sources {
             })
             .collect();
         let digest = tree_digest(keyed.iter().map(|(p, d)| (p.as_str(), d.as_str())));
-        Ok((digest, SnapshotData { files, skipped }, None, None, None))
+        Ok((digest, skips.into_snapshot(files), None, None, None))
     }
 
     fn snapshot_data(&self, id: &str, snapshot: &str) -> Result<SnapshotData> {
@@ -1489,6 +1760,17 @@ impl Sources {
                         d.path.as_deref(),
                     ));
                 }
+            }
+            let unlisted = data
+                .unlisted
+                .iter()
+                .any(|dir| prefix.is_empty() || dir == &item.path || dir.starts_with(&prefix));
+            if unlisted {
+                item.complete = false;
+                item.diagnostics.push(Diagnostic::error(
+                    "more files were skipped here than are listed (the item is incomplete and cannot be installed)",
+                    (!item.path.is_empty()).then_some(item.path.as_str()),
+                ));
             }
         }
         index.diagnostics.extend(data.skipped);
@@ -1774,6 +2056,52 @@ fn scope_globs(patterns: &[String]) -> Result<GlobSet> {
         .map_err(|e| HabiError::invalid(format!("invalid path patterns: {e}")))
 }
 
+/// The name of the connected source reading the same repository, folder and
+/// ref as these (`location` as stored).
+fn connected_as(
+    conn: &rusqlite::Connection,
+    location: &str,
+    subdir: Option<&str>,
+    ref_kind: &str,
+    ref_name: Option<&str>,
+) -> Result<Option<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT name, location FROM sources
+         WHERE preview = 0 AND subdir IS ?1 AND ref_kind = ?2 AND ref_name IS ?3",
+    )?;
+    let rows: Vec<(String, String)> = stmt
+        .query_map(params![subdir, ref_kind, ref_name], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })?
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(rows
+        .into_iter()
+        .find(|(_, other)| same_repository(other, location))
+        .map(|(name, _)| name))
+}
+
+/// `name`, or with a number after it if a source other than `except` goes by it.
+fn free_name(conn: &rusqlite::Connection, name: &str, except: Option<&str>) -> Result<String> {
+    let taken = |candidate: &str| -> Result<bool> {
+        Ok(conn
+            .query_row(
+                "SELECT 1 FROM sources WHERE name = ?1 COLLATE NOCASE AND id IS NOT ?2",
+                params![candidate, except],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some())
+    };
+    let name = name.trim();
+    let mut chosen = name.to_string();
+    let mut attempt = 1;
+    while taken(&chosen)? {
+        attempt += 1;
+        chosen = format!("{name} ({attempt})");
+    }
+    Ok(chosen)
+}
+
 fn json_string(list: &[String]) -> Result<String> {
     serde_json::to_string(list).map_err(|e| HabiError::Internal(e.to_string()))
 }
@@ -1903,6 +2231,205 @@ mod tests {
         if !cfg!(windows) {
             assert!(matches!(parse_location(&url), Ok(Location::LocalDir(_))));
         }
+    }
+
+    #[test]
+    fn credentials_are_refused_in_every_form() {
+        for refused in [
+            "alice:hunter2@github.com:org/repo.git",
+            "alice:hunter2@github.com/org/repo.git",
+            "https://github.com/o/r.git?access_token=abc123",
+            "https://github.com/o/r.git#abc123",
+            "git@github.com:o/r.git?access_token=abc123",
+            "ssh://git@github.com/o/r.git?x=y",
+        ] {
+            assert!(parse_location(refused).is_err(), "{refused}");
+        }
+        // An `@` is fine in a path when the user name is where it should be.
+        assert!(parse_location("git@example.com:team/skills@v2.git").is_ok());
+    }
+
+    #[test]
+    fn an_identity_never_carries_credentials_stored_before_they_were_refused() {
+        assert_eq!(
+            remote_identity("alice:hunter2@github.com:org/repo.git"),
+            "github.com:org/repo"
+        );
+        assert_eq!(
+            remote_identity("https://github.com/o/r.git?access_token=abc123"),
+            "https://github.com/o/r"
+        );
+        // What lock files already hold does not change.
+        assert_eq!(
+            remote_identity("git@GitHub.com:Org/Repo.git"),
+            "GitHub.com:Org/Repo"
+        );
+        assert_eq!(
+            remote_identity("ssh://git@example.com/x.git"),
+            "ssh://example.com/x"
+        );
+        assert_eq!(
+            remote_identity("HTTPS://example.com/x/"),
+            "https://example.com/x"
+        );
+    }
+
+    #[test]
+    fn only_a_prefix_names_a_transport_helper() {
+        for refused in ["ext::sh", "fd::3", "a+b.c-d::x", "ssh::x"] {
+            let err = parse_location(refused).unwrap_err().to_string();
+            assert!(err.contains("transport helpers"), "{refused}: {err}");
+        }
+        for remote in [
+            "ssh://git@[2001:db8::1]/x.git",
+            "https://[2001:db8::1]/x.git",
+            "git@[2001:db8::1]:team/x.git",
+            "[2001:db8::1]:team/x.git",
+            "https://example.com/a::b.git",
+        ] {
+            assert!(
+                matches!(parse_location(remote), Ok(Location::Remote(_))),
+                "{remote}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_may_have_two_colons_in_its_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let odd = dir.path().join("a::b");
+        std::fs::create_dir(&odd).unwrap();
+        assert!(matches!(
+            parse_location(&odd.to_string_lossy()),
+            Ok(Location::LocalDir(_))
+        ));
+    }
+
+    #[test]
+    fn addresses_that_cannot_name_a_repository_are_refused() {
+        for garbage in [
+            "https://",
+            "https:///x",
+            "https://:443/x",
+            "ssh://",
+            "ssh://git@/x",
+            "ssh://example.com",
+            "ssh://git@example.com:22/",
+            "git@:x",
+            ":x",
+            "git@example.com:",
+            "@example.com:x",
+            "http:/example.com/x",
+            "https:/example.com/x",
+            "HTTPS:example.com/x",
+            "file:/tmp/x",
+        ] {
+            assert!(parse_location(garbage).is_err(), "{garbage}");
+        }
+    }
+
+    #[test]
+    fn invisible_characters_are_refused_in_a_url() {
+        for hidden in [
+            "https://github.com/o/r\u{202e}x",
+            "https://gi\u{200b}thub.com/o/r",
+            "git@github.com:o/r\u{2066}x",
+            "ssh://git@example.com/\u{feff}x",
+        ] {
+            assert!(parse_location(hidden).is_err(), "{hidden:?}");
+        }
+    }
+
+    #[test]
+    fn an_encoded_dash_is_refused_at_the_start_of_a_host() {
+        for refused in [
+            "ssh://%2doProxyCommand=x/y",
+            "ssh://%2DoProxyCommand=x/y",
+            "ssh://git@%2doProxyCommand=x/y",
+            "git@%2doProxyCommand=x:y",
+        ] {
+            assert!(parse_location(refused).is_err(), "{refused}");
+        }
+    }
+
+    #[test]
+    fn file_urls_name_this_machine_and_decode_their_paths() {
+        assert_eq!(file_url_path("localhost/srv/a"), PathBuf::from("/srv/a"));
+        assert_eq!(file_url_path("LOCALHOST/srv/a"), PathBuf::from("/srv/a"));
+        assert_eq!(file_url_path("localhost"), PathBuf::from("/"));
+        assert_eq!(file_url_path("localhost/C:/team"), PathBuf::from("C:/team"));
+        assert_eq!(file_url_path("/srv/a%20b"), PathBuf::from("/srv/a b"));
+        assert_eq!(file_url_path("/C:/a%20b"), PathBuf::from("C:/a b"));
+        // Only exactly that host, and text that is not encoding stays as it is.
+        assert_eq!(
+            file_url_path("localhost2/srv"),
+            PathBuf::from("/localhost2/srv")
+        );
+        assert_eq!(file_url_path("/srv/100%"), PathBuf::from("/srv/100%"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_url_reaches_a_folder_with_a_space_in_its_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let spaced = dir.path().join("a b");
+        std::fs::create_dir(&spaced).unwrap();
+        let encoded = spaced.to_string_lossy().replace(' ', "%20");
+        for url in [
+            format!("file://{encoded}"),
+            format!("file://localhost{encoded}"),
+        ] {
+            assert!(
+                matches!(parse_location(&url), Ok(Location::LocalDir(_))),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn one_repository_written_many_ways_has_one_key() {
+        for same in [
+            "git@github.com:Org/Repo.git",
+            "https://GitHub.com/org/repo/",
+            "https://github.com/org/repo.git",
+            "https://github.com:443/org/repo",
+            "ssh://git@github.com/org/repo.git",
+            "ssh://git@github.com:22/org/repo.git/",
+            // As lock files hold them.
+            "github.com:Org/Repo",
+            "https://github.com/org/repo",
+            "ssh://github.com/org/repo",
+        ] {
+            assert_eq!(repository_key(same), "github.com/org/repo", "{same}");
+        }
+        assert_eq!(
+            repository_key("git@GITLAB.com:Group/Sub/Repo.git"),
+            "gitlab.com/group/sub/repo"
+        );
+        // Elsewhere a path's letter case can matter; a host's never does.
+        assert_eq!(
+            repository_key("https://Example.com/Team/Skills.git"),
+            "example.com/Team/Skills"
+        );
+        assert!(!same_repository(
+            "https://example.com/Team/Skills",
+            "https://example.com/team/skills"
+        ));
+        // A port that is not the default can be another server.
+        assert!(!same_repository(
+            "ssh://git@example.com:2222/x",
+            "ssh://git@example.com/x"
+        ));
+        assert!(same_repository(
+            "ssh://git@[2001:DB8::1]/x.git",
+            "[2001:db8::1]:x"
+        ));
+        // Not addresses: compared exactly.
+        assert_eq!(repository_key("local:Team"), "local:Team");
+        assert!(!same_repository("local:Team", "local:team"));
+        assert!(!same_repository("local:Team", "https://local/Team"));
+        assert_eq!(repository_key("/srv/Skills"), "/srv/Skills");
     }
 
     #[test]
