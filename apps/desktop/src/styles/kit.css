@@ -53,12 +53,15 @@
   padding: var(--s5) var(--s6) var(--s7);
 }
 
+/* The list and its card use the window: on a wide one the card and the gap
+   between them grow with it, so a maximized window is not a narrow column
+   with a void beside it. The measure still stops where lines get long. */
 .kit-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
-  gap: var(--s7);
+  grid-template-columns: minmax(0, 1fr) clamp(260px, 22cqi, 400px);
+  gap: clamp(var(--s7), 5cqi, 96px);
   align-items: start;
-  max-width: 1180px;
+  max-width: 1680px;
 }
 
 .kit-lead {

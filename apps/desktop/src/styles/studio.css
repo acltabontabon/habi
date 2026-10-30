@@ -2716,9 +2716,12 @@ button.rd-word:hover,
 
 /* ---------- My skills: an index of what you know ---------- */
 
+/* The measure grows a little with a wide window and sits centred in it. */
 .mys {
-  --mys-measure: 1080px;
+  --mys-measure: clamp(1080px, 70vw, 1400px);
+  width: 100%;
   max-width: calc(var(--mys-measure) + 2 * var(--s6));
+  margin-inline: auto;
 }
 
 .mys-head {
