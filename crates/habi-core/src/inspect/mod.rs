@@ -815,6 +815,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn an_installed_skills_scripts_and_instructions_say_nothing_about_the_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let skill = dir.path().join(".claude/skills/debug");
+        std::fs::create_dir_all(skill.join("scripts")).unwrap();
+        std::fs::write(skill.join("SKILL.md"), "---\nname: debug\n---\n").unwrap();
+        std::fs::write(skill.join("scripts/loop.py"), "print(1)\n").unwrap();
+        std::fs::write(skill.join("AGENTS.md"), "# Notes\n").unwrap();
+        std::fs::write(dir.path().join("main.go"), "package main\n").unwrap();
+        let i = inspect(dir.path(), &WalkOptions::default(), &CancelToken::new()).unwrap();
+        let tags: Vec<&str> = i.facts.iter().filter_map(|f| f.tag()).collect();
+        assert!(tags.contains(&"lang:go"), "{tags:?}");
+        assert!(tags.contains(&"agents:skills"), "{tags:?}");
+        assert!(!tags.contains(&"lang:python"), "{tags:?}");
+        assert!(!tags.contains(&"agents:agents-md"), "{tags:?}");
+    }
+
+    #[test]
     fn oversized_and_malformed_manifests_are_reported_not_fatal() {
         let dir = tempfile::tempdir().unwrap();
         let huge = format!("<project>{}</project>", "<!-- padding -->".repeat(200_000));

@@ -15,7 +15,15 @@
  * LibraryView.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { type CSSProperties, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CatalogEntry } from "../../bindings/CatalogEntry";
 import type { Source } from "../../bindings/Source";
 import type { SourceVersion } from "../../bindings/SourceVersion";
@@ -34,6 +42,7 @@ import { useNav } from "../../lib/nav";
 import {
   invalidateProjectData,
   useCatalog,
+  useRecentProjects,
   useRepoFacts,
   useSkills,
   useSources,
@@ -43,6 +52,25 @@ import { useOpenExternal } from "../../lib/safeInvoke";
 import { ConnectLibrary } from "./ConnectLibrary";
 import { LibraryView } from "./LibraryView";
 import { repositoryLabel } from "./SourceSheet";
+
+/**
+ * The projects Habi suggests a catalog library's skills for, by name: from
+ * each project's last look (nothing is inspected again to say it).
+ */
+function useFitsProjects(): (entryId: string) => { id: string; name: string }[] {
+  const projects = useRecentProjects();
+  return useMemo(() => {
+    const list = (projects.data ?? []).filter((p) => p.exists);
+    return (entryId: string) =>
+      list.filter((p) => p.summary?.suggested.includes(entryId)).map((p) => ({ id: p.id, name: p.name }));
+  }, [projects.data]);
+}
+
+/** "nextshop", "nextshop and api", "nextshop, api and 2 more". */
+function projectNames(names: string[]): string {
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+}
 
 /** Connect your own library: one intent per page. */
 function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: string }) {
@@ -516,6 +544,7 @@ type Shelf = "all" | "builders" | "community";
  */
 function Explore() {
   const catalog = useCatalog();
+  const fitsProjects = useFitsProjects();
   const { navigate } = useNav();
   const [query, setQuery] = useState("");
   const [shelf, setShelf] = useState<Shelf>("all");
@@ -526,7 +555,12 @@ function Explore() {
   if (catalog.isPending) return <Working>Loading the catalog…</Working>;
   if (catalog.isError) return <ErrorNotice error={catalog.error} />;
 
-  const open = catalog.data.filter((e) => e.availability !== "connected");
+  // Libraries with something for your projects come first: that is why you would connect one.
+  const open = catalog.data
+    .filter((e) => e.availability !== "connected")
+    .map((e, at) => ({ e, at, fits: fitsProjects(e.id).length }))
+    .sort((a, b) => Number(b.fits > 0) - Number(a.fits > 0) || a.at - b.at)
+    .map(({ e }) => e);
   const q = query.trim().toLowerCase();
   const matching = open.filter(
     (e) => !q || `${e.name} ${e.repo} ${e.summary} ${e.publisher.name}`.toLowerCase().includes(q),
@@ -589,7 +623,12 @@ function Explore() {
             onKeyDown={rowKeys(grid, ".lib-card", filter, (k) => setQuery((cur) => cur + k))}
           >
             {shown.map((e) => (
-              <ExploreCard key={e.id} entry={e} onOpen={() => navigate({ name: "sources", entry: e.id })} />
+              <ExploreCard
+                key={e.id}
+                entry={e}
+                fits={fitsProjects(e.id).map((p) => p.name)}
+                onOpen={() => navigate({ name: "sources", entry: e.id })}
+              />
             ))}
           </ul>
           {shown.length === 0 ? (
@@ -612,7 +651,16 @@ function Explore() {
   );
 }
 
-function ExploreCard({ entry, onOpen }: { entry: CatalogEntry; onOpen: () => void }) {
+function ExploreCard({
+  entry,
+  fits,
+  onOpen,
+}: {
+  entry: CatalogEntry;
+  /** Your projects Habi suggests its skills for. */
+  fits: string[];
+  onOpen: () => void;
+}) {
   const warn =
     entry.status.state !== "active"
       ? entry.status.state
@@ -638,6 +686,7 @@ function ExploreCard({ entry, onOpen }: { entry: CatalogEntry; onOpen: () => voi
         </span>
         <span className="library-row-repo">{entry.repo}</span>
         <span className="lib-card-summary">{entry.summary}</span>
+        {fits.length > 0 ? <span className="lib-card-fits">For {projectNames(fits)}</span> : null}
         <span className="lib-card-foot">
           {groupOfEntry(entry) === "builders" ? "Builder" : "Community"}
           {facts ? ` · ${compactCount(facts.stars)} stars` : ""}
@@ -662,6 +711,7 @@ function LibraryPage({ entryId }: { entryId: string }) {
   const { navigate } = useNav();
   const catalog = useCatalog();
   const entry = catalog.data?.find((e) => e.id === entryId);
+  const fitsProjects = useFitsProjects()(entryId);
   // Context from GitHub, when it can be had: never an error, and not needed to connect.
   const facts = useRepoFacts(entry && entry.availability !== "connected" ? entry.id : undefined).data;
   const [job, setJob] = useState<string | null>(null);
@@ -756,6 +806,41 @@ function LibraryPage({ entryId }: { entryId: string }) {
         ) : null}
       </header>
       <p className="lp-gist">{entry.summary}</p>
+
+      {entry.picks.length > 0 ? (
+        <section className="lp-picks" aria-labelledby="lp-picks">
+          <h2 id="lp-picks" className="kicker">
+            Habi's picks
+            {fitsProjects.length > 0 ? (
+              <span className="lp-picks-for">
+                {" "}
+                · suggested for{" "}
+                {fitsProjects.map((p, i) => (
+                  <Fragment key={p.id}>
+                    {i > 0 ? (i === fitsProjects.length - 1 ? " and " : ", ") : null}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => navigate({ name: "project", projectId: p.id, tab: "suggested" })}
+                    >
+                      {p.name}
+                    </button>
+                  </Fragment>
+                ))}
+              </span>
+            ) : null}
+          </h2>
+          <ul className="lp-pick-list">
+            {entry.picks.map((p) => (
+              <li key={p.skill} className="lp-pick">
+                <span className="lp-pick-title">{p.title}</span>
+                <span className="lp-pick-gist">{p.gist}</span>
+                <span className="lp-pick-why">{p.why}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {entry.status.state !== "active" ? (
         <Notice tone="warn" title={entry.status.state === "archived" ? "Archived" : "Deprecated"}>

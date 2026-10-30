@@ -1,0 +1,559 @@
+/* ---------- Project: Suggested and All skills ---------- */
+
+.project-views {
+  display: flex;
+  gap: var(--s5);
+  padding: 0 var(--s6);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.project-view {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: var(--s2) 0 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  font-weight: 550;
+}
+
+.project-view:hover {
+  color: var(--ink);
+}
+
+.project-view.is-active {
+  color: var(--ink);
+}
+
+.project-view.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--thread);
+}
+
+/* Suggestions are waiting: a small saffron knot. */
+.project-view-knot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--thread);
+}
+
+/* ---------- The kit ---------- */
+
+.kit {
+  container-type: inline-size;
+  padding: var(--s5) var(--s6) var(--s7);
+}
+
+.kit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: var(--s7);
+  align-items: start;
+  max-width: 1180px;
+}
+
+.kit-lead {
+  display: grid;
+  gap: 4px;
+  margin-bottom: var(--s2);
+}
+
+.kit-headline {
+  font-size: 22px;
+  font-weight: 620;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.kit-sub {
+  color: var(--ink-muted);
+  font-size: var(--text-md);
+}
+
+.kit-section {
+  margin-top: var(--s5);
+}
+
+.kit-section-title {
+  margin: 0 0 var(--s1);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* One thread runs down the knots: every suggestion hangs on it. */
+.kit-rows {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kit-rows::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 18px;
+  bottom: 18px;
+  width: 1.5px;
+  background: var(--hairline-strong, var(--hairline));
+}
+
+.kit-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  animation: kit-in 360ms var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes kit-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kit-row {
+    animation: none;
+  }
+}
+
+/* The knot: hollow when left out, saffron when chosen, ink once it is in the project. */
+.kit-knot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 22px;
+  cursor: pointer;
+}
+
+.kit-knot input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.kit-knot-mark {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-faint);
+  background: var(--paper);
+  color: var(--paper);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.kit-knot:hover .kit-knot-mark {
+  border-color: var(--thread);
+}
+
+.kit-row.is-on .kit-knot-mark {
+  background: var(--thread);
+  border-color: var(--thread);
+  transform: scale(1.06);
+}
+
+.kit-row.is-added .kit-knot {
+  cursor: default;
+}
+
+.kit-row.is-added .kit-knot-mark {
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
+  color: var(--paper);
+}
+
+.kit-knot input:focus-visible + .kit-knot-mark {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.kit-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.kit-top {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.kit-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: left;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition:
+    color var(--duration) var(--ease),
+    text-decoration-color var(--duration) var(--ease);
+}
+
+.kit-title:hover {
+  text-decoration-color: var(--thread);
+}
+
+.kit-added {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ok-ink);
+}
+
+.kit-from {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.kit-gist {
+  color: var(--ink-soft);
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+
+/* The reason, on a short saffron weft from the knot's thread. */
+.kit-why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--s2);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.kit-why-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kit-why-text::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--thread);
+}
+
+/* Another of the person's projects has it: the strongest reason there is. */
+.kit-elsewhere {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--thread-strong);
+  white-space: nowrap;
+}
+
+.kit-elsewhere::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--thread);
+}
+
+.kit-basis {
+  padding: 0 7px;
+  border: 1px solid var(--hairline-strong, var(--hairline));
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  line-height: 17px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* What the scan flags: always an icon and words, never color alone. */
+.kit-caution {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--warn-ink);
+}
+
+/* What it costs in every session: quiet, at the end of the line. */
+.kit-cost {
+  margin-left: auto;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* Left out: the row steps back, its thread goes slack. */
+.kit-row:not(.is-on):not(.is-added) .kit-title,
+.kit-row:not(.is-on):not(.is-added) .kit-gist {
+  color: var(--ink-muted);
+}
+
+.kit-row:not(.is-on):not(.is-added) .kit-why-text::before {
+  background: var(--hairline-strong, var(--hairline));
+}
+
+.kit-row.is-added .kit-why-text::before {
+  background: var(--ink-faint);
+}
+
+.kit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+}
+
+.kit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.kit-link:hover {
+  color: var(--ink);
+}
+
+/* What will be added, and what happens first. */
+.kit-cart {
+  position: sticky;
+  top: var(--s5);
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+}
+
+.kit-cart .kicker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kit-cart-count {
+  font-size: var(--text-2xl);
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.kit-connects {
+  display: grid;
+  gap: var(--s2);
+}
+
+.kit-threads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.kit-threads li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.kit-threads li.is-now {
+  color: var(--thread-strong);
+}
+
+.kit-go {
+  width: 100%;
+  height: 40px;
+  font-size: var(--text-md);
+}
+
+.kit-cart-note {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.kit-cart-note.is-warn {
+  color: var(--warn-ink);
+}
+
+.kit-cart .weaving {
+  margin: 0;
+}
+
+/* Narrow: one column, and what to add rides along at the foot. */
+@container (max-width: 760px) {
+  .kit-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s5);
+  }
+
+  .kit-cart {
+    position: sticky;
+    top: auto;
+    bottom: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s2) var(--s4);
+    padding: var(--s3) var(--s4);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-raised);
+  }
+
+  .kit-cart > .kicker,
+  .kit-connects .kit-threads,
+  .kit-cart > .kit-cart-note:last-child {
+    display: none;
+  }
+
+  .kit-cart-count {
+    font-size: var(--text-lg);
+  }
+
+  .kit-go {
+    width: auto;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .kit-cart > :not(.kit-cart-count):not(.kit-go) {
+    grid-column: 1 / -1;
+  }
+
+  .kit-from {
+    font-size: var(--text-xs);
+  }
+}
+
+/* ---------- Libraries: which of your projects a library is for ---------- */
+
+/* On an Explore card: the projects it has suggestions for, on a saffron knot. */
+.lib-card-fits {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: var(--s2);
+  font-size: var(--text-xs);
+  font-weight: 550;
+  color: var(--thread-strong);
+}
+
+.lib-card-fits::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--thread);
+}
+
+/* A catalog library's page: the skills Habi stands behind in it. */
+.lp-picks {
+  display: grid;
+  gap: var(--s3);
+}
+
+.lp-picks > .kicker {
+  margin: 0;
+}
+
+.lp-picks-for {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.lp-picks-for .link-btn {
+  font-size: inherit;
+}
+
+.lp-pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s3) var(--s5);
+}
+
+.lp-pick {
+  display: grid;
+  gap: 2px;
+  padding-left: var(--s3);
+  border-left: 1.5px solid var(--thread);
+}
+
+.lp-pick-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.lp-pick-gist {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.lp-pick-why {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+/* The review: skills the chosen ones call by name. */
+.review-companions {
+  display: grid;
+  justify-items: start;
+  gap: var(--s2);
+}

@@ -7,6 +7,7 @@ import type { InstallState } from "./InstallState";
 import type { Installation } from "./Installation";
 import type { ItemSummary } from "./ItemSummary";
 import type { NextAction } from "./NextAction";
+import type { PickNote } from "./PickNote";
 import type { Readiness } from "./Readiness";
 
 export type Recommendation = { item: ItemSummary, group: Group, applicability: ApplicabilityResult, 
@@ -17,4 +18,8 @@ basis: Basis, readiness: Readiness, installState: InstallState, installation: In
 /**
  * Copies of this skill in the project that Habi does not manage.
  */
-unmanagedCopies: Array<string>, };
+unmanagedCopies: Array<string>, 
+/**
+ * Set when the skill is one of Habi's picks.
+ */
+pick: PickNote | null, };

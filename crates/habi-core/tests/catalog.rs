@@ -212,7 +212,7 @@ fn a_fresh_catalog_lists_every_entry_without_inventing_anything() {
 }
 
 #[test]
-fn the_project_features_a_library_is_suggested_for_come_from_its_hints() {
+fn the_project_features_a_library_is_suggested_for_come_from_its_hints_and_picks() {
     let home = tempfile::tempdir().unwrap();
     let entries = habi_at(home.path()).catalog().entries().unwrap();
     let cloudflare = entries.iter().find(|e| e.id == "cloudflare").unwrap();
@@ -223,10 +223,19 @@ fn the_project_features_a_library_is_suggested_for_come_from_its_hints() {
         .collect();
     // Written once each, in the order the registry gives them, without the `**/` prefix.
     assert_eq!(texts[..2], ["wrangler.{toml,json,jsonc}", "wrangler"]);
-    assert_eq!(texts.len(), 3);
-    // A library with no hints claims no fit.
+    assert_eq!(texts.len(), 4);
+    // Picks say what they fit too.
     let anthropic = entries.iter().find(|e| e.id == "anthropic").unwrap();
-    assert!(anthropic.fits_when.is_empty());
+    assert!(
+        anthropic
+            .fits_when
+            .iter()
+            .any(|t| t.text == "@modelcontextprotocol/sdk")
+    );
+    assert!(!anthropic.picks.is_empty());
+    // A library with no hints and no picks claims no fit.
+    let impeccable = entries.iter().find(|e| e.id == "impeccable").unwrap();
+    assert!(impeccable.fits_when.is_empty());
 }
 
 // ----- discovery across repository layouts ---------------------------------------

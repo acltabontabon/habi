@@ -214,7 +214,7 @@ ${[
     ...(previous ? [`<a href="https://github.com/${repo}/compare/v${previous}...${tag}">All changes since ${previous}</a>`] : []),
   ].join(" · ")}
 
-<sub>Habi ${version}, released ${date}. Made by <a href="https://github.com/acltabontabon">Alvin Cris Tabontabon</a> in their own time. If it saves you some, <a href="https://ko-fi.com/aclt_attic">buy them a coffee</a>.</sub>
+<sub>Habi ${version}, released ${date}. If Habi saves you time, <a href="https://ko-fi.com/aclt_attic">buy me a coffee</a>.</sub>
 
 </div>
 `;

@@ -352,6 +352,7 @@ impl Bridge {
             "preview_skill" => out(h.preview_skill(&arg(a, "request")?, cancel)?),
             "suggest_conditions" => out(h.suggest_conditions(&s("projectId")?)?),
             "discover_project" => out(h.discover(&s("projectId")?, cancel)?),
+            "skill_usage" => out(h.skill_usage(&s("projectId")?, cancel)?),
             "read_instructions" => out(h.read_instructions(&s("projectId")?, &s("path")?)?),
             "create_skill_from_instructions" => out(h.create_skill_from_instructions(
                 &s("projectId")?,

@@ -159,7 +159,38 @@ fn triggers_of(entry: &Entry) -> Vec<CatalogTrigger> {
     for h in &entry.hints {
         walk(&h.applies_when, &mut out);
     }
+    for rule in entry.picks.iter().filter_map(|p| p.applies_when.as_ref()) {
+        walk(rule, &mut out);
+    }
     out
+}
+
+fn picks_of(entry: &Entry) -> Vec<CatalogPick> {
+    entry
+        .picks
+        .iter()
+        .map(|p| CatalogPick {
+            skill: p.skill.clone(),
+            title: p.title.clone(),
+            gist: p.gist.clone(),
+            why: p.why.clone(),
+            anywhere: p.applies_when.is_none(),
+        })
+        .collect()
+}
+
+/// One of Habi's picks from a library, as the catalog describes it.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct CatalogPick {
+    /// Library-relative skill folder.
+    pub skill: String,
+    pub title: String,
+    pub gist: String,
+    pub why: String,
+    /// Fits any codebase: a practice, not a technology.
+    pub anywhere: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -186,6 +217,9 @@ pub struct CatalogEntry {
     pub follows_releases: bool,
     /// What in a project makes the catalog suggest this library's skills.
     pub fits_when: Vec<CatalogTrigger>,
+    /// The skills Habi stands behind in this library.
+    #[serde(default)]
+    pub picks: Vec<CatalogPick>,
     /// Path segment whose folder names group the skills.
     pub group_segment: Option<u32>,
     pub availability: CatalogAvailability,
@@ -387,6 +421,7 @@ impl<'a> Catalog<'a> {
             exclude: entry.discovery.exclude.clone(),
             follows_releases: entry.discovery.track == Track::LatestRelease,
             fits_when: triggers_of(entry),
+            picks: picks_of(entry),
             group_segment: entry.discovery.group,
             availability: match source {
                 Some(s) if s.snapshot.is_some() && !s.preview => CatalogAvailability::Connected,
@@ -601,22 +636,34 @@ fn tracking(entry: &Entry) -> crate::source::TrackedRef {
     }
 }
 
-/// An entry's hints, compiled once for a whole library.
+/// An entry's hints and picks, compiled once for a whole library.
 pub struct Hints {
     matchers: Vec<(globset::GlobMatcher, crate::matching::condition::Condition)>,
+    picks: Vec<registry::Pick>,
 }
 
 impl Hints {
-    /// The rule suggested for the skill folder at `path`, if any.
+    /// The rule suggested for the skill folder at `path`, if any: a pick's
+    /// own, else the first hint whose pattern covers it.
     pub fn find(&self, path: &str) -> Option<&crate::matching::condition::Condition> {
-        self.matchers
-            .iter()
-            .find(|(m, _)| m.is_match(path))
-            .map(|(_, c)| c)
+        match self.pick(path) {
+            // A pick with no rule fits anywhere by Habi's word; no hint widens it.
+            Some(pick) => pick.applies_when.as_ref(),
+            None => self
+                .matchers
+                .iter()
+                .find(|(m, _)| m.is_match(path))
+                .map(|(_, c)| c),
+        }
+    }
+
+    /// Habi's pick at `path`, if the skill is one.
+    pub fn pick(&self, path: &str) -> Option<&registry::Pick> {
+        self.picks.iter().find(|p| p.skill == path)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.matchers.is_empty()
+        self.matchers.is_empty() && self.picks.is_empty()
     }
 }
 
@@ -636,5 +683,15 @@ pub fn hints_for_source(source: &Source) -> Option<Hints> {
             Some((glob.compile_matcher(), h.applies_when.clone()))
         })
         .collect();
-    (!matchers.is_empty()).then_some(Hints { matchers })
+    let hints = Hints {
+        matchers,
+        picks: entry.picks.clone(),
+    };
+    (!hints.is_empty()).then_some(hints)
+}
+
+/// The catalog entry a source is the repository of, if any.
+pub fn entry_for_source(source: &Source) -> Option<&'static Entry> {
+    let registry = Registry::embedded().ok()?;
+    registry.entries.iter().find(|e| matches_entry(source, e))
 }

@@ -7,6 +7,49 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+Every project gets Habi's answer to "what should my agents have here?", before a library is connected.
+
+### Added
+
+- **Suggested, for every project.** A project opens on a short, opinionated list of skills for
+  it: the team's requirements, skills for its stack, and a few practices for any codebase, each
+  with the reason it fits (*Uses React · package.json:5*) and whose word that is. The strongest
+  few start ticked, since every skill costs context in every agent session: each row and the total
+  say about how much. **Review and add…** connects the libraries they come from (read only, nothing
+  runs) and opens the usual review. **All skills** keeps the full workbench one tab away.
+- **What a skill brings, said up front.** A row says when a skill comes with code an agent could
+  run, and what Habi's scan of its files flags as caution. Those from community libraries start
+  unticked, so running someone else's code is a choice.
+- **Skills that call each other.** The install review lists skills the chosen ones call by name
+  (`superpowers:writing-plans`), which would otherwise break, and adds them in one click.
+- **Habi's picks.** The catalog names the skills Habi stands behind in each library, with when
+  each fits, so suggestions work before anything is connected. A catalog library's page lists
+  its picks; Explore puts the libraries with something for your projects first and says which.
+- **Projects learn from each other.** A skill one of your projects already uses comes first in
+  the next project's suggestions, marked *Also in nextshop*, so every project you open makes the
+  others' suggestions better. A skill already on this machine starts unticked (*On this
+  machine*): your agents read it in every project already.
+- **Matching by what a skill says it is for.** A skill with no rules of its own fits a project
+  when its description names a technology the project uses (*From its description*). It is
+  listed under All skills, said as Habi's reading; the team's own libraries also feed Suggested.
+- **See which skills earn their place.** Under All skills, an installed skill says *Used 12× in
+  Claude Code here in 30 days* or *Not used in Claude Code here in 30 days · ~40 tokens*, so you can
+  remove what you no longer need. Habi reads Claude Code's session history in `~/.claude/projects`
+  for this whenever a project's All skills list opens, as it does on opening a project with something
+  installed. It takes only skill names and times, keeps nothing and sends nothing; Privacy and
+  security says exactly what it reads. Other agents and other people's sessions are not counted.
+
+### Fixed
+
+- **Opening Habi twice at once no longer fails.** The desktop app and the command line opening the
+  data folder at the same moment could stop one of them with "restricting …-journal".
+- **A project's page opens faster** with many libraries connected: what a skill says it is for is
+  read once, and a project's skill folders are listed once instead of probed per skill.
+- **Installed skills no longer change what a project is.** Scripts and instruction files inside
+  a skill folder no longer count as the project's languages or agent instructions.
+- **Next.js on Cloudflare** fits Next.js apps deployed with Wrangler, not every Next.js app, and
+  **BigQuery basics** also fits Python code using the BigQuery client.
+
 ## 0.4.0 - 2026-10-30
 
 Explore the catalog on a page of its own, keep many libraries in view at a glance, and reach your skills from their own place in the sidebar.
