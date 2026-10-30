@@ -15,7 +15,7 @@ use habi_core::library::parse_frontmatter;
 use habi_core::matching::Applicability;
 use habi_core::recommend::{Group, ReadinessState};
 use habi_core::service::{Habi, ItemRef};
-use habi_core::source::{Freshness, NewSource, TrackedRef};
+use habi_core::source::{Freshness, NewSource, SourceRole, TrackedRef};
 use habi_core::store::AppPaths;
 use habi_core::suggest::KitGroup;
 use std::path::Path;
@@ -372,4 +372,54 @@ fn more_counts_only_what_fits_and_is_not_listed_yet() {
     let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
     assert!(kit.suggestions.iter().filter(|s| s.installed).count() >= items.len());
     assert_eq!(kit.more, 0);
+}
+
+#[test]
+fn a_community_library_cannot_require_on_the_teams_behalf() {
+    let home = tempfile::tempdir().unwrap();
+    let parent = tempfile::tempdir().unwrap();
+    let remote = parent.path().join("their-skills");
+    let project_dir = parent.path().join("billing-service");
+    let cancel = CancelToken::new();
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+
+    copy_tree(&fixture("libraries/example-team-library"), &remote);
+    git(&remote, &["init", "-q"]);
+    git(&remote, &["add", "-A"]);
+    git(&remote, &["commit", "-qm", "Their library"]);
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Theirs".into(),
+            location: remote.to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Branch {
+                name: "main".into(),
+            },
+        })
+        .unwrap();
+    habi.sources().refresh(&source.id, &cancel).unwrap();
+    copy_tree(&fixture("repos/billing-service"), &project_dir);
+    let project = habi.open_project(&project_dir).unwrap();
+
+    let required = |kit: &habi_core::suggest::Kit| {
+        kit.suggestions
+            .iter()
+            .any(|s| s.name == "service-observability" && s.group == KitGroup::Required)
+    };
+    let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
+    assert!(required(&kit), "the team's own library can require it");
+
+    habi.sources()
+        .set_role(&source.id, SourceRole::Community)
+        .unwrap();
+    let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
+    assert!(!required(&kit));
+    let skill = kit
+        .suggestions
+        .iter()
+        .find(|s| s.name == "service-observability")
+        .expect("it still fits, as any other skill");
+    assert_eq!(skill.group, KitGroup::Stack);
+    assert!(!skill.chosen);
 }

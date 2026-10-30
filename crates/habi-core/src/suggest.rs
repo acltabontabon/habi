@@ -210,9 +210,11 @@ pub fn kit(input: &KitInput) -> Kit {
         // A skill with no rule is still worth offering when Habi picks it for
         // any codebase, or when the person's other projects already use it.
         let anywhere = r.pick.as_ref().is_some_and(|p| p.anywhere);
+        // A library from outside the team can say a skill is required, but not on the team's behalf.
+        let outside = library.source.role == SourceRole::Community;
         let kind = match (r.group, r.applicability.applicability) {
-            (Group::Required, _) => KitGroup::Required,
-            (Group::Relevant, _) => KitGroup::Stack,
+            (Group::Required, _) if !outside => KitGroup::Required,
+            (Group::Relevant, _) | (Group::Required, Applicability::Applies) => KitGroup::Stack,
             (_, Applicability::Undeclared) if anywhere || !elsewhere.is_empty() => {
                 KitGroup::Practice
             }
