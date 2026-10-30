@@ -18,7 +18,7 @@ import type { ShareForm } from "../../../bindings/ShareForm";
 import type { SkillDocument } from "../../../bindings/SkillDocument";
 import { api } from "../../../lib/api";
 import { invalidateSkills, keys } from "../../../lib/queries";
-import { type SaveState, useAutosave } from "../../../lib/useAutosave";
+import { flushAutosaves, type SaveState, useAutosave } from "../../../lib/useAutosave";
 
 export const NOT_SAVED =
   "Nothing was done: your latest edits are not saved. Resolve that above, then try again.";
@@ -173,15 +173,11 @@ export function useSkillDraft(initial: LocalSkill) {
     [resetDoc, resetForm, resetYaml, remember],
   );
 
-  const flushDoc = docSave.flush;
-  const flushForm = formSave.flush;
-  const flushYaml = yamlSave.flush;
-
-  /** Writes pending edits; true when everything on screen is saved. */
-  const flushAll = useCallback(async () => {
-    const results = await Promise.all([flushDoc(), yamlMode ? flushYaml() : flushForm()]);
-    return results.every(Boolean);
-  }, [flushDoc, flushForm, flushYaml, yamlMode]);
+  /**
+   * Writes pending edits; true when everything on screen is saved. Every editor, not only this
+   * draft's: a package file open beside it saves on its own, and Use or Export reads it from disk.
+   */
+  const flushAll = useCallback(() => flushAutosaves(), []);
 
   /** Before acting on what is on disk: stops (and says why) when edits are not saved. */
   const saveFirst = useCallback(async () => {

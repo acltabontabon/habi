@@ -8,6 +8,27 @@ import type { AppInfo } from "../bindings/AppInfo";
 import type { Contribution } from "../bindings/Contribution";
 import type { Tone } from "./format";
 
+/**
+ * The message with Habi's "where it applies" paragraph in it: in place of the one it added earlier,
+ * whatever that one said, and with everything the person wrote around it left alone.
+ */
+export function withRehearsal(message: string, rehearsal: string): string {
+  const lines = message.split("\n");
+  const start = lines.findIndex(
+    (l) =>
+      l.startsWith("Where it applies — checked by Habi") ||
+      l.startsWith("Where it applies: no applicability"),
+  );
+  if (start < 0) {
+    const kept = message.trimEnd();
+    return kept ? `${kept}\n\n${rehearsal}` : rehearsal;
+  }
+  const blank = lines.findIndex((l, i) => i > start && l.trim() === "");
+  const before = lines.slice(0, start).join("\n").trimEnd();
+  const after = blank < 0 ? "" : lines.slice(blank).join("\n").trim();
+  return [before, rehearsal, after].filter(Boolean).join("\n\n");
+}
+
 /** "GitHub" / "GitLab" / "your Git host". */
 export function hostName(c: Contribution): string {
   const host = c.review?.host ?? c.remote?.host;

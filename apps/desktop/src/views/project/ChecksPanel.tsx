@@ -10,7 +10,7 @@ import type { CheckSpec } from "../../bindings/CheckSpec";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Recommendation } from "../../bindings/Recommendation";
 import { Button, ErrorNotice, Notice, Status, Working } from "../../components/ui";
-import { api, newJobId } from "../../lib/api";
+import { api, HabiError, newJobId } from "../../lib/api";
 import { checkStatusLabel, checkStatusTone, relativeTime } from "../../lib/format";
 import { invalidateProjectData, useCheckRuns, useItemDetail } from "../../lib/queries";
 
@@ -101,7 +101,8 @@ function CheckCard({
       // keep showing the result of the run that just finished.
       if (running.current === id) void prepare(bindings, module, true);
     } catch (e) {
-      setError(e);
+      // Saying no at the confirmation, or pressing Cancel, is not a failure to report.
+      if (!(e instanceof HabiError && e.code === "cancelled")) setError(e);
     } finally {
       if (running.current === id) running.current = null;
       setJob(null);

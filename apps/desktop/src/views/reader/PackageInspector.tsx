@@ -244,7 +244,7 @@ export function PackageInspector({
         </button>
         <p className="pkg-summary mono">
           {plural(shape.count, "file")}
-          {shape.languages.length > 0 ? ` · ${shape.languages.length} languages` : ""}
+          {shape.languages.length > 0 ? ` · ${plural(shape.languages.length, "language")}` : ""}
         </p>
       </header>
 

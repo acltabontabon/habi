@@ -58,6 +58,11 @@ export function rememberProject(projectId: string | null) {
   }
 }
 
+/** A project removed from Habi is no longer the one last worked on. */
+export function forgetRememberedProject(projectId: string) {
+  if (lastProject() === projectId) rememberProject(null);
+}
+
 export function lastProject(): string | null {
   try {
     return localStorage.getItem(LAST_PROJECT);

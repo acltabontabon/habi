@@ -15,6 +15,7 @@ import {
   installLabel,
   installTone,
   kindLabel,
+  plural,
 } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { useKnowledge, useSkillUsage } from "../../lib/queries";
@@ -185,8 +186,9 @@ export function Workbench({
           (h.kind === "skill" ? h.skill.path : h.file.path).startsWith(`${filters.module}/`)),
     );
   }, [knowledge.data, filter, filters]);
-  const chosenHere = here.find((h) => h.key === itemKey);
-  const chosen = visible.find((r) => r.item.key === itemKey);
+  // Opened by name, it is shown even when a filter left over from last time hides its row.
+  const chosenHere = hereItems(knowledge.data).find((h) => h.key === itemKey);
+  const chosen = overview.recommendations.find((r) => r.item.key === itemKey);
   const selected = chosenHere ? undefined : (chosen ?? navigable[0]);
   const selectedHere = chosenHere ?? (selected ? undefined : here[0]);
   const activeKey = selectedHere?.key ?? selected?.item.key;
@@ -344,7 +346,7 @@ export function Workbench({
         </details>
         {activeFilters ? (
           <div className="workbench-filter-summary" role="status">
-            <span>{visible.length + here.length} matching items</span>
+            <span>{plural(visible.length + here.length, "matching item")}</span>
             <button
               type="button"
               className="link-btn"

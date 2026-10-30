@@ -325,7 +325,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const reference = (path: string) => {
     const name = path.slice(path.lastIndexOf("/") + 1);
     const body = document.body.replace(/\s*$/, "");
-    const next = `${body}${body ? "\n\n" : ""}- [${name}](${path}) — `;
+    // A path with a space is only a Markdown link inside angle brackets.
+    const target = /\s/.test(path) ? `<${path}>` : path;
+    const next = `${body}${body ? "\n\n" : ""}- [${name}](${target}) — `;
     setDocument((d) => ({ ...d, body: next }));
     reveal(next.split("\n").length, true);
   };
@@ -353,6 +355,14 @@ function Studio({ initial }: { initial: LocalSkill }) {
     if (layer === "source") return go("materials");
     go("skill");
   };
+
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // Keys that belong to the Studio.
   const keyState = useRef({ go, up, layer, sheet, closeSheet, outline: outline.length });
@@ -454,7 +464,17 @@ function Studio({ initial }: { initial: LocalSkill }) {
     // Undo takes back this signal only: edits made since stay.
     toast.show(`Now suggested when ${signalClause(signal)}.`, "ok", {
       label: "Undo",
-      run: () => draft.setForm((f) => removeSignal(f, signal)),
+      run: () => {
+        if (mounted.current) return draft.setForm((f) => removeSignal(f, signal));
+        // The editor has been left, so what is on disk is what to take it back from.
+        void api
+          .getSkill(id)
+          .then((s) => api.saveSkillApplicability(id, removeSignal(s.form, signal), s.metadataDigest))
+          .then(() => invalidateSkills(client))
+          .catch((e: unknown) =>
+            toast.show(`Could not undo: ${e instanceof Error ? e.message : String(e)}`, "danger"),
+          );
+      },
     });
   };
 
@@ -829,7 +849,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                   className="sk-title"
                   value={title}
                   placeholder="Untitled skill"
-                  disabled={trashed}
+                  disabled={trashed || broken}
                   spellCheck
                   autoComplete="off"
                   onChange={(e) => {

@@ -20,6 +20,7 @@ import { initTheme } from "../lib/theme";
 import { flushAutosaves, useAutosave } from "../lib/useAutosave";
 import { History } from "../views/project/History";
 import { ProjectSettings } from "../views/project/ProjectSettings";
+import { ProjectView } from "../views/project/ProjectView";
 import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
 import { SkillStudio } from "../views/skills/studio/SkillStudio";
@@ -601,6 +602,24 @@ describe("project history", () => {
   });
 });
 
+describe("a project that cannot be inspected", () => {
+  it("offers a way to remove it, and forgets it as the last project", async () => {
+    handlers.project_overview = () => {
+      throw { code: "notFound", message: "the project folder was moved or deleted" };
+    };
+    handlers.forget_project = vi.fn(() => null);
+    localStorage.setItem("habi.lastProject", "p1");
+    wrap(<ProjectView projectId="p1" tab="recommendations" />, {
+      name: "project",
+      projectId: "p1",
+      tab: "recommendations",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Remove from Habi" }));
+    await waitFor(() => expect(handlers.forget_project).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(localStorage.getItem("habi.lastProject")).toBeNull());
+  });
+});
+
 describe("free up space", () => {
   it("says what was removed and how much space it freed", async () => {
     handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });
@@ -614,6 +633,9 @@ describe("free up space", () => {
     }));
     wrap(<SettingsView />, { name: "settings" });
     await userEvent.click(await screen.findByRole("button", { name: "Free up space" }));
+    // It removes restore points, so it asks first.
+    expect(handlers.free_up_space).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole("button", { name: "Clear for good" }));
     expect(handlers.free_up_space).toHaveBeenCalledTimes(1);
     expect(
       await screen.findByText(

@@ -46,6 +46,27 @@ describe("useAutosave", () => {
     expect(save.mock.calls.map(([v]) => v)).toEqual(["b", "c"]);
   });
 
+  it("does not repeat a failed write on its own, and tries again on a new edit", async () => {
+    const save = vi.fn(async () => {
+      throw new Error("the disk is full");
+    });
+    const { result, rerender } = renderHook(
+      ({ value }) => useAutosave({ value, keyOf: (v) => v, save, delay: 60_000 }),
+      { initialProps: { value: "a" } },
+    );
+    rerender({ value: "b" });
+    await act(async () => {
+      expect(await result.current.flush()).toBe(false);
+    });
+    expect(result.current.state).toBe("error");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+    expect(save).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await result.current.flush();
+    });
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
   it("holds flushAutosaves until the write of an editor that just closed has settled", async () => {
     const { save, writes } = gate();
     const { rerender, unmount } = renderHook(

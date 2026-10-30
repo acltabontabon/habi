@@ -11,7 +11,7 @@ import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Notice } from "../../components/ui";
 import { api } from "../../lib/api";
 import { plural } from "../../lib/format";
-import { useNav } from "../../lib/nav";
+import { forgetRememberedProject, useNav } from "../../lib/nav";
 import { invalidateProjectData, keys } from "../../lib/queries";
 import { tagLabel } from "./ProjectView";
 
@@ -62,8 +62,11 @@ export function ProjectSettings({ overview, onClose }: { overview: ProjectOvervi
       return;
     }
     void client.invalidateQueries({ queryKey: keys.recent });
+    forgetRememberedProject(project.id);
     onClose();
-    navigate({ name: "welcome" });
+    // Replaced, so Back does not return to a project that is no longer here.
+    navigate({ name: "welcome" }, { replace: true });
+    client.removeQueries({ queryKey: keys.overview(project.id) });
     toast.show(`${project.name} removed from Habi. Nothing on disk was changed.`);
   };
 

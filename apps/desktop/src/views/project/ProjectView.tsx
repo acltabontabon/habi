@@ -4,12 +4,13 @@ import { type CSSProperties, Fragment, useEffect, useMemo, useState } from "reac
 import type { Ecosystem } from "../../bindings/Ecosystem";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import { Icon } from "../../components/Icon";
+import { useToast } from "../../components/Toasts";
 import { tip } from "../../components/Tooltips";
 import { Button, ErrorNotice, Notice, Working } from "../../components/ui";
 import { initialsOf, Strand, Swatch } from "../../components/Weave";
-import { api } from "../../lib/api";
+import { api, HabiError } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
-import { type ProjectTab, useNav } from "../../lib/nav";
+import { forgetRememberedProject, type ProjectTab, useNav } from "../../lib/nav";
 import { staleKey } from "../../lib/ownChanges";
 import { useSafeInvoke } from "../../lib/safeInvoke";
 import { tabKeyHandler } from "../../lib/tabs";
@@ -17,7 +18,7 @@ import { tagLabel } from "../../lib/tags";
 
 export { tagLabel };
 
-import { useOverview } from "../../lib/queries";
+import { keys, useOverview } from "../../lib/queries";
 import { stackDye, stackDyes } from "../../lib/stackDye";
 import { NothingFits } from "./AlreadyHere";
 import { History } from "./History";
@@ -124,6 +125,7 @@ export function ProjectView({
 }) {
   const overview = useOverview(projectId);
   const { navigate } = useNav();
+  const toast = useToast();
   const client = useQueryClient();
   const safely = useSafeInvoke();
   const changed = useQuery<string[] | null>({
@@ -144,6 +146,17 @@ export function ProjectView({
   const [settings, setSettings] = useState(false);
   // "history" opens the project with its history showing.
   const [history, setHistory] = useState(tab === "history");
+  useEffect(() => {
+    if (tab === "history") setHistory(true);
+  }, [tab]);
+  const closeHistory = () => {
+    setHistory(false);
+    // The route stops saying "history", so asking for it again (the palette) opens it again.
+    if (tab === "history")
+      navigate({ name: "project", projectId, tab: "recommendations" }, { replace: true });
+  };
+  const ticks = useState<Set<string>>(() => new Set());
+  const [removing, setRemoving] = useState(false);
   useEffect(() => {
     let live = true;
     setWatchError(null);
@@ -206,7 +219,7 @@ export function ProjectView({
   if (overview.isPending) {
     return (
       <div className="page page-waiting">
-        <Working stage>
+        <Working stage onCancel={overview.cancel}>
           Inspecting the project
           <span className="working-aside">reading manifests and file names</span>
         </Working>
@@ -214,15 +227,38 @@ export function ProjectView({
     );
   }
   if (overview.isError || !data) {
+    const stopped = overview.error instanceof HabiError && overview.error.code === "cancelled";
+    // A folder that was moved or deleted can only ever fail here: this is the way out.
+    const removeProject = async () => {
+      setRemoving(true);
+      try {
+        await api.forgetProject(projectId);
+        void client.invalidateQueries({ queryKey: keys.recent });
+        forgetRememberedProject(projectId);
+        navigate({ name: "welcome" }, { replace: true });
+        client.removeQueries({ queryKey: keys.overview(projectId) });
+        toast.show("Removed from Habi. Nothing on disk was changed.");
+      } catch (e) {
+        setRemoving(false);
+        toast.show(`Could not remove it: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      }
+    };
     return (
       <div className="page">
         <ErrorNotice
           error={overview.error}
-          title="Habi could not inspect this project"
+          title={stopped ? "Inspection stopped" : "Habi could not inspect this project"}
           action={
-            <Button size="sm" onClick={() => void overview.rescan()}>
-              Try again
-            </Button>
+            <>
+              <Button size="sm" onClick={() => void overview.rescan()}>
+                Try again
+              </Button>
+              {stopped ? null : (
+                <Button size="sm" variant="quiet" busy={removing} onClick={() => void removeProject()}>
+                  Remove from Habi
+                </Button>
+              )}
+            </>
           }
         />
       </div>
@@ -343,7 +379,7 @@ export function ProjectView({
       </header>
 
       {settings ? <ProjectSettings overview={data} onClose={() => setSettings(false)} /> : null}
-      {history ? <History overview={data} onClose={() => setHistory(false)} /> : null}
+      {history ? <History overview={data} onClose={closeHistory} /> : null}
 
       {weave.length > 0 ? (
         <section className="composition" aria-label="What fits, by library">
@@ -458,7 +494,7 @@ export function ProjectView({
 
       <div className="project-body" role="tabpanel" id="project-panel" aria-labelledby={tabId(view)}>
         {view === "kit" ? (
-          <Kit key={project.id} overview={data} onAll={() => show("all")} />
+          <Kit key={project.id} overview={data} ticks={ticks} onAll={() => show("all")} />
         ) : !itemKey && !browsing && !data.recommendations.some(fitsProject) ? (
           // Nothing fits: say so, offer what can be done with only this
           // project and what is already here, and the skills to use by hand.

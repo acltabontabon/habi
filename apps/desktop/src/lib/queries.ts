@@ -87,6 +87,18 @@ export function useRepoFacts(entryId: string | undefined) {
   });
 }
 
+/**
+ * What a library's page already asked of GitHub. Never asks itself: pointing at a card or a row is
+ * not opening the page, which is the one thing the security model says sends this request.
+ */
+export function useKnownRepoFacts(entryId: string | undefined) {
+  return useQuery({
+    queryKey: ["repoFacts", entryId ?? ""],
+    queryFn: () => null as Awaited<ReturnType<typeof api.catalogRepoFacts>>,
+    enabled: false,
+  });
+}
+
 const fitsData = (results: { data?: CatalogFit[] }[]) => results.map((r) => r.data);
 
 /**

@@ -29,12 +29,25 @@ export function SettingsView() {
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [freeing, setFreeing] = useState(false);
+  const [confirmFree, setConfirmFree] = useState(false);
+  const [saving, setSaving] = useState(false);
   // Writes go one after another, each built on the latest settings, so two
   // quick toggles cannot overwrite each other with a stale copy.
   const queue = useRef<Promise<void>>(Promise.resolve());
 
   if (settings.isPending || info.isPending) return <Working>Loading settings…</Working>;
-  if (settings.isError) return <ErrorNotice error={settings.error} />;
+  if (settings.isError) {
+    return (
+      <ErrorNotice
+        error={settings.error}
+        action={
+          <Button size="sm" onClick={() => void settings.refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    );
+  }
   const s = settings.data;
 
   const save = (change: (current: Settings) => Settings) => {
@@ -52,6 +65,7 @@ export function SettingsView() {
   };
 
   const freeUpSpace = async () => {
+    setConfirmFree(false);
     setFreeing(true);
     try {
       toast.show(pruneSummary(await api.freeUpSpace()));
@@ -81,6 +95,7 @@ export function SettingsView() {
   };
 
   const saveReport = async () => {
+    setSaving(true);
     try {
       const path = await api.diagnosticsSave();
       if (path) {
@@ -89,6 +104,8 @@ export function SettingsView() {
       }
     } catch (e) {
       setError(e);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -170,9 +187,16 @@ export function SettingsView() {
             label="Old history"
             hint="Clears history beyond the latest 20 operations per project and 20 snapshots per library. Unfinished work stays."
           >
-            <SettingAction busy={freeing} onClick={() => void freeUpSpace()}>
-              Free up space
-            </SettingAction>
+            {confirmFree ? (
+              <>
+                <SettingAction onClick={() => setConfirmFree(false)}>Keep it</SettingAction>
+                <SettingAction onClick={() => void freeUpSpace()}>Clear for good</SettingAction>
+              </>
+            ) : (
+              <SettingAction busy={freeing} onClick={() => setConfirmFree(true)}>
+                Free up space
+              </SettingAction>
+            )}
           </Setting>
           <Setting
             label="Troubleshooting report"
@@ -199,7 +223,7 @@ export function SettingsView() {
             <Button variant="quiet" onClick={closeReport}>
               Close
             </Button>
-            <Button variant="primary" onClick={() => void saveReport()}>
+            <Button variant="primary" busy={saving} onClick={() => void saveReport()}>
               Save report…
             </Button>
           </>

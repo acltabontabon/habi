@@ -131,7 +131,13 @@ function InstructionPicker({
   const lines = document.data?.lines ?? [];
   const total = lines.length;
   const chosen = range ?? (section ? { start: section.startLine, end: section.endLine } : null);
-  const valid = chosen !== null && chosen.start >= 1 && chosen.end >= chosen.start && chosen.end <= total;
+  const valid =
+    chosen !== null &&
+    Number.isInteger(chosen.start) &&
+    Number.isInteger(chosen.end) &&
+    chosen.start >= 1 &&
+    chosen.end >= chosen.start &&
+    chosen.end <= total;
   const shownTitle = titleEdited ? title : (section?.title ?? "");
 
   const pick = (s: InstructionSection) => {
@@ -140,7 +146,7 @@ function InstructionPicker({
   };
 
   const create = async () => {
-    if (!chosen) return;
+    if (!chosen || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -166,13 +172,14 @@ function InstructionPicker({
       open
       wide
       onOpenChange={(open) => {
-        if (!open) onClose();
+        // Once the draft is being made it will arrive, and open: Cancel must not suggest otherwise.
+        if (!open && !busy) onClose();
       }}
       title={`Turn part of ${file.path} into a skill`}
       description="Select a reusable procedure. The draft is a copy; the file itself stays exactly as it is."
       footer={
         <>
-          <Button variant="quiet" onClick={onClose}>
+          <Button variant="quiet" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
           <Button variant="primary" busy={busy} disabled={!valid} onClick={() => void create()}>
@@ -416,7 +423,8 @@ export function Outline({
                 Make a skill
               </button>
             </div>
-            {isOpen ? (
+            {isOpen && document.isError ? <ErrorNotice error={document.error} /> : null}
+            {isOpen && !document.isError ? (
               <pre className="file-outline-text">
                 {lines.slice(s.startLine - 1, s.endLine).map((text, n) => (
                   <span key={s.startLine + n} className="excerpt-line">

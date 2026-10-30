@@ -127,8 +127,9 @@ export function useAutosave<T>(options: {
     inFlight.current = mine;
     const ok = await attempt;
     if (inFlight.current === mine) inFlight.current = null;
-    // Edits made during the write are saved next.
-    if (alive.current && !blocked.current && keyRef.current(latest.current) !== savedKey.current) {
+    // Edits made during the write are saved next. A failed write is not repeated on its own: a new
+    // edit or Retry tries again, so a full disk is not asked four times a second.
+    if (ok && alive.current && !blocked.current && keyRef.current(latest.current) !== savedKey.current) {
       if (timer.current === null) timer.current = window.setTimeout(() => void run(), 250);
     }
     return ok;
