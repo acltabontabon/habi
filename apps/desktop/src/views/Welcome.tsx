@@ -18,6 +18,15 @@ import { Loom, type LoomProject, type LoomSource } from "./Loom";
 const LOCAL = "local";
 const SHOWN = 7;
 
+/** What fits a project, with fits Habi read from descriptions said apart from declared ones. */
+function fitsMeta(s: { fits: number; described: number }): string {
+  if (s.described === 0) return plural(s.fits, "skill");
+  const described = `${s.described} from ${s.described === 1 ? "its description" : "their descriptions"}`;
+  return s.fits === 0
+    ? `${plural(s.described, "skill")}, from ${s.described === 1 ? "its description" : "their descriptions"}`
+    : `${plural(s.fits, "skill")} · ${described}`;
+}
+
 export function Welcome() {
   const { navigate } = useNav();
   const { openProject, showWelcome } = useActions();
@@ -52,7 +61,7 @@ export function Welcome() {
       .filter((c) => c.origin.type === "projectSkill" && c.origin.projectId === p.id)
       .map((c) => c.sourceId),
     meta: p.summary
-      ? `${plural(p.summary.fits, "skill")} · ${plural(p.summary.sources.length, "library", "libraries")}`
+      ? `${fitsMeta(p.summary)} · ${plural(p.summary.sources.length, "library", "libraries")}`
       : "not matched yet",
     when: relativeTime(p.lastOpenedAt),
   }));

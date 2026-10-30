@@ -373,6 +373,8 @@ function LibraryItem({
     (r) => r.item.sourceId === source.id && r.applicability.applicability === "applies",
   );
   const installed = fits?.filter((r) => r.installState !== "notInstalled").length ?? 0;
+  // Fits Habi read from the skills' own descriptions, said apart from the declared ones.
+  const described = fits?.filter((r) => r.basis === "described").length ?? 0;
   const community = source.role === "community";
   // The catalog's word on who stands behind it wins: a builder's library is connected as community.
   const builder = entry !== undefined && groupOfEntry(entry) === "builders";
@@ -411,8 +413,12 @@ function LibraryItem({
                       fits.length === 0
                         ? `Nothing here fits ${overview.project.name}`
                         : `${fits.length} ${fits.length === 1 ? "fits" : "fit"} ${overview.project.name}${
-                            installed > 0 ? ` · ${installed} installed` : ""
-                          }`,
+                            described > 0
+                              ? ` · ${described === fits.length ? "all" : described} from ${
+                                  described === 1 ? "its description" : "their descriptions"
+                                }`
+                              : ""
+                          }${installed > 0 ? ` · ${installed} installed` : ""}`,
                   },
                 ]
               : []),

@@ -184,11 +184,18 @@ export function ProjectView({
   // The libraries this project is woven from: those with items that fit it
   // (or that the team requires), in order of how much they contribute.
   const weave = useMemo(() => {
-    const counts = new Map<string, { id: string; name: string; count: number }>();
+    const counts = new Map<string, { id: string; name: string; count: number; described: number }>();
     for (const r of data?.recommendations ?? []) {
       if (r.applicability.applicability !== "applies") continue;
-      const entry = counts.get(r.item.sourceId) ?? { id: r.item.sourceId, name: r.item.sourceName, count: 0 };
+      const entry = counts.get(r.item.sourceId) ?? {
+        id: r.item.sourceId,
+        name: r.item.sourceName,
+        count: 0,
+        described: 0,
+      };
       entry.count += 1;
+      // A fit read from the skill's own description is counted, and said apart.
+      if (r.basis === "described") entry.described += 1;
       counts.set(r.item.sourceId, entry);
     }
     return [...counts.values()]
@@ -355,6 +362,15 @@ export function ProjectView({
                 <Strand dye={w.dye} size={14} />
                 <span>{w.name}</span>
                 <span className="mono composition-count">{w.count}</span>
+                {w.described > 0 ? (
+                  <span className="muted composition-described">
+                    {w.described === w.count
+                      ? w.count === 1
+                        ? "from its description"
+                        : "from their descriptions"
+                      : `${w.described} from ${w.described === 1 ? "its description" : "their descriptions"}`}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

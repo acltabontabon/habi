@@ -531,6 +531,31 @@ pub fn described_rule(name: &str, description: &str) -> Option<Condition> {
     rule
 }
 
+/// The technologies a described rule asks for, as people say them ("Spring
+/// Boot", "Liquibase"), in the rule's order and without repeats.
+pub fn names(rule: &Condition) -> Vec<String> {
+    fn walk(c: &Condition, out: &mut Vec<String>) {
+        match c {
+            Condition::All { items } | Condition::Any { items } => {
+                for item in items {
+                    walk(item, out);
+                }
+            }
+            Condition::Not { item } => walk(item, out),
+            Condition::Tag { tag } => {
+                let label = crate::inspect::tags::label(tag);
+                if !out.contains(&label) {
+                    out.push(label);
+                }
+            }
+            Condition::Dependency { .. } | Condition::File { .. } => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(rule, &mut out);
+    out
+}
+
 /// Says the skill works with any technology, so the ones it names are examples.
 static AGNOSTIC: LazyLock<Option<Regex>> = LazyLock::new(|| {
     Regex::new(

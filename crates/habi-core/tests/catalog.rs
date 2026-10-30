@@ -1106,7 +1106,8 @@ fn a_catalog_hint_makes_a_skill_relevant_and_says_whose_judgement_it_is() {
         !wrangler.applicability.reason.is_empty(),
         "the reason it fits is shown"
     );
-    // A skill with no hint is available, never "relevant".
+    // A skill with no hint, whose own words name nothing Habi detects, is
+    // available, never "relevant".
     let perf = overview
         .recommendations
         .iter()

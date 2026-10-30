@@ -9,9 +9,15 @@ workflows, and evidence**—in standard YAML, easy to version in Git.
 
 ## Skills without metadata
 
-Skills stay listed and installable, under *Available to use manually* (Habi doesn't guess
-from titles). Large community libraries won't bury applicable skills: in a project that group
-is collapsed until you press *Show*.
+Skills stay listed and installable. Where a skill's own name and description name a technology
+Habi can detect (Spring Boot, Liquibase, GitHub Actions), Habi reads that as a rule and lists the
+skill under *Fits this project* marked *from its description*: its own reading of the author's
+words, never presented as the author's rule, and counted apart from declared fits. That reading
+only ever adds: a description naming something the project lacks, or something Habi cannot
+establish, leaves the skill under *Available to use manually*, never under *Does not apply* or
+*Needs information*. Skills whose words name nothing detectable stay under *Available to use
+manually*. Large community libraries won't bury applicable skills: in a project that group is
+collapsed until you press *Show*. A `habi.yaml` replaces the reading with your rule.
 
 ## Licenses
 

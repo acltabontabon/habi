@@ -7,9 +7,14 @@ import type { SourceTally } from "./SourceTally";
  */
 export type ProjectSummary = { 
 /**
- * Items that apply (team requirements included).
+ * Items that apply by their author's rule or the catalog's (team requirements included).
  */
 fits: number, 
+/**
+ * Items that apply only by what their own description names: Habi's reading, counted
+ * apart so a number never passes a guess off as a declared fit.
+ */
+described: number, 
 /**
  * Items whose applicability could not be established.
  */

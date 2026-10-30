@@ -44,7 +44,7 @@ export type LoomProject = {
    * Per library: how many of its skills fit, and the titles of those installed here. Absent
    * until the project has been looked at with a version of Habi that keeps it.
    */
-  tally?: { sourceId: string; fits: number; installed: string[] }[];
+  tally?: { sourceId: string; fits: number; described: number; installed: string[] }[];
   meta: string;
   when: string;
 };
@@ -147,6 +147,9 @@ export function Loom({
     const parts = [
       installed.length > 0 ? `installed: ${names(installed)}` : null,
       t && t.fits > 0 ? `${plural(t.fits, "skill")} ${t.fits === 1 ? "fits" : "fit"}` : null,
+      t && t.described > 0
+        ? `${plural(t.described, "skill")} from ${t.described === 1 ? "its" : "their"} description`
+        : null,
     ].filter(Boolean);
     return `${s.name} in ${p.name}${parts.length > 0 ? `: ${parts.join(", ")}` : ""}`;
   };
@@ -155,6 +158,7 @@ export function Loom({
     const t = tallyOf(p, s.id);
     const installed = t?.installed ?? [];
     const fitting = t?.fits ?? 0;
+    const described = t?.described ?? 0;
     return tip({
       title: s.name,
       mark: s.dye.color,
@@ -164,6 +168,16 @@ export function Loom({
         ...(installed.length > 0 ? [{ text: `Installed: ${names(installed)}` }] : []),
         ...(fitting > 0
           ? [{ text: `${plural(fitting, "skill")} ${fitting === 1 ? "fits" : "fit"} this project` }]
+          : []),
+        // Habi's reading of a skill's description, never counted as a declared fit.
+        ...(described > 0
+          ? [
+              {
+                text: `${plural(described, "skill")} ${described === 1 ? "fits" : "fit"} by ${
+                  described === 1 ? "its" : "their"
+                } description`,
+              },
+            ]
           : []),
       ],
       note: !p.tally

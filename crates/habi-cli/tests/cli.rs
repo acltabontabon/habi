@@ -601,3 +601,34 @@ fn the_catalog_lists_every_library_without_touching_the_network() {
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(error_code(&v), "notFound");
 }
+
+#[test]
+fn recommend_and_explain_say_whose_rule_a_fit_rests_on() {
+    let env = Env::new();
+    let lib = env.work.path().join("lib");
+    copy_dir(&library_fixture(), &lib);
+    // A skill with no rules of its own, whose description names Spring Boot.
+    let words = lib.join("skills/spring-config-review");
+    std::fs::create_dir_all(&words).unwrap();
+    std::fs::write(
+        words.join("SKILL.md"),
+        "---\nname: spring-config-review\ndescription: Review Spring Boot configuration for safe defaults.\n---\n\n# Spring config review\n\nSteps.\n",
+    )
+    .unwrap();
+    env.ok(env.work.path(), &["source", "add", "Team", "lib"]);
+    env.ok(env.work.path(), &["source", "refresh"]);
+
+    let project = env.project("billing-service");
+    let text = stdout(&env.ok(&project, &["recommend"]));
+    assert!(text.contains("Spring config review"), "{text}");
+    assert!(
+        text.contains("(from its description: Habi's reading, not the author's rule)"),
+        "{text}"
+    );
+    // The author's own rules carry no such note.
+    assert!(!text.contains("Liquibase migration review  [Team/liquibase-migration-review]\n      Uses Spring Boot (pom.xml:6) (from"), "{text}");
+    let explain = stdout(&env.ok(&project, &["explain", "spring-config-review"]));
+    assert!(explain.contains("Rule: from its description"), "{explain}");
+    let author = stdout(&env.ok(&project, &["explain", "liquibase-migration-review"]));
+    assert!(!author.contains("\nRule:"), "{author}");
+}

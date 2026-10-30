@@ -56,7 +56,7 @@ habi catalog forget <id>                # discard a preview
 
 ```sh
 habi inspect                                   # what Habi detects, with evidence
-habi recommend                                 # what fits, with a one-line reason
+habi recommend                                 # what fits, with a one-line reason and whose rule it is
 habi recommend --all                           # also what does not apply, and unmatched items
 habi explain liquibase-migration-review        # the full reasoning and its checks
 ```

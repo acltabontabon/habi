@@ -122,8 +122,12 @@ pub enum ProjectPick {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ProjectSummary {
-    /// Items that apply (team requirements included).
+    /// Items that apply by their author's rule or the catalog's (team requirements included).
     pub fits: u32,
+    /// Items that apply only by what their own description names: Habi's reading, counted
+    /// apart so a number never passes a guess off as a declared fit.
+    #[serde(default)]
+    pub described: u32,
     /// Items whose applicability could not be established.
     pub needs_information: u32,
     /// Libraries those items come from (source ids), most items first.
@@ -149,8 +153,11 @@ pub struct ProjectSummary {
 #[ts(export)]
 pub struct SourceTally {
     pub source_id: String,
-    /// Its items that apply to the project (team requirements included).
+    /// Its items that apply by their author's rule or the catalog's (team requirements included).
     pub fits: u32,
+    /// Its items that apply only by what their description names (Habi's reading).
+    #[serde(default)]
+    pub described: u32,
     /// Titles of its items installed in the project, whatever their fit.
     pub installed: Vec<String>,
 }
@@ -1283,11 +1290,20 @@ impl Habi {
         let summary = {
             let mut by_source: Vec<(String, u32)> = Vec::new();
             let mut fits = 0;
+            let mut described = 0;
             let mut needs_information = 0;
+            // A fit read from the skill's own description is counted apart from
+            // one the author or the catalog declared.
+            let by_description =
+                |r: &recommend::Recommendation| r.basis == recommend::Basis::Described;
             for r in &recommendations {
                 match r.applicability.applicability {
                     Applicability::Applies => {
-                        fits += 1;
+                        if by_description(r) {
+                            described += 1;
+                        } else {
+                            fits += 1;
+                        }
                         match by_source.iter_mut().find(|(s, _)| *s == r.item.source_id) {
                             Some((_, n)) => *n += 1,
                             None => by_source.push((r.item.source_id.clone(), 1)),
@@ -1310,13 +1326,16 @@ impl Habi {
                         tally.push(SourceTally {
                             source_id: r.item.source_id.clone(),
                             fits: 0,
+                            described: 0,
                             installed: Vec::new(),
                         });
                         tally.len() - 1
                     }
                 };
                 if let Some(t) = tally.get_mut(at) {
-                    if applies {
+                    if applies && by_description(r) {
+                        t.described += 1;
+                    } else if applies {
                         t.fits += 1;
                     }
                     if r.installation.is_some() {
@@ -1326,6 +1345,7 @@ impl Habi {
             }
             ProjectSummary {
                 fits,
+                described,
                 needs_information,
                 sources: by_source.into_iter().map(|(s, _)| s).collect(),
                 installed: recommendations

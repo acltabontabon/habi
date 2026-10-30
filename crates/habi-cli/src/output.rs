@@ -18,7 +18,7 @@ use habi_core::maintenance::PruneReport;
 use habi_core::matching::Applicability;
 use habi_core::matching::eval::{Declaration, DeclaredSubject, EvalNode, Tri};
 use habi_core::recommend::{
-    EvidenceState, Group, NextAction, PrerequisiteKind, PrerequisiteStatus, ReadinessState,
+    Basis, EvidenceState, Group, NextAction, PrerequisiteKind, PrerequisiteStatus, ReadinessState,
     Recommendation,
 };
 use habi_core::review::ReviewState;
@@ -33,6 +33,19 @@ pub fn plural(n: usize, word: &str) -> String {
         format!("1 {word}")
     } else {
         format!("{n} {word}s")
+    }
+}
+
+/// Whose rule a fit rests on, when it is not the author's. A skill left
+/// unmatched says so in its reason already.
+fn whose_rule(r: &Recommendation) -> Option<&'static str> {
+    if r.applicability.applicability == Applicability::Undeclared {
+        return None;
+    }
+    match r.basis {
+        Basis::Declared => None,
+        Basis::CatalogHint => Some("by Habi's catalog rule, not the author's"),
+        Basis::Described => Some("from its description: Habi's reading, not the author's rule"),
     }
 }
 
@@ -576,7 +589,10 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
                 "  {}  [{}/{}]{required}",
                 r.item.title, r.item.source_name, r.item.id
             );
-            println!("      {}", r.applicability.reason);
+            match whose_rule(r) {
+                Some(whose) => println!("      {} ({whose})", r.applicability.reason),
+                None => println!("      {}", r.applicability.reason),
+            }
             let mut line = format!(
                 "      {} · {} · evidence: {}",
                 install_state(r.install_state),
@@ -679,6 +695,9 @@ pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
         applicability(r.applicability.applicability),
         r.applicability.reason
     );
+    if let Some(whose) = whose_rule(r) {
+        println!("Rule: {whose}");
+    }
     for m in &r.applicability.modules {
         println!(
             "  {} → {}",

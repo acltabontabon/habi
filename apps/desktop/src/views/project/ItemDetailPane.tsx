@@ -407,7 +407,7 @@ export function ItemDetailPane({
                   Habi's catalog suggests when it applies. Treat it as a pointer and read the skill.
                 </p>
               ) : null}
-              {r.basis === "described" ? (
+              {r.basis === "described" && a.applicability !== "undeclared" ? (
                 <p className="muted why-basis">
                   This rule is read from the skill's own description: it names {describedTags(a).join(", ")},
                   and Habi checks for that here. The author declared no rules, so treat it as a pointer and
@@ -417,8 +417,10 @@ export function ItemDetailPane({
               {r.pick ? <p className="muted why-basis">One of Habi's picks — {r.pick.why}.</p> : null}
               {a.applicability === "undeclared" ? (
                 <p className="muted">
-                  No rules for when it applies, and its description names nothing Habi can look for. You can
-                  still install it deliberately{isLocal ? ", or add rules in My skills" : ""}.
+                  {r.basis === "described"
+                    ? // The summary above says what the description names and that it was not found here.
+                      `Habi looked here for what its description names, and only adds a skill on that reading, never rules one out. You can still install it deliberately${isLocal ? ", or add rules in My skills" : ""}.`
+                    : `No rules for when it applies, and its description names nothing Habi can look for. You can still install it deliberately${isLocal ? ", or add rules in My skills" : ""}.`}
                 </p>
               ) : (
                 <>
