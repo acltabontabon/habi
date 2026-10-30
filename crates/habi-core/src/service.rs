@@ -2688,10 +2688,12 @@ impl Habi {
         }
     }
 
-    /// Prepares the branch. For a revision of a skill from My skills or a
-    /// project, the skill is first copied again from where it lives, so edits
-    /// made after "Revise" are included. `build_on_remote` is the user's
-    /// choice to build on commits someone else pushed to the branch.
+    /// Prepares the branch. For a skill from My skills or a project, the skill
+    /// is first copied again from where it lives, so edits made since are
+    /// included. If that changes a first version, nothing is prepared yet: what
+    /// leaves the machine must be what the preview showed, and the preview now
+    /// shows the new files. `build_on_remote` is the user's choice to build on
+    /// commits someone else pushed to the branch.
     pub fn commit_contribution_with(
         &self,
         id: &str,
@@ -2699,9 +2701,15 @@ impl Habi {
         cancel: &CancelToken,
     ) -> Result<Contribution> {
         let c = self.contributions().preview(id)?;
-        if c.revising {
+        if c.state == crate::contribute::ContributionState::Draft {
+            let shown = self.contributions().outgoing_digest(id)?;
             let root = self.contribution_project_root(&c.origin);
             self.contributions().resync(id, root.as_deref())?;
+            if !c.revising && self.contributions().outgoing_digest(id)? != shown {
+                return Err(HabiError::StalePlan(
+                    "The skill changed since this preview. Check the files again, then prepare the branch.".into(),
+                ));
+            }
         }
         self.contributions()
             .commit_with(id, build_on_remote, cancel)

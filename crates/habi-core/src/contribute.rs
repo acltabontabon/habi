@@ -25,7 +25,7 @@ use crate::library::{self, SIDECAR_FILES, SKILL_FILE};
 use crate::paths::{RelPath, display_path, resolve_for_read};
 pub use crate::review::{RemoteRepo, remote_repo};
 use crate::review::{ReviewHost, ReviewState, ReviewStatus, ReviewTools};
-use crate::source::git::Git;
+use crate::source::git::{Git, SKIP_BLOBS_OVER};
 use crate::source::{SourceKind, Sources, TrackedRef};
 use crate::store::{AppPaths, ResourceLock, Store};
 use rusqlite::{OptionalExtension, params};
@@ -39,7 +39,9 @@ use ts_rs::TS;
 const MAX_FILES: usize = 200;
 /// A skill folder's files by path.
 type Files = BTreeMap<String, Vec<u8>>;
-const MAX_FILE_BYTES: u64 = 1024 * 1024;
+/// The same limit as reading a library: a file Habi read from one can always
+/// be copied back to it.
+const MAX_FILE_BYTES: u64 = SKIP_BLOBS_OVER;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", tag = "type")]
@@ -316,6 +318,11 @@ struct Stored {
     /// The author chose not to record it.
     #[serde(default)]
     lineage_off: bool,
+    /// The files of the last prepared version, as paths in the skill folder.
+    /// With the library's, these are the only ones a later version may
+    /// remove: anything else in the folder never appeared in a preview.
+    #[serde(default)]
+    prepared: Option<BTreeSet<String>>,
 }
 
 /// The contribution as it was before "Revise", to back out of a revision.
@@ -418,6 +425,12 @@ pub(crate) fn read_folder(root: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
             }
             if is_os_junk(&entry.file_name().to_string_lossy()) {
                 continue;
+            }
+            // Opening a named pipe would wait for a writer, forever.
+            if !meta.is_file() {
+                return Err(HabiError::invalid(format!(
+                    "`{rel}` is not a regular file (a pipe, socket or device); contributions may only hold files"
+                )));
             }
             if out.len() >= MAX_FILES {
                 return Err(HabiError::invalid(format!(
@@ -976,7 +989,7 @@ fn write_staging(
     std::fs::create_dir_all(dir).map_err(|e| HabiError::io("creating the staging folder", e))
 }
 
-/// Largest patch Habi writes (a contribution is at most 200 files of 1 MiB).
+/// Largest patch Habi writes (a contribution is at most 200 files of 2 MiB).
 const PATCH_LIMIT: usize = 512 * 1024 * 1024;
 
 /// The staged package compared with the library, and what would leave the
@@ -1417,14 +1430,21 @@ impl<'a> Contributions<'a> {
     /// The staged files compared with the library, with the author's
     /// selection applied.
     fn comparison(&self, c: &Contribution, stored: &Stored) -> Result<(Comparison, Files, Files)> {
-        let staged = self.staged(&c.id).unwrap_or_default();
+        // Never "empty" for a staging folder that cannot be read: every library
+        // file would then read as removed.
+        let staged = self.staged(&c.id)?;
         let (base, _) = self.base_files(c)?;
         let cmp = compare(&c.item_path, &base, &staged, &stored.excluded);
         Ok((cmp, base, staged))
     }
 
+    /// The staged files. A contribution that was discarded has none.
     fn staged(&self, id: &str) -> Result<BTreeMap<String, Vec<u8>>> {
-        read_folder(&staging(self.paths, id))
+        let dir = staging(self.paths, id);
+        if !dir.is_dir() {
+            return Ok(BTreeMap::new());
+        }
+        read_folder(&dir)
     }
 
     /// The skill's files and executable bits where they live now (My skills
@@ -1469,7 +1489,7 @@ impl<'a> Contributions<'a> {
         };
         if !files.contains_key(SKILL_FILE) {
             return Err(HabiError::invalid(
-                "the skill no longer has a SKILL.md, so it cannot be revised",
+                "the skill no longer has a SKILL.md, so it cannot be shared",
             ));
         }
         let dir = staging(self.paths, &c.id);
@@ -1478,6 +1498,12 @@ impl<'a> Contributions<'a> {
             record_lineage(&dir, value)?;
         }
         let fallback = stored.form.title.clone();
+        // The next copy starts from this file again, so it is what later form
+        // changes are measured against, not the form with them applied.
+        let copied = form_in(
+            &dir,
+            stored.synced_form.as_ref().map_or(&fallback, |f| &f.title),
+        );
         let baseline = if reopening {
             // A project skill's metadata comes from the form; a skill from
             // My skills brings its own (edited in My skills).
@@ -1498,7 +1524,7 @@ impl<'a> Contributions<'a> {
             write_sidecar(&dir, &stored.form, baseline.as_ref(), &fallback)?;
         }
         stored.form = form_in(&dir, &fallback);
-        stored.synced_form = Some(stored.form.clone());
+        stored.synced_form = Some(copied);
         stored.executables = Some(executables);
         Ok(true)
     }
@@ -1661,7 +1687,18 @@ impl<'a> Contributions<'a> {
                 "the folder has no SKILL.md, so it is not a skill",
             ));
         }
+        if item_path.is_empty() {
+            return Err(HabiError::Unsupported(
+                "This skill sits at the top of its repository, not in a folder of its own, so Habi cannot tell its files from the rest of the repository. Change it in the repository directly.".into(),
+            ));
+        }
         RelPath::new(&item_path)?;
+        if let Some((a, b)) = crate::skills::case_collision(files.keys()) {
+            return Err(HabiError::invalid(format!(
+                "{}; rename one where the skill lives first",
+                crate::skills::collision_message(a, b)
+            )));
+        }
         let replaces = existing.and_then(|item_id| {
             let item = index.items.iter().find(|i| i.id == item_id)?;
             let item_files: BTreeMap<String, String> = item
@@ -1749,6 +1786,7 @@ impl<'a> Contributions<'a> {
             published_at: None,
             lineage,
             lineage_off: false,
+            prepared: None,
         };
         self.save_row(&contribution, &stored)?;
         self.preview(&id)
@@ -2102,6 +2140,11 @@ impl<'a> Contributions<'a> {
                     ),
                     Some(path),
                 ));
+            } else if let Some(what) = crate::redact::looks_secret(path) {
+                out.push(Diagnostic::error(
+                    format!("A file's name appears to contain {what}. Rename it before sharing."),
+                    Some(path),
+                ));
             } else if let Some(what) = crate::redact::looks_secret(&String::from_utf8_lossy(bytes))
             {
                 out.push(Diagnostic::error(
@@ -2109,6 +2152,30 @@ impl<'a> Contributions<'a> {
                     Some(path),
                 ));
             }
+        }
+        for (field, text) in [
+            ("The title", c.title.as_str()),
+            ("The message for reviewers", stored.message.as_str()),
+            ("The skill's folder name", c.item_path.as_str()),
+        ] {
+            if let Some(what) = crate::redact::looks_secret(text) {
+                out.push(Diagnostic::error(
+                    format!("{field} appears to contain {what}. Remove it before sharing."),
+                    None,
+                ));
+            }
+        }
+        // Without its SKILL.md the folder is no longer a skill. Habi offers no
+        // way to delete a skill from a library, so this is never what was meant.
+        if !outgoing.contains_key(SKILL_FILE) {
+            out.push(Diagnostic::error(
+                if base.contains_key(SKILL_FILE) {
+                    "This would delete the skill's SKILL.md from the library. Put it back, or leave that change out."
+                } else {
+                    NEW_SKILL_FILE
+                },
+                Some(&format!("{}/{SKILL_FILE}", c.item_path)),
+            ));
         }
         if let Some(path) = &stored.replaces {
             let name = path.rsplit('/').next().unwrap_or(path);
@@ -2346,28 +2413,32 @@ impl<'a> Contributions<'a> {
                 ));
             }
         }
-        // The skill folder becomes exactly the staged files: anything else
-        // under it in the parent (removed here, or left by an earlier
-        // revision) is dropped. One `update-index --index-info` adds and
-        // removes; mode 0 removes an entry without a work tree (Habi's cache
-        // is bare, where `--force-remove` is refused).
+        // The staged files go in, and what the preview called removed goes
+        // out: a library file no longer staged, or one an earlier revision
+        // added. Everything else under the folder in the parent stays. Links,
+        // submodules, oversized files and files outside the library's globs
+        // were never in the preview, so they do not leave either. One
+        // `update-index --index-info` adds and removes; mode 0 removes an entry
+        // without a work tree (Habi's cache is bare, where `--force-remove` is
+        // refused).
         let mut entries = Vec::new();
         for (name, oid) in staged.keys().zip(&oids) {
             let path = repo_path(name);
-            // Keep executable scripts executable in the library. The bit was
-            // recorded when the files were copied; where the file system
-            // cannot show it, a file the parent has as executable stays so.
+            // Keep executable scripts executable in the library, and carry a
+            // bit set in staging. The bit recorded when the files were copied
+            // counts too, as the staged copy may not be able to show it; where
+            // the file system cannot, a file the parent has as executable
+            // stays so.
             let parent_exec = in_parent.get(&path).is_some_and(|(m, _)| m == "100755");
             let executable = if cmp.kept.contains(name) {
                 base_executables.contains(name)
             } else {
-                match &stored.executables {
-                    Some(set) => set.contains(name) || (!cfg!(unix) && parent_exec),
-                    None => {
-                        crate::fsutil::is_executable(&RelPath::new(name)?.to_path(&dir))
-                            || (!cfg!(unix) && parent_exec)
-                    }
-                }
+                stored
+                    .executables
+                    .as_ref()
+                    .is_some_and(|set| set.contains(name))
+                    || crate::fsutil::is_executable(&RelPath::new(name)?.to_path(&dir))
+                    || (!cfg!(unix) && parent_exec)
             };
             let mode = if executable { "100755" } else { "100644" };
             entries.extend_from_slice(format!("{mode} {oid}\t{path}\0").as_bytes());
@@ -2376,7 +2447,9 @@ impl<'a> Contributions<'a> {
             let Some(name) = path.strip_prefix(&format!("{folder}/")) else {
                 continue;
             };
-            if !staged.contains_key(name) {
+            let known = base.contains_key(name)
+                || stored.prepared.as_ref().is_some_and(|p| p.contains(name));
+            if known && !staged.contains_key(name) {
                 let zero = "0".repeat(oid.len());
                 entries.extend_from_slice(format!("0 {zero}\t{path}\0").as_bytes());
             }
@@ -2390,8 +2463,10 @@ impl<'a> Contributions<'a> {
                 cancel,
             )?;
         }
+        // `--missing-ok`: a catalog library's cache has no blobs over Habi's
+        // limit, anywhere in the repository, and the tree only names them.
         let tree = git
-            .run_env(Some(&cache), &["write-tree"], &env, cancel)?
+            .run_env(Some(&cache), &["write-tree", "--missing-ok"], &env, cancel)?
             .stdout_text()
             .trim()
             .to_string();
@@ -2438,6 +2513,7 @@ impl<'a> Contributions<'a> {
         c.commit_id = Some(commit);
         c.state = ContributionState::Committed;
         c.updated_at = crate::time::now();
+        stored.prepared = Some(cmp.outgoing.keys().cloned().collect());
         stored.parent_commit = None;
         stored.before_revision = None;
         stored.attention = None;
@@ -2601,19 +2677,35 @@ impl<'a> Contributions<'a> {
         self.preview(id)
     }
 
-    /// While revising a skill from My skills or a project: copies it again
-    /// from where it lives, keeping form changes made since. Called before
-    /// preparing a revision so edits made after "Revise" are included.
+    /// While a skill from My skills or a project is not prepared yet: copies
+    /// it again from where it lives, keeping form changes made since. Called
+    /// before preparing, so edits made after "Start" or "Revise" are included.
     /// Anything else is returned unchanged.
     pub fn resync(&self, id: &str, project_root: Option<&Path>) -> Result<Contribution> {
         let (c, mut stored) = self.load_active(id)?;
         if c.state == ContributionState::Draft
-            && stored.parent_commit.is_some()
             && self.sync_from_origin(&c, &mut stored, project_root, false)?
         {
             self.save_row(&c, &stored)?;
         }
         self.preview(id)
+    }
+
+    /// A digest of exactly what would leave the machine now, to tell whether
+    /// it is still what a preview showed.
+    pub(crate) fn outgoing_digest(&self, id: &str) -> Result<String> {
+        let (c, stored) = self.load_row(id)?;
+        let (cmp, _, _) = self.comparison(&c, &stored)?;
+        let digests: Vec<(&str, String)> = cmp
+            .outgoing
+            .iter()
+            .map(|(path, bytes)| (path.as_str(), sha256(bytes)))
+            .collect();
+        Ok(crate::fsutil::tree_digest(
+            digests
+                .iter()
+                .map(|(path, digest)| (*path, digest.as_str())),
+        ))
     }
 
     /// Backs out of a revision: the contribution returns to the version it
@@ -2668,10 +2760,20 @@ impl<'a> Contributions<'a> {
         } else {
             format!("{}/{}", stored.prefix, c.item_path)
         };
+        // The files of that version, not everything in the folder: links,
+        // submodules and files too large to read stay in the tree, unshown.
+        let prefix = format!("{folder}/");
         let entries: Vec<_> = git
             .ls_tree(&cache, commit, Some(&folder), cancel)?
             .into_iter()
-            .filter(|e| e.kind == "blob")
+            .filter(|e| e.kind == "blob" && matches!(e.mode.as_str(), "100644" | "100755"))
+            .filter(|e| match &stored.prepared {
+                Some(prepared) => e
+                    .path
+                    .strip_prefix(&prefix)
+                    .is_some_and(|name| prepared.contains(name)),
+                None => e.size.is_some_and(|size| size <= MAX_FILE_BYTES),
+            })
             .collect();
         let oids: Vec<String> = entries.iter().map(|e| e.oid.clone()).collect();
         let total: u64 = entries.iter().filter_map(|e| e.size).sum();
@@ -2679,7 +2781,7 @@ impl<'a> Contributions<'a> {
         let mut files = BTreeMap::new();
         let mut executables = BTreeSet::new();
         for (entry, bytes) in entries.iter().zip(blobs) {
-            let Some(name) = entry.path.strip_prefix(&format!("{folder}/")) else {
+            let Some(name) = entry.path.strip_prefix(&prefix) else {
                 continue;
             };
             RelPath::new(name)?;
