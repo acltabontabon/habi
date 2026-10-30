@@ -70,7 +70,9 @@ and it is what makes authentication work without Habi handling secrets.
 - Writes resolve each existing path component and refuse symbolic links anywhere along the
   path (`resolve_for_write`); this is re-checked at apply time, not just at preview.
 - Reads are bounded; parsers have size/depth/node limits (YAML budgets, XML without DTDs,
-  bounded globs and conditions).
+  bounded globs and conditions). Ignore files must be regular files (1 MiB each, 16 MiB per
+  inspection), and one inspection reads at most 2,000 modules, 128 MiB of manifests and 250,000
+  facts; past any of these, coverage says so rather than claiming a complete answer.
 - Writes use atomic replacement (temp file + file flush + rename) and journals; see
   [Recovery](../guide/recovery.md). Unix directory flush failures are reported, including
   newly created parents. Windows does not flush directory entries here; this is not an
@@ -179,7 +181,8 @@ can hold anything said or shown in a session, so what happens to them is stated 
   `<session>/subagents/` that changed in the last 30 days. Those folders hold sessions started in the
   project or below it, such as a worktree. The same goes for the repository's other checkouts, found
   by reading `.git/worktrees/*/gitdir` in the project (or its `.git` file, if it is one itself); Git
-  is not run. Nothing else under `~/.claude`, and no other agent's history.
+  is not run. A checkout counts only if its `.git` file and that entry name each other, and a pointer
+  to another machine is ignored. Nothing else under `~/.claude`, and no other agent's history.
 - **Other projects' transcripts are opened too.** Folder names are lossy, so `/w/app-two` is among
   the folders for `/w/app`. Each transcript is read until its first record that names a folder, and
   one from elsewhere is put down there: nothing is taken from it, and it uses none of the size limits.
@@ -208,12 +211,14 @@ What it can and cannot say:
 - ***Not used* is said only of a skill a session offered** and no session used. A folder Claude Code
   does not read, or a skill newer than any session, leaves the row saying nothing.
 - **A partial read claims less.** If a limit is reached, a file cannot be read, or a record names a
-  use that cannot be read (the `Skill` tool's input changed, a record has no id or time), counts become
+  use that cannot be read (the `Skill` tool's input changed, a record has no id or time, a line was
+  cut short), counts become
   minimums (*Used at least 3×*) and no skill is called unused.
 - **Some changes cannot be seen.** The format is Claude Code's own and undocumented
   ([what was checked](../dev/compatibility-research.md#9-what-agents-record-about-skill-use)). If the
   `Skill` tool were renamed, its calls would look like any other tool's, and skills would read as
-  unused. A worktree Git no longer lists is not found, so its sessions are not counted either.
+  unused. A worktree Git no longer lists, or whose folder has been removed, is not found, so its
+  sessions are not counted either.
 
 ## Library catalog and previews
 

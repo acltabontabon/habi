@@ -22,6 +22,7 @@
 use crate::cancel::CancelToken;
 use crate::clients::ClientId;
 use crate::error::Result;
+use crate::inspect::repo::git_pointer;
 use crate::skills::intake::DiscoveredSkill;
 use crate::suggest::tokens_of;
 use regex::bytes::Regex;
@@ -179,7 +180,6 @@ impl Tally<'_> {
             return;
         }
         self.uses.insert(id.to_string(), (skill, at));
-        self.seen(skill, at);
         if direct && let Some(last) = self.direct.get_mut(skill) {
             *last = Some(at);
         }
@@ -269,7 +269,10 @@ impl Tally<'_> {
     }
 
     fn record(&mut self, line: &[u8]) {
+        // A crash or a live append can cut a line short, and this one looks like
+        // it may name a use.
         let Ok(record) = serde_json::from_slice::<Value>(line) else {
+            self.unreadable = true;
             return;
         };
         // Folder names are lossy (`/a/b-c` and `/a/b/c` share one, and `/a/b-c`
@@ -346,12 +349,32 @@ fn collect(dir: &Path, since: SystemTime, partial: &mut bool, out: &mut Vec<Tran
 }
 
 /// The path a small Git file points to, after `prefix`, resolved from `base`.
+/// `None` for a place on another machine (see `git_pointer`): even looking
+/// there would offer it the person's credentials.
 fn pointed_at(file: &Path, base: &Path, prefix: &str) -> Option<PathBuf> {
     fs::symlink_metadata(file).ok().filter(|m| m.is_file())?;
     let bytes = crate::fsutil::read_prefix(file, 4096).ok()?;
     let text = String::from_utf8_lossy(&bytes);
-    let path = base.join(text.trim().strip_prefix(prefix)?.trim());
+    let path = git_pointer(base, text.trim().strip_prefix(prefix)?)?;
     Some(crate::paths::canonical(&path).unwrap_or(path))
+}
+
+/// Whether a checkout and an entry of `.git/worktrees` name each other. Either
+/// file can be anything in a folder someone sent; alone it could call every
+/// session under some other tree this project's. Git requires both, and so does
+/// this: the entry's `gitdir` names the checkout's `.git` file, and that file
+/// names the entry.
+fn linked_both_ways(admin: &Path, dot_git: &Path) -> bool {
+    let same = |a: &Path, b: &Path| {
+        let canonical = |p: &Path| crate::paths::canonical(p).unwrap_or_else(|_| p.to_path_buf());
+        canonical(a) == canonical(b)
+    };
+    let Some(checkout) = dot_git.parent() else {
+        return false;
+    };
+    dot_git.file_name().is_some_and(|name| name == ".git")
+        && pointed_at(&admin.join("gitdir"), admin, "").is_some_and(|d| same(&d, dot_git))
+        && pointed_at(dot_git, checkout, "gitdir:").is_some_and(|a| same(&a, admin))
 }
 
 /// The project and the repository's other checkouts, wherever they are. Sessions
@@ -377,7 +400,17 @@ fn checkouts(root: &Path, partial: &mut bool) -> Vec<PathBuf> {
         let Some(common) = common else {
             return found;
         };
-        found.extend(common.parent().map(Path::to_path_buf));
+        if !admin
+            .as_deref()
+            .is_some_and(|a| linked_both_ways(a, &dot_git))
+        {
+            return found;
+        }
+        // A bare repository has no checkout of its own, and what is beside it is
+        // nothing to do with it.
+        if common.file_name().is_some_and(|name| name == ".git") {
+            found.extend(common.parent().map(Path::to_path_buf));
+        }
         common.to_path_buf()
     };
     let linked = entries(&common.join("worktrees"), partial);
@@ -385,8 +418,10 @@ fn checkouts(root: &Path, partial: &mut bool) -> Vec<PathBuf> {
     for entry in linked.iter().filter(|e| is_dir(e)).take(MAX_CHECKOUTS) {
         let admin = entry.path();
         // `gitdir` names the checkout's `.git` file.
-        if let Some(checkout) = pointed_at(&admin.join("gitdir"), &admin, "") {
-            found.extend(checkout.parent().map(Path::to_path_buf));
+        if let Some(dot_git) = pointed_at(&admin.join("gitdir"), &admin, "")
+            && linked_both_ways(&admin, &dot_git)
+        {
+            found.extend(dot_git.parent().map(Path::to_path_buf));
         }
     }
     // Sorted, a folder comes before what is inside it, which it already covers.
@@ -633,10 +668,16 @@ pub fn read_usage(
     let Tally {
         mut uses,
         failed,
-        first_seen,
+        mut first_seen,
         ..
     } = tally;
     uses.retain(|id, _| !failed.contains(id));
+    // Only now: a refused call is no sign a session had the skill at all.
+    for (skill, at) in uses.values() {
+        if let Some(first) = first_seen.get_mut(*skill) {
+            *first = Some(first.map_or(*at, |f| f.min(*at)));
+        }
+    }
 
     let mut counts = vec![0u32; unique.len()];
     let mut last: Vec<Option<OffsetDateTime>> = vec![None; unique.len()];

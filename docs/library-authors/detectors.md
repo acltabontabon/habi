@@ -2,8 +2,10 @@
 
 What can Habi establish as conditions in `habi.yaml`? This page lists what inspection finds.
 
-**Inspection is read-only:** lists files (respecting `.gitignore`, `.habiignore`), reads build
-manifests and config files, and never runs code, builds, Git, hooks, or package managers.
+**Inspection is read-only:** lists files (respecting `.gitignore`, `.ignore`, `.habiignore` and
+`.git/info/exclude`), reads build manifests and config files, and never runs code, builds, Git,
+hooks, or package managers. Ignore files above the repository root are not honoured, and one that
+cannot be applied is reported, so the result says it may not have seen everything.
 READMEs are never inspected as evidence.
 
 ## What's skipped
