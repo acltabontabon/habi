@@ -5,9 +5,13 @@
  */
 export type SourceTally = { sourceId: string, 
 /**
- * Its items that apply to the project (team requirements included).
+ * Its items that apply by their author's rule or the catalog's (team requirements included).
  */
 fits: number, 
+/**
+ * Its items that apply only by what their description names (Habi's reading).
+ */
+described: number, 
 /**
  * Titles of its items installed in the project, whatever their fit.
  */

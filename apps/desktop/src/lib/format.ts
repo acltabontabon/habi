@@ -131,9 +131,11 @@ export const groupLabel: Record<Group, string> = {
 
 export const groupHint: Record<Group, string> = {
   required: "Designated required by the team. Always listed, whatever the match.",
-  relevant: "Conditions declared by the author hold for this project.",
+  relevant:
+    "Conditions hold for this project: the author's rule, or where it says so, Habi's catalog or the skill's own description.",
   needsInformation: "Habi could not establish everything a condition needs.",
-  available: "No rules for when they apply — use them deliberately. Habi does not match these.",
+  available:
+    "No rules for when they apply, and nothing their descriptions name was found here — use them deliberately.",
   notApplicable: "Conditions do not hold, or an exclusion applies.",
 };
 

@@ -242,8 +242,9 @@ export function ApplicabilityPreview({
       ) : noRules ? (
         <div className="preview-empty">
           <p>
-            <strong>{NO_RULES_PHRASE}.</strong> The skill stays available to use deliberately in any project;
-            Habi will not recommend it or guess from its title.
+            <strong>{NO_RULES_PHRASE}.</strong> The skill stays available to use deliberately in any project.
+            Habi never recommends it from its title alone; where its description names a technology a project
+            uses, a project's list may say it fits <em>from its description</em>, as Habi's reading.
           </p>
         </div>
       ) : preview ? (

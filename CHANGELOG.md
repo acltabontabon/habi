@@ -32,6 +32,11 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Matching by what a skill says it is for.** A skill with no rules of its own fits a project
   when its description names a technology the project uses (*From its description*). It is
   listed under All skills, said as Habi's reading; the team's own libraries also feed Suggested.
+  That reading only ever adds: a description naming something the project lacks leaves the skill
+  under Available to use manually, with the reason saying what was looked for, never under Does
+  not apply or Needs information. Every count of what fits (a project's header, the home page,
+  a library's tooltip) says how many come from descriptions, and `habi recommend` and
+  `habi explain` say whose rule a fit rests on.
 - **See which skills earn their place.** Under All skills, an installed skill says *Used 12× in
   Claude Code here in 30 days* or *Not used in Claude Code here in 30 days · ~40 tokens*, so you can
   remove what you no longer need. Habi reads Claude Code's session history in `~/.claude/projects`

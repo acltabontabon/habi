@@ -13,7 +13,7 @@ use crate::install::plan::read_project_file;
 use crate::install::status::{InstallState, Installation};
 use crate::library::model::{DeclaredEvidence, ItemKind, LibraryItem, MetadataStatus, Requirement};
 use crate::matching::condition::Condition;
-use crate::matching::described::described_rule;
+use crate::matching::described::{self, described_rule};
 use crate::matching::eval::Declaration;
 use crate::matching::{Applicability, ApplicabilityResult, Views, assess_in};
 use crate::paths::display_path;
@@ -500,6 +500,30 @@ pub fn evidence(
     }
 }
 
+/// The outcome for a skill whose described rule did not hold: unmatched, as
+/// if nothing had been read, with the reason saying what was looked for.
+fn unmatched_by_description(found: ApplicabilityResult, names: &[String]) -> ApplicabilityResult {
+    let named = match names {
+        [] => "a technology".to_string(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    };
+    let verdict = if found.applicability == Applicability::NeedsInformation {
+        "could not establish"
+    } else {
+        "did not find"
+    };
+    ApplicabilityResult {
+        applicability: Applicability::Undeclared,
+        scope: found.scope,
+        modules: Vec::new(),
+        reason: format!(
+            "Its description names {named}, which Habi {verdict} here, so it is not matched. The author declares no rules; it remains available to use manually."
+        ),
+        specificity: 0,
+    }
+}
+
 /// Everything needed to rank one item.
 pub struct Candidate<'a> {
     pub item: &'a LibraryItem,
@@ -547,6 +571,20 @@ pub fn recommend(
                 },
             };
             let applicability = assess_in(applies_when, item.excludes.as_ref(), item.scope, &views);
+            // A rule read from the skill's own words can speak for it, never
+            // against it: the author said nothing about where it does not apply,
+            // and a technology the description names in passing is no reason to
+            // rule the skill out or to ask for information. When what it names is
+            // absent or cannot be established, the skill stays where it was
+            // before Habi read anything: available, unmatched.
+            let applicability = match (basis, applicability.applicability) {
+                (Basis::Described, Applicability::Applies) => applicability,
+                (Basis::Described, _) => unmatched_by_description(
+                    applicability,
+                    &described.as_ref().map(described::names).unwrap_or_default(),
+                ),
+                _ => applicability,
+            };
             let modules: Vec<String> = applicability
                 .modules
                 .iter()
