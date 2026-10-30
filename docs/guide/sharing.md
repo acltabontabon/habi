@@ -135,8 +135,8 @@ contribution. More about revising is under [Revising in detail](#revising-in-det
 - It never merges, and never pushes to the branch your team tracks.
 - It never overwrites commits on the contribution branch.
 - It never reports a remote success it did not observe.
-- It never sends anything you have not confirmed, and never collects conversations or files
-  other than the skill's own folder.
+- It never sends anything you have not confirmed, and a contribution never takes in
+  conversations or files other than the skill's own folder.
 
 Git hosts decide who may push, whether branches are protected and who must review. The
 configured source and ref are the team's chosen baseline; Habi does not label every commit

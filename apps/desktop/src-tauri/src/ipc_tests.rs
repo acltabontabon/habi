@@ -733,3 +733,65 @@ fn machine_install_contract_end_to_end() {
     .unwrap_err();
     assert_eq!(none["code"], "invalidInput");
 }
+
+#[test]
+fn skill_use_is_read_by_project_id_from_the_home_it_was_given() {
+    let data = tempfile::tempdir().unwrap();
+    let person = tempfile::tempdir().unwrap();
+    let folder = tempfile::tempdir().unwrap();
+    let root = habi_core::paths::canonical(folder.path()).unwrap();
+    let skill = root.join(".claude/skills/alpha");
+    std::fs::create_dir_all(&skill).unwrap();
+    std::fs::write(
+        skill.join("SKILL.md"),
+        "---\nname: alpha\ndescription: Reviews migrations.\n---\n\n# alpha\n",
+    )
+    .unwrap();
+    let transcripts = person
+        .path()
+        .join(habi_core::usage::TRANSCRIPTS_DIR)
+        .join(habi_core::usage::transcript_folder(&root));
+    std::fs::create_dir_all(&transcripts).unwrap();
+    let use_of_it = json!({
+        "type": "assistant",
+        "uuid": "u1",
+        "cwd": root,
+        "timestamp": habi_core::time::now(),
+        "message": { "content": [
+            { "type": "tool_use", "id": "t1", "name": "Skill", "input": { "skill": "alpha" } }
+        ] },
+    });
+    std::fs::write(transcripts.join("s.jsonl"), format!("{use_of_it}\n")).unwrap();
+
+    let habi = Habi::open(AppPaths::at(data.path().to_path_buf()))
+        .unwrap()
+        .with_user_home(person.path().to_path_buf());
+    let project = habi.open_project(&root).unwrap();
+    let app = mock_builder()
+        .invoke_handler(tauri::generate_handler![commands::skill_usage])
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    app.manage(AppState::new(Some(habi), None, None));
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+
+    let report = call(
+        &webview,
+        "skill_usage",
+        json!({ "projectId": project.id, "jobId": null }),
+    )
+    .unwrap();
+    assert_eq!(report["partial"], false);
+    assert_eq!(report["skills"][0]["name"], "alpha");
+    assert_eq!(report["skills"][0]["usage"]["uses"], 1);
+    assert!(report["skills"][0]["tokens"].as_u64().unwrap() > 0);
+
+    let unknown = call(
+        &webview,
+        "skill_usage",
+        json!({ "projectId": "no-such-project", "jobId": null }),
+    )
+    .unwrap_err();
+    assert_eq!(unknown["code"], "notFound");
+}

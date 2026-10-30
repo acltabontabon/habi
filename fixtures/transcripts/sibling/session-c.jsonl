@@ -1,0 +1,1 @@
+{"parentUuid":null,"isSidechain":false,"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_c1","name":"Skill","input":{"skill":"stale-helper"}}]},"type":"assistant","uuid":"c-01","timestamp":"{{days_ago:1}}","cwd":"{{project}}-two","sessionId":"session-c"}

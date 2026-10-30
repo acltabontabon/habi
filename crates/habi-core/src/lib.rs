@@ -12,6 +12,7 @@
 //! - `checks`: explicit, previewed verification commands.
 //! - `skills`: local skills (drafts, imported copies), discovery and import.
 //! - `maintenance`: pruning old operation records, snapshots and stored content.
+//! - `usage`: whether installed skills get used, from local agent transcripts, on demand.
 //! - `service`: the facade both front ends call.
 //! - `paths`, `fsutil`, `process`, `redact`: safety primitives.
 
@@ -46,3 +47,4 @@ pub mod source;
 pub mod store;
 pub mod suggest;
 pub mod time;
+pub mod usage;

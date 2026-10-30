@@ -25,6 +25,12 @@ seed script and the UI design preview.
 Automated expectations for these live in `crates/habi-core/tests/matching_fixtures.rs` and
 `fixture_scenarios.rs`.
 
+## Session transcripts
+
+`transcripts/` holds synthetic Claude Code transcripts, written by hand and never copied from a
+real session: uses, and everything that only looks like one. `crates/habi-core/tests/skill_usage.rs`
+copies them under a temporary home folder ([details](../../fixtures/transcripts/README.md)).
+
 ## Ways to use it
 
 - **Seeded workspace with every state:** `scripts/seed-test-data.sh [dir]` (default

@@ -17,7 +17,7 @@ import {
   kindLabel,
 } from "../../lib/format";
 import { useNav } from "../../lib/nav";
-import { useKnowledge } from "../../lib/queries";
+import { useKnowledge, useSkillUsage } from "../../lib/queries";
 import { useMedia } from "../../lib/useMedia";
 import {
   emptyWorkbenchFilters,
@@ -28,6 +28,7 @@ import {
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { HereDetail, hereItems } from "./AlreadyHere";
 import { ItemDetailPane } from "./ItemDetailPane";
+import { SkillUse } from "./SkillUse";
 
 const GROUPS: Group[] = ["required", "relevant", "needsInformation", "available", "notApplicable"];
 
@@ -93,6 +94,9 @@ export function Workbench({
   const knowledge = useKnowledge(overview.project.id);
   const listRef = useRef<HTMLDivElement>(null);
   const projectId = overview.project.id;
+  const usage = useSkillUsage(projectId);
+  const usageOf = useMemo(() => new Map((usage.data?.skills ?? []).map((s) => [s.name, s])), [usage.data]);
+  const usagePartial = usage.data?.partial ?? false;
   useEffect(() => saveWorkbenchFilters(projectId, filters), [projectId, filters]);
   const libraries = [
     ...new Map(overview.recommendations.map((r) => [r.item.sourceId, r.item.sourceName])).entries(),
@@ -248,6 +252,9 @@ export function Workbench({
               <span>Habi's pick</span>
             ) : r.basis === "described" && r.applicability.applicability !== "undeclared" ? (
               <span>from its description</span>
+            ) : null}
+            {r.installState !== "notInstalled" && r.item.kind !== "instructions" ? (
+              <SkillUse entry={usageOf.get(r.item.name)} partial={usagePartial} />
             ) : null}
           </span>
         </button>
@@ -460,6 +467,9 @@ export function Workbench({
                       <span className="rec-row-reason">{h.gist}</span>
                       <span className="rec-row-meta">
                         <span>{h.kind === "skill" ? "Skill in this project" : "Agent instructions"}</span>
+                        {h.kind === "skill" ? (
+                          <SkillUse entry={usageOf.get(h.skill.name)} partial={usagePartial} />
+                        ) : null}
                       </span>
                     </button>
                   </li>
