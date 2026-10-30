@@ -107,7 +107,7 @@ try {
   await shot("pr-library-status/after.jpg");
   await page(`document.querySelector('.sidebar-version').click()`);
   await until(`document.querySelector('#whatsnew') && document.querySelector('.timeline-version')?.textContent === ${JSON.stringify(expected)}`, "current What's new version");
-  await until(`document.querySelector('.about-notes')?.textContent.includes('Check a library for updates whenever you need to.') && document.querySelector('.about-notes')?.textContent.includes('Global skill badges reflect your choices.')`, "current release notes");
+  await until(`document.querySelector('.about-notes')?.textContent.includes('Libraries scale to many.') && document.querySelector('.about-notes')?.textContent.includes('Back says where it goes.')`, "current release notes");
   console.log(`Verified Habi ${expected}: machine collection default, three selected-agent installs, shared-folder explanations, global search, history filters, expanded paths, recovery result, library management link.`);
 } finally {
   await close();
