@@ -315,7 +315,6 @@ mod tests {
     }
 
     #[cfg(unix)]
-    #[cfg(unix)]
     #[test]
     fn a_file_gone_before_it_is_restricted_does_not_stop_an_open() {
         use std::os::unix::fs::PermissionsExt;
@@ -336,6 +335,7 @@ mod tests {
         assert_eq!(mode, 0o600);
     }
 
+    #[cfg(unix)]
     #[test]
     fn the_data_folder_and_database_are_private_to_the_user() {
         use std::os::unix::fs::PermissionsExt;
