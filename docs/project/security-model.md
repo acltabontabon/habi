@@ -95,9 +95,11 @@ and it is what makes authentication work without Habi handling secrets.
 - Discovering skills and instruction files in a project, inspecting a folder or library before
   import, saving a draft and previewing applicability never execute anything. Scripts in a
   package are stored and shown as text.
-- Discovery is scoped to the opened project. Global and personal agent folders are read only
-  when the user picks one in the native folder dialog; the desktop adapter refuses to inspect
-  or import from a folder that was not picked in the same session.
+- Discovery is scoped to the opened project. Other folders are read only when the user picks one
+  in the native folder dialog or in Habi's own project chooser, in the same session; the desktop
+  adapter refuses to inspect or import from any other. The personal agent folders behind
+  *On this machine* are the exception: Habi lists them because that is what the screen is for.
+- A home folder, or a whole disk, cannot be opened as a project.
 - Folder reads do not follow symbolic links and are bounded (file count, file size, total
   size). A package with links or oversized files is reported as incomplete and is not
   imported, so content is never silently dropped.
@@ -139,7 +141,9 @@ and it is what makes authentication work without Habi handling secrets.
 - Plans are applied **by id**; the webview never supplies file contents or target paths.
 - Checks run only by a single-use **preview id** returned when the user previewed the command;
   the command is prepared again and must match what was shown (program, arguments, folder,
-  item version) or nothing runs. Binding values must be discovered candidates.
+  item version) or nothing runs. Binding values must be discovered candidates. Running one asks
+  once more in a native dialog naming the command, which the webview cannot answer for itself,
+  and only a connected library's checks can run.
 - Local library folders (including `file://` URLs in any letter case) and folders to import
   skills from must come from the native picker in the same session. Export destinations and
   files added to a draft are likewise chosen in native dialogs, never named by the webview.

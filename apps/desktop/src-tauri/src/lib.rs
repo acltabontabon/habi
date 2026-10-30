@@ -214,6 +214,13 @@ pub fn run() {
                 },
                 (None, error) => AppState::new(None, error, guard),
             };
+            if let Ok(habi) = state.habi() {
+                tauri::async_runtime::spawn_blocking(move || {
+                    if let Err(e) = habi.upkeep() {
+                        tracing::warn!(error = %e, "could not clear old records");
+                    }
+                });
+            }
             app.manage(state);
             if let Some(window) = app.get_webview_window("main")
                 && let Err(e) = fit_to_screen(&window)
@@ -232,6 +239,7 @@ pub fn run() {
                 let state = window.state::<AppState>();
                 state.cancel_all();
                 watch::stop(&state, None);
+                state.wait_for_jobs(std::time::Duration::from_secs(3));
             }
         })
         .invoke_handler(tauri::generate_handler![
