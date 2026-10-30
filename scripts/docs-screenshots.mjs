@@ -116,11 +116,9 @@ async function run() {
   await until(`document.querySelectorAll(".loom-row-label").length >= 7 && document.querySelector(".loom-float")`, "the loom");
   await shot("home.jpg");
 
-  // Where all libraries come from.
-  await click("team-skills", ".sidebar-item");
-  await until(`document.querySelector(".skill-title-row")`, "the library");
+  // Where all libraries come from: the catalog.
   await click("Explore libraries", "button, a, [role=link]");
-  await until(`document.body.textContent.includes("From the builders")`, "the catalog");
+  await until(`document.querySelectorAll(".lib-card").length >= 6`, "the catalog");
   await shot("explore.jpg");
 }
 

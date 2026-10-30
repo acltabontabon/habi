@@ -15,6 +15,11 @@ All notable changes to Habi are listed here. The format follows
 
 ### Changed
 
+- **Libraries scale to many.** Your libraries are one line each, with those that need you (an
+  update waiting, offline, a failed fetch) first and filters for where they come from. The
+  catalog has its own Explore page, as cards filtered by builders and community. **Add a
+  library** brings in a Git repository, a folder or a catalog library from one menu, and the
+  sidebar shows eight libraries before "Show all".
 - **Skills have their own place in the sidebar.** **My skills** and **On this machine** sit
   under a Skills heading instead of tabs, each with a count of skills that have a newer version
   in their library. On this machine lists those first and can show only them.
