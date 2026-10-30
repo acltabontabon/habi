@@ -240,13 +240,15 @@
     };
   });
 
-  /* ── 4 · Find: the answer to “nobody can tell what fits”. Open the repo; the skill that fits, and why ──── */
+  /* ── 4 · Find: the answer to “nobody can tell what fits”. Open a repo: what Habi suggests, and why ──────── */
   scene(18, 27.25, (world, hud) => {
+    const first = DARK("suggested");
+    const wa = win(world, first);
     const src = DARK("project");
     const wn = win(world, src);
     const scrim = el("scrim", hud);
     const k = type(hud, "Find", { size: 17, top: 300, left: 96, cls: "kicker" });
-    const l1 = type(hud, "Open billing-service.", { size: 72, top: 336, left: 96 });
+    const l1 = type(hud, "Open any project.", { size: 72, top: 336, left: 96 });
     const l2 = type(hud, "<em>Habi can tell.</em>", { size: 72, top: 410, left: 96 });
     const l3 = type(hud, "It fits because", { size: 72, top: 336, left: 96 });
     const l4 = type(hud, "<em>it uses Liquibase.</em>", { size: 72, top: 410, left: 96 });
@@ -254,29 +256,38 @@
     sub.style.fontWeight = "450";
     sub.style.letterSpacing = "0";
     sub.style.color = "#b9b8c0";
-    const card = crop(world, src, { x: 240, y: 418, w: 400, h: 110 });
-    const head = crop(world, src, { x: 664, y: 242, w: 410, h: 80 });
-    const chip = crop(world, src, { x: 698, y: 788, w: 316, h: 36 });
+    const row = crop(world, first, { x: 268, y: 704, w: 500, h: 80 });
+    const head = crop(world, src, { x: 664, y: 282, w: 400, h: 80 });
+    const chip = crop(world, src, { x: 698, y: 825, w: 316, h: 34 });
     return {
       update(t) {
-        // The window turns to face us on the project's list; then the camera crosses to the skill itself.
-        const c = kf(
+        // The window turns to face us on what Habi suggests.
+        const ca = kf(
           [
             { t: 18.0, x: 340, y: 40, z: -200, ry: -26, rx: 6, s: 0.66 },
-            { t: 20.0, ...frame(470, 420, 1.12, 300, 30), z: 0, ry: -6, rx: 2 },
-            { t: 22.4, ...frame(450, 460, 1.22, 320, 34), z: 0, ry: 0, rx: 0 },
-            { t: 23.6, ...frame(860, 590, 1.1, 300, 36), z: 0, ry: 0, rx: 0 },
-            { t: 27.2, ...frame(860, 600, 1.14, 300, 36), z: 0, ry: 0, rx: 0 },
+            { t: 20.0, ...frame(520, 470, 1.06, 290, 30), z: 0, ry: -6, rx: 2 },
+            { t: 22.4, ...frame(520, 500, 1.12, 290, 34), z: 0, ry: 0, rx: 0 },
           ],
           t,
         );
-        place(wn.w, { x: c.x, y: c.y, z: c.z, rx: c.rx, ry: c.ry, s: c.s, o: out(span(t, 18.0, 18.5)) });
-        sweep(wn, t, 18.4, 2.2);
-        const f = { x: c.x, y: c.y, s: c.s };
-        // There it is: the card lifts off the list.
+        place(wa.w, { x: ca.x, y: ca.y, z: ca.z, rx: ca.rx, ry: ca.ry, s: ca.s, o: out(span(t, 18.0, 18.5)) * (1 - span(t, 23.1, 23.5)) });
+        sweep(wa, t, 18.4, 2.2);
+        // There it is: the suggestion lifts off the list.
         const lift1 = held(t, 20.4, 23.4, 0.7, 0.5);
-        const o1 = over(card.r, f);
-        place(card.c, { x: o1.x, y: o1.y - lift1 * 24, z: lift1 * 200, s: o1.s * (1 + lift1 * 0.14), o: lift1 });
+        const o1 = over(row.r, ca);
+        place(row.c, { x: o1.x, y: o1.y - lift1 * 24, z: lift1 * 200, s: o1.s * (1 + lift1 * 0.14), o: lift1 });
+        // Then the camera crosses to a skill itself.
+        const c = kf(
+          [
+            { t: 23.1, ...frame(860, 590, 1.0, 300, 36) },
+            { t: 23.6, ...frame(860, 590, 1.1, 300, 36) },
+            { t: 27.2, ...frame(860, 600, 1.14, 300, 36) },
+          ],
+          t,
+        );
+        place(wn.w, { x: c.x, y: c.y, s: c.s, o: out(span(t, 23.1, 23.6)) });
+        sweep(wn, t, 23.2, 2.2);
+        const f = { x: c.x, y: c.y, s: c.s };
         // Whose it is, and why: the skill's title, then the receipt.
         const lift2 = held(t, 23.9, 27.25, 0.6, 0.3);
         const o2 = over(head.r, f);
@@ -299,9 +310,10 @@
   scene(27, 34.25, (world, hud) => {
     const src = DARK("explore");
     const wn = win(world, src);
-    const builders = [214, 278, 343, 407, 472, 536, 601, 665].map((y, i) => crop(world, src, { x: 862, y, w: 546, h: i === 7 ? 80 : 64 }));
-    const community = [403, 467, 532, 596].map((y) => crop(world, src, { x: 272, y, w: 546, h: 64 }));
-    const team = [217, 282].map((y) => crop(world, src, { x: 272, y, w: 546, h: 64 }));
+    const card = ([col, row]) => crop(world, src, { x: [272, 559, 846, 1133][col], y: [270, 445, 639][row], w: 275, h: [163, 182, 137][row] });
+    const builders = [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [0, 2], [1, 2], [2, 2]].map(card);
+    const community = [[0, 1], [1, 1], [2, 1], [3, 2]].map(card);
+    const team = [crop(world, src, { x: 12, y: 510, w: 216, h: 98 })];
     const k = type(hud, "Explore", { size: 17, top: 70, cls: "kicker" });
     const l1 = type(hud, "Skills from the builders.", { size: 66, top: 96 });
     const l2 = type(hud, "<em>From the community.</em>", { size: 66, top: 96 });
@@ -311,14 +323,14 @@
         const f = { x: 0, y: 70, s: 0.82 };
         place(wn.w, { x: f.x, y: f.y, rx: 8, s: f.s, o: out(span(t, 27.0, 27.4)) * (1 - 0.55 * span(t, 27.6, 28.2)), blur: span(t, 27.6, 28.2) * 3 });
         sweep(wn, t, 27.2, 1.8);
-        const show = (list, a, b, dx) => list.forEach((cp, i) => {
+        const show = (list, a, b, dx = 0, grow = 0.04, z = 60) => list.forEach((cp, i) => {
           const o0 = over(cp.r, f);
           const p = held(t, a + i * 0.09, b, 0.55, 0.3);
-          place(cp.c, { x: lerp(o0.x, o0.x + dx, p), y: o0.y, z: p * (220 - i * 8), s: o0.s * (1 + p * 0.32), rx: 8 * (1 - p), o: p });
+          place(cp.c, { x: lerp(o0.x, o0.x + dx, p), y: o0.y, z: p * z, s: o0.s * (1 + p * grow), rx: 8 * (1 - p), o: p });
         });
-        show(builders, 27.8, 30.2, -200);
-        show(community, 30.4, 32.3, 160);
-        show(team, 32.4, 34.25, 160);
+        show(builders, 27.8, 30.2);
+        show(community, 30.4, 32.3);
+        show(team, 32.4, 34.25, 300, 0.9, 120);
         rise(k, t, 27.6, 34.25, 10);
         rise(l1, t, 27.8, 30.2);
         rise(l2, t, 30.4, 32.3);
@@ -336,7 +348,7 @@
     const rows = [214, 248, 282, 316, 350, 384, 418].map((y) => crop(world, src, { x: 267, y: y - 17, w: 296, h: 35 }));
     const words = AG.map((a) => type(hud, a, { size: 88, top: 380, left: 96 }));
     const k = type(hud, "Install", { size: 17, top: 330, left: 96, cls: "kicker" });
-    const files = crop(world, src, { x: 589, y: 180, w: 580, h: 224 });
+    const files = crop(world, src, { x: 581, y: 176, w: 596, h: 230 });
     const l1 = type(hud, "Every file,", { size: 76, top: 336, left: 96 });
     const l2 = type(hud, "<em>seen first.</em>", { size: 76, top: 414, left: 96 });
     const sub = type(hud, "Your edits survive updates. Anything can be restored.", { size: 22, top: 520, left: 98 });
@@ -350,8 +362,8 @@
             { t: 34.0, x: 380, y: 0, z: -160, ry: -20, s: 0.68 },
             { t: 35.0, x: 360, y: 0, z: 0, ry: -12, s: 0.7 },
             { t: 38.0, x: 340, y: 0, z: 0, ry: -8, s: 0.72 },
-            { t: 38.8, ...frame(880, 290, 1.25, 330, 0), z: 0, ry: 0 },
-            { t: 41.2, ...frame(880, 290, 1.3, 330, 0), z: 0, ry: 0 },
+            { t: 38.8, ...frame(880, 290, 1.08, 320, 0), z: 0, ry: 0 },
+            { t: 41.2, ...frame(880, 290, 1.12, 320, 0), z: 0, ry: 0 },
           ],
           t,
         );
@@ -376,7 +388,7 @@
         rise(k, t, 34.4, 38.0, 10);
         const fo = over(files.r, { x: c.x, y: c.y, s: c.s });
         const lf = held(t, 39.2, 41.25, 0.6, 0.3);
-        place(files.c, { x: fo.x, y: fo.y - lf * 20, z: lf * 120, s: fo.s * (1 + lf * 0.05), o: lf });
+        place(files.c, { x: fo.x, y: fo.y - lf * 20, z: lf * 60, s: fo.s * (1 + lf * 0.03), o: lf });
         rise(l1, t, 38.4, 41.25);
         rise(l2, t, 38.9, 41.25);
         rise(sub, t, 39.4, 41.25, 10);
@@ -399,7 +411,7 @@
     sub.style.fontWeight = "450";
     sub.style.letterSpacing = "0";
     sub.style.color = "#b9b8c0";
-    const line = crop(world, srcB, { x: 470, y: 166, w: 760, h: 34 });
+    const line = crop(world, srcB, { x: 472, y: 166, w: 740, h: 34 });
     return {
       update(t) {
         const ca = kf(
@@ -413,9 +425,9 @@
         sweep(a, t, 41.3, 2);
         const cb = kf(
           [
-            { t: 44.2, ...frame(830, 230, 0.9, 470, 40), z: -120, ry: -12 },
-            { t: 45.2, ...frame(830, 230, 1.05, 470, 20), z: 0, ry: 0 },
-            { t: 48.2, ...frame(830, 230, 1.1, 470, 20), z: 0, ry: 0 },
+            { t: 44.2, ...frame(830, 230, 0.84, 340, 40), z: -120, ry: -12 },
+            { t: 45.2, ...frame(830, 230, 0.94, 328, 20), z: 0, ry: 0 },
+            { t: 48.2, ...frame(830, 230, 0.96, 328, 20), z: 0, ry: 0 },
           ],
           t,
         );
@@ -426,7 +438,7 @@
         const tp = span(t, 45.4, 47.0);
         const lv = held(t, 45.3, 48.25, 0.2, 0.3);
         line.c.style.clipPath = `inset(0 ${((1 - tp) * 100).toFixed(1)}% 0 0)`;
-        place(line.c, { x: o.x, y: o.y - lv * 14, z: lv * 90, s: o.s * (1 + lv * 0.05), o: lv });
+        place(line.c, { x: o.x, y: o.y, z: lv * 40, s: o.s * (1 + lv * 0.02), o: lv });
         scrim.style.opacity = held(t, 41.3, 48.25, 0.5, 0.3).toFixed(3);
         rise(k, t, 41.4, 44.2, 10);
         rise(l1, t, 41.6, 44.2);
@@ -442,6 +454,8 @@
   scene(48, 59.25, (world, hud) => {
     const srcA = LIGHT("share-review-status");
     const a = win(world, srcA);
+    // This picture needs a GitHub repository, so it is retaken less often: the page, not its sidebar.
+    a.w.style.clipPath = "inset(0 0 0 248px round 14px)";
     const srcB = DARK("project");
     const b = win(world, srcB);
     const scrim = el("scrim", hud);
@@ -459,15 +473,15 @@
     sub.style.letterSpacing = "0";
     sub.style.color = "#b9b8c0";
     const review = crop(world, srcA, { x: 272, y: 0, w: 1136, h: 210 });
-    const update = crop(world, srcB, { x: 240, y: 418, w: 400, h: 111 });
+    const update = crop(world, srcB, { x: 240, y: 501, w: 400, h: 111 });
     const head = crop(world, srcC, { x: 254, y: 208, w: 350, h: 56 });
-    const line = crop(world, srcC, { x: 290, y: 468, w: 740, h: 26 });
+    const line = crop(world, srcC, { x: 340, y: 468, w: 700, h: 26 });
     return {
       update(t) {
         const ca = kf(
           [
-            { t: 48.0, x: 470, y: 30, z: -150, ry: -20, s: 0.56 },
-            { t: 51.6, x: 450, y: 20, z: 0, ry: -9, s: 0.6 },
+            { t: 48.0, x: 360, y: 30, z: -150, ry: -20, s: 0.56 },
+            { t: 51.6, x: 340, y: 20, z: 0, ry: -9, s: 0.6 },
           ],
           t,
         );
@@ -479,9 +493,9 @@
         place(review.c, { x: orv.x * Math.cos((ca.ry * Math.PI) / 180), y: orv.y - lr * 20, z: lr * 140, ry: ca.ry, s: orv.s * (1 + lr * 0.05), o: lr });
         const cb = kf(
           [
-            { t: 51.4, ...frame(440, 470, 0.95, 330, 0), z: -120, ry: -10 },
-            { t: 52.4, ...frame(440, 470, 1.2, 330, 0), z: 0, ry: 0 },
-            { t: 55.2, ...frame(440, 470, 1.26, 330, 0), z: 0, ry: 0 },
+            { t: 51.4, ...frame(440, 556, 0.95, 360, 0), z: -120, ry: -10 },
+            { t: 52.4, ...frame(440, 556, 1.2, 360, 0), z: 0, ry: 0 },
+            { t: 55.2, ...frame(440, 556, 1.26, 360, 0), z: 0, ry: 0 },
           ],
           t,
         );
@@ -493,9 +507,9 @@
         // The update itself: what the fix changed, line by line, before anything is written.
         const cc = kf(
           [
-            { t: 55.1, ...frame(730, 440, 0.78, 360, 0), z: -160, ry: -12, rx: 4 },
-            { t: 56.2, ...frame(730, 440, 0.9, 360, 0), z: 0, ry: 0, rx: 0 },
-            { t: 59.2, ...frame(730, 440, 0.94, 360, 0), z: 0, ry: 0, rx: 0 },
+            { t: 55.1, ...frame(730, 440, 0.72, 320, 0), z: -160, ry: -12, rx: 4 },
+            { t: 56.2, ...frame(730, 440, 0.82, 320, 0), z: 0, ry: 0, rx: 0 },
+            { t: 59.2, ...frame(730, 440, 0.84, 320, 0), z: 0, ry: 0, rx: 0 },
           ],
           t,
         );
@@ -507,7 +521,7 @@
         place(head.c, { x: oh.x, y: oh.y + lh * 20, z: lh * 120, s: oh.s * (1 + lh * 0.06), o: lh });
         const ll = held(t, 56.6, 59.25, 0.6, 0.3);
         const ol = over(line.r, fc);
-        place(line.c, { x: ol.x, y: ol.y - ll * 6, z: ll * 200, s: ol.s * (1 + ll * 0.16), o: ll });
+        place(line.c, { x: ol.x, y: ol.y - ll * 6, z: ll * 100, s: ol.s * (1 + ll * 0.08), o: ll });
         scrim.style.opacity = held(t, 48.3, 59.25, 0.5, 0.3).toFixed(3);
         rise(k, t, 48.4, 51.6, 10);
         rise(l1, t, 48.6, 51.6);
