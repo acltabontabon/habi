@@ -79,7 +79,7 @@ into `AGENTS.md`, so everything keeps working without Habi. Git uses your existi
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/media/project.jpg" alt="A project in Habi: skills grouped by whether they are installed, required by the team or fit, with the files and lines that explain why one fits." width="100%"><br><b>Fits, and why</b><br><sub>Every skill matched to the repository, with the files and lines behind it.</sub></td>
-<td width="50%" valign="top"><img src="docs/media/explore.jpg" alt="The Libraries page: connected libraries beside the catalog's libraries from the community and from the tool builders." width="100%"><br><b>Every library in one place</b><br><sub>Your team's, the community's and the tool builders'.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/explore.jpg" alt="Explore: the catalog's libraries from the tool builders and the community, as cards." width="100%"><br><b>Every library in one place</b><br><sub>Your team's, the community's and the tool builders'.</sub></td>
 </tr>
 <tr>
 <td width="50%" valign="top"><img src="docs/media/install-review.jpg" alt="The install dialog: seven agent tools to choose from and the three files that will change." width="100%"><br><b>See every file first</b><br><sub>Install for seven agent tools; nothing is written until you say so.</sub></td>

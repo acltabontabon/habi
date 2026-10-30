@@ -21,7 +21,7 @@ Without the CLI tools, Habi still pushes the branch—you open the PR manually o
 
 ## Step 1: Connect your library
 
-**Once per library.** Go to Connect a library → Connect a Git repository and paste its address.
+**Once per library.** Go to Libraries → **Add a library** → **Git repository…** and paste its address.
 Habi reads the host, repository, and default branch. It uses your existing Git credentials.
 
 ![Connect a Git repository: an SSH address read as acme/team-skills on github.com, following the default branch, to be listed as a team library named team-skills.](../media/share-connect.jpg)
