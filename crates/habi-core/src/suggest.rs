@@ -473,8 +473,8 @@ fn tick(out: &mut [Suggestion], narrow: &[String]) {
         let team_rule = !s.library.community && s.basis == Basis::Declared;
         s.chosen = !s.installed
             && match s.group {
-                KitGroup::Required => true,
                 _ if flagged => false,
+                KitGroup::Required => true,
                 _ if !s.elsewhere.is_empty() => true,
                 KitGroup::Stack if team_rule => true,
                 KitGroup::Stack
@@ -868,5 +868,28 @@ sources:
         let flag = k.suggestions.iter().find(|s| s.title == "Flag").unwrap();
         assert_eq!(flag.caution, ["Contains a compiled program"]);
         assert!(!flag.chosen);
+    }
+
+    #[test]
+    fn a_flagged_team_requirement_waits_for_a_tick_too() {
+        let yaml = r#"version: 1
+sources:
+  - id: makers
+    name: Makers
+    url: https://github.com/makers/skills
+    summary: Skills.
+    publisher: { name: Makers, kind: builder, owner: makers }
+    ownership: { method: github-verified-org, checked: "2026-10-03" }
+    picks:
+      - { skill: skills/way, title: Way, gist: G, tokens: 70, why: W }
+"#;
+        let dir = project(&[("src/App.tsx", "export const App = () => null;")]);
+        let mut k = run_with(yaml, dir.path());
+        k.suggestions[0].group = KitGroup::Required;
+        tick(&mut k.suggestions, &[]);
+        assert!(k.suggestions[0].chosen);
+        k.suggestions[0].caution = vec!["Contains a compiled program".to_string()];
+        tick(&mut k.suggestions, &[]);
+        assert!(!k.suggestions[0].chosen);
     }
 }
