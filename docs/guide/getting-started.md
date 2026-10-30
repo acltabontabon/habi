@@ -80,7 +80,7 @@ you say so.
 5. **Keep it current.** When a library publishes something newer, the project says *Update
    available*. **Review update…** shows what changed, file by file, before anything is written,
    and keeps your own edits. Skills installed on your machine update the same way, from
-   [My skills](my-skills.md#on-this-machine).
+   [Skills → On this machine](my-skills.md#on-this-machine).
 
 ![Reviewing an update to Liquibase migration review in billing-service: the files that change for each agent tool, with the lines added and removed, before anything is written.](../media/update-review.jpg)
 

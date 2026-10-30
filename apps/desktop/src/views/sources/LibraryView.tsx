@@ -890,7 +890,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         {/* A catalog library carries its back link in its header; others get one of their own. */}
         {(entry && library.data) || (entry && library.isPending) ? null : (
           <div className="library-back">
-            <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
+            <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
             <DisconnectButton source={source} />
           </div>
         )}

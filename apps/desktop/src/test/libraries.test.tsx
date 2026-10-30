@@ -679,7 +679,7 @@ describe("a connected catalog library", () => {
     const user = userEvent.setup();
     wrap(inLibrary());
     const strip = await screen.findByRole("region", { name: "About Acme" });
-    await user.click(within(strip).getByRole("button", { name: /Libraries/ }));
+    await user.click(within(strip).getByRole("button", { name: /Your libraries/ }));
     await waitFor(() => expect(route()).toEqual({ name: "sources" }));
   });
 

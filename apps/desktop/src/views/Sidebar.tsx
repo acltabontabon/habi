@@ -9,6 +9,7 @@ import { Kbd } from "../components/ui";
 import { ProjectMark, Strand } from "../components/Weave";
 import { useActions } from "../lib/actions";
 import { api } from "../lib/api";
+import { groupOfEntry } from "../lib/catalog";
 import { type Dye, useDyes } from "../lib/dye";
 import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
 import { groupMachineSkills, hasUpdate } from "../lib/machine";
@@ -74,9 +75,10 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const community = libraries.filter((l) => l.role === "community");
   const dyes = useDyes();
   const activeLibrary = route.name === "sources" ? route.sourceId : undefined;
-  // Your libraries, the overview; looking around is the catalog, a preview of one, or connecting your own.
+  // Your libraries, the overview; exploring is the catalog or a preview of one from it.
   const overview = route.name === "sources" && !route.sourceId && !route.view && !route.entry;
-  const connecting = route.name === "sources" && !route.sourceId && !overview;
+  const connecting =
+    route.name === "sources" && !route.sourceId && (route.view === "explore" || route.entry !== undefined);
   const openLibrary = (id: string) => navigate({ name: "sources", sourceId: id });
   // As many as projects show; the one open stays in view, and the rest are a click away.
   const LIBRARIES_SHOWN = 8;
@@ -255,7 +257,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               onOpen={openLibrary}
             />
           ))}
-          {ordered.length > LIBRARIES_SHOWN ? (
+          {allLibraries || shownLibraries.length < ordered.length ? (
             <li>
               <button
                 type="button"
@@ -372,6 +374,8 @@ function LibraryItem({
   );
   const installed = fits?.filter((r) => r.installState !== "notInstalled").length ?? 0;
   const community = source.role === "community";
+  // The catalog's word on who stands behind it wins: a builder's library is connected as community.
+  const builder = entry !== undefined && groupOfEntry(entry) === "builders";
   // A community library says so with a badge (and its stitched thread); the others in a line.
   const kind = community
     ? null
@@ -396,7 +400,7 @@ function LibraryItem({
           title: source.name,
           mark: dye.color,
           stitched: dye.community,
-          badge: community ? "community" : undefined,
+          badge: builder ? "builder" : community ? "community" : undefined,
           lines: [
             ...(entry?.summary ? [{ text: entry.summary }] : []),
             { text: counts.join(" · ") },

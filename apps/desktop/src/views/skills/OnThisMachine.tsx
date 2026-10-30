@@ -274,7 +274,9 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
             <h1 className="page-title" id="on-this-machine">
               On this machine
             </h1>
-            <p className="mys-lead mach-lead">{machine.isPending ? "Reading your skill folders…" : lead}</p>
+            <p className="mys-lead mach-lead">
+              {machine.isSuccess ? lead : "Skills in your own folders, available across projects."}
+            </p>
           </div>
           <div className="mys-actions">
             <Button icon="history" onClick={() => setHistory(true)}>

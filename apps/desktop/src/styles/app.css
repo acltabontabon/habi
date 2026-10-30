@@ -5748,15 +5748,10 @@ dl.facets,
   gap: var(--s6);
 }
 
-.page.libraries {
-  max-width: 1040px;
-}
-
-/* One column rhythm for every section: thread, name, what it is, then
-   quiet facts at the right edge. */
+/* On a small window a ledger row drops the repository; the name says enough. */
 
 @media (max-width: 1020px) {
-  .libraries .library-row-repo {
+  .lib-row .library-row-repo {
     display: none;
   }
 }
@@ -7235,50 +7230,19 @@ button.signal-where:focus-visible {
   }
 }
 
-/* ---------- Library rows: who, the gist, what was found, where it stands ---------- */
-
-/* The gist: what the library is, in a line or two. */
-
-.library-row-sub {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
 /* ---------- Libraries: a fluid page ----------
-   The page uses the window. Groups are columns that flow side by side as
-   room allows (three across on a large screen); the header puts the way in
-   (three knots) beside the title and filter instead of beneath them; each
-   row is self-contained, so it reads the same at any column width. */
+   The page uses the window: Explore's cards flow into as many columns as fit,
+   and the ledger's rows keep their facts in columns of their own. */
 
 .page.narrow.libraries {
   max-width: 1760px;
 }
 
-/* Bringing your own library: top right, where it is found on every visit. */
-
-/* Groups sit where they leave no holes: one column; then what is connected
-   and the community beside the (taller) builders; then three across. */
-
-.area-connected {
-  grid-area: connected;
+.libraries-bring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
 }
-
-.area-builders {
-  grid-area: builders;
-}
-
-.area-community {
-  grid-area: community;
-}
-
-/* Fewer groups (everything connected, or a filter): they share the width
-   evenly instead of leaving a column empty. */
-
-/* One group: it takes the page, and its rows flow into columns. */
-
-/* A row speaks up only when something is wrong with it. */
 
 .library-back {
   display: flex;
