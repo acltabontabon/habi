@@ -2,10 +2,12 @@
 //! folders the supported clients read (`~/.claude/skills`, `~/.agents/skills`,
 //! `~/.cursor/skills`).
 //!
-//! Everything here reads. Habi never writes to those folders; a skill found
-//! there reaches "My skills" or a project as an independent copy through the
-//! usual import and install. Links are followed only to read, and nothing
-//! found here is executed.
+//! Everything here reads. A skill found there reaches "My skills" or a project
+//! as an independent copy through the usual import and install. The only writes
+//! to these folders are the machine installs the person previews and applies
+//! (`~/.claude/skills`, `~/.agents/skills`), which go through the install
+//! planner, not this module. Links are followed only to read, and nothing found
+//! here is executed.
 
 use super::{Tree, TreeLimits, describe_tree, read_tree};
 use crate::clients::ClientId;
