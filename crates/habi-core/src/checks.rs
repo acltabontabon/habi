@@ -18,7 +18,9 @@ use crate::process::{self, Spec};
 use crate::store::Store;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use ts_rs::TS;
@@ -62,6 +64,10 @@ pub struct CheckPreview {
     pub bindings: Vec<BindingChoice>,
     /// All bindings chosen and the program found.
     pub ready: bool,
+    /// The digest of the `./script` this runs, if any. Kept with the preview
+    /// and compared at run time: the warnings are about these bytes.
+    #[serde(skip)]
+    pub script_digest: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -206,7 +212,18 @@ pub fn prepare(
         "This command runs code from this repository and its build (plugins, tests, scripts). Habi does not sandbox it.".to_string(),
     ];
     let resolved = resolve_program(root, &cwd_rel, &cwd_path, &program, &mut warnings);
-    warnings.extend(signal_warnings(root, &argv, &program, resolved.as_deref()));
+    let script = program
+        .starts_with("./")
+        .then_some(resolved.as_deref())
+        .flatten()
+        .map(read_script);
+    warnings.extend(signal_warnings(
+        root,
+        &argv,
+        &program,
+        resolved.as_deref(),
+        script.as_ref(),
+    ));
     Ok(CheckPreview {
         preview_id: String::new(),
         item_key: item.key.clone(),
@@ -226,6 +243,7 @@ pub fn prepare(
         timeout_seconds: check.timeout_seconds,
         warnings,
         bindings,
+        script_digest: script.and_then(|s| s.digest),
     })
 }
 
@@ -238,6 +256,7 @@ fn signal_warnings(
     argv: &[String],
     program: &str,
     resolved: Option<&Path>,
+    script: Option<&Script>,
 ) -> Vec<String> {
     let mut out = Vec::new();
     // The command line is what the skill declared, so notices count too.
@@ -248,18 +267,19 @@ fn signal_warnings(
     }
     // A script belongs to the project, and build wrappers legitimately
     // download and install, so only what could do harm is raised.
-    if program.starts_with("./")
-        && let Some(path) = resolved
-        && let Some(text) = read_script(path)
-    {
+    if let (Some(path), Some(script)) = (resolved, script) {
         let name = path
             .strip_prefix(root)
             .map(|p| p.to_string_lossy().replace('\\', "/"))
             .unwrap_or_else(|_| program.to_string());
-        for s in signals::scan_code(&name, &text) {
+        for s in signals::scan_code(&name, &script.text) {
             if s.severity >= SignalSeverity::Caution {
                 out.push(format!("{name}: {}", describe(&s)));
             }
+        }
+        // Nothing found means little if not everything was read, so say so.
+        if let Some(gap) = script.gap {
+            out.push(format!("{name} {gap}"));
         }
     }
     out
@@ -280,14 +300,58 @@ fn describe(s: &signals::Signal) -> String {
     text
 }
 
-/// The script's text if it is a regular file small enough to read.
-fn read_script(path: &Path) -> Option<String> {
-    const LIMIT: u64 = 256 * 1024;
-    let meta = std::fs::symlink_metadata(path).ok()?;
-    if !meta.is_file() || meta.len() > LIMIT {
-        return None;
+/// What Habi could read of a check's script.
+struct Script {
+    /// As much of it as is scanned, with bytes that are not text replaced.
+    text: String,
+    /// Of the whole file.
+    digest: Option<String>,
+    /// What was not read, as the rest of a sentence naming the script.
+    gap: Option<&'static str>,
+}
+
+/// Reads a script as data: a bounded part into memory for the scan, all of it
+/// through the digest. A file that is not all text, or is longer than the
+/// bound, is still scanned as far as that goes.
+fn read_script(path: &Path) -> Script {
+    const LIMIT: usize = 256 * 1024;
+    let unread = Script {
+        text: String::new(),
+        digest: None,
+        gap: Some("could not be read, so nothing is known about what it does."),
+    };
+    if !std::fs::symlink_metadata(path).is_ok_and(|m| m.is_file()) {
+        return unread;
     }
-    String::from_utf8(std::fs::read(path).ok()?).ok()
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return unread;
+    };
+    let mut hasher = Sha256::new();
+    let mut head = Vec::new();
+    let mut total = 0;
+    let mut chunk = vec![0u8; 64 * 1024];
+    loop {
+        let bytes = match file.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => chunk.get(..n).unwrap_or_default(),
+            Err(_) => return unread,
+        };
+        hasher.update(bytes);
+        total += bytes.len();
+        head.extend(bytes.iter().take(LIMIT.saturating_sub(head.len())));
+    }
+    let gap = if total > LIMIT {
+        Some("is larger than 256 KiB, and only its first 256 KiB were read.")
+    } else if std::str::from_utf8(&head).is_err() {
+        Some("is not all plain text, so parts of it could not be read.")
+    } else {
+        None
+    };
+    Script {
+        text: String::from_utf8_lossy(&head).into_owned(),
+        digest: Some(format!("sha256:{}", hex::encode(hasher.finalize()))),
+        gap,
+    }
 }
 
 fn resolve_program(
