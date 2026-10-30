@@ -44,6 +44,12 @@ Every project gets Habi's answer to "what should my agents have here?", before a
   installed. It takes only skill names and times, keeps nothing and sends nothing; Privacy and
   security says exactly what it reads. Other agents and other people's sessions are not counted.
 
+### Changed
+
+- **A calmer project mark.** A project's avatar is a few threads on a quiet tile — one warp per
+  library that fits, in its dye, crossed by wefts in the project's own languages — with its
+  initials set plainly on top, so the letters read at any size.
+
 ### Fixed
 
 - **Opening Habi twice at once no longer fails.** The desktop app and the command line opening the
