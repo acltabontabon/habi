@@ -17,7 +17,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     let rules: [(&str, &str); 18] = [
         // https://user:secret@host -> https://***@host
         (
-            r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@]+:[^/\s@]+@",
+            r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@]+:[^/\s]*@",
             "${1}***@",
         ),
         // Private keys.
@@ -61,7 +61,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         ),
         // key=value style secrets in query strings, env dumps and config.
         (
-            r"(?i)\b((?:[a-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|auth[_-]?token|token|password|passwd|secret|client[_-]?secret|secret[_-]?(?:access[_-]?)?key)\s*[=:]\s*)[^\s&,;]+",
+            r#"(?i)\b((?:[a-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|auth[_-]?token|token|password|passwd|secret|client[_-]?secret|secret[_-]?(?:access[_-]?)?key)["']?\s*[=:]\s*)(?:"[^"]*"|'[^']*'|[^\s&]+)"#,
             "${1}[redacted]",
         ),
     ];

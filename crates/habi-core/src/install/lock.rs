@@ -150,6 +150,14 @@ impl LockFile {
                     item.id
                 )));
             }
+            // No reader left for its files reads as "delete them all" at the next update.
+            if item.clients.is_empty() && !item.files.is_empty() {
+                return Err(HabiError::Conflict(format!(
+                    "{} lists `{}` with files but no agent tools. Fix or remove the lock file.",
+                    crate::brand::LOCK_FILE,
+                    item.id
+                )));
+            }
             for f in &item.files {
                 let rel = crate::paths::RelPath::new(&f.path)?;
                 let under_skills = [

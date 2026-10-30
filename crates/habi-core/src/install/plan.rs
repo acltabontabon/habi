@@ -269,6 +269,12 @@ pub fn read_project_file(root: &Path, rel: &str) -> Result<Option<Vec<u8>>> {
             "`{rel}` is a directory where Habi expects a file"
         )));
     }
+    // A named pipe would hang the read for good, with the project locked.
+    if !meta.is_file() {
+        return Err(HabiError::Conflict(format!(
+            "`{rel}` is not a regular file, so Habi cannot manage it"
+        )));
+    }
     match read_bounded(&path, MAX_PROJECT_FILE)? {
         Bounded::Content(b) => Ok(Some(b)),
         Bounded::TooLarge(n) => Err(HabiError::Conflict(format!(
@@ -282,6 +288,19 @@ pub fn read_lock(root: &Path) -> Result<LockFile> {
         Some(bytes) => LockFile::parse(&bytes),
         None => Ok(LockFile::default()),
     }
+}
+
+/// What became of a file Habi installed that the new version no longer has at that path.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Removal {
+    /// Staged for deletion (or no longer Habi's to touch).
+    Deleted,
+    /// Edited, and the person chose to keep it.
+    Kept,
+    /// Already gone from disk.
+    Absent,
+    /// Edited, and the person has not chosen yet: the plan carries a conflict.
+    Undecided,
 }
 
 #[derive(Default)]
@@ -409,15 +428,25 @@ impl<'a> Workspace<'a> {
             if old == *new && !self.forced.contains(path) {
                 continue;
             }
-            // Two paths differing only in letter case may be one file. That is
-            // allowed only as a rename: one of them deleted, the other written.
+            // Two paths differing only in letter case or accent encoding may be one
+            // file. That is allowed only as a rename: one deleted, the other written.
             let deleting = new.is_none();
             if let Some((other, other_deleting)) =
-                lower.insert(path.to_lowercase(), (path.clone(), deleting))
+                lower.insert(crate::paths::fold_path(path), (path.clone(), deleting))
                 && deleting == other_deleting
             {
                 return Err(HabiError::Conflict(format!(
-                    "`{path}` and `{other}` differ only in letter case, which some file systems treat as the same file"
+                    "`{path}` and `{other}` differ only in letter case or accent encoding, which some file systems treat as the same file"
+                )));
+            }
+            // Habi refuses to read back a file this large, so it must not write one: the
+            // project could then not be updated or restored through Habi.
+            if let Some(bytes) = new
+                && bytes.len() as u64 > MAX_PROJECT_FILE
+            {
+                return Err(HabiError::Conflict(format!(
+                    "`{path}` would be {} bytes; Habi manages files up to {MAX_PROJECT_FILE} bytes",
+                    bytes.len()
                 )));
             }
             let meta = self.meta.get(path);
@@ -449,7 +478,7 @@ impl<'a> Workspace<'a> {
         changes.sort_by_key(|c| {
             (
                 c.kind == ChangeKind::LockFile,
-                c.path.to_lowercase(),
+                crate::paths::fold_path(&c.path),
                 c.op != ChangeOp::Delete,
                 c.path.clone(),
             )
@@ -706,6 +735,7 @@ impl<'a> Planner<'a> {
         }
     }
 
+    /// Stops tracking a file Habi installed. False while the person still has to decide.
     fn delete_file(
         &mut self,
         path: &str,
@@ -714,6 +744,17 @@ impl<'a> Planner<'a> {
         clients: &[ClientId],
         why: &str,
     ) -> Result<bool> {
+        Ok(self.remove_installed(path, baseline, item, clients, why)? != Removal::Undecided)
+    }
+
+    fn remove_installed(
+        &mut self,
+        path: &str,
+        baseline: &str,
+        item: &str,
+        clients: &[ClientId],
+        why: &str,
+    ) -> Result<Removal> {
         if !self.ws.staged.contains_key(path)
             && let Some(target) = self.link_target(path)?
         {
@@ -722,16 +763,16 @@ impl<'a> Planner<'a> {
             self.notes.push(format!(
                 "{path} is now reached through a symbolic link (to {target}); Habi no longer tracks it as a separate copy and leaves it alone."
             ));
-            return Ok(true);
+            return Ok(Removal::Deleted);
         }
         let current = self.ws.read(path)?;
         let Some(current) = current else {
-            return Ok(true);
+            return Ok(Removal::Absent);
         };
         if digest_matches(&current, baseline) {
             self.ws
                 .write(path, None, ChangeKind::SkillFile, item, clients, why)?;
-            return Ok(true);
+            return Ok(Removal::Deleted);
         }
         match self.decision(path) {
             Some(Resolution::Overwrite) => {
@@ -743,13 +784,13 @@ impl<'a> Planner<'a> {
                     clients,
                     "Deletes your edited copy at your request; it is kept for restore.",
                 )?;
-                Ok(true)
+                Ok(Removal::Deleted)
             }
             Some(Resolution::Keep) => {
                 self.notes.push(format!(
                     "Kept your edited {path}; Habi no longer tracks it."
                 ));
-                Ok(true)
+                Ok(Removal::Kept)
             }
             None => {
                 self.conflicts.push(conflict(
@@ -760,7 +801,7 @@ impl<'a> Planner<'a> {
                     vec![Resolution::Keep, Resolution::Overwrite],
                     Some(diff(Some(&current), None)),
                 ));
-                Ok(false)
+                Ok(Removal::Undecided)
             }
         }
     }
@@ -1000,6 +1041,9 @@ impl<'a> Planner<'a> {
         let (dirs, dir_notes) = layout::skill_dirs(clients);
         self.notes.extend(dir_notes);
         let dirs = self.resolve_skill_dirs(dirs, item)?;
+        if self.scope == Scope::Machine && existing.is_none() {
+            self.refuse_foreign_folders(&dirs, p)?;
+        }
         let baselines: HashMap<String, String> = existing
             .map(|e| {
                 e.files
@@ -1010,15 +1054,15 @@ impl<'a> Planner<'a> {
             .unwrap_or_default();
         let mut files = Vec::new();
         let mut written = BTreeSet::new();
-        // Previously installed paths by lower-case form, to recognize renames
-        // that only change letter case.
+        // Previously installed paths by folded form, to recognize renames that
+        // only change letter case or accent encoding.
         let previous_by_case: HashMap<String, (String, String, Vec<ClientId>)> = existing
             .map(|e| {
                 e.files
                     .iter()
                     .map(|f| {
                         (
-                            f.path.to_lowercase(),
+                            crate::paths::fold_path(&f.path),
                             (f.path.clone(), f.digest.clone(), f.clients.clone()),
                         )
                     })
@@ -1034,40 +1078,67 @@ impl<'a> Planner<'a> {
                 let target =
                     RelPath::new(&format!("{}/{}/{}", dir.base, item.name, rel))?.to_string();
                 if let Some((old_path, old_digest, old_clients)) =
-                    previous_by_case.get(&target.to_lowercase())
+                    previous_by_case.get(&crate::paths::fold_path(&target))
                     && old_path != &target
                 {
-                    // Case-only rename: delete the old name (respecting local
-                    // edits), then write the new name explicitly.
+                    // Rename of letter case or accents only: delete the old name (respecting
+                    // local edits), then write the new name. On most file systems the two names
+                    // are one file, so what happens to the new name depends on the old one's fate.
                     written.insert(old_path.clone());
-                    if self.delete_file(
-                        old_path,
-                        old_digest,
-                        &item.title,
-                        old_clients,
-                        "Renamed in the library (letter case only).",
-                    )? {
-                        self.ws.modes.insert(target.clone(), file.executable);
-                        self.ws.forced.insert(target.clone());
-                        self.ws.write(
-                            &target,
-                            Some(bytes.clone()),
-                            ChangeKind::SkillFile,
-                            &item.title,
-                            &dir.clients,
-                            "Renamed in the library (letter case only).",
-                        )?;
-                        files.push(LockedFile {
-                            path: target.clone(),
-                            digest: sha256(bytes),
-                            clients: dir.clients.clone(),
-                        });
-                    } else {
-                        files.push(LockedFile {
+                    let why = "Renamed in the library (letter case only).";
+                    let outcome =
+                        self.remove_installed(old_path, old_digest, &item.title, old_clients, why)?;
+                    let old_bytes = self.ws.original(old_path)?;
+                    let at_target = self.ws.read(&target)?;
+                    let other_file = at_target.is_some() && at_target != old_bytes;
+                    match outcome {
+                        Removal::Undecided => files.push(LockedFile {
                             path: old_path.clone(),
                             digest: old_digest.clone(),
                             clients: old_clients.clone(),
-                        });
+                        }),
+                        // Kept: on this file system the new name is the file they chose to keep.
+                        Removal::Kept if at_target.is_some() => {}
+                        // A file of its own at the new name, or a deleted one being brought
+                        // back, gets the questions any other file would.
+                        Removal::Absent | Removal::Deleted | Removal::Kept
+                            if other_file || outcome == Removal::Absent =>
+                        {
+                            let baseline =
+                                (outcome == Removal::Absent).then_some(old_digest.as_str());
+                            if let Some(digest) = self.put_file(
+                                &target,
+                                bytes,
+                                file.executable,
+                                baseline,
+                                &item.title,
+                                &dir.clients,
+                                why,
+                            )? {
+                                files.push(LockedFile {
+                                    path: target.clone(),
+                                    digest,
+                                    clients: dir.clients.clone(),
+                                });
+                            }
+                        }
+                        Removal::Absent | Removal::Deleted | Removal::Kept => {
+                            self.ws.modes.insert(target.clone(), file.executable);
+                            self.ws.forced.insert(target.clone());
+                            self.ws.write(
+                                &target,
+                                Some(bytes.clone()),
+                                ChangeKind::SkillFile,
+                                &item.title,
+                                &dir.clients,
+                                why,
+                            )?;
+                            files.push(LockedFile {
+                                path: target.clone(),
+                                digest: sha256(bytes),
+                                clients: dir.clients.clone(),
+                            });
+                        }
                     }
                     written.insert(target);
                     continue;
@@ -1126,6 +1197,39 @@ impl<'a> Planner<'a> {
             sections: Vec::new(),
             mcp: existing.map(|e| e.mcp.clone()).unwrap_or_default(),
         })
+    }
+
+    /// A person's own folder on this machine that holds files this skill does not ship is theirs:
+    /// merging into it would leave a mix neither they nor the library wrote. (Files of the same
+    /// name are asked about one by one, as anywhere.)
+    fn refuse_foreign_folders(&mut self, dirs: &[layout::SkillDir], p: &Payload) -> Result<()> {
+        for dir in dirs {
+            let at = format!("{}/{}", dir.base, p.item.name);
+            let Ok(entries) = std::fs::read_dir(self.ws.root.join(&at)) else {
+                continue;
+            };
+            let foreign = entries.flatten().any(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                name != ".DS_Store"
+                    && !p
+                        .files
+                        .iter()
+                        .any(|f| f.path == name || f.path.starts_with(&format!("{name}/")))
+            });
+            if foreign {
+                self.conflicts.push(conflict(
+                    &at,
+                    ConflictKind::UnmanagedContent,
+                    &p.item.title,
+                    format!(
+                        "{at} already holds files Habi did not install. Move or rename that folder, then preview again."
+                    ),
+                    vec![],
+                    None,
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// Accounts for skill folders that are symbolic links inside the project.

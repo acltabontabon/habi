@@ -169,6 +169,11 @@ fn save(paths: &AppPaths, journal: &Journal) -> Result<()> {
 /// `action` of a journal file that could not be read.
 const UNREADABLE: &str = "unreadable";
 
+/// Whether this stands for a record Habi could not read, whose backups it can no longer name.
+pub(crate) fn is_unreadable(journal: &Journal) -> bool {
+    journal.action == UNREADABLE
+}
+
 /// Reads one journal. A journal that exists but cannot be read is reported
 /// as an operation that needs attention, never skipped silently: it may
 /// describe files Habi changed.
@@ -328,6 +333,38 @@ fn write_step(
     Ok(())
 }
 
+/// Removes what a write cut short left beside its target. Only after a crash, with the project
+/// locked: no write of Habi's can be running, and these names are never anyone else's.
+fn sweep_temp_files(root: &Path, steps: &[JournalStep]) {
+    let mut folders = std::collections::BTreeSet::new();
+    for step in steps {
+        let Ok(rel) = RelPath::new(&step.path) else {
+            continue;
+        };
+        if let Ok(target) = resolve_for_write(root, &rel)
+            && let Some(parent) = target.parent()
+        {
+            folders.insert(parent.to_path_buf());
+        }
+    }
+    for folder in folders {
+        let Ok(entries) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            if entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".habi-tmp-")
+                && entry.file_type().is_ok_and(|t| t.is_file())
+                && let Err(e) = std::fs::remove_file(entry.path())
+            {
+                tracing::warn!(error = %e, "could not remove a leftover temporary file");
+            }
+        }
+    }
+}
+
 /// Sets or clears the executable bits of an existing project file.
 fn set_mode(root: &Path, rel: &str, executable: bool) -> Result<()> {
     let rel = RelPath::new(rel)?;
@@ -350,7 +387,7 @@ fn executable_on_disk(root: &Path, rel: &str) -> Option<bool> {
 /// that changed in the meantime (left untouched).
 fn undo(root: &Path, blobs: &Blobs, steps: &[JournalStep]) -> Vec<String> {
     let mut problems = Vec::new();
-    for step in steps.iter().rev() {
+    for (index, step) in steps.iter().enumerate().rev() {
         let current = match digest_on_disk(root, &step.path) {
             Ok(d) => d,
             Err(e) => {
@@ -358,6 +395,18 @@ fn undo(root: &Path, blobs: &Blobs, steps: &[JournalStep]) -> Vec<String> {
                 continue;
             }
         };
+        // A rename touches one file under two names: what an earlier step of that file left there
+        // means this step was never reached, not that someone changed the file.
+        let folded = crate::paths::fold_path(&step.path);
+        let earlier = steps
+            .get(..index)
+            .unwrap_or_default()
+            .iter()
+            .rev()
+            .find(|s| crate::paths::fold_path(&s.path) == folded);
+        if earlier.is_some_and(|s| s.after == current) {
+            continue;
+        }
         if current == step.before {
             // Content is as before. A step that changed only the executable
             // bit is undone by restoring the bit, whether or not the journal
@@ -444,15 +493,23 @@ impl<'a> Applier<'a> {
             ));
         }
         let root = &plan.root;
+        // A folder moved or deleted since the preview is not recreated: a plan of only new files
+        // would otherwise pass its checks, and the real project would get nothing.
+        if !root.is_dir() {
+            return Err(HabiError::NotFound(format!(
+                "the project folder {}",
+                crate::paths::display_path(root)
+            )));
+        }
         let _lock = self.lock_project(root)?;
+        // Undoing an interrupted operation changes files the preview may have counted as already
+        // there (leaving them out of the plan), so this plan no longer describes the project.
         let recovered = self.recover_locked(root)?;
-        if recovered
-            .iter()
-            .any(|r| r.state == JournalState::NeedsAttention)
-        {
-            tracing::warn!(
-                "previous operation needs attention; continuing with precondition checks"
-            );
+        if recovered.iter().any(|r| r.action != UNREADABLE) {
+            return Err(HabiError::StalePlan(
+                "an earlier change was interrupted, and Habi has undone it. Review the new preview."
+                    .into(),
+            ));
         }
 
         // Preconditions: every file must still be as the preview saw it. The
@@ -514,9 +571,9 @@ impl<'a> Applier<'a> {
         save(self.paths, &journal)?;
         self.record(&journal, &pid);
 
-        // What earlier steps of this plan left at a path (by lower-case path,
-        // because a case-only rename touches one file under two names on
-        // case-insensitive file systems).
+        // What earlier steps of this plan left at a path (by folded path,
+        // because a rename that only changes letter case or accents touches
+        // one file under two names on many file systems).
         let mut produced: std::collections::HashMap<String, Option<String>> = Default::default();
         for (index, change) in plan.changes.iter().enumerate() {
             match fault {
@@ -537,11 +594,12 @@ impl<'a> Applier<'a> {
             // Re-check right before writing: an editor may have saved since
             // the preconditions were verified.
             let expected = produced
-                .get(&change.path.to_lowercase())
+                .get(&crate::paths::fold_path(&change.path))
                 .cloned()
                 .unwrap_or_else(|| change.before.clone());
             match digest_on_disk(root, &change.path) {
-                Ok(now) if now == expected => {}
+                // `before` too: where names differing in case are two files, deleting one leaves the other.
+                Ok(now) if now == expected || now == change.before => {}
                 Ok(_) => {
                     let cause = HabiError::StalePlan(format!(
                         "{} changed while applying; nothing of it was overwritten",
@@ -576,7 +634,7 @@ impl<'a> Applier<'a> {
                 // recovery of a write absent from the last saved journal.
                 std::process::exit(86);
             }
-            produced.insert(change.path.to_lowercase(), change.after.clone());
+            produced.insert(crate::paths::fold_path(&change.path), change.after.clone());
             if let Some(step) = journal.steps.get_mut(index) {
                 step.done = true;
             }
@@ -668,6 +726,7 @@ impl<'a> Applier<'a> {
                 clear_unfinished(self.paths, &pid, &journal.id);
                 continue;
             }
+            sweep_temp_files(root, &journal.steps);
             let problems = undo(root, &self.blobs(), &journal.steps);
             journal.state = if problems.is_empty() {
                 JournalState::RolledBack

@@ -13,7 +13,7 @@ Notes:
 - The bundled fonts (IBM Plex Sans, IBM Plex Mono) are under the SIL Open Font
   License 1.1 and are distributed unmodified. "Plex" is a Reserved Font Name.
 
-## Rust components (551)
+## Rust components (552)
 
 | Component | Version | License | Source | Texts |
 |---|---|---|---|---|
@@ -475,6 +475,7 @@ Notes:
 | uds_windows | 1.2.1 | MIT | https://github.com/haraldh/rust_uds_windows | [T247](#t247) |
 | unicode-general-category | 1.1.0 | Apache-2.0 | https://github.com/yeslogic/unicode-general-category | [T13](#t13) |
 | unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident | [T10](#t10) [T3](#t3) [T248](#t248) |
+| unicode-normalization | 0.1.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/unicode-rs/unicode-normalization | [T249](#t249) [T4](#t4) [T111](#t111) [T248](#t248) |
 | unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-segmentation | [T249](#t249) [T4](#t4) [T111](#t111) |
 | unicode-width | 0.2.2 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-width | [T249](#t249) [T4](#t4) [T111](#t111) |
 | url | 2.5.8 | MIT OR Apache-2.0 | https://github.com/servo/rust-url | [T4](#t4) [T127](#t127) |

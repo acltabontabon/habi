@@ -12,6 +12,8 @@
 use crate::error::{HabiError, Result};
 use crate::fsutil::sha256;
 
+const BOM: char = '\u{feff}';
+
 pub fn begin_marker(id: &str, note: &str) -> String {
     if note.is_empty() {
         format!("<!-- habi:begin id={id} -->")
@@ -24,14 +26,19 @@ pub fn end_marker(id: &str) -> String {
     format!("<!-- habi:end id={id} -->")
 }
 
+/// A marker line as written, without a byte-order mark an editor may have put before it.
+fn marker_text(line: &str) -> &str {
+    line.trim_start_matches(BOM).trim()
+}
+
 fn begin_id(line: &str) -> Option<&str> {
-    let rest = line.trim().strip_prefix("<!-- habi:begin id=")?;
+    let rest = marker_text(line).strip_prefix("<!-- habi:begin id=")?;
     let rest = rest.strip_suffix("-->")?;
     rest.split_whitespace().next()
 }
 
 fn end_id(line: &str) -> Option<&str> {
-    let rest = line.trim().strip_prefix("<!-- habi:end id=")?;
+    let rest = marker_text(line).strip_prefix("<!-- habi:end id=")?;
     rest.strip_suffix("-->").map(str::trim)
 }
 
@@ -63,7 +70,14 @@ pub fn find(text: &str, id: &str) -> Result<Option<SectionSpan>> {
                     "the Habi section `{id}` appears more than once; fix the markers by hand"
                 )));
             }
-            open = Some((line_start, offset));
+            // A byte-order mark stays where it is, outside the section.
+            let start = line_start
+                + if line.starts_with(BOM) {
+                    BOM.len_utf8()
+                } else {
+                    0
+                };
+            open = Some((start, offset));
         } else if end_id(line) == Some(id) {
             let Some((start, content_start)) = open.take() else {
                 return Err(HabiError::Conflict(format!(
@@ -76,6 +90,11 @@ pub fn find(text: &str, id: &str) -> Result<Option<SectionSpan>> {
                 content_end: line_start,
                 end: offset,
             });
+        } else if open.is_some() && (begin_id(line).is_some() || end_id(line).is_some()) {
+            // Replacing this section would cut another one's marker in half.
+            return Err(HabiError::Conflict(format!(
+                "the Habi section `{id}` overlaps another Habi section; fix the markers by hand"
+            )));
         }
     }
     if open.is_some() {

@@ -12,6 +12,7 @@ use crate::error::{HabiError, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
+use unicode_normalization::UnicodeNormalization;
 
 /// Maximum length of a relative path Habi will handle. Long enough for deep
 /// monorepos, short enough to avoid pathological input.
@@ -301,6 +302,12 @@ pub fn is_network_path(path: &str) -> bool {
         (chars.next(), chars.next()),
         (Some('/' | '\\'), Some('/' | '\\'))
     )
+}
+
+/// The form two paths share when a file system may treat them as one file: letter case, and the
+/// two ways of encoding an accented letter (APFS and HFS+ make no difference between them).
+pub fn fold_path(path: &str) -> String {
+    path.to_lowercase().nfc().collect()
 }
 
 /// Replaces the user's home directory with `~` for display and logs.
