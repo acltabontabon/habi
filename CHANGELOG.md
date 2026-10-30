@@ -66,6 +66,68 @@ Every project gets Habi's answer to "what should my agents have here?", before a
   a skill folder no longer count as the project's languages or agent instructions.
 - **Next.js on Cloudflare** fits Next.js apps deployed with Wrangler, not every Next.js app, and
   **BigQuery basics** also fits Python code using the BigQuery client.
+- **A library can no longer stop Habi from opening.** A long non-English title or name in a
+  library's metadata crashed Habi on every start, until now.
+- **An interrupted install can't leave an empty one behind.** Previewing and applying again after
+  a crash could record a skill as installed with none of its files. Habi now undoes the
+  interrupted change, says so, and shows a fresh preview.
+- **Your edits survive more kinds of update.** Choosing *Keep* when a library renames a file by
+  letter case no longer overwrites your edits, a rename that only changes how an accent is stored
+  no longer deletes the file, and a project folder moved after its preview is not recreated.
+- **Editing a skill no longer damages it.** Changing the title no longer deletes a `habi.yaml`
+  you are still fixing. Habi no longer saves over a `SKILL.md` or `habi.yaml` that isn't UTF-8
+  text, and changing a name or description keeps your comments and values such as `version: 1.10`.
+- **Sharing sends only what you saw.** A library skill with a large file no longer turns into
+  deleting the whole skill, a contribution can't remove `SKILL.md`, and a commit removes only
+  files the preview listed: links, submodules and skipped files stay.
+- **Send can't be cancelled by mistake.** Once a push has started, Cancel and Esc wait for it
+  instead of closing as if it had stopped, and a contribution's actions run one at a time.
+- **A failed save stops retrying on its own.** A full disk or a file over the limit is asked once;
+  a new edit or Retry tries again. Use, Share and Export now include edits in an open package
+  file, not only in the skill's instructions.
+- **Stuck libraries recover.** A cancelled or timed-out update no longer leaves a library failing
+  on every later update, or marks it as out of date, and updating now really repairs damaged
+  cached content.
+- **Your backups stay when a record is damaged.** Free up space no longer removes the stored
+  files an unreadable operation record may need, and it now asks before clearing anything.
+- **One library, however its address is written.** A repository reached over SSH and over HTTPS
+  is recognized as the same library, so a teammate's install matches, and it can't be connected
+  twice to the same folder and version. Connecting a catalog library whose name is taken adds a
+  number instead of failing, and a version you pinned is no longer changed by the catalog.
+- **More files are reported instead of lost.** Folder libraries report files they can't take, a
+  huge file no longer fails the whole library, names that differ only by case or aren't valid
+  UTF-8 are flagged, and files in folders named `target` or `node_modules` inside a skill are kept.
+- **Two skills with one name no longer hide each other.** Each gets its own id.
+- **Skills stay fixable.** A skill over the 16 MiB total can still be opened and trimmed, and Habi
+  refuses a change that would take it over. Restoring from the trash when the name is taken gives
+  the skill a new one instead of disabling both, and one oversized skill in a project no longer
+  blocks importing the others.
+- **Ways out where there were none.** A project that can't be inspected can be removed from where
+  it failed, a slow scan can be cancelled, a failed load offers Try again, and removing a project
+  or discarding a contribution takes it out of Back.
+- **Smaller fixes.** Renaming a file in a package no longer stops at the letters j and k. Unticked
+  suggestions stay unticked while you read a skill. Opening a skill by name shows that skill when a
+  filter is on. Files with a byte-order mark no longer read as damaged. Case-only renames work.
+  Ctrl+K, N and O in a Mac text field are the system's again. Long names wrap inside their box.
+  Disabled Prepare and Connect buttons say why.
+
+### Security
+
+- **Running a check asks in a system dialog** naming the command, which a compromised window can't
+  answer for itself, and only a connected library's checks can run. The check won't run if its
+  script changed after the preview, and the preview says when it couldn't read all of the script.
+- **Pointing at a library asks GitHub nothing.** Hovering a catalog card or a library in the
+  sidebar sent a request the security model never allowed. Only opening a library's page does.
+- **Your home folder or a whole disk can't be opened as a project**, which also keeps it from being
+  read file by file.
+- **Hostile libraries and files get less far.** A named pipe can't hang Habi. Huge Markdown can't
+  stall indexing for minutes. Addresses carrying a password or token in the forms that used to slip
+  through, and addresses with invisible characters, are refused. A symbolic link can't serve as a
+  library's subfolder. File names with invisible or direction-changing characters are refused.
+- **Signals say when they stop.** A file too long to read in full says so instead of going quiet at
+  line 5,000, and hidden characters are found anywhere in it.
+- **The secret scan before sharing** now also checks file names, the title and the message, and
+  redaction takes a secret's whole value.
 
 ## 0.4.0 - 2026-10-30
 

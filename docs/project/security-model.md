@@ -14,7 +14,8 @@ untrusted too, even though it renders Habi's own UI.
   and the one `./script` it runs if there is one, with the same patterns as signals (below),
   and lists what stands out: the command's own notices and cautions, and the script's
   cautions only (a project's build wrapper legitimately downloads and installs). These are
-  warnings, not blocks and not a second confirmation; scripts the script calls are not read.
+  warnings, not blocks; scripts the script calls are not read. A script that is not all text, or
+  is over 256 KiB, is read as far as it can be and the preview says so.
 - MCP servers are never launched or contacted by Habi. "Configured" means an entry exists.
 
 ## Git
@@ -27,7 +28,7 @@ variables (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, …) removed. A command
 repository of its own (`ls-remote`, a fetch from a URL) runs in the empty directory with
 `GIT_CEILING_DIRECTORIES`, never in the folder Habi was started from. Arguments are arrays;
 URLs and refs are validated (no leading `-`, no `<transport>::` helpers, no embedded
-passwords) and passed after `--`.
+passwords, queries, fragments or invisible characters) and passed after `--`.
 
 Library caches are **bare** repositories read with `ls-tree`/`cat-file`, so checkouts,
 smudge/clean filters, `.gitattributes` conversions and hooks never run on library content.
@@ -65,7 +66,7 @@ and it is what makes authentication work without Habi handling secrets.
 ## File system
 
 - All relative paths from content, lock files and IPC go through `RelPath` (no absolute
-  paths, `..`, backslashes, drive prefixes, control characters).
+  paths, `..`, backslashes, drive prefixes, control, invisible or direction-changing characters).
 - Writes resolve each existing path component and refuse symbolic links anywhere along the
   path (`resolve_for_write`); this is re-checked at apply time, not just at preview.
 - Reads are bounded; parsers have size/depth/node limits (YAML budgets, XML without DTDs,
@@ -101,8 +102,9 @@ and it is what makes authentication work without Habi handling secrets.
   *On this machine* are the exception: Habi lists them because that is what the screen is for.
 - A home folder, or a whole disk, cannot be opened as a project.
 - Folder reads do not follow symbolic links and are bounded (file count, file size, total
-  size). A package with links or oversized files is reported as incomplete and is not
-  imported, so content is never silently dropped.
+  size). A package with links, oversized files, unsafe or non-UTF-8 names, or files differing only
+  by case is reported as incomplete and is not imported, so content is never silently dropped. A
+  symbolic link as a library's subfolder is refused.
 - Package paths go through `RelPath` and `resolve_for_write`: writing a file in a draft cannot
   leave the package folder or pass through a link, and `.git` components are refused.
 - Every draft save names the digest of the file it was based on; a file changed outside Habi
@@ -141,7 +143,7 @@ and it is what makes authentication work without Habi handling secrets.
 - Plans are applied **by id**; the webview never supplies file contents or target paths.
 - Checks run only by a single-use **preview id** returned when the user previewed the command;
   the command is prepared again and must match what was shown (program, arguments, folder,
-  item version) or nothing runs. Binding values must be discovered candidates. Running one asks
+  item version, the script's contents) or nothing runs. Binding values must be discovered candidates. Running one asks
   once more in a native dialog naming the command, which the webview cannot answer for itself,
   and only a connected library's checks can run.
 - Local library folders (including `file://` URLs in any letter case) and folders to import
@@ -163,8 +165,8 @@ and it is what makes authentication work without Habi handling secrets.
   library folders replaced with placeholders.
 - On macOS and Linux Habi's data folder is `0700` and its database and logs `0600`: the journal
   keeps copies of project files Habi overwrote.
-- Contributions are scanned for high-signal secrets (private keys, cloud/API tokens) and
-  blocked if any are found. Only the files shown in the preview leave the machine, and only
+- Contributions (file contents, file names, the title and the message) are scanned for high-signal
+  secrets (private keys, cloud/API tokens) and blocked if any are found. Only the files shown in the preview leave the machine, and only
   on explicit export or publish.
 
 ## Claude Code session history
@@ -229,13 +231,16 @@ What it can and cannot say:
   to, and are discarded after 60 days.
 - Catalog sources fetch only the newest commit and skip blobs above Habi's own per-file limit;
   paths are narrowed by the entry's include/exclude globs *before* the file-count and size
-  limits apply. Symlinks, submodules, unsafe paths and oversized files are skipped and make the
-  skill incomplete (so it cannot be installed). Fetching never uses lazy network access.
+  limits apply. Symlinks, submodules, unsafe or non-UTF-8 paths and oversized files are skipped and
+  make the skill incomplete (so it cannot be installed); at most 5,000 skipped entries are accepted,
+  of which 200 are listed. Fetching never uses lazy network access.
 - **Signals** are a bounded static reading of a skill's files as data: commands that download
   and run code, broad deletes, credential files (SSH, cloud and container logins, keychains,
   browser profiles, shell history; an `.env` file is a notice), elevated permissions, compiled or opaque
   files, invisible characters. Nothing is executed, imported or followed. Matches in reference
   documents are capped at a notice, because documentation about an attack is not an attack.
+  Rules read a file's first 5,000 lines and a longer file says so; invisible characters are looked
+  for throughout.
   The wording is "found by reading the files"; a skill with no signals is not called safe.
 - A rule suggested by the catalog for a skill whose author declared none is labelled as Habi's
   judgement wherever it is shown, never overrides the author's own rules, and uses only

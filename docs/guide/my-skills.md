@@ -92,7 +92,7 @@ contributions. Each problem has a level:
 | Check | Level |
 |---|---|
 | `SKILL.md` exists and starts with YAML frontmatter that parses | error |
-| `name` is present and valid (lowercase letters, digits, hyphens; 1–64 characters) | error |
+| `name` is present and valid (lowercase letters, digits, hyphens; 1–64 characters; not a name Windows reserves, such as `con` or `nul`) | error |
 | `description` is present | error |
 | `name` matches the folder name; `description` is at most 1,024 characters | warning |
 | `habi.yaml` parses, matches the schema, has valid conditions, and its checks use declared bindings (otherwise the metadata is ignored as a whole) | error |

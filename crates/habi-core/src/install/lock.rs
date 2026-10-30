@@ -90,14 +90,15 @@ pub struct LockedItem {
 }
 
 impl LockedItem {
-    /// Stable key: source identity plus item id.
+    /// Stable key: the repository plus item id. By repository, not by how its address was
+    /// written, so a teammate on SSH finds what someone on HTTPS installed.
     pub fn key(&self) -> String {
         lock_key(&self.source.identity, &self.id)
     }
 }
 
 pub fn lock_key(identity: &str, id: &str) -> String {
-    format!("{identity}#{id}")
+    format!("{}#{id}", crate::source::repository_key(identity))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

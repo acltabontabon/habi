@@ -273,7 +273,9 @@ fn signal_warnings(
             .map(|p| p.to_string_lossy().replace('\\', "/"))
             .unwrap_or_else(|_| program.to_string());
         for s in signals::scan_code(&name, &script.text) {
-            if s.severity >= SignalSeverity::Caution {
+            // Saying it stopped reading is what makes "nothing found" honest.
+            if s.severity >= SignalSeverity::Caution || s.kind == signals::SignalKind::NotFullyRead
+            {
                 out.push(format!("{name}: {}", describe(&s)));
             }
         }

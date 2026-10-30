@@ -217,7 +217,8 @@ group.
 - **Where the files come from.** A skill from My skills or a project is copied again from where
   it lives, and again when you prepare, so edits made there after *Revise* are included. Form
   changes made in Habi since are reapplied. A library-item contribution reopens its form and
-  staging folder.
+  staging folder. A first version is also copied again when you prepare; if that changes the files,
+  Habi shows them and you prepare again.
 - **Prepare** adds a commit on top of the one you sent, on the same branch. A revision that
   changes nothing is refused ("Nothing changed since the version you sent").
 - **Cancel revision** returns to the version you had before *Revise* (same commit, state,
