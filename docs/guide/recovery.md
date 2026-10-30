@@ -87,10 +87,12 @@ installed without MCP configuration are not offered any.
 ## Freeing space
 
 Habi keeps each project's newest 20 operations, so they can be restored, and each library's
-newest 20 earlier snapshots, and tidies up after installs. **Settings → Storage → Free up
-space** removes anything older at once, along with stored file versions nothing refers to.
-Unfinished operations and ones that need attention are always kept, and a project or library
-another operation is using is skipped until the next run.
+newest 20 earlier snapshots, and tidies up after installs and when it starts, at most once a
+day, the same way and without asking. **Settings → Storage → Free up
+space** asks first, then removes anything older at once, along with stored file versions nothing
+refers to. Unfinished operations and ones that need attention are always kept, a project with an
+operation record Habi can't read keeps its stored files, and a project or library another
+operation is using is skipped until the next run.
 
 ## No destructive resets
 

@@ -7,6 +7,8 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-30
+
 Every project gets Habi's answer to "what should my agents have here?", before a library is connected.
 
 ### Added
@@ -33,16 +35,16 @@ Every project gets Habi's answer to "what should my agents have here?", before a
   when its description names a technology the project uses (*From its description*). It is
   listed under All skills, said as Habi's reading; the team's own libraries also feed Suggested.
   That reading only ever adds: a description naming something the project lacks leaves the skill
-  under Available to use manually, with the reason saying what was looked for, never under Does
-  not apply or Needs information. Every count of what fits (a project's header, the home page,
-  a library's tooltip) says how many come from descriptions, and `habi recommend` and
-  `habi explain` say whose rule a fit rests on.
+  available to use manually, never under Does not apply. A project's header, the home page and a
+  library's tooltip say how many fits come from descriptions, and `habi recommend` and `habi explain`
+  say whose rule a fit rests on.
 - **See which skills earn their place.** Under All skills, an installed skill says *Used 12× in
   Claude Code here in 30 days* or *Not used in Claude Code here in 30 days · ~40 tokens*, so you can
   remove what you no longer need. Habi reads Claude Code's session history in `~/.claude/projects`
-  for this whenever a project's All skills list opens, as it does on opening a project with something
-  installed. It takes only skill names and times, keeps nothing and sends nothing; Privacy and
-  security says exactly what it reads. Other agents and other people's sessions are not counted.
+  when a project's All skills list opens, as it does on opening a project with something installed.
+  It takes only skill names and times, keeps nothing and sends nothing; Privacy and security says
+  exactly what it reads. Other agents and other people's sessions are not counted, and a skill in a
+  `.claude` folder your repository ignores gets no line yet.
 
 ### Changed
 
@@ -60,8 +62,8 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 
 - **Opening Habi twice at once no longer fails.** The desktop app and the command line opening the
   data folder at the same moment could stop one of them with "restricting …-journal".
-- **A project's page opens faster** with many libraries connected: what a skill says it is for is
-  read once, and a project's skill folders are listed once instead of probed per skill.
+- **A project's page opens faster** with many libraries connected: a project's skill folders are
+  listed once instead of probed per skill.
 - **Installed skills no longer change what a project is.** Scripts and instruction files inside
   a skill folder no longer count as the project's languages or agent instructions.
 - **Next.js on Cloudflare** fits Next.js apps deployed with Wrangler, not every Next.js app, and
@@ -74,12 +76,14 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Your edits survive more kinds of update.** Choosing *Keep* when a library renames a file by
   letter case no longer overwrites your edits, a rename that only changes how an accent is stored
   no longer deletes the file, and a project folder moved after its preview is not recreated.
+  Installing on this machine refuses a folder of yours that holds files the skill doesn't ship.
 - **Editing a skill no longer damages it.** Changing the title no longer deletes a `habi.yaml`
   you are still fixing. Habi no longer saves over a `SKILL.md` or `habi.yaml` that isn't UTF-8
   text, and changing a name or description keeps your comments and values such as `version: 1.10`.
 - **Sharing sends only what you saw.** A library skill with a large file no longer turns into
   deleting the whole skill, a contribution can't remove `SKILL.md`, and a commit removes only
-  files the preview listed: links, submodules and skipped files stay.
+  files the preview listed: links, submodules and skipped files stay. A skill at the very top of
+  its repository can't be shared from Habi, since its files can't be told from the rest.
 - **Send can't be cancelled by mistake.** Once a push has started, Cancel and Esc wait for it
   instead of closing as if it had stopped, and a contribution's actions run one at a time.
 - **A failed save stops retrying on its own.** A full disk or a file over the limit is asked once;
@@ -89,7 +93,8 @@ Every project gets Habi's answer to "what should my agents have here?", before a
   on every later update, or marks it as out of date, and updating now really repairs damaged
   cached content.
 - **Your backups stay when a record is damaged.** Free up space no longer removes the stored
-  files an unreadable operation record may need, and it now asks before clearing anything.
+  files an unreadable operation record may need, and it now asks before clearing anything. Records
+  past what Habi keeps are now also cleared when it starts, at most once a day.
 - **One library, however its address is written.** A repository reached over SSH and over HTTPS
   is recognized as the same library, so a teammate's install matches, and it can't be connected
   twice to the same folder and version. Connecting a catalog library whose name is taken adds a
@@ -105,10 +110,6 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **A `.gitignore` above your repository**, such as `*` in a home folder, no longer hides the project.
 - **Large repositories inspect quickly.** Very large manifests and repositories with thousands of
   modules no longer take minutes; past Habi's limits, the result says what was not read.
-- **Honest use counts.** A transcript line cut short makes counts minimums rather than reading as
-  *Not used*, a refused call no longer makes a skill read as *Not used*, and sessions from another
-  checkout count only when that checkout and the repository name each other. *More skills fit* no
-  longer counts skills you have already installed.
 - **Skills stay fixable.** A skill over the 16 MiB total can still be opened and trimmed, and Habi
   refuses a change that would take it over. Restoring from the trash when the name is taken gives
   the skill a new one instead of disabling both, and one oversized skill in a project no longer
@@ -116,9 +117,8 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Ways out where there were none.** A project that can't be inspected can be removed from where
   it failed, a slow scan can be cancelled, a failed load offers Try again, and removing a project
   or discarding a contribution takes it out of Back.
-- **Smaller fixes.** Renaming a file in a package no longer stops at the letters j and k. Unticked
-  suggestions stay unticked while you read a skill. Opening a skill by name shows that skill when a
-  filter is on. Files with a byte-order mark no longer read as damaged. Case-only renames work.
+- **Smaller fixes.** Renaming a file in a package no longer stops at the letters j and k. Opening a
+  skill by name shows that skill when a filter is on. Files with a byte-order mark no longer read as damaged. Case-only renames work.
   Ctrl+K, N and O in a Mac text field are the system's again. Long names wrap inside their box.
   Disabled Prepare and Connect buttons say why.
 
@@ -130,7 +130,7 @@ Every project gets Habi's answer to "what should my agents have here?", before a
 - **Pointing at a library asks GitHub nothing.** Hovering a catalog card or a library in the
   sidebar sent a request the security model never allowed. Only opening a library's page does.
 - **Your home folder or a whole disk can't be opened as a project**, which also keeps it from being
-  read file by file.
+  read file by file. One added by an earlier version says so, and can be removed from there.
 - **Hostile libraries and files get less far.** A `.gitignore` that is a link to a device or a
   named pipe can't hang or exhaust Habi, and a pointer to another machine in a checkout's Git files
   is never followed. A named pipe can't hang Habi anywhere else either. Huge Markdown can't

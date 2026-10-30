@@ -22,9 +22,9 @@ const SITE = "https://acltabontabon.com/habi/";
 
 /** What a first look at the app shows, in the order a person meets it. Pictures are in docs/media. */
 export const GALLERY = [
+  ["suggested.jpg", "Suggested, for every project", "A short list of skills for this repository, each with its reason and what it costs in context."],
   ["project.jpg", "Fits, and why", "Every skill matched to the repository, with the files and lines behind it."],
   ["explore.jpg", "Explore the catalog", "Fifteen public libraries from the tool builders and the community. Look inside before you connect."],
-  ["my-skills-refresh/after-skills.jpg", "Skills, in the sidebar", "My skills and On this machine are pages of their own, with what has a newer version first."],
   ["install-review.jpg", "See every file first", "Install for seven agent tools; nothing is written until you say so."],
   ["skill-studio.jpg", "The Skill Studio", "Write a skill as one document and test when it would be suggested."],
   ["share-review.jpg", "Send it back", "Preview what leaves your machine, then open a pull request."],

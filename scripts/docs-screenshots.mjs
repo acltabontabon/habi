@@ -112,6 +112,11 @@ async function run() {
     await click(name, ".sidebar-item");
     // A project with nothing installed opens on Suggested, the others on All skills.
     await until(`document.querySelector(".project-head h1")?.textContent.startsWith(${JSON.stringify(name)}) && document.querySelector(".project-body")?.textContent.trim()`, name, 90000);
+    if (name === "storefront-web") {
+      await click("Suggested", ".project-view");
+      await until(`document.querySelector(".kit-section") && document.querySelector(".kit-headline")?.textContent.includes(${JSON.stringify(name)})`, "Suggested");
+      await shot("suggested.jpg");
+    }
   }
   await page(`document.querySelector(".sidebar-brand").click()`);
   await until(`document.querySelectorAll(".loom-row-label").length >= 7 && document.querySelector(".loom-float")`, "the loom");
