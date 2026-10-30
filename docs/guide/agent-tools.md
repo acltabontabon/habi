@@ -78,7 +78,7 @@ Same folder rules apply. Instructions & MCP servers aren't installed this way.
 **Key details:**
 - Habi tracks installs in `~/.habi/lock.json` for updates & removal later
 - Skills you didn't install are never changed (name conflicts are flagged, not overwritten)
-- **My skills → On this machine → History and restore…** previews restores and checks
+- **Skills → On this machine → History and restore…** previews restores and checks
   interrupted operations, including after every managed skill has been removed
 - If a skill exists in both personal and project folders: Claude Code uses personal; Gemini CLI
   uses project; others are unspecified (review notes it)

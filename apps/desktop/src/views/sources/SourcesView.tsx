@@ -51,7 +51,7 @@ function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: str
   return (
     <div className="page connect-page">
       <header className="connect-head">
-        <BackLink fallback={{ name: "sources" }} fallbackLabel="Libraries" />
+        <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
         <p className="kicker">Your own library</p>
         <h1 className="page-title">
           {mode === "git" ? "Connect a Git repository" : "Use a folder as a library"}
@@ -445,43 +445,46 @@ function YourLibraries() {
               ]}
             />
           </div>
-          <div className="lib-cols" aria-hidden="true">
-            <span />
-            <span>Library</span>
-            <span>From</span>
-            <span className="lib-num">Skills</span>
-            <span>State</span>
-          </div>
-          <ol
-            className="lib-ledger"
-            ref={list}
-            aria-label="Your libraries"
-            onKeyDown={rowKeys(list, ".lib-row", filter, (k) => setQuery((cur) => cur + k))}
-          >
-            {shown.map(({ source, origin, entry, state }) => (
-              <li key={source.id}>
-                <button
-                  type="button"
-                  className="lib-row"
-                  onClick={() => navigate({ name: "sources", sourceId: source.id })}
-                  title={entry?.summary}
-                >
-                  <Strand dye={dyes(source.id)} size={18} />
-                  <span className="lib-name">
-                    <span className="library-row-name">{source.name}</span>
-                    <span className="library-row-repo">
-                      {entry?.repo ?? repositoryLabel(source.location)}
-                    </span>
-                  </span>
-                  <span className="lib-from">{originLabel(source, origin)}</span>
-                  <span className="lib-num mono">{source.skillCount}</span>
-                  <span className={`lib-state tone-${state.tone}`}>{state.text}</span>
-                  <Icon name="chevronRight" size={14} className="lib-go" />
-                </button>
-              </li>
-            ))}
-          </ol>
-          {shown.length === 0 ? (
+          {shown.length > 0 ? (
+            <>
+              <div className="lib-cols" aria-hidden="true">
+                <span />
+                <span>Library</span>
+                <span>From</span>
+                <span className="lib-num">Skills</span>
+                <span>State</span>
+              </div>
+              <ol
+                className="lib-ledger"
+                ref={list}
+                aria-label="Your libraries"
+                onKeyDown={rowKeys(list, ".lib-row", filter, (k) => setQuery((cur) => cur + k))}
+              >
+                {shown.map(({ source, origin, entry, state }) => (
+                  <li key={source.id}>
+                    <button
+                      type="button"
+                      className="lib-row"
+                      onClick={() => navigate({ name: "sources", sourceId: source.id })}
+                      title={entry?.summary}
+                    >
+                      <Strand dye={dyes(source.id)} size={18} />
+                      <span className="lib-name">
+                        <span className="library-row-name">{source.name}</span>
+                        <span className="library-row-repo">
+                          {entry?.repo ?? repositoryLabel(source.location)}
+                        </span>
+                      </span>
+                      <span className="lib-from">{originLabel(source, origin)}</span>
+                      <span className="lib-num mono">{source.skillCount}</span>
+                      <span className={`lib-state tone-${state.tone}`}>{state.text}</span>
+                      <Icon name="chevronRight" size={14} className="lib-go" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
             <Empty title={q ? `No library matches “${query}”` : "Nothing here"}>
               <button
                 type="button"
@@ -494,7 +497,7 @@ function YourLibraries() {
                 Show all your libraries
               </button>
             </Empty>
-          ) : null}
+          )}
         </>
       )}
     </div>
@@ -546,50 +549,65 @@ function Explore() {
           <AddLibrary catalog={false} />
         </div>
       </header>
-      <div className="lib-tools">
-        <Filter
-          input={filter}
-          label="Filter libraries"
-          query={query}
-          onQuery={setQuery}
-          onDown={() => grid.current?.querySelector<HTMLButtonElement>(".lib-card")?.focus()}
-        />
-        <Facets
-          label="Show"
-          value={shelf}
-          onChange={setShelf}
-          facets={[
-            { id: "all", label: "All", count: matching.length },
-            {
-              id: "builders",
-              label: "Builders",
-              count: matching.filter((e) => groupOfEntry(e) === "builders").length,
-            },
-            {
-              id: "community",
-              label: "Community",
-              count: matching.filter((e) => groupOfEntry(e) === "community").length,
-            },
-          ]}
-        />
-      </div>
-      <ul
-        className="lib-cards"
-        ref={grid}
-        aria-label="Libraries to explore"
-        onKeyDown={rowKeys(grid, ".lib-card", filter, (k) => setQuery((cur) => cur + k))}
-      >
-        {shown.map((e) => (
-          <ExploreCard key={e.id} entry={e} onOpen={() => navigate({ name: "sources", entry: e.id })} />
-        ))}
-      </ul>
-      {shown.length === 0 ? (
-        <Empty title={q ? `No library matches “${query}”` : "Every catalog library is connected"}>
-          {q
-            ? "Clear the filter to see them all, or bring one of your own."
-            : "Add one of your own from a Git repository or a folder."}
+      {open.length === 0 ? (
+        <Empty title="Every catalog library is connected">
+          Bring one of your own from a Git repository or a folder with Add a library.
         </Empty>
-      ) : null}
+      ) : (
+        <>
+          <div className="lib-tools">
+            <Filter
+              input={filter}
+              label="Filter libraries"
+              query={query}
+              onQuery={setQuery}
+              onDown={() => grid.current?.querySelector<HTMLButtonElement>(".lib-card")?.focus()}
+            />
+            <Facets
+              label="Show"
+              value={shelf}
+              onChange={setShelf}
+              facets={[
+                { id: "all", label: "All", count: matching.length },
+                {
+                  id: "builders",
+                  label: "Builders",
+                  count: matching.filter((e) => groupOfEntry(e) === "builders").length,
+                },
+                {
+                  id: "community",
+                  label: "Community",
+                  count: matching.filter((e) => groupOfEntry(e) === "community").length,
+                },
+              ]}
+            />
+          </div>
+          <ul
+            className="lib-cards"
+            ref={grid}
+            aria-label="Libraries to explore"
+            onKeyDown={rowKeys(grid, ".lib-card", filter, (k) => setQuery((cur) => cur + k))}
+          >
+            {shown.map((e) => (
+              <ExploreCard key={e.id} entry={e} onOpen={() => navigate({ name: "sources", entry: e.id })} />
+            ))}
+          </ul>
+          {shown.length === 0 ? (
+            <Empty title={q ? `No library matches “${query}”` : "Nothing here"}>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  setQuery("");
+                  setShelf("all");
+                }}
+              >
+                Show every library
+              </button>
+            </Empty>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

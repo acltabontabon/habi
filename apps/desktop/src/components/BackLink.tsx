@@ -14,11 +14,14 @@ function useRouteLabel(route: Route | undefined): string | null {
     case "project":
       return recent.data?.find((p) => p.id === route.projectId)?.name ?? "the project";
     case "skills":
-      return route.skillId ? "the skill" : "My skills";
+      if (route.skillId) return "the skill";
+      return route.tab === "machine" ? "On this machine" : "My skills";
     case "contributions":
       return route.contributionId ? "the contribution" : "Contributions";
     case "sources":
-      return route.sourceId || route.entry ? "the library" : "Libraries";
+      if (route.sourceId || route.entry) return "the library";
+      if (route.view === "explore") return "Explore";
+      return route.view ? "Add a library" : "Your libraries";
     case "settings":
       return "Settings";
     case "about":
