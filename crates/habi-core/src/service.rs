@@ -1624,6 +1624,7 @@ impl Habi {
             || now.cwd != shown.cwd
             || now.resolved_program != shown.resolved_program
             || now.item_digest != shown.item_digest
+            || now.script_digest != shown.script_digest
         {
             return Err(HabiError::StalePlan(
                 "the command changed since you previewed it; preview it again".into(),
