@@ -1213,3 +1213,460 @@ fn shared_copies_carry_where_they_came_from() {
         .unwrap();
     assert_eq!(c2.based_on, None);
 }
+
+// ----- only what the preview showed ----------------------------------------------------
+
+impl Setup {
+    fn change_library(&self, change: impl FnOnce(&Path)) {
+        change(&self.lib);
+        git(&self.lib, &["add", "-A"]);
+        git(&self.lib, &["commit", "-qm", "change"]);
+        self.habi
+            .sources()
+            .refresh(&self.source, &CancelToken::new())
+            .unwrap();
+    }
+
+    /// What a commit does to the library, as `<status>\t<path>` lines.
+    fn commit_diff(&self, commit: &str) -> Vec<String> {
+        git(
+            &self.cache(),
+            &[
+                "diff",
+                "--name-status",
+                "--no-renames",
+                &format!("{commit}^"),
+                commit,
+            ],
+        )
+        .lines()
+        .map(str::to_string)
+        .collect()
+    }
+
+    fn validation_errors(&self, id: &str) -> Vec<String> {
+        self.habi
+            .contributions()
+            .preview(id)
+            .unwrap()
+            .validation
+            .iter()
+            .filter(|d| d.level == DiagnosticLevel::Error)
+            .map(|d| d.message.clone())
+            .collect()
+    }
+}
+
+const ITEM: &str = "jpa-entity-review";
+
+fn token() -> String {
+    format!("ghp_{}", "a1B2c3D4e5".repeat(4))
+}
+
+#[test]
+fn a_large_library_file_does_not_turn_a_contribution_into_a_deletion() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    s.change_library(|lib| {
+        std::fs::write(
+            lib.join("skills").join(ITEM).join("diagram.png"),
+            vec![1u8; 1536 * 1024],
+        )
+        .unwrap();
+    });
+    let c = s.library_item(ITEM);
+    assert!(
+        c.files
+            .iter()
+            .all(|f| f.status == DraftFileStatus::Unchanged),
+        "{:?}",
+        c.files
+    );
+    append(&s.staging(&c.id).join("SKILL.md"), "\nOne more line.\n");
+    let done = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    assert_eq!(
+        s.commit_diff(done.commit_id.as_deref().unwrap()),
+        [format!("M\tskills/{ITEM}/SKILL.md")]
+    );
+}
+
+#[test]
+fn a_staging_folder_that_cannot_be_read_stops_preparing() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item(ITEM);
+    let staging = s.staging(&c.id);
+
+    // Too large for a contribution: said plainly, and nothing reads as removed.
+    let big = staging.join("assets/diagram.png");
+    std::fs::create_dir_all(big.parent().unwrap()).unwrap();
+    std::fs::write(&big, vec![0u8; 2 * 1024 * 1024 + 1]).unwrap();
+    let err = s.habi.contributions().preview(&c.id).unwrap_err();
+    assert!(err.to_string().contains("assets/diagram.png"), "{err}");
+    assert!(s.habi.commit_contribution(&c.id, &cancel).is_err());
+    std::fs::remove_file(&big).unwrap();
+
+    // A name Habi cannot store.
+    let odd = staging.join("what?.md");
+    if std::fs::write(&odd, "x").is_ok() {
+        assert!(s.habi.contributions().preview(&c.id).is_err());
+        std::fs::remove_file(&odd).unwrap();
+    }
+    #[cfg(unix)]
+    {
+        let link = staging.join("link.md");
+        std::os::unix::fs::symlink("SKILL.md", &link).unwrap();
+        assert!(s.habi.commit_contribution(&c.id, &cancel).is_err());
+        std::fs::remove_file(&link).unwrap();
+    }
+    assert!(git(&s.lib, &["branch", "--list", &c.branch]).is_empty());
+    assert!(s.habi.contributions().preview(&c.id).is_ok());
+}
+
+#[test]
+fn removing_skill_md_is_refused_unless_that_change_is_left_out() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let c = s.library_item(ITEM);
+    let staging = s.staging(&c.id);
+    std::fs::write(staging.join("note.md"), "a note\n").unwrap();
+    std::fs::remove_file(staging.join("SKILL.md")).unwrap();
+    let errors = s.validation_errors(&c.id);
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.contains("delete the skill's SKILL.md")),
+        "{errors:?}"
+    );
+    assert!(s.habi.commit_contribution(&c.id, &cancel).is_err());
+
+    // Left out, the library's SKILL.md stays and the rest can go.
+    s.habi
+        .select_contribution_files(&c.id, &[format!("skills/{ITEM}/SKILL.md")])
+        .unwrap();
+    assert!(s.validation_errors(&c.id).is_empty());
+    let done = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    assert_eq!(
+        s.commit_diff(done.commit_id.as_deref().unwrap()),
+        [format!("A\tskills/{ITEM}/note.md")]
+    );
+
+    // An empty staging folder is the same refusal, not a deletion.
+    let d = s.library_item(ITEM);
+    std::fs::remove_dir_all(s.staging(&d.id)).unwrap();
+    assert!(s.habi.commit_contribution(&d.id, &cancel).is_err());
+}
+
+#[test]
+fn a_commit_removes_only_what_the_preview_listed() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    s.change_library(|lib| {
+        let dir = lib.join("skills").join(ITEM);
+        // Above the limit for reading a library file: skipped when fetched.
+        std::fs::write(dir.join("big.bin"), vec![b'y'; 2 * 1024 * 1024 + 1]).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("SKILL.md", dir.join("link.md")).unwrap();
+    });
+    let c = s.library_item(ITEM);
+    let shown: Vec<&str> = c.files.iter().map(|f| f.path.as_str()).collect();
+    assert!(
+        !shown
+            .iter()
+            .any(|p| p.ends_with("big.bin") || p.ends_with("link.md"))
+    );
+    let staging = s.staging(&c.id);
+    append(&staging.join("SKILL.md"), "\nOne more line.\n");
+    std::fs::write(staging.join("added.md"), "added\n").unwrap();
+
+    let first = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    let first_commit = first.commit_id.clone().unwrap();
+    assert_eq!(
+        s.commit_diff(&first_commit),
+        [
+            format!("M\tskills/{ITEM}/SKILL.md"),
+            format!("A\tskills/{ITEM}/added.md")
+        ],
+        "and not `D` for what the preview never listed"
+    );
+    let folder = format!("skills/{ITEM}");
+    let files = tree_files(&s, &first_commit, &folder);
+    assert!(files.contains(&format!("{folder}/big.bin")), "{files:?}");
+
+    // Backing out of a revision brings back only the files of that version.
+    s.habi.revise_contribution(&c.id).unwrap();
+    s.habi.cancel_contribution_revision(&c.id).unwrap();
+    assert!(!staging.join("link.md").exists());
+    assert!(!staging.join("big.bin").exists());
+    assert!(staging.join("added.md").exists());
+
+    // A file an earlier revision added was in a preview: it can go again.
+    s.habi.revise_contribution(&c.id).unwrap();
+    std::fs::remove_file(staging.join("added.md")).unwrap();
+    append(&staging.join("SKILL.md"), "\nAnd another.\n");
+    let second = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    let second_commit = second.commit_id.clone().unwrap();
+    assert_eq!(
+        s.commit_diff(&second_commit),
+        [
+            format!("M\tskills/{ITEM}/SKILL.md"),
+            format!("D\tskills/{ITEM}/added.md")
+        ]
+    );
+    assert!(tree_files(&s, &second_commit, &folder).contains(&format!("{folder}/big.bin")));
+
+    // And what the library lists, removed on purpose, still goes.
+    let d = s.library_item(ITEM);
+    let readme = d
+        .files
+        .iter()
+        .find(|f| !f.path.ends_with("SKILL.md") && !f.path.ends_with("habi.yaml"))
+        .map(|f| f.path.clone());
+    if let Some(path) = readme {
+        let name = path.strip_prefix(&format!("{folder}/")).unwrap();
+        std::fs::remove_file(s.staging(&d.id).join(name)).unwrap();
+        let done = s.habi.commit_contribution(&d.id, &cancel).unwrap();
+        assert!(
+            s.commit_diff(done.commit_id.as_deref().unwrap())
+                .contains(&format!("D\t{path}"))
+        );
+    }
+}
+
+#[test]
+fn preparing_works_when_the_cache_lacks_a_blob_elsewhere_in_the_library() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    s.change_library(|lib| {
+        std::fs::create_dir_all(lib.join("other")).unwrap();
+        std::fs::write(lib.join("other/huge.bin"), vec![b'z'; 1024]).unwrap();
+    });
+    let c = s.library_item(ITEM);
+    // As after a filtered fetch: the tree names the blob, the cache lacks it.
+    let cache = s.cache();
+    let oid = git(
+        &cache,
+        &["rev-parse", &format!("{}:other/huge.bin", c.base_commit)],
+    );
+    let (head, rest) = oid.split_at(2);
+    let object = cache.join("objects").join(head).join(rest);
+    // Git keeps objects read-only, and Windows will not delete those.
+    let mut permissions = std::fs::metadata(&object).unwrap().permissions();
+    #[allow(
+        clippy::permissions_set_readonly_false,
+        reason = "a temporary test repository"
+    )]
+    permissions.set_readonly(false);
+    std::fs::set_permissions(&object, permissions).unwrap();
+    std::fs::remove_file(&object).unwrap();
+
+    append(&s.staging(&c.id).join("SKILL.md"), "\nOne more line.\n");
+    let done = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    assert_eq!(
+        s.commit_diff(done.commit_id.as_deref().unwrap()),
+        [format!("M\tskills/{ITEM}/SKILL.md")]
+    );
+}
+
+#[test]
+fn secrets_outside_file_contents_block_a_contribution() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let token = token();
+    let c = s.library_item(ITEM);
+    let staging = s.staging(&c.id);
+    append(&staging.join("SKILL.md"), "\nOne more line.\n");
+
+    let named = staging.join(format!("{token}.md"));
+    std::fs::write(&named, "harmless\n").unwrap();
+    let errors = s.validation_errors(&c.id);
+    assert!(errors.iter().any(|e| e.contains("name")), "{errors:?}");
+    assert!(s.habi.commit_contribution(&c.id, &cancel).is_err());
+    std::fs::remove_file(&named).unwrap();
+    assert!(s.validation_errors(&c.id).is_empty());
+
+    let form = s.habi.contributions().preview(&c.id).unwrap().form;
+    for (title, message, field) in [
+        (format!("Share {token}"), String::new(), "title"),
+        ("Share".to_string(), format!("token {token}"), "message"),
+    ] {
+        s.habi
+            .update_contribution(&c.id, &title, &message, &form)
+            .unwrap();
+        let errors = s.validation_errors(&c.id);
+        assert!(errors.iter().any(|e| e.contains(field)), "{errors:?}");
+        assert!(s.habi.commit_contribution(&c.id, &cancel).is_err());
+    }
+    s.habi
+        .update_contribution(&c.id, "Share", "", &form)
+        .unwrap();
+    s.habi.commit_contribution(&c.id, &cancel).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_named_pipe_in_a_skill_folder_is_refused_without_waiting() {
+    let s = setup();
+    let proj = tempfile::tempdir().unwrap();
+    let dir = proj.path().join(".claude/skills/piped");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("SKILL.md"),
+        "---\nname: piped\ndescription: Thing. Use when asked.\n---\nBody\n",
+    )
+    .unwrap();
+    let made = Command::new("mkfifo")
+        .arg(dir.join("pipe"))
+        .status()
+        .unwrap();
+    assert!(made.success());
+    let project = s.habi.open_project(proj.path()).unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    let source = s.source.clone();
+    let habi = std::sync::Arc::new(s);
+    let shared = habi.clone();
+    std::thread::spawn(move || {
+        let started = shared.habi.start_contribution(
+            &source,
+            ContributionOrigin::ProjectSkill {
+                project_id: project.id,
+                path: ".claude/skills/piped".into(),
+            },
+        );
+        let _ = tx.send(started.map(|_| ()).map_err(|e| e.to_string()));
+    });
+    let outcome = rx
+        .recv_timeout(Duration::from_secs(20))
+        .expect("it answers instead of waiting on the pipe");
+    let err = outcome.unwrap_err();
+    assert!(err.contains("not a regular file"), "{err}");
+}
+
+#[test]
+fn a_skill_at_the_top_of_a_repository_is_refused_in_plain_words() {
+    let home = tempfile::tempdir().unwrap();
+    let lib = tempfile::tempdir().unwrap();
+    std::fs::write(
+        lib.path().join("SKILL.md"),
+        "---\nname: rooted\ndescription: Thing. Use when asked.\n---\nBody\n",
+    )
+    .unwrap();
+    git(lib.path(), &["init", "-q"]);
+    git(lib.path(), &["add", "-A"]);
+    git(lib.path(), &["commit", "-qm", "init"]);
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf())).unwrap();
+    let source = habi
+        .sources()
+        .add(&NewSource {
+            name: "Root".into(),
+            location: lib.path().to_string_lossy().into(),
+            subdir: None,
+            tracked: TrackedRef::Default,
+        })
+        .unwrap();
+    habi.sources()
+        .refresh(&source.id, &CancelToken::new())
+        .unwrap();
+    let index = habi.sources().index(&source.id).unwrap();
+    let item = index.items.first().expect("the skill is found");
+    assert_eq!(item.path, "");
+    let err = habi
+        .start_contribution(
+            &source.id,
+            ContributionOrigin::LibraryItem {
+                item_id: item.id.clone(),
+            },
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("top of its repository"), "{err}");
+    assert!(!err.to_string().contains("relative path"), "{err}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_script_made_executable_in_staging_commits_as_executable() {
+    use std::os::unix::fs::PermissionsExt;
+    let s = setup();
+    let c = s.library_item(ITEM);
+    let script = s.staging(&c.id).join("run.sh");
+    std::fs::write(&script, "#!/bin/sh\n").unwrap();
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let done = s
+        .habi
+        .commit_contribution(&c.id, &CancelToken::new())
+        .unwrap();
+    let tree = git(
+        &s.cache(),
+        &[
+            "ls-tree",
+            done.commit_id.as_deref().unwrap(),
+            &format!("skills/{ITEM}/run.sh"),
+        ],
+    );
+    assert!(tree.starts_with("100755 "), "{tree}");
+}
+
+#[test]
+fn a_first_version_is_copied_again_and_says_so_before_preparing() {
+    let s = setup();
+    let cancel = CancelToken::new();
+    let skill = s
+        .habi
+        .create_skill(
+            &habi_core::skills::NewSkill {
+                title: "Fresh skill".into(),
+                description: "Does a thing. Use when asked.".into(),
+                ..Default::default()
+            },
+            None,
+        )
+        .unwrap();
+    let id = skill.summary.id.clone();
+    let c = s
+        .habi
+        .start_contribution(
+            &s.source,
+            ContributionOrigin::LocalSkill {
+                skill_id: id.clone(),
+            },
+        )
+        .unwrap();
+    let mut form = c.form.clone();
+    form.owner = "Data Guild".into();
+    form.title = "Fresh skill, renamed".into();
+    s.habi
+        .update_contribution(&c.id, "Share Fresh skill", "", &form)
+        .unwrap();
+
+    // Edited in My skills after the preview.
+    s.habi
+        .skills()
+        .write_file(&id, "references/later.md", "written later\n", None)
+        .unwrap();
+    let err = s.habi.commit_contribution(&c.id, &cancel).unwrap_err();
+    assert_eq!(err.to_info().code, "stalePlan", "{err}");
+    assert!(git(&s.cache(), &["branch", "--list", &c.branch]).is_empty());
+
+    // The preview now says what would leave, form changes included.
+    let now = s.habi.contributions().preview(&c.id).unwrap();
+    let later = format!("{}/references/later.md", now.item_path);
+    assert!(
+        now.files
+            .iter()
+            .any(|f| f.path == later && f.status == DraftFileStatus::Added),
+        "{:?}",
+        now.files
+    );
+    assert_eq!(now.form.owner, "Data Guild");
+
+    let done = s.habi.commit_contribution(&c.id, &cancel).unwrap();
+    let commit = done.commit_id.as_deref().unwrap();
+    let content = git(&s.cache(), &["show", &format!("{commit}:{later}")]);
+    assert_eq!(content, "written later");
+    let metadata = git(
+        &s.cache(),
+        &["show", &format!("{commit}:{}/habi.yaml", now.item_path)],
+    );
+    assert!(metadata.contains("Data Guild"), "{metadata}");
+    assert!(metadata.contains("Fresh skill, renamed"), "{metadata}");
+}
