@@ -268,7 +268,7 @@ fn nesting_is_found_past_siblings_that_sort_in_between() {
     assert!(
         root.diagnostics
             .iter()
-            .any(|d| d.message.contains("nested inside the skill ``"))
+            .any(|d| d.message.contains("inside the skill at the root"))
     );
 }
 
