@@ -77,11 +77,9 @@ impl Skills<'_> {
                 snapshot,
                 ..
             } => {
-                for source in sources
-                    .list()?
-                    .into_iter()
-                    .filter(|s| portable_identity(s) == *source_identity)
-                {
+                for source in sources.list()?.into_iter().filter(|s| {
+                    crate::source::same_repository(&portable_identity(s), source_identity)
+                }) {
                     let Ok(index) = sources.index_at(&source.id, snapshot) else {
                         continue;
                     };

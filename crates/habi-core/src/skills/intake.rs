@@ -622,8 +622,11 @@ impl Skills<'_> {
                 skip("it is no longer at the source".into());
                 continue;
             };
-            if !package.tree.skipped.is_empty() {
-                skip("some of its files cannot be copied (links or oversized files), so importing would lose content".into());
+            if let Some(first) = package.tree.skipped.first() {
+                skip(format!(
+                    "some of its files cannot be copied, so importing would lose content: {}",
+                    first.message
+                ));
                 continue;
             }
             if !package.tree.files.contains_key(SKILL_FILE) {
@@ -656,11 +659,13 @@ impl Skills<'_> {
                     skip(format!("the identifier `{wanted}` {e}"));
                     continue;
                 }
-                let text = tree
-                    .files
-                    .get(SKILL_FILE)
-                    .map(|b| String::from_utf8_lossy(b).into_owned())
-                    .unwrap_or_default();
+                // Renaming writes SKILL.md back, which must not replace bytes it could not read.
+                let Ok(text) =
+                    String::from_utf8(tree.files.get(SKILL_FILE).cloned().unwrap_or_default())
+                else {
+                    skip("its SKILL.md is not UTF-8 text, so it could not be renamed".into());
+                    continue;
+                };
                 match rename_in_skill_md(&text, &wanted) {
                     Ok(renamed) => {
                         tree.files.insert(SKILL_FILE.into(), renamed.into_bytes());

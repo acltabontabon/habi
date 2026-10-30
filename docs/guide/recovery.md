@@ -64,7 +64,7 @@ installed without MCP configuration are not offered any.
 | Situation | What happens |
 |---|---|
 | A network or sign-in failure on refresh | The last good snapshot stays; the library is marked stale with the error and its time. |
-| Interrupted fetch | Git's own atomic ref updates leave the bare cache usable; the next refresh retries. |
+| Interrupted fetch | A stopped fetch is asked to clean up after itself; anything left is cleared before the next refresh, which retries. A cancelled refresh is not recorded as a failure. |
 | Corrupted cached content | Blob reads verify SHA-256; corruption is reported and a refresh restores the content. |
 | Corrupted snapshot metadata | Reported with a prompt to refresh the library; other libraries are unaffected. |
 | A tag moved or history was rewritten | A warning on the library; updates must still be reviewed before they are applied. |

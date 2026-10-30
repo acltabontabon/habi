@@ -46,7 +46,7 @@ pub const LOCAL_SOURCE_ID: &str = "local";
 pub const LOCAL_SOURCE_NAME: &str = "My skills";
 
 pub(crate) const MAX_FILES: usize = 200;
-pub(crate) const MAX_FILE_BYTES: u64 = 1024 * 1024;
+pub(crate) const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_TEXT: usize = 512 * 1024;
 const MAX_TOTAL_BYTES: u64 = 16 * 1024 * 1024;
 
@@ -533,10 +533,8 @@ fn refuse_build_folder(rel: &RelPath, name: &str) -> HabiError {
 }
 
 /// A path as a case-insensitive volume sees it.
-// TODO(fold_path): use `crate::paths::fold_path` when it lands; it also folds
-// Unicode normalization.
 fn fold(path: &str) -> String {
-    path.to_lowercase()
+    crate::paths::fold_path(path)
 }
 
 /// Two of `paths` that would be one file on macOS and Windows, if any.

@@ -136,7 +136,7 @@ function Row({
         ) : null}
         {blocked ? (
           <span className="mach-note field-problem">
-            Some of its files cannot be copied (links or oversized files), so Habi will not import it.
+            Some of its files cannot be copied, so Habi will not import it.
           </span>
         ) : null}
       </div>

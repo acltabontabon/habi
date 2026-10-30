@@ -1955,7 +1955,7 @@ impl<'a> Contributions<'a> {
                 )
             }
         };
-        if identity == crate::source::portable_identity(destination)
+        if crate::source::same_repository(&identity, &crate::source::portable_identity(destination))
             || identity.starts_with("local:")
             || crate::source::is_local_location(&identity)
         {
@@ -1963,7 +1963,7 @@ impl<'a> Contributions<'a> {
         }
         if destination.role == crate::source::SourceRole::Community {
             let from_community = self.sources.list().ok()?.iter().any(|s| {
-                crate::source::portable_identity(s) == identity
+                crate::source::same_repository(&crate::source::portable_identity(s), &identity)
                     && s.role == crate::source::SourceRole::Community
             });
             if !from_community {

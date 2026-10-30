@@ -522,3 +522,12 @@ fn upkeep_runs_at_most_once_a_day() {
             .is_none()
     );
 }
+
+#[test]
+fn one_repository_has_one_key_however_its_address_is_written() {
+    use habi_core::install::lock::lock_key;
+    let https = lock_key("https://github.com/acme/skills.git", "jpa");
+    assert_eq!(https, lock_key("git@github.com:Acme/Skills.git", "jpa"));
+    assert_eq!(https, lock_key("ssh://git@github.com/acme/skills", "jpa"));
+    assert_ne!(https, lock_key("https://github.com/acme/other", "jpa"));
+}

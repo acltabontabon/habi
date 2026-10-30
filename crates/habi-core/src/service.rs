@@ -1806,7 +1806,7 @@ impl Habi {
             .list()
             .ok()?
             .into_iter()
-            .find(|s| portable_identity(s) == identity)?;
+            .find(|s| crate::source::same_repository(&portable_identity(s), identity))?;
         let index = self.sources.index(&source.id).ok()?;
         let item = index.items.iter().find(|i| i.id == item_id)?;
         Some(self.upstream_of(&source, item))
@@ -1835,7 +1835,8 @@ impl Habi {
                         .unwrap_or_else(|e| crate::skills::unread_package(&dir, &e));
                     let skill_md = format!("{}/{}", found.path, crate::library::SKILL_FILE);
                     let installed = lock.items.iter().find(|i| {
-                        i.source.identity != mine && i.files.iter().any(|f| f.path == skill_md)
+                        !crate::source::same_repository(&i.source.identity, &mine)
+                            && i.files.iter().any(|f| f.path == skill_md)
                     });
                     packages.push(Package {
                         tree,
@@ -2120,10 +2121,13 @@ impl Habi {
                             library: i.source_name.clone(),
                             clients: i.clients.clone(),
                             library_item_key: libraries.iter().find_map(|(source, index)| {
-                                (portable_identity(source) == owner.source.identity)
-                                    .then(|| index.items.iter().find(|item| item.id == owner.id))
-                                    .flatten()
-                                    .map(|item| item.key.clone())
+                                crate::source::same_repository(
+                                    &portable_identity(source),
+                                    &owner.source.identity,
+                                )
+                                .then(|| index.items.iter().find(|item| item.id == owner.id))
+                                .flatten()
+                                .map(|item| item.key.clone())
                             }),
                             state: i.state,
                         }
@@ -2276,7 +2280,11 @@ impl Habi {
             let Ok(lock) = read_lock(&project.root) else {
                 continue;
             };
-            for item in lock.items.iter().filter(|i| i.source.identity == identity) {
+            for item in lock
+                .items
+                .iter()
+                .filter(|i| crate::source::same_repository(&i.source.identity, &identity))
+            {
                 let Some(skill_id) = ids.get(&item.id) else {
                     continue;
                 };
