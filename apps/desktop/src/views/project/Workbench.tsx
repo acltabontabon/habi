@@ -398,6 +398,7 @@ export function Workbench({
               const shown = group === "notApplicable" ? showNotApplicable : showAvailable;
               const setShown = group === "notApplicable" ? setShowNotApplicable : setShowAvailable;
               const members = membersOf(group);
+              const tops = members.filter((r) => r.top);
               const collapsed = collapsible && !shown;
               return (
                 <section key={group} className="rec-group" aria-labelledby={`group-${group}`}>
@@ -448,7 +449,16 @@ export function Workbench({
                         : null}
                     </p>
                   ) : null}
-                  {members.length > 0 ? <ul className="rec-list">{members.map(row)}</ul> : null}
+                  {tops.length > 0 && tops.length < members.length ? (
+                    <>
+                      <h3 className="rec-subhead">Start with these</h3>
+                      <ul className="rec-list">{tops.map(row)}</ul>
+                      <h3 className="rec-subhead">Also fits</h3>
+                      <ul className="rec-list">{members.filter((r) => !r.top).map(row)}</ul>
+                    </>
+                  ) : members.length > 0 ? (
+                    <ul className="rec-list">{members.map(row)}</ul>
+                  ) : null}
                 </section>
               );
             })}

@@ -20,6 +20,8 @@ use ts_rs::TS;
 /// and a repository can have thousands of modules.
 const MAX_EXPLAINED_MODULES: usize = 200;
 const SHORT_REASON: usize = 160;
+/// Different reasons spelled out in one line; more are counted.
+const MAX_REASONS: usize = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -179,6 +181,89 @@ fn true_leaves(node: &EvalNode) -> Vec<String> {
         }],
         _ => Vec::new(),
     }
+}
+
+/// The leaves that held, as themselves: the conditions a module met.
+fn held_leaves<'n>(node: &'n EvalNode, out: &mut Vec<&'n EvalNode>) {
+    match &node.condition {
+        Condition::All { .. } | Condition::Any { .. } => {
+            for child in node.children.iter().filter(|c| c.outcome == Tri::True) {
+                held_leaves(child, out);
+            }
+        }
+        Condition::Not { .. } => {}
+        _ if node.outcome == Tri::True => out.push(node),
+        _ => {}
+    }
+}
+
+/// What held wherever the item applies, in plain words and without repeats
+/// ("uses React"): what the item is matched on, whichever file showed it.
+pub fn held_conditions(result: &ApplicabilityResult) -> Vec<String> {
+    let mut held = Vec::new();
+    for m in &result.modules {
+        if m.applicability != Applicability::Applies {
+            continue;
+        }
+        let mut leaves = Vec::new();
+        if let Some(node) = &m.applies {
+            held_leaves(node, &mut leaves);
+        }
+        for leaf in leaves {
+            if !held.contains(&leaf.summary) {
+                held.push(leaf.summary.clone());
+            }
+        }
+    }
+    held
+}
+
+/// Whether a module meets a rule only through facts about the whole repository:
+/// one `.github` folder is not a fact about each crate.
+fn rests_on_repository(node: &EvalNode, inspection: &ProjectInspection) -> bool {
+    let mut leaves = Vec::new();
+    held_leaves(node, &mut leaves);
+    !leaves.is_empty()
+        && leaves.iter().all(|leaf| {
+            !leaf.facts.is_empty()
+                && leaf
+                    .facts
+                    .iter()
+                    .filter_map(|id| inspection.fact(id))
+                    .all(eval::repository_level)
+        })
+}
+
+/// Why several modules apply. Each reason is said once, with the modules it
+/// holds for; a rule that holds differently in each does not get one module's
+/// reason for all of them.
+fn modules_reason(applying: &[&ModuleMatch], total: usize) -> String {
+    let mut groups: Vec<(Vec<String>, &ModuleMatch, Vec<&str>)> = Vec::new();
+    for m in applying {
+        let mut leaves = Vec::new();
+        if let Some(node) = &m.applies {
+            held_leaves(node, &mut leaves);
+        }
+        let held: Vec<String> = leaves.iter().map(|l| l.summary.clone()).collect();
+        match groups.iter_mut().find(|(h, _, _)| *h == held) {
+            Some((_, _, names)) => names.push(&m.module_name),
+            None => groups.push((held, m, vec![&m.module_name])),
+        }
+    }
+    let count = format!("Applies to {} of {total} modules", applying.len());
+    if let [(_, first, names)] = groups.as_slice() {
+        return format!("{count} ({}) — {}", names.join(", "), first.reason);
+    }
+    let left_out = groups.len().saturating_sub(MAX_REASONS);
+    let mut parts: Vec<String> = groups
+        .iter()
+        .take(MAX_REASONS)
+        .map(|(_, first, names)| format!("{}: {}", names.join(", "), first.reason))
+        .collect();
+    if left_out > 0 {
+        parts.push(format!("and {left_out} more"));
+    }
+    format!("{count} — {}", parts.join("; "))
 }
 
 /// Number of predicates in a tree that rest on concrete evidence.
@@ -341,16 +426,17 @@ pub fn assess_in(
     let reason = match best {
         Applicability::Applies if scope == Scope::Repository => first_reason,
         Applicability::Applies if inspection.modules.len() == 1 => first_reason,
-        Applicability::Applies => {
-            let names: Vec<&str> = applying.iter().map(|m| m.module_name.as_str()).collect();
-            format!(
-                "Applies to {} of {} modules ({}) — {}",
-                applying.len(),
-                inspection.modules.len(),
-                names.join(", "),
-                first_reason
-            )
+        Applicability::Applies
+            if applying.len() == modules.len()
+                && applying.iter().all(|m| {
+                    m.applies
+                        .as_ref()
+                        .is_some_and(|n| rests_on_repository(n, inspection))
+                }) =>
+        {
+            format!("Applies to the whole repository — {first_reason}")
         }
+        Applicability::Applies => modules_reason(&applying, inspection.modules.len()),
         Applicability::DoesNotApply if modules.len() > 1 => {
             // Cite the most informative module: an exclusion, then the module
             // whose evaluation rests on the most evidence (facts, files or

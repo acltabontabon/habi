@@ -467,7 +467,16 @@ pub fn inspection(i: &ProjectInspection) {
             .unwrap_or_default()
     );
     if i.repository.is_monorepo {
-        println!("monorepo: {}", i.repository.workspace_signals.join(", "));
+        if i.repository.workspace_signals.is_empty() {
+            let manifests = i
+                .modules
+                .iter()
+                .filter(|m| !m.ecosystems.is_empty())
+                .count();
+            println!("monorepo: {manifests} modules with their own manifests");
+        } else {
+            println!("monorepo: {}", i.repository.workspace_signals.join(", "));
+        }
     }
     for m in &i.modules {
         let tags: Vec<String> = i
@@ -568,7 +577,12 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
             continue;
         }
         println!("\n{}", group_label(group));
-        for r in members {
+        let tops = members.iter().filter(|r| r.top).count();
+        if tops > 0 {
+            println!("  Start with these");
+        }
+        let last_top = members.iter().rposition(|r| r.top);
+        for (at, r) in members.iter().enumerate() {
             shown += 1;
             let required =
                 if r.item.requirement == Requirement::Required && group != Group::Required {
@@ -596,6 +610,9 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
                 line.push_str(&format!(" · next: {next}"));
             }
             println!("{line}");
+            if last_top == Some(at) && at + 1 < members.len() {
+                println!("  Also fits ({})", members.len() - at - 1);
+            }
         }
     }
     let hidden = o
@@ -603,13 +620,30 @@ pub fn recommendations(o: &ProjectOverview, all: bool) {
         .iter()
         .filter(|r| r.group == Group::NotApplicable)
         .count();
+    // What Habi read a rule from and did not find here is not the same as what
+    // says nothing Habi can read.
     let mut unmatched: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut absent = 0usize;
     for r in o
         .recommendations
         .iter()
         .filter(|r| r.group == Group::Available && r.install_state == InstallState::NotInstalled)
     {
-        *unmatched.entry(r.item.source_name.as_str()).or_default() += 1;
+        if r.basis == Basis::Described {
+            absent += 1;
+        } else {
+            *unmatched.entry(r.item.source_name.as_str()).or_default() += 1;
+        }
+    }
+    if !all && absent > 0 {
+        println!(
+            "\n{} Habi did not find here.",
+            if absent == 1 {
+                "1 item is for a technology".to_string()
+            } else {
+                format!("{absent} items are for technologies")
+            },
+        );
     }
     if !all && !unmatched.is_empty() {
         let total: usize = unmatched.values().sum();

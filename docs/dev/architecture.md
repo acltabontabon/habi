@@ -41,7 +41,8 @@
 - **`matching`**: `Condition` (all/any/not + dependency/file/tag), three-valued evaluation
   with explanation trees, user `Declaration`s, per-module assessment. `described` reads a rule
   from a skill's name and description (a fixed lexicon of the technologies Habi detects) for
-  skills with no rule from their author or the catalog.
+  skills with no rule from their author or the catalog, only from what the skill is about: what
+  it merely names stays unmatched, with the reason.
 - **`library`**: reads a snapshot into a `LibraryIndex`: `SKILL.md` frontmatter, optional
   `habi.yaml`, `habi-library.yaml` instructions, diagnostics, provenance, the static `signals`
   read from a skill's files, and which siblings a skill calls by name (`calls`).

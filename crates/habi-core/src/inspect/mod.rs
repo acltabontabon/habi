@@ -893,6 +893,9 @@ fn inspect_within(
                             .entry(c.module.clone())
                             .or_insert_with(|| n.clone());
                     }
+                    if c.workspace {
+                        signals.push(format!("Cargo workspace in {p}"));
+                    }
                     crates.push(c);
                 }
                 Err(e) => out.coverage(&dir_of(p), "cargo", CoverageStatus::Failed, vec![e]),
@@ -1037,7 +1040,7 @@ fn inspect_within(
     }
 
     // Modules.
-    let modules: Vec<Module> = module_ecosystems
+    let mut modules: Vec<Module> = module_ecosystems
         .iter()
         .map(|(id, ecosystems)| {
             let parent = if id == "." {
@@ -1062,6 +1065,23 @@ fn inspect_within(
             }
         })
         .collect();
+    // Two manifests can share a name (an app and its native shell); a list of
+    // modules still has to tell them apart.
+    let mut names_seen: BTreeSet<String> = BTreeSet::new();
+    for m in &mut modules {
+        if !names_seen.contains(&m.name) {
+            names_seen.insert(m.name.clone());
+            continue;
+        }
+        let folder = m.id.rsplit('/').next().unwrap_or(&m.id);
+        let longer = format!("{}/{folder}", m.name);
+        m.name = if names_seen.contains(&longer) {
+            m.id.clone()
+        } else {
+            longer
+        };
+        names_seen.insert(m.name.clone());
+    }
 
     let mut repository = repo::describe(&root);
     signals.sort();

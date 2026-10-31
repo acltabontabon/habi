@@ -95,6 +95,14 @@ const NAME_ROLES: &[(&str, &str)] = &[
     ("**/*.jmx", "test-config:jmeter"),
     ("**/karma.conf.*", "test-config:karma"),
     ("**/*.postman_collection.json", "test-config:postman"),
+    ("**/wrangler.toml", "cloud:wrangler-config"),
+    ("wrangler.toml", "cloud:wrangler-config"),
+    ("**/wrangler.json", "cloud:wrangler-config"),
+    ("wrangler.json", "cloud:wrangler-config"),
+    ("**/wrangler.jsonc", "cloud:wrangler-config"),
+    ("wrangler.jsonc", "cloud:wrangler-config"),
+    ("**/vercel.json", "cloud:vercel-config"),
+    ("vercel.json", "cloud:vercel-config"),
 ];
 
 /// Roles told by where a file sits. Plain comparisons: a pattern with a folder in

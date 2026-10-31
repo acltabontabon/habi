@@ -181,6 +181,7 @@ PHP `framework:laravel · symfony`, `orm:doctrine`, `test:phpunit`;
 data engineering `data:dbt` (also from `dbt_project.yml`) `· airflow · dagster · prefect ·
 spark · beam · kafka · great-expectations · pandas · polars · duckdb · databricks · delta · mlflow ·
 jupyter`,
+where it runs and what it talks to `cloud:azure · aws · gcp · cloudflare · vercel` (Cloudflare and Vercel also from `wrangler.*` and `vercel.json`), `sdk:twilio · stripe · firebase · supabase · sentry · openai · mcp`, `framework:react-native · tailwind`, `api:graphql`, `db:postgres`;
 infrastructure `infra:terraform · terragrunt · helm · kubernetes · kustomize · ansible · pulumi`,
 `agents:agents-md · claude-md · cursor-rules · skills`,
 and languages from source extensions: `lang:java · kotlin · typescript · javascript · python · go · rust · csharp · php · scala · shell · hcl`.

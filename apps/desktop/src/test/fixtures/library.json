@@ -1,14 +1,14 @@
 {
-  "sourceId": "58d98d15525b",
-  "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+  "sourceId": "93c7fc98d13b",
+  "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
   "name": "Example team library",
   "owner": "Platform Guild (example)",
   "description": "Shared review workflows and conventions for the example team's Java services and web apps.",
   "contact": "#platform-guild (example channel)",
   "items": [
     {
-      "key": "58d98d15525b/api-contract-review",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/api-contract-review",
+      "sourceId": "93c7fc98d13b",
       "id": "api-contract-review",
       "kind": "workflow",
       "title": "API contract review",
@@ -99,8 +99,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/frontend-test-practices",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/frontend-test-practices",
+      "sourceId": "93c7fc98d13b",
       "id": "frontend-test-practices",
       "kind": "skill",
       "title": "Front-end test practices",
@@ -195,8 +195,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/github-pr-summary",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/github-pr-summary",
+      "sourceId": "93c7fc98d13b",
       "id": "github-pr-summary",
       "kind": "skill",
       "title": "GitHub PR summary",
@@ -282,8 +282,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/incident-notes",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/incident-notes",
+      "sourceId": "93c7fc98d13b",
       "id": "incident-notes",
       "kind": "skill",
       "title": "Incident notes",
@@ -325,8 +325,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/java-service-conventions",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/java-service-conventions",
+      "sourceId": "93c7fc98d13b",
       "id": "java-service-conventions",
       "kind": "instructions",
       "title": "Java service conventions",
@@ -382,8 +382,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/jooq-query-review",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/jooq-query-review",
+      "sourceId": "93c7fc98d13b",
       "id": "jooq-query-review",
       "kind": "skill",
       "title": "jOOQ query review",
@@ -434,8 +434,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/jpa-entity-review",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/jpa-entity-review",
+      "sourceId": "93c7fc98d13b",
       "id": "jpa-entity-review",
       "kind": "skill",
       "title": "JPA entity review",
@@ -489,8 +489,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/liquibase-migration-review",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/liquibase-migration-review",
+      "sourceId": "93c7fc98d13b",
       "id": "liquibase-migration-review",
       "kind": "workflow",
       "title": "Liquibase migration review",
@@ -662,8 +662,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/react-component-review",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/react-component-review",
+      "sourceId": "93c7fc98d13b",
       "id": "react-component-review",
       "kind": "skill",
       "title": "React component review",
@@ -732,8 +732,8 @@
       "complete": true
     },
     {
-      "key": "58d98d15525b/service-observability",
-      "sourceId": "58d98d15525b",
+      "key": "93c7fc98d13b/service-observability",
+      "sourceId": "93c7fc98d13b",
       "id": "service-observability",
       "kind": "skill",
       "title": "Service observability",

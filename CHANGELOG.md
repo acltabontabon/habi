@@ -25,6 +25,21 @@ All notable changes to Habi are listed here. The format follows
 
 ### Changed
 
+- **Where to start.** Among the skills that fit, *Fits this project* now leads with up to three: each
+  brings a technology the ones before did not, and none is something the project already has. The rest
+  follow in a stated order: the author's rule, Habi's pick, Habi's other rules, then the skill's own words;
+  one technology before many; what a project is built on before how it is shipped.
+- **Fewer skills fit just because a word matched.** A skill now fits on its description only when the
+  technology is what it is about. *Web artifacts builder* no longer fits every React app for listing
+  "(React, Tailwind)", nor *React view transitions* for naming React. These stay available, and say why
+  they are not matched.
+- **More skills can be matched.** Habi now recognizes Azure, AWS, Google Cloud, Cloudflare, Vercel, Twilio,
+  Stripe, Firebase, Supabase, Sentry, the OpenAI and MCP SDKs, React Native, Tailwind CSS, GraphQL and
+  PostgreSQL, and skills that name them match. A skill for one part of a product fits a project that depends
+  on that product, and a language in its name (`azure-cosmos-rust`) has to be there too.
+- **Reasons are true of the modules they name.** A rule met by one CI folder at the root says *Applies to the
+  whole repository*, not to every module. A rule met differently per module gives each its own reason, so
+  Rust crates no longer show a reason about Vitest.
 - **Home is a front page.** Once you have projects, the one that needs you most leads, showing what it is
   missing, why, and one button to review it. Other projects with skills waiting queue down the side.
 - **Install everything your team requires at once.** The *Team requirements* group has **Install all…**,

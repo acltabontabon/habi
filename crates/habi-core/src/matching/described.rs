@@ -18,11 +18,22 @@
 //! - Names are lowercase, so only tokens that are unambiguous on their own
 //!   count (`django`, `playwright`; not `go`, `next`, `spring` or `express`).
 //! - A term stands for a tag only when every project with the tag is one the
-//!   skill is about. Technologies Habi has no tag for (React Native, Nuxt,
-//!   ASP.NET, Cloudflare Workers) name nothing; they do not
-//!   stand in for a broader framework or language.
+//!   skill is about. Technologies Habi has no tag for (Nuxt, ASP.NET) name
+//!   nothing; they do not stand in for a broader framework or language.
 //! - A framework is the more specific claim: once one is named, languages are
 //!   dropped. A skill naming more than five technologies is about none of them.
+//!
+//! Naming a technology is not being about it. A rule comes only from what the
+//! skill is about (`Reading`); the rest is said to be aside and matches nothing:
+//!
+//! - A name says what a skill is about when what is left beside the technology
+//!   is general (`react-best-practices`). `react-view-transitions` is about a
+//!   feature some React projects could adopt, which no project fact can show.
+//!   A product's own SDK is narrow already: `twilio-send-sms` fits a project
+//!   that depends on Twilio, and a language in its name narrows it further.
+//! - Without one, a description says it where it starts: in its first clause,
+//!   within a few words, and not as a means or an example ("slides using React",
+//!   "scanning via GitHub Actions", "(React, Tailwind)").
 
 use super::condition::Condition;
 use regex::{Regex, RegexSet};
@@ -41,6 +52,23 @@ pub struct Mention {
 
 /// More technologies than this and a skill is about none of them.
 const MAX_TAGS: usize = 5;
+/// Words a description may open with before what it is about.
+const LEAD_WORDS: usize = 7;
+
+/// What a skill's name and description say, once read.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Reading {
+    /// It is about these: a rule to evaluate.
+    About(Condition),
+    /// It names these, but they are not its subject, so nothing is matched.
+    Aside {
+        tags: Vec<&'static str>,
+        /// Its name says it is about something narrower than they are.
+        narrower: bool,
+    },
+    /// It names nothing Habi can detect.
+    Silent,
+}
 
 /// One way of writing a technology, and when it counts.
 struct Term {
@@ -413,6 +441,36 @@ static DESCRIPTION_TERMS: &[Term] = &[
     term("test:wiremock", "WireMock"),
     cased("test:postman", "Postman"),
     term("test:postman", "newman"),
+    // Where it runs and what it talks to.
+    cased("cloud:azure", "Azure"),
+    cased("cloud:aws", "AWS"),
+    term("cloud:aws", "Amazon Web Services"),
+    cased("cloud:gcp", "GCP"),
+    cased("cloud:gcp", "GKE"),
+    term("cloud:gcp", "Google Cloud"),
+    cased("cloud:gcp", "BigQuery"),
+    cased("cloud:gcp", "Cloud Run"),
+    term("cloud:cloudflare", "Cloudflare"),
+    term("cloud:cloudflare", "wrangler"),
+    cased("cloud:vercel", "Vercel"),
+    cased("sdk:twilio", "Twilio"),
+    cased("sdk:stripe", "Stripe"),
+    cased("sdk:firebase", "Firebase"),
+    cased("sdk:supabase", "Supabase"),
+    cased("sdk:sentry", "Sentry"),
+    cased("sdk:openai", "OpenAI SDK"),
+    cased("sdk:openai", "OpenAI API"),
+    term("sdk:mcp", "Model Context Protocol"),
+    cased("sdk:mcp", "MCP").then(&[
+        "server", "servers", "sdk", "tool", "tools", "client", "clients",
+    ]),
+    cased("framework:react-native", "React Native"),
+    cased("framework:react-native", "Expo"),
+    term("framework:tailwind", "Tailwind"),
+    term("framework:tailwind", "TailwindCSS"),
+    cased("api:graphql", "GraphQL"),
+    term("db:postgres", "PostgreSQL"),
+    cased("db:postgres", "Postgres"),
 ];
 
 /// How skill names (lowercase tokens, space-separated here) name a tag. Only
@@ -453,6 +511,14 @@ static NAME_TERMS: &[Term] = &[
     term("framework:svelte", "svelte"),
     term("framework:express", "expressjs"),
     term("framework:express", "express js"),
+    term("framework:express", "express").then(&[
+        "api",
+        "apis",
+        "app",
+        "apps",
+        "middleware",
+        "server",
+    ]),
     term("framework:nestjs", "nestjs"),
     term("framework:nestjs", "nest js"),
     term("build:vite", "vite"),
@@ -549,6 +615,39 @@ static NAME_TERMS: &[Term] = &[
     term("infra:kustomize", "kustomize"),
     term("infra:ansible", "ansible"),
     term("infra:pulumi", "pulumi"),
+    term("cloud:azure", "azure"),
+    term("cloud:azure", "azurerm"),
+    term("cloud:aws", "aws"),
+    term("cloud:gcp", "gcp"),
+    term("cloud:gcp", "gke"),
+    term("cloud:gcp", "bigquery"),
+    term("cloud:gcp", "google cloud"),
+    term("cloud:gcp", "cloud run"),
+    term("cloud:cloudflare", "cloudflare"),
+    term("cloud:cloudflare", "wrangler"),
+    term("cloud:vercel", "vercel"),
+    term("sdk:twilio", "twilio"),
+    term("sdk:stripe", "stripe"),
+    term("sdk:firebase", "firebase"),
+    term("sdk:supabase", "supabase"),
+    term("sdk:sentry", "sentry"),
+    // `chrome-mcp-troubleshooting` is about an extension, not building on MCP.
+    term("sdk:mcp", "mcp").then(&[
+        "server",
+        "servers",
+        "sdk",
+        "builder",
+        "generator",
+        "tool",
+        "tools",
+    ]),
+    term("framework:react-native", "react native"),
+    term("framework:react-native", "expo"),
+    term("framework:tailwind", "tailwind"),
+    term("framework:tailwind", "tailwindcss"),
+    term("api:graphql", "graphql"),
+    term("db:postgres", "postgres"),
+    term("db:postgres", "postgresql"),
 ];
 
 /// Description terms compiled once; a term that does not compile is skipped
@@ -567,7 +666,7 @@ static DESCRIPTION_SET: LazyLock<Option<RegexSet>> =
 
 /// Rules already read, by name and description: an overview reads every
 /// skill of every library, and the words do not change between reads.
-static READ: LazyLock<Mutex<HashMap<Words, Option<Condition>>>> = LazyLock::new(Default::default);
+static READ: LazyLock<Mutex<HashMap<Words, Reading>>> = LazyLock::new(Default::default);
 /// Rules remembered at once. Past this the cache starts over; a library can
 /// hold any number of skills, and reading one again is cheap.
 const MAX_REMEMBERED: usize = 4096;
@@ -653,22 +752,30 @@ pub fn mentions(name: &str, description: &str) -> Vec<Mention> {
 }
 
 /// A rule from what the skill says it is for, or `None` when it names no
-/// technology Habi can detect (or so many that it is about none of them).
+/// technology Habi can detect, or only aside (or so many that it is about none).
 pub fn described_rule(name: &str, description: &str) -> Option<Condition> {
+    match reading(name, description) {
+        Reading::About(rule) => Some(rule),
+        Reading::Aside { .. } | Reading::Silent => None,
+    }
+}
+
+/// What a skill's name and description say, read once per skill.
+pub fn reading(name: &str, description: &str) -> Reading {
     let name = head(name, MAX_NAME_CHARS);
     let description = head(description, MAX_DESCRIPTION_CHARS);
     let key = (name.to_string(), description.to_string());
-    if let Some(rule) = READ.lock().ok().and_then(|read| read.get(&key).cloned()) {
-        return rule;
+    if let Some(read) = READ.lock().ok().and_then(|read| read.get(&key).cloned()) {
+        return read;
     }
-    let rule = read_rule(name, description);
-    if let Ok(mut read) = READ.lock() {
-        if read.len() >= MAX_REMEMBERED {
-            read.clear();
+    let read = read_words(name, description);
+    if let Ok(mut remembered) = READ.lock() {
+        if remembered.len() >= MAX_REMEMBERED {
+            remembered.clear();
         }
-        read.insert(key, rule.clone());
+        remembered.insert(key, read.clone());
     }
-    rule
+    read
 }
 
 /// The technologies a described rule asks for, as people say them ("Spring
@@ -704,38 +811,243 @@ static AGNOSTIC: LazyLock<Option<Regex>> = LazyLock::new(|| {
     .ok()
 });
 
+/// Opens a description with when to use the skill; what follows is what counts.
+static USE_WHEN: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"(?i)^\s*(?:use|used|this skill should be used)(?: this skill)? (?:when|whenever|for|if)\b").ok()
+});
+
+/// A migration between versions, when a name carries a version.
+static MIGRATING: LazyLock<Option<Regex>> =
+    LazyLock::new(|| Regex::new(r"(?i)\b(?:migrat|upgrad)").ok());
+
 /// Tags about how a project is built and shipped, not what it is built on.
-const TOOLING: &[&str] = &["ci:", "container:", "build:", "infra:"];
+pub(crate) const TOOLING: &[&str] = &[
+    "ci:",
+    "container:",
+    "build:",
+    "infra:",
+    "cloud:",
+    "lang:shell",
+];
+
+/// A product's own SDK or platform: any project depending on it is one a skill
+/// for any part of it could serve.
+const PRODUCTS: &[&str] = &["cloud:", "sdk:"];
+
+/// Words after a technology that name no subject of their own: what any project
+/// using it has or wants (`react-best-practices`, `django-admin-review`). Anything
+/// else (`react-view-transitions`, `rust-game`) narrows the skill.
+const GENERAL_WORDS: &[&str] = &[
+    "access",
+    "add",
+    "admin",
+    "advanced",
+    "and",
+    "api",
+    "apis",
+    "app",
+    "application",
+    "applications",
+    "apps",
+    "architecture",
+    "assets",
+    "async",
+    "audit",
+    "auditing",
+    "automation",
+    "best",
+    "blueprints",
+    "build",
+    "builds",
+    "chart",
+    "charts",
+    "code",
+    "coding",
+    "commands",
+    "components",
+    "compose",
+    "composition",
+    "concurrency",
+    "config",
+    "configuration",
+    "consumer",
+    "consumers",
+    "contracts",
+    "conventions",
+    "coroutines",
+    "create",
+    "dag",
+    "dags",
+    "debugging",
+    "defensive",
+    "deploy",
+    "deployment",
+    "design",
+    "desktop",
+    "dev",
+    "developer",
+    "development",
+    "diagnostics",
+    "docs",
+    "doctrine",
+    "e2e",
+    "efficiency",
+    "eloquent",
+    "endpoints",
+    "engineering",
+    "error",
+    "errors",
+    "expert",
+    "fixtures",
+    "flows",
+    "for",
+    "generator",
+    "grid",
+    "guide",
+    "guidelines",
+    "handlers",
+    "handling",
+    "hardening",
+    "hooks",
+    "image",
+    "in",
+    "integration",
+    "keywords",
+    "library",
+    "management",
+    "manifest",
+    "manifests",
+    "master",
+    "migration",
+    "migrations",
+    "modeling",
+    "models",
+    "modern",
+    "modernization",
+    "module",
+    "modules",
+    "native",
+    "notebook",
+    "notebooks",
+    "observability",
+    "of",
+    "optimization",
+    "optimisation",
+    "orm",
+    "package",
+    "packaging",
+    "pattern",
+    "patterns",
+    "perf",
+    "performance",
+    "pipeline",
+    "pipelines",
+    "plans",
+    "practice",
+    "practices",
+    "pro",
+    "production",
+    "project",
+    "projects",
+    "py",
+    "js",
+    "ts",
+    "queries",
+    "quickstart",
+    "refactoring",
+    "resilience",
+    "review",
+    "reviewer",
+    "reviews",
+    "router",
+    "routing",
+    "rules",
+    "runes",
+    "runtime",
+    "safety",
+    "scaffolding",
+    "security",
+    "server",
+    "services",
+    "setup",
+    "signals",
+    "skills",
+    "spec",
+    "specification",
+    "specs",
+    "standards",
+    "state",
+    "strict",
+    "structure",
+    "style",
+    "suites",
+    "support",
+    "system",
+    "tables",
+    "templates",
+    "test",
+    "testing",
+    "tests",
+    "the",
+    "tips",
+    "troubleshooting",
+    "tuning",
+    "type",
+    "types",
+    "upgrade",
+    "web",
+    "with",
+    "workflow",
+    "workflows",
+];
 
 /// The rule's tags, from strongest claim to weakest: the frameworks, data
 /// stores, test tools and APIs the skill names; else a language its name
 /// names (`java-development`), since a language a description mentions in
 /// passing ("pure JavaScript", "Python + BigQuery") is true of too many
 /// projects to say one fits; else the CI or container tooling it names.
-fn read_rule(name: &str, description: &str) -> Option<Condition> {
+fn read_words(name: &str, description: &str) -> Reading {
     if AGNOSTIC.as_ref().is_some_and(|re| re.is_match(description)) {
-        return None;
+        return Reading::Silent;
     }
-    let tooling = |t: &str| TOOLING.iter().any(|p| t.starts_with(p));
     let language = |t: &str| t.starts_with("lang:");
+    let tooling = |t: &str| !language(t) && TOOLING.iter().any(|p| t.starts_with(p));
     let stack = |t: &str| !tooling(t) && !language(t);
+    let product = |t: &str| PRODUCTS.iter().any(|p| t.starts_with(p));
     let named: Vec<&'static str> = in_name(name).into_iter().map(|(tag, _)| tag).collect();
     let hits = in_description(description);
+
+    // A product named is the rule, with any language the name narrows it to.
+    let products: Vec<&'static str> = unique(named.iter().copied().filter(|t| product(t)));
+    if !products.is_empty() {
+        let mut languages: Vec<&'static str> =
+            unique(named.iter().copied().filter(|t| language(t)));
+        languages.extend(language_suffix(name).filter(|t| !languages.contains(t)));
+        return Reading::About(all_of(any_of(&products), any_of(&languages)));
+    }
+    if !named.is_empty() && !about_the_technology(name, description) {
+        return Reading::Aside {
+            tags: unique(named.into_iter()),
+            narrower: true,
+        };
+    }
+
+    let leads = subjects(description, &hits);
     // What the name names is what the skill is about; failing that, the first
     // technology the description names, with any listed alongside it
     // ("Django, Flask or FastAPI") — not every one it mentions on the way.
     let listed = |keep: &dyn Fn(&str) -> bool| -> Vec<&'static str> {
         // In "from Jest to Vitest" the project is leaving Jest behind.
-        let leaving = |h: &Found| {
+        let leaving = |h: &&Found| {
             words_before(description, h.start)
                 .first()
                 .map(String::as_str)
                 == Some("from")
-                && hits.iter().any(|o| o.start > h.end && keep(o.tag))
+                && leads.iter().any(|o| o.start > h.end && keep(o.tag))
         };
         let mut out: Vec<&'static str> = Vec::new();
         let mut last: Option<usize> = None;
-        for h in hits.iter().filter(|h| keep(h.tag) && !leaving(h)) {
+        for h in leads.iter().filter(|h| keep(h.tag) && !leaving(h)) {
             match last {
                 Some(end) if !same_list(description, end, h.start) => break,
                 _ => {}
@@ -747,15 +1059,7 @@ fn read_rule(name: &str, description: &str) -> Option<Condition> {
         }
         out
     };
-    let from_name = |keep: &dyn Fn(&str) -> bool| -> Vec<&'static str> {
-        let mut out: Vec<&'static str> = Vec::new();
-        for t in named.iter().copied().filter(|t| keep(t)) {
-            if !out.contains(&t) {
-                out.push(t);
-            }
-        }
-        out
-    };
+    let from_name = |keep: &dyn Fn(&str) -> bool| unique(named.iter().copied().filter(|t| keep(t)));
     let tags = [
         from_name(&stack),
         listed(&stack),
@@ -766,12 +1070,41 @@ fn read_rule(name: &str, description: &str) -> Option<Condition> {
     .into_iter()
     .find(|tags| !tags.is_empty())
     .unwrap_or_default();
-    match tags.as_slice() {
+    if tags.len() > MAX_TAGS {
+        return Reading::Silent;
+    }
+    match any_of(&tags) {
+        Some(rule) => Reading::About(rule),
+        None => {
+            let aside = unique(hits.iter().map(|h| h.tag));
+            if aside.is_empty() || aside.len() > MAX_TAGS {
+                Reading::Silent
+            } else {
+                Reading::Aside {
+                    tags: aside,
+                    narrower: false,
+                }
+            }
+        }
+    }
+}
+
+fn unique(tags: impl Iterator<Item = &'static str>) -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = Vec::new();
+    for tag in tags {
+        if !out.contains(&tag) {
+            out.push(tag);
+        }
+    }
+    out
+}
+
+fn any_of(tags: &[&str]) -> Option<Condition> {
+    match tags {
         [] => None,
         [one] => Some(Condition::Tag {
             tag: (*one).to_string(),
         }),
-        many if many.len() > MAX_TAGS => None,
         many => Some(Condition::Any {
             items: many
                 .iter()
@@ -781,6 +1114,124 @@ fn read_rule(name: &str, description: &str) -> Option<Condition> {
                 .collect(),
         }),
     }
+}
+
+/// Both, when there are both.
+fn all_of(first: Option<Condition>, second: Option<Condition>) -> Condition {
+    match (first, second) {
+        (Some(a), Some(b)) => Condition::All { items: vec![a, b] },
+        (Some(a), None) | (None, Some(a)) => a,
+        (None, None) => Condition::All { items: Vec::new() },
+    }
+}
+
+/// The language a name ends in, the way SDK skills spell it (`azure-cosmos-py`).
+fn language_suffix(name: &str) -> Option<&'static str> {
+    match name_tokens(name).last().map(|t| t.2.as_str()) {
+        Some("py") => Some("lang:python"),
+        Some("ts") => Some("lang:typescript"),
+        Some("js") => Some("lang:javascript"),
+        _ => None,
+    }
+}
+
+/// Whether what a name says beside its technologies is general. A version in
+/// the name is fine (`vue3-composition`) unless the skill is about reaching it.
+fn about_the_technology(name: &str, description: &str) -> bool {
+    let tokens = name_tokens(name);
+    let mut general = true;
+    let mut versioned = false;
+    let mut i = 0;
+    while i < tokens.len() {
+        let run = NAME_TERMS
+            .iter()
+            .filter_map(|t| {
+                let words: Vec<&str> = t.text.split(' ').collect();
+                let same = tokens
+                    .get(i..i + words.len())?
+                    .iter()
+                    .zip(&words)
+                    .all(|(token, w)| token.2 == *w);
+                same.then_some(words.len())
+            })
+            .max();
+        let word = tokens.get(i).map_or("", |t| t.2.as_str());
+        if run.is_none() {
+            if word.chars().all(|c| c.is_ascii_digit()) {
+                versioned = true;
+            } else if !GENERAL_WORDS.contains(&word) {
+                general = false;
+            }
+        }
+        i += run.unwrap_or(1);
+    }
+    general
+        && !(versioned
+            && MIGRATING
+                .as_ref()
+                .is_some_and(|re| re.is_match(description)))
+}
+
+/// What a description says it is about, of what it names: what stands in its
+/// opening clause, within a few words, and not as a means or an example, nor
+/// listed after one.
+fn subjects<'f>(text: &str, found: &'f [Found]) -> Vec<&'f Found> {
+    let opening = USE_WHEN
+        .as_ref()
+        .and_then(|re| re.find(text))
+        .map_or(0, |m| m.end());
+    let end = clause_end(text, opening);
+    let mut out = Vec::new();
+    let mut aside_to: Option<usize> = None;
+    for h in found {
+        let lead = h.start >= opening
+            && h.start < end
+            && word_count(text.get(opening..h.start).unwrap_or("")) <= LEAD_WORDS
+            && !in_brackets(text, h.start);
+        let means = words_before(text, h.start)
+            .first()
+            .is_some_and(|w| MEANS.contains(&w.as_str()));
+        if !lead || means || aside_to.is_some_and(|e| same_list(text, e, h.start)) {
+            aside_to = Some(aside_to.map_or(h.end, |e| e.max(h.end)));
+        } else {
+            out.push(h);
+        }
+    }
+    out
+}
+
+/// A word that makes the technology right after it a means or an example.
+const MEANS: &[&str] = &["using", "via", "by", "like", "including", "e.g", "eg", "as"];
+
+/// Where the clause starting at `from` ends: a full stop, a colon, a dash.
+fn clause_end(text: &str, from: usize) -> usize {
+    let rest = text.get(from..).unwrap_or("");
+    let mut chars = rest.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        let spaced = chars.peek().is_none_or(|(_, n)| n.is_whitespace());
+        let ends = match c {
+            ':' | ';' | '.' | '!' | '?' => spaced,
+            '—' | '–' | '\n' => true,
+            '-' => spaced && rest.get(..i).is_some_and(|b| b.ends_with(' ')),
+            _ => false,
+        };
+        if ends {
+            return from + i;
+        }
+    }
+    text.len()
+}
+
+fn word_count(text: &str) -> usize {
+    text.split(|c: char| c.is_whitespace() || c == '/')
+        .filter(|w| w.chars().any(char::is_alphanumeric))
+        .count()
+}
+
+/// Whether `at` sits inside an open bracket.
+fn in_brackets(text: &str, at: usize) -> bool {
+    let before = text.get(..at).unwrap_or("");
+    before.matches('(').count() > before.matches(')').count()
 }
 
 /// Tags the name's tokens name, in order, with the name's own spelling.
@@ -821,10 +1272,19 @@ fn name_tokens(name: &str) -> Vec<(usize, usize, String)> {
     let end = std::iter::once((name.len(), '-'));
     let mut previous: Option<char> = None;
     for (i, c) in name.char_indices().chain(end) {
-        // A version on a name ("vue3", "python3") is not part of the word.
+        // A version on a name ("vue3", "python3") is not part of the word; a
+        // digit inside one ("k8s", "e2e", "k6") is.
+        let version = name
+            .get(i..)
+            .unwrap_or("")
+            .chars()
+            .take_while(|c| c.is_alphanumeric())
+            .all(|c| c.is_ascii_digit());
         if let (Some(p), Some(s)) = (previous, start)
             && p.is_alphabetic()
             && c.is_ascii_digit()
+            && version
+            && i - s >= 2
         {
             if let Some(token) = name.get(s..i) {
                 tokens.push((s, i, token.to_lowercase()));
@@ -1141,7 +1601,7 @@ mod tests {
                 "React and Next.js performance optimization guidelines from Vercel Engineering. \
                  Use when writing, reviewing, or refactoring React/Next.js components, data \
                  fetching, or bundle size.",
-                &["framework:react", "framework:next"],
+                &["framework:react", "framework:next", "cloud:vercel"],
             ),
             (
                 "composition-patterns",
@@ -1153,7 +1613,7 @@ mod tests {
                 "react-native-skills",
                 "React Native and Expo best practices for performant mobile apps: list \
                  virtualization, animations and native modules.",
-                &[],
+                &["framework:react-native"],
             ),
             (
                 "django-perf-review",
@@ -1185,13 +1645,13 @@ mod tests {
                 "wrangler",
                 "Cloudflare Workers CLI for deploying, developing, and managing Workers, KV, R2, \
                  D1, Queues, Workflows and Containers. Load before running wrangler commands.",
-                &[],
+                &["cloud:cloudflare"],
             ),
             (
                 "workers-best-practices",
                 "Reviews and authors Cloudflare Workers code against production best practices: \
                  streaming, floating promises, global state, secrets and bindings.",
-                &[],
+                &["cloud:cloudflare"],
             ),
             (
                 "test-driven-development",
@@ -1390,7 +1850,7 @@ mod tests {
             (
                 "sqlx-queries",
                 "Compile-time checked SQL with SQLx and Postgres in Rust.",
-                &["db:sqlx"],
+                &["db:sqlx", "db:postgres"],
             ),
             (
                 "kotlin-coroutines",
@@ -1470,11 +1930,167 @@ mod tests {
                 &["data:great-expectations", "data:pandas", "data:spark"],
             ),
         ];
+        // Names a technology as the means, not as what the skill is about.
+        let aside = ["webapp-testing"];
         for (name, description, want) in cases {
             assert_eq!(tags(name, description), *want, "{name}");
             let rule = described_rule(name, description);
-            assert_eq!(rule.is_some(), !want.is_empty(), "{name}");
+            assert_eq!(
+                rule.is_some(),
+                !want.is_empty() && !aside.contains(name),
+                "{name}"
+            );
         }
+    }
+
+    /// Skills from public libraries that name a technology without being about it.
+    #[test]
+    fn naming_a_technology_is_not_being_about_it() {
+        for (name, description) in [
+            (
+                "web-artifacts-builder",
+                "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts \
+                 using modern frontend web technologies (React, Tailwind CSS, shadcn/ui).",
+            ),
+            (
+                "presentation-creator",
+                "Create data-driven presentation slides using React, Vite, and Recharts.",
+            ),
+            (
+                "email",
+                "Email sending integration guidance — Resend with React Email templates.",
+            ),
+            (
+                "codeql",
+                "Comprehensive guide for setting up and configuring CodeQL code scanning via \
+                 GitHub Actions workflows and the CodeQL CLI.",
+            ),
+            (
+                "swr",
+                "SWR data-fetching expert guidance. Use when building React apps with caching.",
+            ),
+            (
+                "phaser-2d-game",
+                "Implement 2D browser games with Phaser. Use when the user wants a Phaser, \
+                 TypeScript, and Vite stack.",
+            ),
+            (
+                "npm-trusted-publishing",
+                "Set up or fix npm trusted publishing (OIDC) in GitHub Actions.",
+            ),
+            (
+                "api-breaking-change-detector",
+                "Cross-references C# controllers against their consumers (React, Angular, Vue).",
+            ),
+        ] {
+            assert_eq!(described_rule(name, description), None, "{name}");
+            assert!(
+                matches!(
+                    reading(name, description),
+                    Reading::Aside {
+                        narrower: false,
+                        ..
+                    }
+                ),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_description_says_what_it_is_about_where_it_starts() {
+        for (description, want) in [
+            ("Master React, Vue, and Svelte component patterns.", 3),
+            ("Audits GitHub Actions workflows for security.", 1),
+            ("Use when writing Django views.", 1),
+            ("Use this skill when writing Django views.", 1),
+            ("Speed up pandas and Polars workloads.", 2),
+            ("Build REST APIs with Django: routing and middleware.", 1),
+        ] {
+            assert_eq!(rule_tags("x", description).len(), want, "{description}");
+        }
+        // What is listed after a means stays a means.
+        assert!(rule_tags("x", "Slides using React, Vue or Svelte.").is_empty());
+        // Past the first few words the subject is something else.
+        assert!(
+            rule_tags(
+                "x",
+                "Install and configure Markstream streaming Markdown renderers for Vue apps."
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn a_name_narrower_than_its_technology_is_aside() {
+        for name in [
+            "react-view-transitions",
+            "react-three-fiber-game",
+            "react18-string-refs",
+            "typescript-data-visualization",
+            "migrate-to-rust",
+        ] {
+            assert!(
+                matches!(
+                    reading(name, "A skill."),
+                    Reading::Aside { narrower: true, .. }
+                ),
+                "{name}"
+            );
+        }
+        for name in [
+            "react-best-practices",
+            "react-state-management",
+            "django-admin-review",
+            "github-actions-hardening",
+            "typescript-advanced-types",
+            "vue3-composition",
+        ] {
+            assert!(described_rule(name, "A skill.").is_some(), "{name}");
+        }
+        // A version is fine, unless the skill is about reaching it.
+        assert!(
+            described_rule(
+                "react19-test-patterns",
+                "Patterns for migrating test files to React 19."
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn a_product_narrows_on_its_own_and_with_a_language() {
+        assert_eq!(rule_tags("twilio-send-sms", "A skill."), ["sdk:twilio"]);
+        assert_eq!(
+            rule_tags("gke-ai-troubleshooting", "A skill."),
+            ["cloud:gcp"]
+        );
+        for (name, language) in [
+            ("azure-cosmos-rust", "lang:rust"),
+            ("azure-keyvault-py", "lang:python"),
+            ("azure-storage-blob-ts", "lang:typescript"),
+        ] {
+            assert_eq!(
+                described_rule(name, "A skill."),
+                Some(Condition::All {
+                    items: vec![
+                        Condition::Tag {
+                            tag: "cloud:azure".into()
+                        },
+                        Condition::Tag {
+                            tag: language.into()
+                        },
+                    ]
+                }),
+                "{name}"
+            );
+        }
+        // An extension that speaks MCP is not a skill for building on it.
+        assert!(rule_tags("chrome-mcp-troubleshooting", "A skill.").is_empty());
+        assert_eq!(
+            rule_tags("rust-mcp-server-generator", "A skill."),
+            ["sdk:mcp", "lang:rust"]
+        );
     }
 
     #[test]
@@ -1520,9 +2136,15 @@ mod tests {
             assert!(found.iter().any(|t| t == want), "{name}: {found:?}");
         }
         // A cloud of its own is not any Kubernetes project.
-        assert!(rule_tags("x", "Troubleshoot Azure Kubernetes Service clusters.").is_empty());
+        assert_eq!(
+            rule_tags("x", "Troubleshoot Azure Kubernetes Service clusters."),
+            ["cloud:azure"]
+        );
         assert!(rule_tags("x", "At the helm of a team.").is_empty());
-        assert!(rule_tags("react-native-image", "Images in React Native.").is_empty());
+        assert_eq!(
+            rule_tags("react-native-patterns", "Images in React Native."),
+            ["framework:react-native"]
+        );
         // A language in passing still names no language.
         assert!(rule_tags("deploy-notes", "Run a Bash command to deploy.").is_empty());
     }
@@ -1642,7 +2264,6 @@ mod tests {
         for name in [
             "react-to-feedback",
             "react-agent",
-            "react-native-expo",
             "go-live-checklist",
             "go-to-market",
             "next-steps",
@@ -1656,6 +2277,8 @@ mod tests {
         ] {
             assert_eq!(tags(name, ""), Vec::<&str>::new(), "{name}");
         }
+        // React Native is a technology of its own, not React.
+        assert_eq!(tags("react-native-expo", ""), ["framework:react-native"]);
     }
 
     #[test]

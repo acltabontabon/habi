@@ -105,6 +105,32 @@ describe("workbench", () => {
     );
   });
 
+  it("says where to start among the skills that fit", () => {
+    const fits = billingOverview.recommendations.filter((r) => r.group === "relevant");
+    expect(fits.length).toBeGreaterThan(1);
+    const first = fits[0];
+    const overview = {
+      ...billingOverview,
+      recommendations: billingOverview.recommendations.map((r) => ({ ...r, top: r === first })),
+    };
+    wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+    const group = screen
+      .getByRole("heading", { name: /Fits this project/ })
+      .closest("section") as HTMLElement;
+    const start = within(group).getByRole("heading", { name: "Start with these" });
+    expect(start.nextElementSibling).toHaveTextContent(first?.item.title ?? "");
+    expect(within(group).getByRole("heading", { name: "Also fits" })).toBeInTheDocument();
+  });
+
+  it("does not split the list when nothing is marked", () => {
+    const overview = {
+      ...billingOverview,
+      recommendations: billingOverview.recommendations.map((r) => ({ ...r, top: false })),
+    };
+    wrap(<RoutedWorkbench overview={overview} />, overview.project.id);
+    expect(screen.queryByRole("heading", { name: "Start with these" })).toBeNull();
+  });
+
   it("collapses items without applicability rules and says which libraries they come from", async () => {
     const user = userEvent.setup();
     wrap(<RoutedWorkbench overview={billingOverview} />, billingOverview.project.id);

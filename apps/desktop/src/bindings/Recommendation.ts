@@ -22,4 +22,8 @@ unmanagedCopies: Array<string>,
 /**
  * Set when the skill is one of Habi's picks.
  */
-pick: PickNote | null, };
+pick: PickNote | null, 
+/**
+ * One of the few skills to start with, among those that fit.
+ */
+top: boolean, };

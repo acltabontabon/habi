@@ -390,7 +390,8 @@ sources:
     notes:
       - "Licences differ per skill."
     hints:
-      - path: "skills/{react-best-practices,composition-patterns,react-view-transitions}"
+      # Not react-view-transitions: a feature to adopt, not a fact about React projects.
+      - path: "skills/{react-best-practices,composition-patterns}"
         applies_when: { tag: "framework:react" }
       - path: "skills/react-native-skills"
         applies_when: { dependency: { name: react-native, ecosystem: npm } }

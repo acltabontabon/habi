@@ -1,17 +1,17 @@
 {
   "project": {
-    "id": "c5b763a006878793",
+    "id": "fb592f4dfa034eeb",
     "name": "billing-service",
     "path": "~/work/billing-service",
     "exists": true,
-    "lastOpenedAt": "2026-10-31T16:43:40Z",
+    "lastOpenedAt": "2026-10-31T21:54:57Z",
     "exclusions": [],
     "summary": {
       "fits": 5,
       "described": 0,
       "needsInformation": 0,
       "sources": [
-        "58d98d15525b"
+        "93c7fc98d13b"
       ],
       "installed": 0,
       "languages": [
@@ -19,7 +19,7 @@
       ],
       "tally": [
         {
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "fits": 5,
           "described": 0,
           "installed": []
@@ -31,7 +31,7 @@
         "mattpocock",
         "superpowers"
       ],
-      "at": "2026-10-31T16:43:40Z"
+      "at": "2026-10-31T21:54:57Z"
     }
   },
   "inspection": {
@@ -40,8 +40,8 @@
     "description": "Invoices and payments. Spring Boot 3, PostgreSQL, Liquibase migrations.",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "feat/scan-trust-and-screens",
-      "repositoryRoot": "~/Workspace/habi",
+      "branch": "feat/skill-matching-ranking-723750",
+      "repositoryRoot": "~/Workspace/habi/.claude/worktrees/skill-matching-ranking-723750",
       "isMonorepo": false,
       "workspaceSignals": []
     },
@@ -480,6 +480,27 @@
         "note": null
       },
       {
+        "id": "tag:.:db:postgres",
+        "module": ".",
+        "subject": {
+          "type": "tag",
+          "tag": "db:postgres"
+        },
+        "origin": "derived",
+        "detector": "tags",
+        "evidence": [
+          {
+            "file": "pom.xml",
+            "line": 36,
+            "excerpt": "org.postgresql:postgresql"
+          }
+        ],
+        "derivedFrom": [
+          "dep:.:maven:org.postgresql:postgresql"
+        ],
+        "note": null
+      },
+      {
         "id": "tag:.:framework:spring",
         "module": ".",
         "subject": {
@@ -661,15 +682,136 @@
       "largeFilesSkipped": 0,
       "elapsedMs": 3
     },
-    "fingerprint": "sha256:5b6b38602355f616c9d3106d3b17e61e898d5591848c94270aa947b4d0b5657b",
-    "inspectedAt": "2026-10-31T16:43:40Z"
+    "fingerprint": "sha256:a0c496e180c9181155c24227392cf060c5aed00811c8dee837548d953075c48e",
+    "inspectedAt": "2026-10-31T21:54:57Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "58d98d15525b/java-service-conventions",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/service-observability",
+        "sourceId": "93c7fc98d13b",
+        "sourceName": "Example team library",
+        "id": "service-observability",
+        "title": "Service observability",
+        "name": "service-observability",
+        "description": "Add metrics, structured logs and traces to a Spring Boot service following team conventions. Use when adding endpoints or background jobs.",
+        "kind": "skill",
+        "owner": "SRE (example)",
+        "requirement": "required",
+        "priority": 0,
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "metadataStatus": "declared",
+        "diagnostics": 0,
+        "clients": null,
+        "hasChecks": false,
+        "hasWorkflow": false,
+        "installable": true
+      },
+      "group": "required",
+      "applicability": {
+        "applicability": "applies",
+        "scope": "module",
+        "modules": [
+          {
+            "module": ".",
+            "moduleName": "billing-service",
+            "applicability": "applies",
+            "applies": {
+              "condition": {
+                "op": "tag",
+                "tag": "framework:spring-boot"
+              },
+              "summary": "uses Spring Boot",
+              "outcome": "true",
+              "reason": "detected from pom.xml:6",
+              "facts": [
+                "tag:.:framework:spring-boot",
+                "dep:.:maven:org.springframework.boot:spring-boot-starter-parent",
+                "dep:.:maven:org.springframework.boot:spring-boot-starter-web",
+                "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa"
+              ],
+              "declarations": [],
+              "files": [],
+              "location": "pom.xml:6",
+              "children": []
+            },
+            "excludes": null,
+            "specificity": 1,
+            "reason": "Uses Spring Boot (pom.xml:6)"
+          }
+        ],
+        "reason": "Uses Spring Boot (pom.xml:6)",
+        "specificity": 1
+      },
+      "basis": "declared",
+      "readiness": {
+        "state": "noRequirements",
+        "prerequisites": [],
+        "byClient": [
+          {
+            "client": "claude-code",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "cursor",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "codex",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "gemini-cli",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "copilot",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "opencode",
+            "state": "noRequirements",
+            "prerequisites": []
+          },
+          {
+            "client": "junie",
+            "state": "noRequirements",
+            "prerequisites": []
+          }
+        ],
+        "assessedClients": [
+          "claude-code"
+        ]
+      },
+      "installState": "notInstalled",
+      "installation": null,
+      "evidence": {
+        "state": "notEvaluated",
+        "declared": [],
+        "latestRun": null,
+        "coverage": {
+          "passed": 0,
+          "failed": 0,
+          "stale": 0,
+          "unchecked": 0,
+          "inputsComplete": true
+        }
+      },
+      "nextAction": "install",
+      "unmanagedCopies": [],
+      "pick": null,
+      "top": false
+    },
+    {
+      "item": {
+        "key": "93c7fc98d13b/java-service-conventions",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -679,7 +821,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -829,132 +971,13 @@
       },
       "nextAction": "install",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": false
     },
     {
       "item": {
-        "key": "58d98d15525b/service-observability",
-        "sourceId": "58d98d15525b",
-        "sourceName": "Example team library",
-        "id": "service-observability",
-        "title": "Service observability",
-        "name": "service-observability",
-        "description": "Add metrics, structured logs and traces to a Spring Boot service following team conventions. Use when adding endpoints or background jobs.",
-        "kind": "skill",
-        "owner": "SRE (example)",
-        "requirement": "required",
-        "priority": 0,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
-        "metadataStatus": "declared",
-        "diagnostics": 0,
-        "clients": null,
-        "hasChecks": false,
-        "hasWorkflow": false,
-        "installable": true
-      },
-      "group": "required",
-      "applicability": {
-        "applicability": "applies",
-        "scope": "module",
-        "modules": [
-          {
-            "module": ".",
-            "moduleName": "billing-service",
-            "applicability": "applies",
-            "applies": {
-              "condition": {
-                "op": "tag",
-                "tag": "framework:spring-boot"
-              },
-              "summary": "uses Spring Boot",
-              "outcome": "true",
-              "reason": "detected from pom.xml:6",
-              "facts": [
-                "tag:.:framework:spring-boot",
-                "dep:.:maven:org.springframework.boot:spring-boot-starter-parent",
-                "dep:.:maven:org.springframework.boot:spring-boot-starter-web",
-                "dep:.:maven:org.springframework.boot:spring-boot-starter-data-jpa"
-              ],
-              "declarations": [],
-              "files": [],
-              "location": "pom.xml:6",
-              "children": []
-            },
-            "excludes": null,
-            "specificity": 1,
-            "reason": "Uses Spring Boot (pom.xml:6)"
-          }
-        ],
-        "reason": "Uses Spring Boot (pom.xml:6)",
-        "specificity": 1
-      },
-      "basis": "declared",
-      "readiness": {
-        "state": "noRequirements",
-        "prerequisites": [],
-        "byClient": [
-          {
-            "client": "claude-code",
-            "state": "noRequirements",
-            "prerequisites": []
-          },
-          {
-            "client": "cursor",
-            "state": "noRequirements",
-            "prerequisites": []
-          },
-          {
-            "client": "codex",
-            "state": "noRequirements",
-            "prerequisites": []
-          },
-          {
-            "client": "gemini-cli",
-            "state": "noRequirements",
-            "prerequisites": []
-          },
-          {
-            "client": "copilot",
-            "state": "noRequirements",
-            "prerequisites": []
-          },
-          {
-            "client": "opencode",
-            "state": "noRequirements",
-            "prerequisites": []
-          },
-          {
-            "client": "junie",
-            "state": "noRequirements",
-            "prerequisites": []
-          }
-        ],
-        "assessedClients": [
-          "claude-code"
-        ]
-      },
-      "installState": "notInstalled",
-      "installation": null,
-      "evidence": {
-        "state": "notEvaluated",
-        "declared": [],
-        "latestRun": null,
-        "coverage": {
-          "passed": 0,
-          "failed": 0,
-          "stale": 0,
-          "unchecked": 0,
-          "inputsComplete": true
-        }
-      },
-      "nextAction": "install",
-      "unmanagedCopies": [],
-      "pick": null
-    },
-    {
-      "item": {
-        "key": "58d98d15525b/liquibase-migration-review",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/liquibase-migration-review",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -964,7 +987,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1195,12 +1218,13 @@
       },
       "nextAction": "install",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": true
     },
     {
       "item": {
-        "key": "58d98d15525b/jpa-entity-review",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/jpa-entity-review",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -1210,7 +1234,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1326,12 +1350,13 @@
       },
       "nextAction": "install",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": true
     },
     {
       "item": {
-        "key": "58d98d15525b/github-pr-summary",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/github-pr-summary",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -1341,7 +1366,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1580,12 +1605,13 @@
       },
       "nextAction": "setUpPrerequisites",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": true
     },
     {
       "item": {
-        "key": "58d98d15525b/incident-notes",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/incident-notes",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -1595,7 +1621,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -1672,12 +1698,13 @@
       },
       "nextAction": "install",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": false
     },
     {
       "item": {
-        "key": "58d98d15525b/api-contract-review",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/api-contract-review",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -1687,7 +1714,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1795,12 +1822,13 @@
       },
       "nextAction": "none",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": false
     },
     {
       "item": {
-        "key": "58d98d15525b/react-component-review",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/react-component-review",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1810,7 +1838,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1902,12 +1930,13 @@
       },
       "nextAction": "none",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": false
     },
     {
       "item": {
-        "key": "58d98d15525b/jooq-query-review",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/jooq-query-review",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1917,7 +1946,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2017,12 +2046,13 @@
       },
       "nextAction": "none",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": false
     },
     {
       "item": {
-        "key": "58d98d15525b/frontend-test-practices",
-        "sourceId": "58d98d15525b",
+        "key": "93c7fc98d13b/frontend-test-practices",
+        "sourceId": "93c7fc98d13b",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -2032,7 +2062,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2217,12 +2247,13 @@
       },
       "nextAction": "none",
       "unmanagedCopies": [],
-      "pick": null
+      "pick": null,
+      "top": false
     }
   ],
   "sources": [
     {
-      "id": "58d98d15525b",
+      "id": "93c7fc98d13b",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -2232,11 +2263,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-31T16:43:39Z",
-      "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
-      "snapshotAt": "2026-10-31T16:43:39Z",
+      "createdAt": "2026-10-31T21:54:56Z",
+      "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+      "snapshotAt": "2026-10-31T21:54:56Z",
       "commitSummary": "Example library — Example, 2026-11-01",
-      "lastAttemptAt": "2026-10-31T16:43:39Z",
+      "lastAttemptAt": "2026-10-31T21:54:56Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",
@@ -2252,7 +2283,7 @@
   "kit": {
     "suggestions": [
       {
-        "key": "58d98d15525b/service-observability",
+        "key": "93c7fc98d13b/service-observability",
         "group": "required",
         "title": "Service observability",
         "name": "service-observability",
@@ -2260,13 +2291,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "itemId": "service-observability"
         },
         "installed": false,
@@ -2314,7 +2345,7 @@
         "chosen": true
       },
       {
-        "key": "58d98d15525b/java-service-conventions",
+        "key": "93c7fc98d13b/java-service-conventions",
         "group": "required",
         "title": "Java service conventions",
         "name": "java-service-conventions",
@@ -2322,13 +2353,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "itemId": "java-service-conventions"
         },
         "installed": false,
@@ -2421,7 +2452,7 @@
         "chosen": true
       },
       {
-        "key": "58d98d15525b/liquibase-migration-review",
+        "key": "93c7fc98d13b/liquibase-migration-review",
         "group": "stack",
         "title": "Liquibase migration review",
         "name": "liquibase-migration-review",
@@ -2429,13 +2460,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "itemId": "liquibase-migration-review"
         },
         "installed": false,
@@ -2581,7 +2612,7 @@
         "chosen": true
       },
       {
-        "key": "58d98d15525b/jpa-entity-review",
+        "key": "93c7fc98d13b/jpa-entity-review",
         "group": "stack",
         "title": "JPA entity review",
         "name": "jpa-entity-review",
@@ -2589,13 +2620,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "itemId": "jpa-entity-review"
         },
         "installed": false,
@@ -2654,7 +2685,7 @@
         "chosen": true
       },
       {
-        "key": "58d98d15525b/github-pr-summary",
+        "key": "93c7fc98d13b/github-pr-summary",
         "group": "stack",
         "title": "GitHub PR summary",
         "name": "github-pr-summary",
@@ -2662,13 +2693,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "58d98d15525b",
+          "sourceId": "93c7fc98d13b",
           "itemId": "github-pr-summary"
         },
         "installed": false,
