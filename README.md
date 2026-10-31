@@ -28,8 +28,8 @@ ordinary files, so they keep working without Habi.
 
 | Platform | Requires | Get it |
 |---|---|---|
-| **macOS** | 11 or later, Apple Silicon or Intel | [![Download for macOS](https://img.shields.io/badge/Download-macOS-d9913f?style=flat-square&labelColor=1f1c19&logo=apple&logoColor=white)](https://github.com/acltabontabon/habi/releases/latest) or `brew install --cask acltabontabon/tap/habi` |
-| **Windows** | 64-bit | [![Download for Windows](https://img.shields.io/badge/Download-Windows-d9913f?style=flat-square&labelColor=1f1c19&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNCA5LjggMnY5LjVIMHpNMTEgMS44IDI0IDB2MTEuNUgxMXpNMCAxMi41aDkuOFYyMkwwIDIwLjZ6TTExIDEyLjVoMTNWMjRsLTEzLTEuOHoiLz48L3N2Zz4%3D)](https://github.com/acltabontabon/habi/releases/latest) |
+| <img src="docs/media/icon-apple.svg" width="16" height="16" alt=""> **macOS** | 11 or later, Apple Silicon or Intel | [Download](https://github.com/acltabontabon/habi/releases/latest)<br>or `brew install --cask acltabontabon/tap/habi` |
+| <img src="docs/media/icon-windows.svg" width="16" height="16" alt=""> **Windows** | 64-bit | [Download](https://github.com/acltabontabon/habi/releases/latest) |
 
 <details>
 <summary><b>First launch</b> &nbsp;<sub>you confirm once</sub></summary>
