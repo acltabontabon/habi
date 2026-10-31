@@ -23,7 +23,7 @@ Habi is a local desktop app for the skills and instructions you give AI coding a
 - **Update** what you installed, in a project or on your machine, after seeing exactly what changed.
 - **Trust** what you see: every skill shows its author, license and origin. No account, telemetry, cloud service or model call.
 
-Skills are ordinary [Agent Skills](https://agentskills.io) folders and shared instructions go
+Skills are ordinary Agent Skills folders and shared instructions go
 into `AGENTS.md`, so everything keeps working without Habi. Git uses your existing credentials.
 
 ## Supported agents
@@ -40,22 +40,36 @@ Habi writes to the folders each agent already reads, and installs as few copies 
 | OpenCode | `.agents/skills/` or `.claude/skills/` | `AGENTS.md` | `opencode.json` |
 | Junie | `.agents/skills/` | `AGENTS.md` | `.junie/mcp/mcp.json` |
 
-Skills can also go in the same folders under your home folder, for all your projects. See
-[Agent tools](docs/guide/agent-tools.md) for the details and what isn't supported.
+Skills can also go in the same folders under your home folder, for all your projects.
 
 ## Supported technology
 
 Habi reads a repository's files, without running anything, and matches skills to what it finds.
-These are the most common; [Detectors](docs/library-authors/detectors.md) has the full list.
 
-| Area | Examples |
+| Language | Frameworks | Build | Data access |
+|---|---|---|---|
+| **Java, Kotlin** | Spring Boot, Spring, Spring Security, Spring Batch, Spring Cloud, Quarkus, Micronaut, GraalVM | Maven, Gradle | JPA, jOOQ |
+| **TypeScript, JavaScript** | React, Vue, Angular, Next.js, Svelte, Vite, Express, NestJS | npm, pnpm | |
+| **Python** | Django, Flask, FastAPI | pip, Poetry, uv, Pipenv | SQLAlchemy |
+| **Go** | Gin, Echo, Fiber, Wails | Go modules | GORM |
+| **Rust** | Axum, Actix, Tauri, Tokio | Cargo | Diesel, SQLx |
+| **PHP** | Laravel, Symfony | Composer | Doctrine |
+| **C#, Scala, shell, HCL** | | | |
+
+| Area | Tools |
 |---|---|
-| **Languages** | Java, Kotlin, TypeScript, Python, Go, Rust, C#, PHP |
-| **Frameworks** | Spring Boot, React, Vue, Angular, Next.js, Django, FastAPI, Laravel |
-| **Databases** | Liquibase, Flyway, jOOQ, JPA, SQLAlchemy |
-| **Data** | dbt, Airflow, Spark, Kafka, Databricks |
-| **Infrastructure** | Docker, Kubernetes, Terraform, Helm, GitHub Actions |
-| **Testing** | JUnit, Jest, Vitest, Playwright, Cypress, pytest |
+| **Database migrations** | Liquibase, Flyway |
+| **APIs** | OpenAPI, springdoc |
+| **Containers** | Docker, Kubernetes, Helm, Kustomize |
+| **Infrastructure** | Terraform, Terragrunt, Pulumi, Ansible |
+| **CI** | GitHub Actions, GitLab CI |
+| **Data pipelines** | dbt, Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great Expectations |
+| **Data analysis** | pandas, Polars, DuckDB, Databricks, Delta Lake, MLflow, Jupyter |
+| **Unit tests** | JUnit, TestNG, Spock, Mockito, Testcontainers, Jest, Vitest, Mocha, Jasmine, Karma, pytest, PHPUnit, Bats |
+| **Browser and mobile tests** | Playwright, Cypress, Selenium, WebdriverIO, Appium |
+| **API tests** | REST Assured, Karate, Pact, WireMock, Postman |
+| **Acceptance tests** | Cucumber, Gauge, Robot Framework |
+| **Performance tests** | Gatling, JMeter, k6, Locust |
 
 ## Install
 
@@ -73,9 +87,9 @@ Or on macOS, with Homebrew:
 brew install --cask acltabontabon/tap/habi
 ```
 
-The first launch asks you to confirm once, because the installers are not signed by Apple or
-Microsoft ([how](docs/guide/getting-started.md#installing)). Updates after that are signed with
-Habi's own key.
+The installers are not signed by Apple or Microsoft, so the first launch asks you to confirm once.
+On macOS, choose **Open Anyway** in System Settings → Privacy & Security. On Windows, choose
+**More info**, then **Run anyway**. Updates after that are signed with Habi's own key.
 
 ## A look inside
 
