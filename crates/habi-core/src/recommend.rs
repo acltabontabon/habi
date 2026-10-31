@@ -17,6 +17,7 @@ use crate::matching::described::{self, described_rule};
 use crate::matching::eval::Declaration;
 use crate::matching::{Applicability, ApplicabilityResult, Views, assess_in};
 use crate::paths::display_path;
+use crate::source::SourceRole;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use ts_rs::TS;
@@ -529,6 +530,7 @@ pub struct Candidate<'a> {
     pub item: &'a LibraryItem,
     pub source_name: &'a str,
     pub source_identity: &'a str,
+    pub source_role: SourceRole,
     pub snapshot: &'a str,
     pub runs: Vec<CheckRun>,
     /// A rule suggested by Habi's catalog for an item whose author declared
@@ -607,10 +609,16 @@ pub fn recommend(
                 .as_ref()
                 .map(|i| i.state)
                 .unwrap_or(InstallState::NotInstalled);
+            // A library from outside the team can say a skill is required, but
+            // not on the team's behalf.
+            let requirement = match c.source_role {
+                SourceRole::Team => item.requirement,
+                SourceRole::Community => Requirement::Recommended,
+            };
             // A team requirement whose conditions do not hold for this project
             // is listed with the other items that do not apply: a Java-only
             // rule is not a requirement for a React project.
-            let group = match (item.requirement, applicability.applicability) {
+            let group = match (requirement, applicability.applicability) {
                 (_, Applicability::DoesNotApply) => Group::NotApplicable,
                 (Requirement::Required, _) => Group::Required,
                 (_, Applicability::Applies) => Group::Relevant,
@@ -637,7 +645,10 @@ pub fn recommend(
                 folders.unmanaged_copies(root, &item.name, lock)
             };
             Recommendation {
-                item: summarize(item, c.source_name, c.snapshot),
+                item: ItemSummary {
+                    requirement,
+                    ..summarize(item, c.source_name, c.snapshot)
+                },
                 group,
                 evidence: evidence(
                     item,

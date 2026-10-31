@@ -622,6 +622,28 @@ describe("a connected catalog library", () => {
     expect(screen.queryByRole("button", { name: /Connect/ })).toBeNull();
   });
 
+  it("says a skill is required only when the library is the team's", async () => {
+    const requiring = (sources: Source[]) => {
+      world({ entry: entryConnected, sources });
+      const base = invoke.getMockImplementation();
+      invoke.mockImplementation(async (cmd: string, args?: Record<string, unknown>) =>
+        cmd === "library"
+          ? { ...library, items: library.items.map((i) => ({ ...i, requirement: "required" })) }
+          : base?.(cmd, args),
+      );
+    };
+    requiring([sourceConnected]);
+    const community = wrap(inLibrary());
+    const theirs = await screen.findByRole("list", { name: /Skills in/ });
+    expect(within(theirs).queryByText("required")).toBeNull();
+    community.unmount();
+
+    requiring([{ ...sourceConnected, role: "team" }]);
+    wrap(inLibrary());
+    const ours = await screen.findByRole("list", { name: /Skills in/ });
+    expect(within(ours).getAllByText("required")).toHaveLength(library.items.length);
+  });
+
   it("groups its skills by plugin and lists them in that order", async () => {
     wrap(inLibrary());
     const index = await screen.findByRole("list", { name: /Skills in/ });

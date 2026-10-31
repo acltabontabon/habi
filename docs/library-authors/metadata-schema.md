@@ -60,7 +60,7 @@ See [example library](../../fixtures/libraries/example-team-library) (uses all f
 | `id` | Stable ID in the library (defaults to SKILL.md `name`). |
 | `title`, `owner` | Display name & maintainer (attribution only, not access control). |
 | `kind` | `skill` (default) or `workflow` (ordered procedure). |
-| `requirement` | `recommended` (default) or `required` (team-level; always shown, never filtered). |
+| `requirement` | `recommended` (default) or `required` (team-level; always shown, never filtered). Only a team library can require: in a community library, `required` counts as `recommended`. |
 | `priority` | −100…100 (explicit team ordering). |
 | `scope` | `module` (default) or `repository` (evaluate-once flag). |
 | `applies_when`, `excludes` | Matching conditions ([below](#conditions)). |

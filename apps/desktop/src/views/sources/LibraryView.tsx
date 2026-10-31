@@ -86,6 +86,7 @@ function IndexRow({
   letter,
   active,
   fits,
+  required,
   changed,
   installed,
   onSelect,
@@ -97,6 +98,8 @@ function IndexRow({
   active: boolean;
   /** Fits the project being worked on. */
   fits: boolean;
+  /** Required by the team; a community library cannot require on its behalf. */
+  required: boolean;
   /** New or changed in the last update, until it is marked as seen. */
   changed: "new" | "changed" | undefined;
   installed: boolean;
@@ -128,7 +131,7 @@ function IndexRow({
           ) : null}
           {changed ? <span className="index-changed">{changed}</span> : null}
           {fits ? <span className="index-fit">fits</span> : null}
-          {item.requirement === "required" ? <span>required</span> : null}
+          {required ? <span>required</span> : null}
           {item.kind === "instructions" ? <span>instructions</span> : null}
           {item.kind === "workflow" ? <span>workflow</span> : null}
           {item.metadataStatus === "declared" ? <span>rules</span> : null}
@@ -359,6 +362,7 @@ const IndexPanel = memo(function IndexPanel({
                     letter={shown}
                     active={i.id === selectedId}
                     fits={fitIds.has(i.id)}
+                    required={source.role === "team" && i.requirement === "required"}
                     changed={changes.get(i.id)}
                     installed={installedIds.has(i.key)}
                     onSelect={() => onOpen(i)}
