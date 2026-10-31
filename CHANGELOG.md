@@ -21,9 +21,8 @@ All notable changes to Habi are listed here. The format follows
 
 ### Changed
 
-- **Home is the cloth.** Once you have projects the headline shrinks to one line and the loom takes the page.
-  Each skill is a thread of its own, taut when installed and slack when it only fits, and what waits on you is
-  tied off in the margin of the project it concerns. A key says how to read it.
+- **Home is a front page.** Once you have projects, the one that needs you most leads: what it is missing, why,
+  and one button to review it. Other projects with skills waiting queue down the side.
 - **Install everything your team requires at once.** The *Team requirements* group has **Install all…**,
   through the usual review.
 - **How a skill reaches your agent, said plainly.** Each skill's page says where its files go and when the

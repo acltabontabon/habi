@@ -16,7 +16,7 @@ its one signature — used only where it carries meaning.
   reason to the evidence behind it. It never fills large areas.
 - **Dyes mark provenance.** Each library gets a natural-dye color (`--dye-0…7`, in the order
   libraries were connected): its *strand* in the sidebar and on every item row, its warp
-  down the library's index (and its spine), its warp in the welcome loom. Team libraries are
+  down the library's index (and its spine), its segments on Home. Team libraries are
   solid threads; **community libraries are stitched (dashed)** — published by others, not
   reviewed by the team. A dye is always next to the library's name; color is never the only
   signal.
@@ -43,23 +43,16 @@ its one signature — used only where it carries meaning.
   machine with how to install it when missing; the project stacks inspection reads (each
   chip's tooltip names the files); the seven agent tools. The optional GitHub and GitLab CLIs
   are not asked for here; Settings → This machine lists them with how to add each.
-- **Home: the loom** — on a first run the brand headline ("What one developer learns, every
-  project keeps.") and the tagline under it ("Find what applies. Improve what works. Share what
-  you learn."). Once there are projects the headline shrinks to one line, the tagline goes, and the
-  cloth takes the page. *Waiting for you* is its margin: a project's thread runs on and is tied off
-  in a saffron knot beside what waits on it (*5 skills fit, none added*, an edit not sent); a failed
-  refresh hangs below. No note, no margin. A key along the foot reads the threads, with only the marks
-  on show. The loom: warp threads are knowledge sources, weft rows are your projects, and at each crossing
-  every skill that belongs there is a thread of its own: taut where it is installed, slack
-  where it fits and is not installed yet. Pointing at a crossing lights its row and column and says
-  what it holds: what is installed, and how many fit. A saffron
-  knot marks where a refinement from a project went back into a library. The last row is
-  unwoven and holds the one primary action, *Open a project…* (read-only). Rows and source
-  names are controls; pointing at one brings what it connects to forward. It scales (ten
-  source columns, seven rows, "+N more") and stays composed when empty: faint rows keep the
-  cloth's texture, and a first run shows undyed threads with a faint twill. Creating and
-  adding skills live in the sidebar, palette and project views; their shortcuts sit at the
-  foot with a link to connect a library on a first run.
+- **Home** — on a first run the brand headline ("What one developer learns, every project keeps."),
+  the tagline under it and one button, *Open a project…*. Once there are projects it is a front page. The
+  project with the most skills waiting is the headline: *Next up*, its name set large, one sentence (*Nine
+  skills fit this project, and none are added yet.*), one line, the page's only ornament and a count: straight
+  for each skill installed, one soft wave for each still waiting, tied off in a knot; the first three skills it is missing with why (what the team requires
+  first), and the one primary action, *Review 9 skills…*. Down the side, under *After that*, only the other projects with skills waiting, most
+  first, each with how it stands: the sidebar lists every project, so this is a queue, not a second index.
+  What belongs to no project (a failed refresh, an edit not sent) follows, then *Open another project…*. Words carry the
+  meaning, so there is no key. The foot keeps *What leaves this machine* and the shortcuts. Below 960 px the
+  queue moves under the headline.
 - **Already here** — skills and instruction files already in the repository, read-only,
   with real next actions (read, edit a copy, turn part into a skill). Shown in place of
   recommendations when there is nothing to recommend yet.

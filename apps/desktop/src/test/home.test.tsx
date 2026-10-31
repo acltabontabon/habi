@@ -73,16 +73,21 @@ function home(data: { projects?: unknown[]; sources?: unknown[]; contributions?:
 describe("home", () => {
   beforeEach(() => invoke.mockReset());
 
-  it("gives a first run the whole headline, and nothing to wait for", async () => {
+  it("gives a first run the whole headline and one action", async () => {
     home({});
     expect(await screen.findByText(/Find what applies/)).toBeInTheDocument();
-    expect(screen.queryByText("Waiting for you")).not.toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "How to read the loom" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Open a project/ })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Projects" })).not.toBeInTheDocument();
   });
 
-  it("shrinks the headline once there are projects, and says what waits", async () => {
+  it("leads with the project that needs you most, and keeps the privacy link", async () => {
+    const quiet = project({ id: "p2", name: "orders-api" });
+    const busy = project({ id: "p3", name: "platform-monorepo" });
+    (busy.summary as { tally: unknown[] }).tally = [
+      { sourceId: "team", fits: 9, described: 0, installed: [] },
+    ];
     const { container } = home({
-      projects: [project()],
+      projects: [quiet, busy],
       sources: [team(), team({ id: "gone", name: "Gone", lastError: { code: "x", message: "y" } })],
       contributions: [
         {
@@ -101,28 +106,81 @@ describe("home", () => {
         },
       ],
     });
-    expect(await screen.findByRole("region", { name: "Waiting for you" })).toBeInTheDocument();
-    expect(container.querySelector(".home.is-returning")).not.toBeNull();
-    expect(screen.queryByText(/Find what applies/)).not.toBeInTheDocument();
-    expect(
-      await screen.findByRole("button", { name: "billing-service 2 skills fit, none added" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "platform-monorepo" })).toBeInTheDocument();
+    expect(screen.getByText("Nine skills fit this project, and none are added yet.")).toBeInTheDocument();
+    expect(container.querySelectorAll(".btn-primary")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Review 9 skills…" })).toHaveClass("btn-primary");
+    expect(screen.getByRole("button", { name: /orders-api 2 skills fit, none added/ })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Gone could not be refreshed" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Fix it not sent yet" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Sent/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Find what applies/)).not.toBeInTheDocument();
+    expect(screen.getByText("After that")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open another project…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "What leaves this machine" })).toBeInTheDocument();
   });
 
-  it("says nothing when nothing waits, and explains the loom's marks", async () => {
-    const installed = project();
-    (installed.summary as { installed: number }).installed = 1;
-    home({ projects: [installed], sources: [team()] });
-    const key = await screen.findByRole("list", { name: "How to read the loom" });
-    expect(key).toHaveTextContent("Taut: installed");
-    expect(key).toHaveTextContent("Slack: fits, not installed");
-    expect(key).toHaveTextContent("One thread, one skill");
-    // Only the marks that are on screen.
-    expect(key).not.toHaveTextContent("community");
-    expect(key).not.toHaveTextContent("shared back");
-    expect(screen.queryByRole("region", { name: "Waiting for you" })).not.toBeInTheDocument();
+  it("queues only what is waiting, since the sidebar lists every project", async () => {
+    const waitingLess = project({ id: "p2", name: "orders-api" });
+    const waitingMost = project({ id: "p3", name: "storefront-web" });
+    (waitingMost.summary as { tally: unknown[] }).tally = [
+      { sourceId: "team", fits: 4, described: 0, installed: [] },
+    ];
+    const lead = project({ id: "p4", name: "platform-monorepo" });
+    (lead.summary as { tally: unknown[] }).tally = [
+      { sourceId: "team", fits: 9, described: 0, installed: [] },
+    ];
+    const done = project({ id: "p5", name: "finished-service" });
+    (done.summary as { tally: unknown[] }).tally = [
+      { sourceId: "team", fits: 1, described: 0, installed: ["One"] },
+    ];
+    const empty = project({ id: "p6", name: "legacy-scripts" });
+    (empty.summary as { tally: unknown[] }).tally = [];
+    home({ projects: [done, empty, waitingLess, waitingMost, lead], sources: [team()] });
+    const queue = await screen.findByRole("complementary", { name: "After that" });
+    const names = [...queue.querySelectorAll(".front-rail-name")].map((n) => n.textContent);
+    expect(names).toEqual(["storefront-web", "orders-api"]);
+  });
+
+  it("lists the skills the lead is missing, what the team requires first", async () => {
+    const rec = (id: string, group: string, reason: string) => ({
+      group,
+      installState: "notInstalled",
+      applicability: { applicability: "applies", reason },
+      item: { key: `team/${id}`, title: id },
+    });
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "app_info") return { gitAvailable: true };
+      if (cmd === "recent_projects") return [project()];
+      if (cmd === "project_overview")
+        return {
+          recommendations: [rec("fits", "relevant", "Uses Spring Boot"), rec("must", "required", "x")],
+        };
+      return [];
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <NavProvider initial={{ name: "welcome" }}>
+            <ActionsContext.Provider value={actions}>
+              <Welcome />
+            </ActionsContext.Provider>
+          </NavProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    const rows = await screen.findAllByRole("button", { name: /Your team requires it|Uses Spring Boot/ });
+    expect(rows.map((r) => r.textContent)).toEqual(["must Your team requires it", "fits Uses Spring Boot"]);
+  });
+
+  it("says when nothing is waiting anywhere", async () => {
+    const done = project();
+    (done.summary as { tally: unknown[] }).tally = [
+      { sourceId: "team", fits: 2, described: 0, installed: ["One", "Two"] },
+    ];
+    home({ projects: [done], sources: [team()] });
+    expect(await screen.findByText("Everything that fits is installed.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open billing-service" })).toHaveClass("btn-primary");
   });
 });
