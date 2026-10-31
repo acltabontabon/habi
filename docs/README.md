@@ -36,12 +36,3 @@ Habi finds skills that fit your repo, installs them for your agent tools, and ca
 | Document | Read it to |
 | --- | --- |
 | [Contributing](../CONTRIBUTING.md) | Set up, run the checks, and send a change |
-| [Architecture](dev/architecture.md) | Find your way around the crates and modules, install scopes, data locations, and the UI in a browser |
-| [Release](dev/release.md) | Learn the toolchain, versioning, signing and updates, and follow the release checklist |
-| [Release validation](dev/release-validation.md) | Prove agent discovery, packaged upgrades, failure recovery and backups before publishing |
-| [Test data](dev/test-data.md) | Use the fixtures and the seed script |
-| [Design](dev/design.md) | Keep to the visual direction, the key screens and the accessibility rules |
-| [Compatibility research](dev/compatibility-research.md) | Check each agent tool's documented paths, and run the smoke tests |
-| [Reuse assessment](dev/reuse-assessment.md) | See which dependencies Habi uses, and why some logic is its own |
-| [The website](dev/website.md) | Build the site, and see how these pages are published on it |
-| [Decisions](dev/decisions/) | Read why Habi supports [seven agent tools](dev/decisions/0001-seven-agent-tools.md) and [installs on this machine](dev/decisions/0002-install-on-this-machine.md) the way it does |

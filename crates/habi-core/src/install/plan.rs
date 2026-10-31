@@ -59,7 +59,7 @@ const BRIDGES: [Bridge; 2] = [
     },
 ];
 const INSTRUCTIONS_FILE: &str = "AGENTS.md";
-/// Codex's default `project_doc_max_bytes` (see `docs/dev/compatibility-research.md`).
+/// Codex's default `project_doc_max_bytes`, from its documentation.
 const CODEX_INSTRUCTIONS_LIMIT: usize = 32 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]

@@ -3,7 +3,7 @@ name: Release
 # Pushing a tag vX.Y.Z runs every CI check, confirms the tag matches the version in each
 # manifest and that CHANGELOG.md has an entry for it, builds the installers (signed for Habi's
 # own updater) for macOS (one universal build) and Windows, and creates a draft release with
-# the update manifest (latest.json). See docs/dev/release.md.
+# the update manifest (latest.json).
 
 on:
   push:
@@ -86,7 +86,7 @@ jobs:
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
-      # The installers are not signed by Apple or Microsoft, by choice (docs/dev/release.md).
+      # The installers are not signed by Apple or Microsoft, by choice.
       # Installed copies of Habi only accept an update signed by this key; without it a release
       # could never be installed by the people already running Habi. It is not Apple or Windows
       # code signing: generate it once with `pnpm tauri signer generate`.
@@ -96,7 +96,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it people cannot update to this release. See docs/dev/release.md."
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set: without it people cannot update to this release."
             exit 1
           fi
       - name: Build desktop installers

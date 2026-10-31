@@ -2,8 +2,8 @@
 
 All notable changes to Habi are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
-[semantic versioning](https://semver.org/spec/v2.0.0.html); how Habi applies it is in
-[docs/dev/release.md](docs/dev/release.md#versioning).
+[semantic versioning](https://semver.org/spec/v2.0.0.html): major for incompatible changes to
+the lock file or data directory, minor for features, patch for fixes.
 
 ## Unreleased
 

@@ -9,7 +9,7 @@ export const ISSUES = `${REPOSITORY}/issues`;
 export const AUTHOR = { name: "Alvin Cris Tabontabon", site: "https://acltabontabon.com" };
 export const SUPPORT = "https://ko-fi.com/aclt_attic";
 
-/** Habi's site, and the documentation it publishes from docs/ (docs/dev/website.md). */
+/** Habi's site, and the documentation it publishes from docs/. */
 export const SITE = "https://acltabontabon.com/habi/";
 export const DOCS = `${SITE}docs/`;
 

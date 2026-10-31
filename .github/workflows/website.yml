@@ -3,7 +3,7 @@ name: Website
 # Builds website/ and publishes it to GitHub Pages
 # (https://acltabontabon.com/habi/). Pages deploys from GitHub Actions
 # (repository settings → Pages → Source). The site publishes docs/ under
-# /habi/docs/ (docs/dev/website.md), so a change there deploys too.
+# /habi/docs/, so a change there deploys too.
 
 on:
   push:

@@ -4,8 +4,6 @@ Habi installs for: **Claude Code · Cursor · Codex · Gemini CLI · GitHub Copi
 
 It writes to standard folders, shows you every change first, and needs nothing running after.
 
-(Details & sources in [compatibility research](../dev/compatibility-research.md).)
-
 ## Choosing which tools
 
 When you install, Habi preselects tools the project already uses (detected by what's at the root).
@@ -146,5 +144,5 @@ Habi never writes through links or creates them. Links inside the project are re
 |---|---|
 | Files written to correct paths & formats | Automated (`tests/install_lifecycle.rs`, `machine_install.rs`) |
 | JSON/TOML formatting & keys preserved | Unit tests |
-| Agent discovers & loads the skill | Hand-verified via [smoke tests](../dev/compatibility-research.md#6-smoke-test-procedure-does-the-client-actually-discover-it) |
+| Agent discovers & loads the skill | Hand-verified with smoke tests |
 | Agent actually follows instructions | Not Habi's claim |

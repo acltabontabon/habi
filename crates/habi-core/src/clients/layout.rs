@@ -1,7 +1,7 @@
 //! Where each client discovers project-level skills, and how Habi chooses the
 //! smallest set of directories that serves the selected clients.
 //!
-//! From `docs/dev/compatibility-research.md` (2026-10-02, 2026-10-03):
+//! From each client's documentation (researched 2026-10-02, 2026-10-03):
 //! - `.agents/skills` is read by Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode and Junie.
 //! - `.claude/skills` is read by Claude Code, and also by Cursor, Copilot and OpenCode.
 //! - Each of Cursor, Gemini CLI, Copilot, OpenCode and Junie also has a folder of its own.
@@ -58,9 +58,8 @@ pub struct UserSkillDir {
     pub readers: &'static [ClientId],
 }
 
-/// From `docs/dev/compatibility-research.md`: the home folders each client
-/// documents. `~/.codex/skills` is left out because Codex's own documentation
-/// does not list it.
+/// The home folders each client documents. `~/.codex/skills` is left out
+/// because Codex's own documentation does not list it.
 pub const USER_SKILL_DIRS: [UserSkillDir; 7] = [
     UserSkillDir {
         key: "claude",

@@ -34,7 +34,7 @@ corepack enable                                   # provides the pinned pnpm
 scripts/check.sh                                  # the checks CI runs (see below)
 
 cd apps/desktop && pnpm install && pnpm tauri dev # the desktop app
-cargo run -p habi-cli -- --help                   # the internal command line (docs/dev/cli.md)
+cargo run -p habi-cli -- --help                   # the internal command line
 ```
 
 The first build takes a few minutes.
@@ -47,9 +47,8 @@ the website build.
 CI runs the Rust checks on macOS and Windows and the others once on Linux, each only when a
 change touches what it checks. Installers are built only for a release, from a `v*` tag.
 
-[Architecture](docs/dev/architecture.md) explains the repository layout and modules, and how
-to work on the UI in a browser against the real core or against fixture data. The
-[documentation index](docs/README.md) lists the other pages for working on Habi.
+To work on the UI in a browser against the real core, run
+`cargo run -p habi-core --example dev_bridge` with `HABI_HOME` set to a scratch folder.
 
 ## Making a change
 
@@ -66,8 +65,8 @@ to work on the UI in a browser against the real core or against fixture data. Th
 5. Fixtures must stay fictitious: no real company names, people, tokens or internal hosts.
    Use `example.com` / `example.invalid`.
 6. Add a line to `CHANGELOG.md` under "Unreleased" for anything a user would notice, written
-   for the person using Habi ([how](docs/dev/release.md#release-checklist)). Update the
-   guides in `docs/` when you change what a user sees or does.
+   for the person using Habi. Update the guides in `docs/` when you change what a user sees
+   or does.
 7. Run `scripts/check.sh` before opening the pull request.
 
 ## Commit and review

@@ -8,8 +8,7 @@
  *
  * docs/ stays the one copy anybody edits. It reads on GitHub, where scripts/check-links.mjs
  * checks it; this only renders it, at build time, into pages that share the site's look.
- * docs/dev/ explains the code to the people changing it, so a link there, to the README or to a
- * source file goes to GitHub, where the code is.
+ * A link to the README or to a source file goes to GitHub, where the code is.
  *
  * Every link is checked while it is rewritten. A page, a `#section` or an image the site does not
  * have fails the build, because on a static site a broken link fails silently, and only for a
@@ -256,7 +255,7 @@ export function renderDocs(base: string, docsDir: string = __HABI_DOCS_DIR__): D
         media.set(inDocs.slice("media/".length), onDisk);
         return { href: `${root}docs/${inDocs}`, external: false, file: onDisk };
       }
-      // Anything else lives in the repository: a contributor's page, the README, a source file.
+      // Anything else lives in the repository: the README, a source file.
       const where = statSync(onDisk).isDirectory() ? TREE : BLOB;
       return { href: `${where}${inRepo}${hash}`, external: true };
     };
