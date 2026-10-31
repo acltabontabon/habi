@@ -52,6 +52,18 @@ Restore recomputes `.habi/lock.json` (doesn't restore it as-is) to handle overla
 Restoring a case-only rename (`checklist.md` → `Checklist.md`) renames the file back, also on
 case-insensitive filesystems (macOS, Windows default), where both names are the same file.
 
+## When a merge conflicts in the lock file
+
+Two branches that each install a skill can leave conflict markers in `.habi/lock.json`. Nothing stops working:
+Habi reads both sides combined, so every skill either branch installed stays tracked. Where both branches changed
+the same skill, the current branch's record stands, and a file that differs from it shows as edited rather than being
+replaced.
+
+To finish the merge, choose **Review the fix…** on the project page, apply it, and run `git add .habi/lock.json`. Any
+install, update or removal writes the combined file too.
+
+Don't delete the lock file. Habi would forget what it installed, and those files would then count as your own.
+
 ## MCP updates
 
 An update adopts changed server definitions and removes servers the item no longer needs. A

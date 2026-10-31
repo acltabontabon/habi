@@ -219,11 +219,116 @@ impl Default for LockFile {
     }
 }
 
+/// The two sides of a file Git left with conflict markers, or `None` if it has none.
+/// The common ancestor of a diff3-style conflict is dropped.
+fn conflict_sides(bytes: &[u8]) -> Option<(String, String)> {
+    enum In {
+        Both,
+        Ours,
+        Base,
+        Theirs,
+    }
+    let text = std::str::from_utf8(bytes).ok()?;
+    if !text.lines().any(|l| l.starts_with("<<<<<<<")) {
+        return None;
+    }
+    let (mut ours, mut theirs) = (String::new(), String::new());
+    let mut place = In::Both;
+    for line in text.lines() {
+        if line.starts_with("<<<<<<<") {
+            place = In::Ours;
+        } else if line.starts_with("|||||||") {
+            place = In::Base;
+        } else if line.starts_with("=======") {
+            place = In::Theirs;
+        } else if line.starts_with(">>>>>>>") {
+            place = In::Both;
+        } else {
+            if matches!(place, In::Both | In::Ours) {
+                ours.push_str(line);
+                ours.push('\n');
+            }
+            if matches!(place, In::Both | In::Theirs) {
+                theirs.push_str(line);
+                theirs.push('\n');
+            }
+        }
+    }
+    Some((ours, theirs))
+}
+
+/// Adds what only `other` records to `item`, so that nothing either side installed
+/// is forgotten. Where both record a file, `item`'s digest stands: if the file on
+/// disk is `other`'s, Habi reports it as edited and asks before touching it.
+fn merge_item(item: &mut LockedItem, other: LockedItem) {
+    for client in other.clients {
+        if !item.clients.contains(&client) {
+            item.clients.push(client);
+        }
+    }
+    for file in other.files {
+        if !item.files.iter().any(|f| f.path == file.path) {
+            item.files.push(file);
+        }
+    }
+    for section in other.sections {
+        if !item
+            .sections
+            .iter()
+            .any(|s| s.file == section.file && s.marker == section.marker)
+        {
+            item.sections.push(section);
+        }
+    }
+    for entry in other.mcp {
+        if !item
+            .mcp
+            .iter()
+            .any(|m| m.file == entry.file && m.server == entry.server)
+        {
+            item.mcp.push(entry);
+        }
+    }
+}
+
 impl LockFile {
+    /// Whether Git left conflict markers in these bytes. Two branches that each install
+    /// a skill will do this, because the lock file is committed.
+    pub fn is_conflicted(bytes: &[u8]) -> bool {
+        conflict_sides(bytes).is_some()
+    }
+
+    /// Reads a lock file. One with conflict markers reads as both sides combined, so a
+    /// merge never takes the project's skills out of Habi's sight. Nothing is written
+    /// here: the next plan, or `plan_repair_lock`, shows and saves the combined file.
     pub fn parse(bytes: &[u8]) -> Result<LockFile> {
+        let Some((ours, theirs)) = conflict_sides(bytes) else {
+            return Self::parse_whole(bytes);
+        };
+        let side = |text: String| {
+            Self::parse_whole(text.as_bytes()).map_err(|e| {
+                HabiError::Conflict(format!(
+                    "{} has a merge conflict Habi cannot combine: {e}",
+                    crate::brand::LOCK_FILE
+                ))
+            })
+        };
+        let mut merged = side(ours)?;
+        let theirs = side(theirs)?;
+        merged.habi_lock = merged.habi_lock.max(theirs.habi_lock);
+        for other in theirs.items {
+            match merged.items.iter_mut().find(|i| i.key() == other.key()) {
+                Some(item) => merge_item(item, other),
+                None => merged.items.push(other),
+            }
+        }
+        Ok(merged)
+    }
+
+    fn parse_whole(bytes: &[u8]) -> Result<LockFile> {
         let lock: LockFile = serde_json::from_slice(bytes).map_err(|e| {
             HabiError::Conflict(format!(
-                "{} is not a valid Habi lock file ({e}). Fix or remove it before installing.",
+                "{} is not a valid Habi lock file ({e}). Fix it or restore it from Git. Removing it makes Habi forget what it installed here, and those files then count as your own.",
                 crate::brand::LOCK_FILE
             ))
         })?;
@@ -353,6 +458,64 @@ mod tests {
         assert!(LockFile::parse(&lock_with_file("README.md")).is_err());
         assert!(LockFile::parse(&lock_with_file(".agents/skills/SKILL.md")).is_err());
         assert!(LockFile::parse(&lock_with_file("../outside")).is_err());
+    }
+
+    fn lock_of(id: &str, file: &str, digest: &str) -> LockFile {
+        let bytes = format!(
+            r#"{{"habiLock":1,"items":[{{"source":{{"identity":"local:t","name":"t","subdir":null}},"id":"{id}","kind":"skill","title":"{id}","snapshot":"abc","contentDigest":"d","installedAt":"t","clients":["claude-code"],"files":[{{"path":"{file}","digest":"{digest}","clients":["claude-code"]}}]}}]}}"#
+        );
+        LockFile::parse(bytes.as_bytes()).unwrap()
+    }
+
+    fn conflicted(ours: &LockFile, theirs: &LockFile, base: bool) -> Vec<u8> {
+        let mut out = String::from("<<<<<<< HEAD\n");
+        out.push_str(std::str::from_utf8(&ours.to_bytes()).unwrap());
+        if base {
+            out.push_str("||||||| merged common ancestors\n{\"habiLock\":1,\n");
+        }
+        out.push_str("=======\n");
+        out.push_str(std::str::from_utf8(&theirs.to_bytes()).unwrap());
+        out.push_str(">>>>>>> other\n");
+        out.into_bytes()
+    }
+
+    #[test]
+    fn a_merge_conflict_reads_as_both_sides() {
+        let ours = lock_of("a", ".claude/skills/a/SKILL.md", "1");
+        let theirs = lock_of("b", ".claude/skills/b/SKILL.md", "2");
+        for base in [false, true] {
+            let bytes = conflicted(&ours, &theirs, base);
+            assert!(LockFile::is_conflicted(&bytes));
+            let merged = LockFile::parse(&bytes).unwrap();
+            let ids: Vec<&str> = merged.items.iter().map(|i| i.id.as_str()).collect();
+            assert_eq!(ids, ["a", "b"]);
+        }
+        assert!(!LockFile::is_conflicted(&ours.to_bytes()));
+    }
+
+    #[test]
+    fn a_merge_conflict_keeps_every_file_of_an_item_both_sides_have() {
+        let ours = lock_of("a", ".claude/skills/a/SKILL.md", "ours");
+        let mut theirs = lock_of("a", ".claude/skills/a/SKILL.md", "theirs");
+        let extra = lock_of("a", ".agents/skills/a/SKILL.md", "more");
+        theirs.items[0].files.push(extra.items[0].files[0].clone());
+        let merged = LockFile::parse(&conflicted(&ours, &theirs, false)).unwrap();
+        let files = &merged.items[0].files;
+        assert_eq!(files.len(), 2);
+        // Our digest stands; a file on disk that is theirs then reads as edited.
+        assert_eq!(files[0].digest, "ours");
+    }
+
+    #[test]
+    fn a_side_of_a_conflict_that_is_not_confined_is_refused() {
+        let ours = lock_of("a", ".claude/skills/a/SKILL.md", "1");
+        let mut bytes = b"<<<<<<< HEAD\n".to_vec();
+        bytes.extend(ours.to_bytes());
+        bytes.extend(b"=======\n");
+        bytes.extend(lock_with_file("../outside"));
+        bytes.extend(b"\n>>>>>>> other\n");
+        let error = LockFile::parse(&bytes).unwrap_err().to_string();
+        assert!(error.contains("merge conflict"), "{error}");
     }
 
     #[test]

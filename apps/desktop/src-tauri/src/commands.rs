@@ -759,6 +759,12 @@ pub async fn plan_update(
 }
 
 #[tauri::command]
+pub async fn plan_repair_lock(state: State<'_, AppState>, project_id: String) -> CmdResult<Plan> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.plan_repair_lock(&project_id)).await
+}
+
+#[tauri::command]
 pub async fn plan_remove(
     state: State<'_, AppState>,
     project_id: String,

@@ -13,6 +13,7 @@
 //! signals per skill), and results are remembered by the skill's content
 //! digest, so a library is read once per process however often it is listed.
 
+use super::model::McpServerSpec;
 use super::{ItemFile, SKILL_FILE, join};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -82,6 +83,9 @@ pub enum SignalKind {
     ToolPermission,
     /// Configures an MCP server.
     McpServer,
+    /// This plan would write an MCP server into an agent's configuration: a program the
+    /// agent starts, or an address it connects to, chosen by the library.
+    AddsMcpServer,
     /// Comes with code an agent could run. Said of every skill that does,
     /// whatever the code looks like: patterns only see what they know.
     BundledCode,
@@ -91,9 +95,8 @@ impl SignalKind {
     pub fn severity(self) -> SignalSeverity {
         use SignalKind::*;
         match self {
-            DownloadAndRun | Destructive | CredentialFile | NativeBinary | HiddenText | AutoRun => {
-                SignalSeverity::Caution
-            }
+            DownloadAndRun | Destructive | CredentialFile | NativeBinary | HiddenText | AutoRun
+            | AddsMcpServer => SignalSeverity::Caution,
             EnvironmentSecret | Privileged | DynamicExecution | Network | PackageInstall
             | OpaqueFile | ExecutableData | ToolPermission | McpServer => SignalSeverity::Notice,
             NotFullyRead | BundledCode => SignalSeverity::Info,
@@ -120,6 +123,7 @@ impl SignalKind {
             AutoRun => "Runs commands by itself, without the agent choosing to",
             ToolPermission => "Grants itself tools an agent can use without asking",
             McpServer => "Configures an MCP server",
+            AddsMcpServer => "Adds an MCP server that your agent will start or connect to",
             BundledCode => "Comes with code an agent could run",
         }
     }
@@ -388,6 +392,8 @@ fn runs_by_its_content(path: &str, text: &str) -> Option<(&'static str, u32)> {
 /// tools it may use without asking. The agent acts on these before it reads a
 /// word of the instructions, and they are read by no other rule.
 fn scan_frontmatter(text: &str, found: &mut Vec<Signal>) {
+    // `split_frontmatter` allows a byte-order mark, so a skill with one still loads.
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let mut lines = text.lines().enumerate();
     if lines.next().is_none_or(|(_, first)| first.trim() != "---") {
         return;
@@ -813,6 +819,46 @@ pub fn scan_code(path: &str, text: &str) -> Vec<Signal> {
     found
 }
 
+/// An MCP server a plan would write to `file`, saying what it runs or reaches and
+/// which secrets it is given. Shown whole: this is what a person is accepting.
+pub(crate) fn adds_mcp_server(file: &str, name: &str, spec: &McpServerSpec) -> Signal {
+    let what = match spec {
+        McpServerSpec::Stdio { command, args, env } => {
+            let mut line = format!("{name}: runs {command}");
+            for arg in args {
+                line.push(' ');
+                line.push_str(arg);
+            }
+            if !env.is_empty() {
+                let names: Vec<&str> = env.keys().map(String::as_str).collect();
+                line.push_str(&format!(", given {}", names.join(", ")));
+            }
+            line
+        }
+        McpServerSpec::Http {
+            url,
+            bearer_token_env,
+        } => match bearer_token_env {
+            Some(token) => format!("{name}: connects to {url}, sending {token}"),
+            None => format!("{name}: connects to {url}"),
+        },
+    };
+    simple(SignalKind::AddsMcpServer, file, Some(what))
+}
+
+/// A caution for code changed by an update to a skill that runs commands by itself.
+/// A hook the person accepted may run this file, and the new code may match no
+/// pattern, so the change has to be asked about whatever it looks like.
+pub(crate) fn changed_code(path: &str, executable: bool, bytes: &[u8]) -> Option<Signal> {
+    is_code(path, executable, bytes).then(|| {
+        simple(
+            SignalKind::AutoRun,
+            path,
+            Some("Code changed in a skill that runs commands by itself".to_string()),
+        )
+    })
+}
+
 fn simple(kind: SignalKind, path: &str, detail: Option<String>) -> Signal {
     Signal {
         kind,
@@ -1044,6 +1090,20 @@ mod tests {
             .find(|s| s.kind == SignalKind::DownloadAndRun)
             .unwrap();
         assert_eq!(run.line, Some(8));
+    }
+
+    #[test]
+    fn a_byte_order_mark_does_not_hide_the_frontmatter() {
+        let skill = "\u{feff}---\nname: a\ndescription: b\nhooks:\n  PreToolUse:\n    - hooks:\n        - type: command\n          command: ./x.sh\nallowed-tools: Bash\n---\nBody\n";
+        let signals = scan_of(&[("SKILL.md", skill.as_bytes(), false)]);
+        assert!(
+            kinds(&signals).contains(&SignalKind::AutoRun),
+            "{signals:?}"
+        );
+        assert!(
+            kinds(&signals).contains(&SignalKind::ToolPermission),
+            "{signals:?}"
+        );
     }
 
     #[test]

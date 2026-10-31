@@ -223,7 +223,7 @@ fn existing_agent_files_are_respected() {
         )
         .unwrap();
     assert!(plan.conflicts.is_empty(), "{:?}", plan.conflicts);
-    w.habi.apply(&plan.id).unwrap();
+    w.habi.apply_accepting_cautions(&plan.id).unwrap();
     let mcp: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(root.join(".mcp.json")).unwrap()).unwrap();
     assert!(

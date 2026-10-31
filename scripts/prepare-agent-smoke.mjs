@@ -26,7 +26,7 @@ export function prepareSmoke(destination, executable) {
   run(["source", "add", "Smoke", library, "--team"]);
   run(["source", "refresh", "Smoke"]);
   const clients = "claude-code,cursor,codex,gemini-cli,copilot,opencode,junie";
-  writeFileSync(path.join(root, "skill-install.json"), run(["install", "Smoke/habi-smoke-test", "--client", clients, "--mcp", "--yes"]));
+  writeFileSync(path.join(root, "skill-install.json"), run(["install", "Smoke/habi-smoke-test", "--client", clients, "--mcp", "--yes", "--accept-cautions"]));
   writeFileSync(path.join(root, "instruction-install.json"), run(["install", "Smoke/habi-smoke-instructions", "--client", clients, "--yes"]));
   writeFileSync(path.join(root, "status.json"), run(["status"]));
   return { root, project };

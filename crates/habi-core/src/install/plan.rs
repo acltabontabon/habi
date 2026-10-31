@@ -16,7 +16,9 @@ use crate::clients::{ClientId, layout, mcp, sections};
 use crate::error::{HabiError, Result};
 use crate::fsutil::{Bounded, digest_matches, read_bounded, same_text, sha256, short, text_digest};
 use crate::library::model::{DiagnosticLevel, ItemFile, ItemKind, LibraryItem};
-use crate::library::signals::{Signal, SignalSeverity, scan_files};
+use crate::library::signals::{
+    Signal, SignalKind, SignalSeverity, adds_mcp_server, changed_code, scan_files,
+};
 use crate::paths::{RelPath, resolve_for_read, resolve_links};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -190,7 +192,8 @@ pub struct PlanItem {
 
 impl PlanItem {
     /// The cautions a person has to accept to go ahead: all of them for something
-    /// new, and for an update only those the installed version did not have.
+    /// new, and for an update those the installed version did not have or whose file
+    /// changed since.
     pub fn cautions(&self, action: PlanAction) -> Vec<&Signal> {
         let signals = match action {
             PlanAction::Install => &self.signals,
@@ -323,6 +326,12 @@ pub fn read_project_file(root: &Path, rel: &str) -> Result<Option<Vec<u8>>> {
             "`{rel}` is {n} bytes; too large for Habi to manage"
         ))),
     }
+}
+
+/// Whether Git left conflict markers in the project's lock file. It still reads as
+/// both sides combined; this says that the file needs writing back to finish a merge.
+pub fn lock_conflicted(root: &Path) -> Result<bool> {
+    Ok(read_project_file(root, brand::LOCK_FILE)?.is_some_and(|b| LockFile::is_conflicted(&b)))
 }
 
 pub fn read_lock(root: &Path) -> Result<LockFile> {
@@ -567,6 +576,10 @@ struct Planner<'a> {
     items: Vec<PlanItem>,
     /// What is being installed in this plan, by what it holds.
     planned: Vec<(String, String)>,
+    /// MCP servers written for the item being planned, for its cautions.
+    mcp_signals: Vec<Signal>,
+    /// The lock file on disk has conflict markers, so any plan writes it back.
+    lock_conflicted: bool,
 }
 
 /// What a skill holds, whatever it is called: its files, and its `SKILL.md` less
@@ -633,6 +646,8 @@ impl<'a> Planner<'a> {
             mcp_suggestions: Vec::new(),
             items: Vec::new(),
             planned: Vec::new(),
+            mcp_signals: Vec::new(),
+            lock_conflicted: lock_conflicted(root)?,
         })
     }
 
@@ -1679,6 +1694,8 @@ impl<'a> Planner<'a> {
                     );
                 }
                 why.extend(mcp::translation_notes(client, spec));
+                self.mcp_signals
+                    .push(adds_mcp_server(file, &requirement.name, spec));
                 self.ws.write(
                     file,
                     Some(content),
@@ -1826,6 +1843,8 @@ impl<'a> Planner<'a> {
                             );
                         }
                         why.extend(mcp::translation_notes(entry.client, spec));
+                        self.mcp_signals
+                            .push(adds_mcp_server(&entry.file, &entry.server, spec));
                         self.ws.write(
                             &entry.file,
                             Some(content),
@@ -2148,7 +2167,7 @@ impl<'a> Planner<'a> {
         if action != PlanAction::Restore {
             self.reconcile_bridge()?;
         }
-        if self.lock != self.original_lock {
+        if self.lock != self.original_lock || self.lock_conflicted {
             let content = if self.lock.items.is_empty() {
                 None
             } else {
@@ -2341,6 +2360,8 @@ fn install_in(
             locked.installed_at = e.installed_at.clone();
             locked.snapshot = e.snapshot.clone();
         }
+        let mut signals = p.item.signals.clone();
+        signals.append(&mut planner.mcp_signals);
         planner.items.push(PlanItem {
             key: p.key(),
             title: p.item.title.clone(),
@@ -2349,7 +2370,7 @@ fn install_in(
             version: short(&p.snapshot).to_string(),
             clients: wanted.clone(),
             notes: Vec::new(),
-            signals: p.item.signals.clone(),
+            signals,
             new_signals: Vec::new(),
             origin: p.origin.clone(),
             provenance: Some(p.provenance.clone()),
@@ -2364,8 +2385,12 @@ fn install_in(
 
 /// What an update brings that the installed copy does not have. What the copy
 /// is scanned the same way, so that a command added upstream is told from one the
-/// person accepted when they installed it.
-fn new_since(root: &Path, existing: &LockedItem, signals: &[Signal]) -> Vec<Signal> {
+/// person accepted when they installed it. Accepting a caution covers the file as it
+/// was: a hook pointed at another script reads the same to the patterns, so a caution
+/// in a file that changed is new too. So is any code changed in a skill with hooks,
+/// since a hook the person accepted may run it.
+fn new_since(root: &Path, existing: &LockedItem, p: &Payload) -> Vec<Signal> {
+    let signals = &p.item.signals;
     let mut folder = None;
     let mut files = Vec::new();
     for locked in &existing.files {
@@ -2402,17 +2427,43 @@ fn new_since(root: &Path, existing: &LockedItem, signals: &[Signal]) -> Vec<Sign
             .ok_or_else(|| format!("{rel} is missing"))
     };
     let (before, _) = scan_files(&files, &read);
-    signals
+    let same_file = |signal: &str, rel: &str| signal == rel || signal.ends_with(&format!("/{rel}"));
+    let changed: Vec<&PayloadFile> = p
+        .files
+        .iter()
+        .filter(|f| {
+            !files
+                .iter()
+                .any(|old| old.path == f.path && old.digest == sha256(&f.bytes))
+        })
+        .collect();
+    let mut new: Vec<Signal> = signals
         .iter()
         .filter(|s| {
-            !before.iter().any(|old| {
-                old.severity >= s.severity
-                    && old.kind == s.kind
-                    && (s.path == old.path || s.path.ends_with(&format!("/{}", old.path)))
-            })
+            let accepted = before.iter().any(|old| {
+                old.severity >= s.severity && old.kind == s.kind && same_file(&s.path, &old.path)
+            });
+            let edited = s.severity == SignalSeverity::Caution
+                && changed.iter().any(|f| same_file(&s.path, &f.path));
+            !accepted || edited
         })
         .cloned()
-        .collect()
+        .collect();
+    if signals
+        .iter()
+        .any(|s| s.kind == SignalKind::AutoRun && s.severity == SignalSeverity::Caution)
+    {
+        for file in &changed {
+            let flagged = new
+                .iter()
+                .any(|s| s.severity == SignalSeverity::Caution && same_file(&s.path, &file.path));
+            if !flagged && let Some(signal) = changed_code(&file.path, file.executable, &file.bytes)
+            {
+                new.push(signal);
+            }
+        }
+    }
+    new
 }
 
 /// Plans updating installed items to the given payloads (same clients).
@@ -2456,6 +2507,10 @@ fn update_in(
             _ => planner.install_skill(p, &clients, Some(&existing))?,
         };
         planner.update_mcp(p, &mut locked, add_mcp)?;
+        let mut new_signals = new_since(root, &existing, p);
+        new_signals.extend(planner.mcp_signals.iter().cloned());
+        let mut signals = p.item.signals.clone();
+        signals.append(&mut planner.mcp_signals);
         planner.items.push(PlanItem {
             key: p.key(),
             title: p.item.title.clone(),
@@ -2464,8 +2519,8 @@ fn update_in(
             version: format!("{} → {}", short(&existing.snapshot), short(&p.snapshot)),
             clients: clients.clone(),
             notes: Vec::new(),
-            signals: p.item.signals.clone(),
-            new_signals: new_since(root, &existing, &p.item.signals),
+            signals,
+            new_signals,
             origin: p.origin.clone(),
             provenance: Some(p.provenance.clone()),
             provenance_summary: Some(p.provenance.summary()),
@@ -2476,6 +2531,28 @@ fn update_in(
         root,
         PlanAction::Update,
         format!("Adopt the reviewed update {}", scope.on()),
+    )
+}
+
+/// Plans writing a lock file with conflict markers back as both sides combined,
+/// which is all a merge needs from Habi. Changes nothing else in the project.
+pub fn plan_repair_lock(root: &Path) -> Result<Plan> {
+    let decisions = Decisions::default();
+    let mut planner = Planner::new(root, &decisions, Scope::Project)?;
+    if !planner.lock_conflicted {
+        return Err(HabiError::invalid(format!(
+            "{} has no merge conflict to resolve",
+            brand::LOCK_FILE
+        )));
+    }
+    planner.notes.push(format!(
+        "To finish your merge, stage the result: git add {}",
+        brand::LOCK_FILE
+    ));
+    planner.finish(
+        root,
+        PlanAction::Update,
+        format!("Combine both sides of {}", brand::LOCK_FILE),
     )
 }
 

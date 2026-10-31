@@ -204,6 +204,7 @@ impl Bridge {
                 &arg::<Vec<String>>(a, "keys")?,
                 &arg(a, "decisions")?,
             )?),
+            "plan_repair_lock" => out(h.plan_repair_lock(&s("projectId")?)?),
             "plan_restore" => {
                 out(h.plan_restore(&s("projectId")?, &s("operationId")?, &arg(a, "decisions")?)?)
             }

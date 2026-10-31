@@ -73,6 +73,9 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Security
 
+- **Adding an MCP server is a caution.** A server written to an agent's configuration has to be accepted, on install
+  and when an update changes its definition. The preview says what it runs or reaches and which secrets it gets.
+  Update any script that passes `--mcp --yes`: it now needs `--accept-cautions` too.
 - **Hooks and auto-run config count as cautions.** Hooks in a skill's frontmatter, `hooks.json`, plugin
   definitions, Git hooks, agent settings and package install scripts are flagged, and so is unbounded shell.
   `allowed-tools` is noticed. Commands in JSON, YAML and TOML are read like scripts, and every skill that
@@ -81,8 +84,9 @@ the lock file or data directory, minor for features, patch for fixes.
   skill comes from and what its scan found, and shows a new script's contents in the CLI. `--yes` alone
   refuses a caution; pass `--accept-cautions` to accept it. The desktop review asks for a tick. The check
   lives in the core, so no front end can skip it.
-- **Updates raise only new cautions.** A caution is asked about again only if the installed copy did not
-  have it, so a hook added in an update stands out instead of getting the same single click.
+- **Updates ask about what changed.** A caution is asked about again if the installed copy did not have it or
+  its file changed, and so is any code changed in a skill with hooks. A hook added or repointed in an update
+  stands out instead of getting the same single click.
 - **A malformed `SKILL.md` is not installed.** Invalid frontmatter, or a missing name or description, is refused.
 - **Duplicates and tampering are reported.** The preview says when the same content sits under another name,
   when a folder installs under a different name, and when a folder Habi did not install is added to. `habi status`
@@ -99,6 +103,9 @@ the lock file or data directory, minor for features, patch for fixes.
   put its password in the version, so it is no longer read.
 
 ### Fixed
+
+- **A merge conflict in the lock file no longer locks you out of a project.** Habi reads both sides combined, keeps
+  every skill either branch installed, and offers to write the result back so you can finish the merge.
 
 - **Gradle builds in a subfolder.** `backend/` beside `frontend/` uses its own version catalog, settings
   and conventions, and a nested `buildSrc` is no longer treated as a module.
