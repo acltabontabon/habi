@@ -197,20 +197,11 @@ export function ChangeReport({
 const ASK_AGAIN_AFTER_MS = 60 * 60 * 1000;
 
 /**
- * Everything about moving a Git library forward, for its header: it asks
- * once on opening whether the repository has something newer (a small
- * request; a failure is silent), offers Update when it does, and after an
- * update says what changed until the user has read it.
+ * Everything about moving a Git library forward: it asks once on opening
+ * whether the repository has something newer (a small request; a failure is
+ * silent), and holds what the header's check and the offer below it share.
  */
-export function LibraryUpdates({
-  source,
-  items,
-  onOpen,
-}: {
-  source: Source;
-  items: LibraryItem[];
-  onOpen: (item: LibraryItem) => void;
-}) {
+export function useLibraryUpdates(source: Source) {
   const client = useQueryClient();
   const updates = useSourceUpdates();
   const report = useUpdateReport(source.id).data ?? null;
@@ -254,48 +245,75 @@ export function LibraryUpdates({
     void client.invalidateQueries({ queryKey: keys.updateReport(source.id) });
   };
 
+  const askNow = () => {
+    setManual(true);
+    check.mutate(source.id);
+  };
+
+  return { visible, eligible, update, report, check, busy, error, manual, refreshed, apply, askNow, dismiss };
+}
+
+type LibraryUpdatesState = ReturnType<typeof useLibraryUpdates>;
+
+/** The check itself, for the header's actions: one quiet button and where it stands. */
+export function UpdateCheck({ updates }: { updates: LibraryUpdatesState }) {
+  const { visible, eligible, update, check, busy, manual, refreshed, apply, askNow } = updates;
   if (!visible) return null;
+  return (
+    <>
+      <span className="library-check-status" role="status">
+        {eligible ? (
+          check.isPending ? (
+            <span className="visually-hidden">Checking the library for updates…</span>
+          ) : manual && check.isSuccess ? (
+            check.data?.available ? (
+              "Update available"
+            ) : check.data ? (
+              "Library is up to date"
+            ) : (
+              "No update information available"
+            )
+          ) : update ? (
+            `Checked ${relativeTime(update.checkedAt)}`
+          ) : null
+        ) : refreshed ? (
+          "Library refreshed"
+        ) : null}
+      </span>
+      <Button
+        variant="quiet"
+        size="sm"
+        icon="refresh"
+        busy={eligible ? check.isPending : busy}
+        disabled={busy || check.isPending}
+        onClick={eligible ? askNow : () => void apply()}
+      >
+        {eligible ? (check.isPending ? "Checking…" : "Check for updates") : "Refresh library"}
+      </Button>
+    </>
+  );
+}
+
+/**
+ * What only appears when there is something to say: a failed check, a newer
+ * version to take, or what the last update changed until the user has read it.
+ */
+export function LibraryUpdates({
+  updates,
+  items,
+  onOpen,
+}: {
+  updates: LibraryUpdatesState;
+  items: LibraryItem[];
+  onOpen: (item: LibraryItem) => void;
+}) {
+  const { visible, update, report, check, busy, error, manual, apply, dismiss } = updates;
+  const failed = manual && check.isError;
   const available = update?.available ? update : null;
+  if (!visible || !(failed || available || error || report)) return null;
   return (
     <div className="library-updates">
-      <div className="library-update-check">
-        <Button
-          size="sm"
-          icon="refresh"
-          busy={eligible ? check.isPending : busy}
-          disabled={busy || check.isPending}
-          onClick={() => {
-            if (eligible) {
-              setManual(true);
-              check.mutate(source.id);
-            } else {
-              void apply();
-            }
-          }}
-        >
-          {eligible ? (check.isPending ? "Checking…" : "Check for updates") : "Refresh library"}
-        </Button>
-        <span role="status">
-          {eligible
-            ? check.isPending
-              ? "Checking the library for updates…"
-              : manual && check.isSuccess
-                ? check.data?.available
-                  ? "Update available"
-                  : check.data
-                    ? "Library is up to date"
-                    : "No update information available"
-                : update
-                  ? `Last checked ${relativeTime(update.checkedAt)}`
-                  : null
-            : refreshed
-              ? "Library refreshed"
-              : null}
-        </span>
-      </div>
-      {manual && check.isError ? (
-        <ErrorNotice error={check.error} title="Could not check for updates — try again" />
-      ) : null}
+      {failed ? <ErrorNotice error={check.error} title="Could not check for updates — try again" /> : null}
       {available ? (
         <UpdateBar update={available} busy={busy} checking={check.isPending} onUpdate={() => void apply()} />
       ) : null}

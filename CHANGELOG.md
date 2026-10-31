@@ -7,6 +7,12 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- **A tidier library header.** **Check for updates** sits beside **Disconnect** with when it last
+  looked, not on a row of its own, and only one remains now that the Source panel no longer has a
+  second. The row below the header appears only when there is an update to take or a change to read.
+
 ### Fixed
 
 - **Only your team can require a skill.** A skill a community library marks `required` no longer
