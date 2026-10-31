@@ -46,6 +46,9 @@ Skills can also go in the same folders under your home folder, for all your proj
 
 Habi reads a repository's files, without running anything, and matches skills to what it finds.
 
+<details open>
+<summary><b>Languages and frameworks</b></summary>
+
 | Language | Frameworks | Build | Data access |
 |---|---|---|---|
 | **Java, Kotlin** | Spring Boot, Spring, Spring Security, Spring Batch, Spring Cloud, Quarkus, Micronaut, GraalVM | Maven, Gradle | JPA, jOOQ |
@@ -56,40 +59,62 @@ Habi reads a repository's files, without running anything, and matches skills to
 | **PHP** | Laravel, Symfony | Composer | Doctrine |
 | **C#, Scala, shell, HCL** | | | |
 
+</details>
+
+<details>
+<summary><b>Infrastructure</b> &nbsp;<sub>containers, cloud, CI, migrations, APIs</sub></summary>
+
 | Area | Tools |
 |---|---|
+| **Containers** | Docker, Kubernetes, Helm, Kustomize |
+| **Cloud** | Terraform, Terragrunt, Pulumi, Ansible |
+| **CI** | GitHub Actions, GitLab CI |
 | **Database migrations** | Liquibase, Flyway |
 | **APIs** | OpenAPI, springdoc |
-| **Containers** | Docker, Kubernetes, Helm, Kustomize |
-| **Infrastructure** | Terraform, Terragrunt, Pulumi, Ansible |
-| **CI** | GitHub Actions, GitLab CI |
-| **Data pipelines** | dbt, Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great Expectations |
-| **Data analysis** | pandas, Polars, DuckDB, Databricks, Delta Lake, MLflow, Jupyter |
-| **Unit and integration tests** | JUnit, TestNG, Spock, Mockito, Testcontainers, Jest, Vitest, Mocha, Jasmine, Karma, pytest, PHPUnit, Bats |
-| **Browser and mobile tests** | Playwright, Cypress, Selenium, WebdriverIO, Appium |
-| **API tests** | REST Assured, Karate, Pact, WireMock, Postman |
-| **Acceptance tests** | Cucumber, Gauge, Robot Framework |
-| **Performance tests** | Gatling, JMeter, k6, Locust |
+
+</details>
+
+<details>
+<summary><b>Data</b> &nbsp;<sub>pipelines, analysis</sub></summary>
+
+| Area | Tools |
+|---|---|
+| **Pipelines** | dbt, Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great Expectations |
+| **Analysis** | pandas, Polars, DuckDB, Databricks, Delta Lake, MLflow, Jupyter |
+
+</details>
+
+<details>
+<summary><b>Testing</b> &nbsp;<sub>unit, browser, API, acceptance, performance</sub></summary>
+
+| Area | Tools |
+|---|---|
+| **Unit and integration** | JUnit, TestNG, Spock, Mockito, Testcontainers, Jest, Vitest, Mocha, Jasmine, Karma, pytest, PHPUnit, Bats |
+| **Browser and mobile** | Playwright, Cypress, Selenium, WebdriverIO, Appium |
+| **API** | REST Assured, Karate, Pact, WireMock, Postman |
+| **Acceptance** | Cucumber, Gauge, Robot Framework |
+| **Performance** | Gatling, JMeter, k6, Locust |
+
+</details>
 
 ## Install
 
-<p align="center">
-<a href="https://github.com/acltabontabon/habi/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-d9913f?style=for-the-badge&logo=apple&logoColor=white"></a>
-&nbsp;
-<a href="https://github.com/acltabontabon/habi/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download%20for%20Windows-d9913f?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNCA5LjggMnY5LjVIMHpNMTEgMS44IDI0IDB2MTEuNUgxMXpNMCAxMi41aDkuOFYyMkwwIDIwLjZ6TTExIDEyLjVoMTNWMjRsLTEzLTEuOHoiLz48L3N2Zz4%3D"></a>
-<br>
-<sub>macOS 11 or later, Apple Silicon and Intel &nbsp;·&nbsp; Windows 64-bit</sub>
-</p>
+| Platform | Requires | Get it |
+|---|---|---|
+| **macOS** | 11 or later, Apple Silicon or Intel | [![Download for macOS](https://img.shields.io/badge/Download-macOS-d9913f?style=flat-square&labelColor=1f1c19&logo=apple&logoColor=white)](https://github.com/acltabontabon/habi/releases/latest) or `brew install --cask acltabontabon/tap/habi` |
+| **Windows** | 64-bit | [![Download for Windows](https://img.shields.io/badge/Download-Windows-d9913f?style=flat-square&labelColor=1f1c19&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNCA5LjggMnY5LjVIMHpNMTEgMS44IDI0IDB2MTEuNUgxMXpNMCAxMi41aDkuOFYyMkwwIDIwLjZ6TTExIDEyLjVoMTNWMjRsLTEzLTEuOHoiLz48L3N2Zz4%3D)](https://github.com/acltabontabon/habi/releases/latest) |
 
-Or on macOS, with Homebrew:
+<details>
+<summary><b>First launch</b> &nbsp;<sub>you confirm once</sub></summary>
 
-```sh
-brew install --cask acltabontabon/tap/habi
-```
+The installers are not signed by Apple or Microsoft, so your system asks once.
 
-The installers are not signed by Apple or Microsoft, so the first launch asks you to confirm once.
-On macOS, choose **Open Anyway** in System Settings → Privacy & Security. On Windows, choose
-**More info**, then **Run anyway**. Updates after that are signed with Habi's own key.
+- **macOS:** choose **Open Anyway** in System Settings → Privacy & Security.
+- **Windows:** choose **More info**, then **Run anyway**.
+
+Updates after that are signed with Habi's own key.
+
+</details>
 
 ## A look inside
 
