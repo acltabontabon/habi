@@ -41,6 +41,7 @@ export type ReviewRequest =
     }
   | { kind: "update"; keys: string[]; title: string }
   | { kind: "remove"; keys: string[]; title: string }
+  | { kind: "repairLock"; projectId: string; title: string }
   | { kind: "restore"; operationId: string; title: string };
 
 const opLabel: Record<ChangeOp, string> = { create: "Create", modify: "Modify", delete: "Delete" };
@@ -293,7 +294,7 @@ function PlanTrust({
   accepted: boolean;
   onAccept: (accepted: boolean) => void;
 }) {
-  if (plan.action !== "install" && plan.action !== "update") return null;
+  if ((plan.action !== "install" && plan.action !== "update") || plan.items.length === 0) return null;
   const cautions = cautionsOf(plan);
   return (
     <section className="review-trust" aria-labelledby="trust-title">
@@ -537,6 +538,8 @@ export function ReviewDialog({
           return projectId === null
             ? api.planUpdateMachine(request.keys, decisions)
             : api.planUpdate(projectId, request.keys, addMcp, decisions);
+        case "repairLock":
+          return api.planRepairLock(request.projectId);
         case "remove":
           return projectId === null
             ? api.planRemoveMachine(request.keys, decisions)
@@ -616,6 +619,7 @@ export function ReviewDialog({
     install: extra.length > 0 ? `Install ${plural(items.length, "skill")}` : `Install ${request.title}`,
     update: `Update ${request.title}`,
     remove: `Remove ${request.title}`,
+    repairLock: request.title,
     restore: `Restore: ${request.title}`,
   };
 

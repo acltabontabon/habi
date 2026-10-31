@@ -59,7 +59,7 @@ step "Install items (the 'Installed' state)"
 "$HABI" install "Team library/api-contract-review" "Team library/jooq-query-review" \
   --client codex -C "$P/orders-api" --yes
 "$HABI" install "Team library/github-pr-summary" --client claude-code --mcp \
-  -C "$P/agent-ready-service" --yes
+  -C "$P/agent-ready-service" --yes --accept-cautions
 
 step "Publish library updates (the 'Update available' state)"
 cd "$OUT/libraries/team-skills"

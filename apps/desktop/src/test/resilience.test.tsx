@@ -620,6 +620,22 @@ describe("a project that cannot be inspected", () => {
   });
 });
 
+describe("a merge conflict in the lock file", () => {
+  it("says so and previews writing both sides back", async () => {
+    handlers.project_overview = () => ({ ...billing, lockConflict: true });
+    handlers.plan_repair_lock = vi.fn(() => {
+      throw { code: "invalidInput", message: "stop at the preview" };
+    });
+    wrap(<ProjectView projectId={billing.project.id} tab="recommendations" />, {
+      name: "project",
+      projectId: billing.project.id,
+      tab: "recommendations",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Review the fix…" }));
+    await waitFor(() => expect(handlers.plan_repair_lock).toHaveBeenCalledTimes(1));
+  });
+});
+
 describe("free up space", () => {
   it("says what was removed and how much space it freed", async () => {
     handlers.app_info = () => ({ version: "0.1.0", dataDir: "~/habi", startupError: null });

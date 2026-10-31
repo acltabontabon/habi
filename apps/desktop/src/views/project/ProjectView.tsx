@@ -20,6 +20,7 @@ export { tagLabel };
 
 import { keys, useOverview } from "../../lib/queries";
 import { stackDye, stackDyes } from "../../lib/stackDye";
+import { ReviewDialog } from "../review/ReviewDialog";
 import { NothingFits } from "./AlreadyHere";
 import { History } from "./History";
 import { Kit } from "./Kit";
@@ -157,6 +158,7 @@ export function ProjectView({
   };
   const ticks = useState<Set<string>>(() => new Set());
   const [removing, setRemoving] = useState(false);
+  const [repairing, setRepairing] = useState(false);
   useEffect(() => {
     let live = true;
     setWatchError(null);
@@ -455,6 +457,27 @@ export function ProjectView({
           Some facts could not be established. Recommendations use the evidence available and may need more
           information.
         </Notice>
+      ) : null}
+
+      {data.lockConflict ? (
+        <Notice
+          tone="warn"
+          title="A merge left conflict markers in Habi's lock file"
+          action={
+            <Button size="sm" onClick={() => setRepairing(true)}>
+              Review the fix…
+            </Button>
+          }
+        >
+          Everything here reads both sides combined. Habi can write that back, so you can finish the merge.
+        </Notice>
+      ) : null}
+      {repairing ? (
+        <ReviewDialog
+          projectId={project.id}
+          request={{ kind: "repairLock", projectId: project.id, title: "Combine the lock file" }}
+          onClose={() => setRepairing(false)}
+        />
       ) : null}
 
       <div className="project-views" role="tablist" aria-label="Skills for this project">

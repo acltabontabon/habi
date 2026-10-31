@@ -199,10 +199,15 @@ and it is what makes authentication work without Habi handling secrets.
   package install scripts. `allowed-tools` is a notice, and unbounded shell a caution. An MCP configuration
   is a notice. Commands in JSON, YAML and TOML files are read like scripts, and a skill that ships
   code says so whatever the code looks like, since patterns only see what they know.
+- **An MCP server written to an agent's configuration is a caution**, whatever it runs, because patterns cannot
+  judge `npx -y some-package`. The preview names the program or address and the secrets it is given, on install
+  and whenever an update changes the definition.
 - **Cautions are a gate.** `Habi::apply` refuses a plan with cautions; only `apply_accepting_cautions`
   runs it, which the CLI calls after `accept` is typed or `--accept-cautions` is given, and the
   desktop review after a tick for that preview. `--yes` alone is not enough. An update asks only about
-  cautions the installed copy, scanned the same way, did not have.
+  cautions the installed copy, scanned the same way, did not have, and those in a file that changed: accepting a
+  hook covers it as it was, so pointing it at another script asks again. In a skill with hooks, any changed code asks
+  again too, since a hook may run it.
 - **`SKILL.md` is validated before install.** Frontmatter that does not parse, or a missing or invalid name or
   description, is refused. A skill whose folder and name differ, the same content under another name, and a same-named
   folder Habi did not install are all said in the preview.

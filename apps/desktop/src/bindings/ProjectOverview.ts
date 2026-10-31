@@ -15,4 +15,9 @@ orphaned: Array<Installation>,
 /**
  * Habi's short answer to "what should my agents have here?"
  */
-kit: Kit, };
+kit: Kit, 
+/**
+ * Git left conflict markers in the lock file. Everything here reads both sides
+ * combined, and `plan_repair_lock` writes that back.
+ */
+lockConflict: boolean, };

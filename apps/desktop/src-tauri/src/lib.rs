@@ -290,6 +290,7 @@ pub fn run() {
             commands::item_file,
             commands::plan_install,
             commands::plan_update,
+            commands::plan_repair_lock,
             commands::plan_remove,
             commands::plan_restore,
             commands::plan_install_machine,

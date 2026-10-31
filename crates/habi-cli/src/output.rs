@@ -925,6 +925,11 @@ fn plan_trust(p: &Plan) {
 }
 
 pub fn status(o: &ProjectOverview) {
+    if o.lock_conflict {
+        println!(
+            "A merge left conflict markers in the lock file. This reads both sides combined; write that back with: habi repair-lock\n"
+        );
+    }
     let installed: Vec<_> = o
         .recommendations
         .iter()

@@ -208,6 +208,9 @@ pub struct ProjectOverview {
     pub orphaned: Vec<Installation>,
     /// Habi's short answer to "what should my agents have here?"
     pub kit: crate::suggest::Kit,
+    /// Git left conflict markers in the lock file. Everything here reads both sides
+    /// combined, and `plan_repair_lock` writes that back.
+    pub lock_conflict: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -1273,6 +1276,7 @@ impl Habi {
         let inspection = self.inspect(id, rescan, cancel)?;
         let declarations = self.declarations(id)?;
         let lock = read_lock(&project.root)?;
+        let lock_conflict = plan::lock_conflicted(&project.root)?;
         let libraries = self.libraries()?;
         let installations = self.installations(&project.root, &lock, &libraries);
         let mut candidates = Vec::new();
@@ -1452,6 +1456,7 @@ impl Habi {
             sources: libraries.into_iter().map(|(s, _)| s).collect(),
             orphaned,
             kit,
+            lock_conflict,
         })
     }
 
@@ -1508,6 +1513,12 @@ impl Habi {
             .map(|k| self.payload_for_key(k, &libraries))
             .collect::<Result<Vec<_>>>()?;
         Ok(self.keep(plan::plan_update(&p.root, &payloads, add_mcp, decisions)?))
+    }
+
+    /// Previews writing a conflicted lock file back as both sides combined.
+    pub fn plan_repair_lock(&self, project: &str) -> Result<Plan> {
+        let p = self.existing_project(project)?;
+        Ok(self.keep(plan::plan_repair_lock(&p.root)?))
     }
 
     pub fn plan_remove(

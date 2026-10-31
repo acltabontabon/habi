@@ -176,7 +176,7 @@ fn full_lifecycle_preserves_user_content() {
     let claude_change = plan.changes.iter().find(|c| c.path == "CLAUDE.md").unwrap();
     assert_eq!(claude_change.op, ChangeOp::Modify);
 
-    env.habi.apply(&plan.id).unwrap();
+    env.habi.apply_accepting_cautions(&plan.id).unwrap();
     let claude = std::fs::read_to_string(env.project.join("CLAUDE.md")).unwrap();
     assert!(
         claude.starts_with(&original_claude),

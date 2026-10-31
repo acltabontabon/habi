@@ -368,6 +368,235 @@ fn an_update_shows_what_is_new_and_asks_only_about_that() {
     assert!(env.habi.apply(&update.id).is_err());
 }
 
+fn hook_running(name: &str, script: &str) -> String {
+    format!(
+        "---\nname: {name}\ndescription: Helps with {name}.\nhooks:\n  PreToolUse:\n    - hooks:\n        - type: command\n          command: ./scripts/{script}\n---\n\n# Hooked\n"
+    )
+}
+
+impl Env {
+    fn update(&self, id: &str) -> habi_core::install::plan::Plan {
+        let key = self.installation(id).key;
+        self.habi
+            .plan_update(&self.project_id, &[key], false, &Decisions::default())
+            .unwrap()
+    }
+}
+
+#[test]
+fn a_byte_order_mark_does_not_get_hooks_past_the_gate() {
+    let env = Env::new();
+    let with_mark = format!("\u{feff}{}", hook_running("marked", "x.sh"));
+    env.publish(&[("skills/marked/SKILL.md", &with_mark)]);
+    let plan = env.plan(&["marked"]).unwrap();
+    let kinds: Vec<SignalKind> = plan.items[0].signals.iter().map(|s| s.kind).collect();
+    assert!(kinds.contains(&SignalKind::AutoRun), "{kinds:?}");
+    assert!(env.habi.apply(&plan.id).is_err());
+    assert!(!env.project.join(".claude/skills/marked").exists());
+}
+
+const MCP_SKILL: &str = "habi: 1\ntitle: Served\nrequires:\n  mcp:\n    - name: helper\n      purpose: Helps.\n      server:\n        command: npx\n        args: [\"-y\", \"some-package@1\"]\n        env:\n          API_TOKEN: \"${API_TOKEN}\"\n";
+
+#[test]
+fn an_mcp_server_has_to_be_accepted_and_says_what_it_runs() {
+    let env = Env::new();
+    env.publish(&[
+        ("skills/served/SKILL.md", &skill("served", "# S")),
+        ("skills/served/habi.yaml", MCP_SKILL),
+    ]);
+
+    // Not adding the server asks nothing about it.
+    let without = env.plan(&["served"]).unwrap();
+    assert_eq!(without.cautions(), 0, "{:?}", without.items[0].signals);
+
+    let plan = env
+        .habi
+        .plan_install(
+            &env.project_id,
+            &env.refs(&["served"]),
+            &[ClientId::ClaudeCode],
+            true,
+            &Decisions::default(),
+        )
+        .unwrap();
+    assert_eq!(plan.cautions(), 1, "{:?}", plan.items[0].signals);
+    let signal = plan.items[0]
+        .signals
+        .iter()
+        .find(|s| s.kind == SignalKind::AddsMcpServer)
+        .unwrap();
+    assert_eq!(signal.path, ".mcp.json");
+    assert_eq!(
+        signal.detail.as_deref(),
+        Some("helper: runs npx -y some-package@1, given API_TOKEN")
+    );
+    assert!(env.habi.apply(&plan.id).is_err());
+    assert!(!env.project.join(".mcp.json").exists());
+    env.habi.apply_accepting_cautions(&plan.id).unwrap();
+    assert!(env.project.join(".mcp.json").exists());
+
+    // An update that leaves the definition alone asks nothing.
+    env.publish(&[("skills/served/references/more.md", "# More\n")]);
+    let update = env.update("served");
+    assert_eq!(update.cautions(), 0, "{:?}", update.items[0].new_signals);
+    env.habi.apply(&update.id).unwrap();
+
+    // One that points the server at another program asks again.
+    env.publish(&[(
+        "skills/served/habi.yaml",
+        &MCP_SKILL.replace("some-package@1", "other-package@1"),
+    )]);
+    let update = env.update("served");
+    let cautions: Vec<_> = update.items[0]
+        .new_signals
+        .iter()
+        .filter(|s| s.kind == SignalKind::AddsMcpServer)
+        .collect();
+    assert_eq!(cautions.len(), 1, "{:?}", update.items[0].new_signals);
+    assert!(
+        cautions[0]
+            .detail
+            .as_deref()
+            .unwrap()
+            .contains("other-package"),
+        "{cautions:?}"
+    );
+    assert!(env.habi.apply(&update.id).is_err());
+}
+
+#[test]
+fn an_update_asks_again_when_an_accepted_hook_changes() {
+    let env = Env::new();
+    env.publish(&[(
+        "skills/hooked/SKILL.md",
+        &hook_running("hooked", "benign.sh"),
+    )]);
+    let plan = env.plan(&["hooked"]).unwrap();
+    env.habi.apply_accepting_cautions(&plan.id).unwrap();
+
+    // Still a hook, so nothing new to the patterns, but not the hook that was accepted.
+    env.publish(&[(
+        "skills/hooked/SKILL.md",
+        &hook_running("hooked", "steal.sh"),
+    )]);
+    let update = env.update("hooked");
+    assert!(update.cautions() > 0, "{:?}", update.items[0].new_signals);
+    assert!(env.habi.apply(&update.id).is_err());
+    env.habi.apply_accepting_cautions(&update.id).unwrap();
+
+    // Text beside the hook asks nothing.
+    env.publish(&[("skills/hooked/references/more.md", "# More\n")]);
+    let update = env.update("hooked");
+    assert_eq!(update.cautions(), 0, "{:?}", update.items[0].new_signals);
+    env.habi.apply(&update.id).unwrap();
+}
+
+#[test]
+fn an_update_asks_about_changed_code_only_in_a_skill_with_hooks() {
+    let env = Env::new();
+    env.publish(&[
+        ("skills/hooked/SKILL.md", &hook_running("hooked", "x.sh")),
+        ("skills/hooked/scripts/x.sh", "#!/bin/sh\necho one\n"),
+        ("skills/plain/scripts/x.sh", "#!/bin/sh\necho one\n"),
+    ]);
+    let plan = env.plan(&["hooked", "plain"]).unwrap();
+    env.habi.apply_accepting_cautions(&plan.id).unwrap();
+
+    // Nothing here matches a pattern, and the hook's own line did not change.
+    env.publish(&[
+        ("skills/hooked/scripts/x.sh", "#!/bin/sh\necho two\n"),
+        ("skills/plain/scripts/x.sh", "#!/bin/sh\necho two\n"),
+    ]);
+    let update = env.update("hooked");
+    let caution = update.items[0]
+        .new_signals
+        .iter()
+        .find(|s| s.severity == SignalSeverity::Caution)
+        .expect("the script a hook may run changed");
+    assert!(caution.path.ends_with("scripts/x.sh"), "{caution:?}");
+
+    let update = env.update("plain");
+    assert_eq!(update.cautions(), 0, "{:?}", update.items[0].new_signals);
+}
+
+#[test]
+fn a_merge_conflict_in_the_lock_file_leaves_the_project_usable() {
+    let env = Env::new();
+    env.publish(&[("skills/second/SKILL.md", &skill("second", "# S"))]);
+    let repo = env.project.clone();
+    git(&repo, &["init", "-q", "-b", "main"]);
+    git(&repo, &["commit", "-q", "--allow-empty", "-m", "start"]);
+
+    git(&repo, &["checkout", "-q", "-b", "one"]);
+    env.habi.apply(&env.plan(&["plain"]).unwrap().id).unwrap();
+    git(&repo, &["add", "-A"]);
+    git(&repo, &["commit", "-qm", "one"]);
+
+    git(&repo, &["checkout", "-q", "main"]);
+    git(&repo, &["checkout", "-q", "-b", "two"]);
+    env.habi.apply(&env.plan(&["second"]).unwrap().id).unwrap();
+    git(&repo, &["add", "-A"]);
+    git(&repo, &["commit", "-qm", "two"]);
+
+    // Really a conflict, the way a team would meet it.
+    let merged = Command::new("git")
+        .args(["-c", "user.name=T", "-c", "user.email=t@example.invalid"])
+        .args(["merge", "-q", "one"])
+        .current_dir(&repo)
+        .output()
+        .unwrap();
+    assert!(!merged.status.success());
+    let lock = std::fs::read_to_string(repo.join(".habi/lock.json")).unwrap();
+    assert!(lock.contains("<<<<<<<"), "{lock}");
+
+    // Both skills stay in sight and read as installed, not as edited.
+    let overview = env
+        .habi
+        .overview(&env.project_id, true, &CancelToken::new())
+        .unwrap();
+    assert!(overview.lock_conflict);
+    for id in ["plain", "second"] {
+        assert_eq!(env.installation(id).state, InstallState::Current, "{id}");
+    }
+
+    // The repair changes the lock file and nothing else, and can be undone.
+    let repair = env.habi.plan_repair_lock(&env.project_id).unwrap();
+    let changed: Vec<&str> = repair.changes.iter().map(|c| c.path.as_str()).collect();
+    assert_eq!(changed, [".habi/lock.json"]);
+    env.habi.apply(&repair.id).unwrap();
+    let lock = std::fs::read_to_string(repo.join(".habi/lock.json")).unwrap();
+    assert!(!lock.contains("<<<<<<<"), "{lock}");
+    let overview = env
+        .habi
+        .overview(&env.project_id, true, &CancelToken::new())
+        .unwrap();
+    assert!(!overview.lock_conflict);
+    for id in ["plain", "second"] {
+        assert_eq!(env.installation(id).state, InstallState::Current, "{id}");
+    }
+    assert!(env.habi.plan_repair_lock(&env.project_id).is_err());
+}
+
+#[test]
+fn any_plan_writes_a_conflicted_lock_file_back_combined() {
+    let env = Env::new();
+    env.publish(&[("skills/second/SKILL.md", &skill("second", "# S"))]);
+    env.habi.apply(&env.plan(&["plain"]).unwrap().id).unwrap();
+    let path = env.project.join(".habi/lock.json");
+    let lock = std::fs::read_to_string(&path).unwrap();
+    std::fs::write(
+        &path,
+        format!("<<<<<<< HEAD\n{lock}=======\n{lock}>>>>>>> other\n"),
+    )
+    .unwrap();
+
+    env.habi.apply(&env.plan(&["second"]).unwrap().id).unwrap();
+    let written = std::fs::read_to_string(&path).unwrap();
+    assert!(!written.contains("<<<<<<<"), "{written}");
+    assert_eq!(env.installation("plain").state, InstallState::Current);
+    assert_eq!(env.installation("second").state, InstallState::Current);
+}
+
 #[test]
 fn a_file_dropped_into_an_installed_skill_is_noticed() {
     let env = Env::new();

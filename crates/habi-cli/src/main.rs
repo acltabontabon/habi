@@ -116,6 +116,13 @@ Examples:
         #[command(flatten)]
         apply: ApplyArgs,
     },
+    /// Combine both sides of a lock file that a merge left with conflict markers.
+    RepairLock {
+        #[command(flatten)]
+        project: ProjectArg,
+        #[command(flatten)]
+        apply: ApplyArgs,
+    },
     /// Preview and remove installed items.
     Remove {
         /// Installed item ids to remove (see `habi status`).
@@ -1142,6 +1149,12 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
             }
             let plan = habi.plan_update(&project.id, &keys, mcp, &decisions(&apply))?;
             review_and_apply(ctx, plan, &apply, &project, "update")
+        }
+        Command::RepairLock { project: p, apply } => {
+            require_yes(ctx, apply.yes, apply.dry_run, "repair-lock")?;
+            let project = project(ctx, &p, !apply.dry_run)?;
+            let plan = habi.plan_repair_lock(&project.id)?;
+            review_and_apply(ctx, plan, &apply, &project, "repair-lock")
         }
         Command::Remove {
             items,
