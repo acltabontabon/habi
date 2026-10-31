@@ -46,7 +46,7 @@ Skills can also go in the same folders under your home folder, for all your proj
 ## Supported technology
 
 Habi reads these from a repository's manifests and files, without running anything, and matches
-skills to them.
+skills to them. [Detectors](docs/library-authors/detectors.md) has every rule.
 
 | Area | Recognized |
 |---|---|
@@ -62,11 +62,6 @@ skills to them.
 | Data | dbt, Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great Expectations, pandas, Polars, DuckDB, Databricks, Delta Lake, MLflow, Jupyter |
 | Infrastructure and CI | Docker, GitHub Actions, GitLab CI, Terraform, Terragrunt, Helm, Kubernetes, Kustomize, Ansible, Pulumi |
 | Testing | JUnit, Testcontainers, Jest, Vitest, Playwright, Cypress, pytest, PHPUnit, Bats, Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito, REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact, WireMock, Postman |
-
-This is what `main` recognizes. Habi 0.5.0 knows a shorter list: Scala, shell, HCL, the Spring
-extras, GraalVM, Databricks, Delta Lake, MLflow, Jupyter, the infrastructure tools from Terraform
-on and the testing tools from Bats on come with the [next release](CHANGELOG.md#unreleased).
-[Detectors](docs/library-authors/detectors.md) has every rule.
 
 ## Install
 
