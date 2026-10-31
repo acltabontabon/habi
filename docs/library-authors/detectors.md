@@ -12,14 +12,27 @@ READMEs are never inspected as evidence.
 
 **Always:**
 `.git`, `node_modules`, `.gradle`, `.idea`, `.venv`, `__pycache__`, `.next`, `.nuxt`,
-`.svelte-kit`, `.turbo`, `.cache`, `.yarn`, `.terraform`, etc.
+`.svelte-kit`, `.turbo`, `.cache`, `.yarn`, `.terraform`, `.terragrunt-cache`, `.databricks`,
+`.angular`, `.nx`, `.tox`, `.pytest_cache`, `site-packages`, `cdk.out`, etc. Credential stores
+(`.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`) are skipped too, should a project hold one.
 
 **As build output (root or under a manifest only):**
 `target`, `build`, `dist`, `out`, `vendor`, `venv`, `coverage` (same names appear as code;
-limited to build contexts to avoid false negatives)
+limited to build contexts to avoid false negatives). A repository root with no build manifest
+keeps `build`, `out` and `vendor`: there they hold sources, such as `build/Dockerfile`.
 
 **Secret files (never read or indexed):**
-`.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, etc.
+`.env*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `.netrc`, `*.tfvars`, `*.tfstate*`, `*.tfplan`,
+`.databrickscfg`, `.terraformrc`, `.pypirc`, `.vault-token`, `vault.yml`, `secrets.yaml`,
+`*-secrets.yaml`, `values-secret*`, `*.sops.yaml`, `.docker/config.json`, etc.
+
+**What is kept is safe to show:** a credential inside a manifest (a token in a dependency URL, a
+password in a README's first paragraph) is redacted before it reaches a fact, a version, a note or
+the project's description. A dependency given as a URL where a coordinate belongs is not read,
+and the module's coverage says so.
+
+**Test inputs:** a manifest or recognized file in `fixtures`, `testdata`, `src/test/resources`,
+`src/it` or `archetype-resources` is a sample project, not a module of this one.
 
 **Symbolic links:** never followed (counted in report)
 
@@ -27,22 +40,24 @@ limited to build contexts to avoid false negatives)
 
 | Limit | Impact |
 |-------|--------|
-| 50,000 files | Incomplete scan if exceeded |
+| 50,000 files | Incomplete scan if exceeded. Build manifests and project markers past it stay listed (up to 5,000), so a tree of data cannot hide the project; the walk stops at 400,000 entries |
 | Depth 24 | Incomplete scan if exceeded |
 | Manifests 2 MiB | Bounded parsing |
 | Lockfiles 48 MiB | Bounded parsing |
-| 600 content probes | First 4 KiB of YAML/JSON/XML/SQL files (build manifests/lockfiles never probed) |
+| 5,000 content probes | First 4 KiB of YAML/JSON/XML/SQL files (build manifests, lockfiles and Helm templates never probed); first 64 bytes of `.py`, `.scala` and `.r` files in a notebook or Databricks folder |
 
 **Incomplete scan** → absence-based conditions (files, language, CI, containers) become *unknown*
 
-**Partial content coverage** → absence of content-recognized tags (`api:openapi`, `db:liquibase`)
-becomes *unknown*
+**Partial content coverage** → absence of content-recognized tags (`api:openapi`, `db:liquibase`,
+`infra:kubernetes`, `data:databricks`) becomes *unknown*
 
 ## Module discovery
 
 **What's a module?** Any directory with a build manifest:
 `pom.xml`, `build.gradle(.kts)`, `package.json`, `go.mod`, `Cargo.toml`, `composer.json`,
-`pyproject.toml`, `Pipfile`, `requirements*.txt`, `setup.py`
+`pyproject.toml`, `Pipfile`, `requirements*.txt`, `*-requirements.txt`, `setup.py`. A `requirements/`
+folder belongs to the module above it. `buildSrc` and `build-logic` are a build's tooling, at any
+depth, and never modules.
 
 The root is always a module. Files belong to the deepest module.
 
@@ -62,7 +77,8 @@ The root is always a module. Files belong to the deepest module.
 
 ## Maven (`pom.xml`)
 
-- Dependencies, `dependencyManagement`, build plugins, profiles, `<modules>`.
+- Dependencies, `dependencyManagement`, build plugins, profiles, `<modules>`. An imported BOM
+  counts as a dependency (it is a choice of platform); a managed version alone does not.
 - `${…}` properties resolve through the POM and **local** parents (`relativePath`, default
   `../pom.xml`). Undefined properties → version *unresolved*, with the property named.
 - Missing versions resolve from local `dependencyManagement`; otherwise *managed by* the
@@ -73,8 +89,12 @@ The root is always a module. Files belong to the deepest module.
 
 ## Gradle (`build.gradle`, `build.gradle.kts`, `settings.gradle(.kts)`, `gradle/libs.versions.toml`)
 
+- Each build has its own settings, catalog and conventions: `backend/settings.gradle` and
+  `backend/gradle/libs.versions.toml` serve the projects below `backend/`.
 - Plugins (`id(...)`, `kotlin(...)`, core plugins, `alias(libs.plugins…)`, `apply plugin`).
-- Dependencies in string, map and version-catalog forms (`libs.x.y`, bundles).
+  A plugin declared `apply false` is applied elsewhere and says nothing of this project.
+- Dependencies in string, map and version-catalog forms (`libs.x.y`, bundles), `kotlin("test")`,
+  and `mavenBom` imports. Entries in `dependencyManagement { dependencies {} }` only manage versions.
 - `subprojects {}` / `allprojects {}` dependencies and `apply plugin` lines are attributed
   to the modules they apply to (inherited, with the root script as evidence).
 - Declarations sharing a line with block braces (`plugins { id("x") version "1" }`,
@@ -134,25 +154,42 @@ its colors in Habi fall back to the language of its build files; `lang:` conditi
 | Agent instructions | `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`, `.claude/rules/**`, `.cursor/rules/**/*.mdc`, `.cursorrules`, `.github/copilot-instructions.md` |
 | Agent skills | `SKILL.md` one folder deep in `.claude/skills`, `.agents/skills`, `.cursor/skills`, `.gemini/skills`, `.github/skills`, `.opencode/skills` and `.junie/skills` |
 | MCP config | `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.gemini/settings.json`, `opencode.json`, `.junie/mcp/mcp.json` |
-| Tooling | `tsconfig.json`, Jest/Vitest/Playwright/Cypress configs, GitHub Actions, GitLab CI, Dockerfile, `mvnw`/`gradlew`, `dbt_project.yml` |
+| Tooling | `tsconfig.json`, Jest/Vitest/Playwright/Cypress configs, `*.bats`, GitHub Actions, GitLab CI, Dockerfile, `mvnw`/`gradlew`, `dbt_project.yml` |
+| Infrastructure | `*.tf`, `.terraform.lock.hcl`, `terragrunt.hcl`, `Chart.yaml`, `helmfile.yaml`, `kustomization.yaml`, `ansible.cfg`, `playbook.yml`, `playbooks/*.yml`, `roles/*/tasks/main.yml`, `Pulumi.yaml` |
+| Kubernetes manifest | YAML whose first 4 KiB has top-level `apiVersion:` and `kind:` |
+| Databricks | `databricks.yml`, or a notebook file starting `# Databricks notebook source` |
+| Test automation | `specs/*.spec`, `*.cpt` (Gauge), `*.robot`, `*.feature`, `testng.xml`, `*.jmx`, `karma.conf.*`, `*.postman_collection.json` |
+| Other | `*.ipynb` (Jupyter), `META-INF/native-image/**` (GraalVM) |
+
+A role a project can hold thousands of files in records the first per module.
 
 ## Derived tags
 
 Defined in `crates/habi-core/src/inspect/tags.rs`, each with its evidence basis
 (manifest, files or both):
 
-`framework:spring-boot · quarkus · micronaut · react · vue · angular · next · svelte · express · nestjs`,
-`build:vite`, `test:junit · testcontainers · jest · vitest · playwright · cypress`,
-`db:liquibase · flyway · jooq`, `orm:jpa`, `api:openapi · springdoc`,
+`framework:spring-boot · spring · spring-security · spring-batch · spring-cloud · quarkus · micronaut · react · vue · angular · next · svelte · express · nestjs`,
+`runtime:graalvm`, `build:vite`, `test:junit · testcontainers · jest · vitest · playwright · cypress · bats ·
+gauge · robot-framework · cucumber · selenium · testng · spock · mockito · rest-assured · karate · gatling ·
+jmeter · k6 · locust · karma · jasmine · mocha · webdriverio · appium · pact · wiremock · postman`,
+`db:liquibase · flyway · jooq`, `orm:jpa`, `api:openapi` (a specification, or a tool that generates from or publishes one, such as `openapi-generator` or `@nestjs/swagger`) `· springdoc`,
 `ci:github-actions · gitlab`, `container:docker`,
 Go `framework:gin · echo · fiber · wails`, `orm:gorm`;
 Rust `framework:axum · actix · tauri · tokio`, `orm:diesel`, `db:sqlx`;
 Python `framework:django · flask · fastapi`, `orm:sqlalchemy`, `test:pytest`;
 PHP `framework:laravel · symfony`, `orm:doctrine`, `test:phpunit`;
 data engineering `data:dbt` (also from `dbt_project.yml`) `· airflow · dagster · prefect ·
-spark · beam · kafka · great-expectations · pandas · polars · duckdb`,
+spark · beam · kafka · great-expectations · pandas · polars · duckdb · databricks · delta · mlflow ·
+jupyter`,
+infrastructure `infra:terraform · terragrunt · helm · kubernetes · kustomize · ansible · pulumi`,
 `agents:agents-md · claude-md · cursor-rules · skills`,
-and languages from source extensions: `lang:java · kotlin · typescript · javascript · python · go · rust · csharp · php`.
+and languages from source extensions: `lang:java · kotlin · typescript · javascript · python · go · rust · csharp · php · scala · shell · hcl`.
+
+A language can be *incidental*: no manifest of its own, more real code in another language beside
+it, and all its files in chores (`scripts/`, `tools/`, `docs/`, `resources/`, tool configs) or under
+a tenth of the module. It stays true, so a rule an author wrote still holds. A rule Habi supplied
+(what a skill's description names, a catalog hint or pick) does not count it, so one script in a
+Java service does not suggest Python skills.
 
 A tag Habi cannot detect (e.g. a team-specific `team:payments`) is always *unknown* until
 the user declares it for the project.

@@ -22,7 +22,9 @@ use crate::install::status::SkillFolders;
 use crate::library::model::{ItemFile, LibraryIndex, LibraryItem};
 use crate::library::signals::SignalSeverity;
 use crate::matching::condition::Condition;
-use crate::matching::{Applicability, ApplicabilityResult, Scope, Views, assess_in};
+use crate::matching::{
+    Applicability, ApplicabilityResult, Scope, Views, assess_in, rests_on_incidental_code,
+};
 use crate::recommend::{Basis, Group, Recommendation};
 use crate::service::ItemRef;
 use crate::source::{Source, SourceRole, portable_identity};
@@ -321,7 +323,9 @@ pub fn kit(input: &KitInput) -> Kit {
             let (kind, applicability) = match &pick.applies_when {
                 Some(rule) => {
                     let a = assess_in(Some(rule), None, Scope::Module, input.views);
-                    if a.applicability != Applicability::Applies {
+                    if a.applicability != Applicability::Applies
+                        || rests_on_incidental_code(&a, input.views.inspection)
+                    {
                         continue;
                     }
                     (KitGroup::Stack, Some(a))
@@ -524,7 +528,7 @@ fn rule_of(a: &ApplicabilityResult) -> Option<&Condition> {
 }
 
 /// Whether every tag a rule names is about building and shipping the
-/// project (`ci:`, `container:`, `build:`) rather than what it is built on.
+/// project (`ci:`, `container:`, `build:`, `infra:`) rather than what it is built on.
 fn is_tooling(rule: &Condition) -> bool {
     fn walk(c: &Condition, tooling: &mut bool, other: &mut bool) {
         match c {
@@ -535,7 +539,7 @@ fn is_tooling(rule: &Condition) -> bool {
             }
             Condition::Not { .. } => {}
             Condition::Tag { tag }
-                if ["ci:", "container:", "build:"]
+                if ["ci:", "container:", "build:", "infra:"]
                     .iter()
                     .any(|p| tag.starts_with(p)) =>
             {

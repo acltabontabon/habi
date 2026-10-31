@@ -11,4 +11,9 @@ id: string, module: string, subject: FactSubject, origin: FactOrigin, detector: 
 /**
  * Facts this one was derived from.
  */
-derivedFrom: Array<string>, note: string | null, };
+derivedFrom: Array<string>, note: string | null, 
+/**
+ * A language this module holds without being written in it: one script
+ * beside a Java service. True of the module, and no reason to suggest a skill.
+ */
+incidental?: boolean, };

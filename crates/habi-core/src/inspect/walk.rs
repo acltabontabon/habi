@@ -41,16 +41,46 @@ pub const DEFAULT_SKIPPED_DIRS: &[&str] = &[
     ".yarn",
     "coverage",
     ".terraform",
+    ".terragrunt-cache",
+    ".databricks",
+    ".angular",
+    ".nx",
+    ".parcel-cache",
+    ".vite",
+    ".kotlin",
+    ".m2",
+    ".tox",
+    ".nox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".ipynb_checkpoints",
+    "site-packages",
+    ".serverless",
+    ".aws-sam",
+    "cdk.out",
+    // Credential stores, should a project or a home folder hold one.
+    ".ssh",
+    ".aws",
+    ".azure",
+    ".kube",
+    ".gnupg",
+    ".password-store",
 ];
 
 /// Skipped names that are also ordinary directory names (a Java package
 /// `com/acme/build`, a `docs/out` folder). These are only skipped where they
 /// are build output: at the project root, or directly inside a directory
 /// that has a build manifest. Every other name in `DEFAULT_SKIPPED_DIRS` is
-/// skipped at any depth.
+/// skipped at any depth. A root with no manifest keeps the names in
+/// `SOURCE_AT_A_BARE_ROOT`.
 pub const OUTPUT_DIR_NAMES: &[&str] = &[
     "target", "build", "dist", "out", "vendor", "venv", "coverage",
 ];
+
+/// Output names that hold sources in a repository with no build of its own:
+/// `build/Dockerfile` in a Terraform repository, `vendor/` in a folder of scripts.
+const SOURCE_AT_A_BARE_ROOT: &[&str] = &["build", "out", "vendor"];
 
 /// Files whose presence marks a directory as a build root, so that its
 /// `OUTPUT_DIR_NAMES` children are treated as build output.
@@ -70,7 +100,37 @@ const BUILD_MANIFESTS: &[&str] = &[
     "requirements.txt",
     "build.sbt",
     "build.xml",
+    "CMakeLists.txt",
+    "meson.build",
 ];
+
+/// Files listed even past the file limit, so that a tree full of data does not
+/// hide what the project is. They stay bounded by `MAX_LISTED_PAST_LIMIT`.
+const LISTED_PAST_LIMIT: &[&str] = &[
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "settings.gradle",
+    "settings.gradle.kts",
+    "libs.versions.toml",
+    "package.json",
+    "go.mod",
+    "Cargo.toml",
+    "composer.json",
+    "pyproject.toml",
+    "Pipfile",
+    "requirements.txt",
+    "setup.py",
+    "Dockerfile",
+    "Chart.yaml",
+    "kustomization.yaml",
+    "databricks.yml",
+];
+/// Files kept past the file limit.
+const MAX_LISTED_PAST_LIMIT: usize = 5_000;
+/// Entries looked at in all, as a multiple of the file limit: past it the walk
+/// stops, however little it has found.
+const WALK_ENTRIES_PER_FILE: usize = 8;
 
 /// Whether a directory named `name` whose parent is `parent` is skipped.
 pub fn skipped_dir(name: &str, parent: &Path, root: &Path) -> bool {
@@ -80,7 +140,8 @@ pub fn skipped_dir(name: &str, parent: &Path, root: &Path) -> bool {
     if !OUTPUT_DIR_NAMES.contains(&name) {
         return true;
     }
-    parent == root || BUILD_MANIFESTS.iter().any(|m| parent.join(m).is_file())
+    let beside_a_manifest = BUILD_MANIFESTS.iter().any(|m| parent.join(m).is_file());
+    beside_a_manifest || (parent == root && !SOURCE_AT_A_BARE_ROOT.contains(&name))
 }
 
 /// A chosen folder at a glance, before it is opened as a project.
@@ -166,11 +227,63 @@ const SECRET_FILE_PATTERNS: &[&str] = &[
     "credentials.json",
     "*.tfvars",
     "*.tfvars.json",
+    // Terraform state and plans hold every secret a run touched, in clear text.
+    "*.tfstate",
+    "*.tfstate.*",
+    "*.tfplan",
+    "tfplan",
+    "tfplan.*",
+    ".terraformrc",
+    "terraform.rc",
     "kubeconfig",
     "kubeconfig.*",
     "service-account*.json",
     "service_account*.json",
+    "application_default_credentials.json",
+    "client_secret*.json",
+    ".databrickscfg",
+    ".pypirc",
+    ".boto",
+    ".s3cfg",
+    ".htpasswd",
+    ".dockerconfigjson",
+    ".vault-token",
+    ".vault_pass*",
+    ".vault-password*",
+    "vault.yml",
+    "vault.yaml",
+    // Kubernetes secrets and encrypted or plain values files.
+    "secret.yaml",
+    "secret.yml",
+    "secrets.yaml",
+    "secrets.yml",
+    "secrets.json",
+    "secrets.toml",
+    "secrets.properties",
+    "*-secret.yaml",
+    "*-secret.yml",
+    "*-secrets.yaml",
+    "*-secrets.yml",
+    "*.secret.yaml",
+    "*.secrets.yaml",
+    "values-secret*",
+    "values.secret*",
+    "*.sops.yaml",
+    "*.sops.yml",
+    "*.sops.json",
+    "*.kdbx",
+    "*.ppk",
+    "*.ovpn",
 ];
+
+/// A path that holds credentials under a name that is ordinary elsewhere.
+const SECRET_PATHS: &[&str] = &[".docker/config.json"];
+
+fn is_secret_path(rel: &str) -> bool {
+    SECRET_PATHS
+        .iter()
+        .any(|p| rel == *p || rel.strip_suffix(p).is_some_and(|d| d.ends_with('/')))
+}
 
 /// True if a file name looks like it may hold secrets (never read or shown).
 pub fn is_secret_name(name: &str) -> bool {
@@ -368,8 +481,21 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
     let mut files = Vec::new();
     let mut dirs = vec![".".to_string()];
     let mut errors = 0u32;
+    let mut past_limit = 0usize;
+    let mut entries = 0usize;
+    let max_entries = (options.max_files as usize).saturating_mul(WALK_ENTRIES_PER_FILE);
+    let walk_limit =
+        |max: u32| format!("stopped after {max} files; file-pattern checks are incomplete");
     for entry in walker {
         cancel.check()?;
+        entries += 1;
+        if entries > max_entries {
+            if !report.truncated {
+                report.truncated = true;
+                report.limits_hit.push(walk_limit(options.max_files));
+            }
+            break;
+        }
         let entry = match entry {
             Ok(e) => e,
             Err(err) => {
@@ -408,16 +534,20 @@ pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<
         if !file_type.is_file() {
             continue;
         }
-        if secrets.is_match(entry.file_name()) {
+        if secrets.is_match(entry.file_name()) || is_secret_path(&rel) {
             continue;
         }
+        // Past the limit only what says what the project is stays listed.
         if files.len() as u32 >= options.max_files {
-            report.truncated = true;
-            report.limits_hit.push(format!(
-                "stopped after {} files; file-pattern checks are incomplete",
-                options.max_files
-            ));
-            break;
+            if !report.truncated {
+                report.truncated = true;
+                report.limits_hit.push(walk_limit(options.max_files));
+            }
+            let name = entry.file_name().to_string_lossy();
+            if past_limit >= MAX_LISTED_PAST_LIMIT || !LISTED_PAST_LIMIT.contains(&name.as_ref()) {
+                continue;
+            }
+            past_limit += 1;
         }
         let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
         files.push((rel, size));
@@ -488,6 +618,20 @@ mod tests {
             "kubeconfig.yaml",
             "service-account.json",
             "service-account-prod.json",
+            "terraform.tfstate",
+            "terraform.tfstate.backup",
+            ".terraform.tfstate.lock.info",
+            "prod.tfplan",
+            "tfplan.json",
+            ".terraformrc",
+            ".databrickscfg",
+            ".pypirc",
+            ".vault-token",
+            "vault.yml",
+            "secrets.yaml",
+            "db-secret.yaml",
+            "values-secrets.yaml",
+            "prod.sops.yaml",
         ] {
             assert!(is_secret_name(name), "{name}");
         }
@@ -497,9 +641,108 @@ mod tests {
             "config.yaml",
             "keys.md",
             "env.ts",
+            "main.tf",
+            "values.yaml",
+            "values-prod.yaml",
+            "secrets.go",
+            "secrets.py",
+            "databricks.yml",
+            "terraform.md",
         ] {
             assert!(!is_secret_name(name), "{name}");
         }
+        assert!(is_secret_path(".docker/config.json"));
+        assert!(is_secret_path("deploy/.docker/config.json"));
+        assert!(!is_secret_path(".docker/Dockerfile"));
+        assert!(!is_secret_path("x.docker/config.json"));
+        assert!(!is_secret_path("config.json"));
+    }
+
+    #[test]
+    fn tool_caches_and_credential_stores_are_not_listed() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for path in [
+            ".angular/cache/a.json",
+            ".databricks/bundle/dev/terraform/terraform.tfstate",
+            "live/.terragrunt-cache/x/main.tf",
+            ".aws/config",
+            ".kube/config",
+            ".docker/config.json",
+            "infra/terraform.tfstate",
+            ".docker/Dockerfile",
+            "infra/main.tf",
+        ] {
+            let at = root.join(path);
+            fs::create_dir_all(at.parent().unwrap()).unwrap();
+            fs::write(at, "x").unwrap();
+        }
+        let result = walk(root, &WalkOptions::default(), &CancelToken::new()).unwrap();
+        let names: Vec<&str> = result.files.iter().map(|(p, _)| p.as_str()).collect();
+        assert_eq!(names, vec![".docker/Dockerfile", "infra/main.tf"]);
+    }
+
+    #[test]
+    fn a_bare_root_keeps_build_and_vendor_and_a_built_root_does_not() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for path in ["build/Dockerfile", "vendor/x.sh", "dist/app.js"] {
+            let at = root.join(path);
+            fs::create_dir_all(at.parent().unwrap()).unwrap();
+            fs::write(at, "x").unwrap();
+        }
+        let listed = || -> Vec<String> {
+            walk(root, &WalkOptions::default(), &CancelToken::new())
+                .unwrap()
+                .files
+                .into_iter()
+                .map(|(p, _)| p)
+                .collect()
+        };
+        assert_eq!(listed(), vec!["build/Dockerfile", "vendor/x.sh"]);
+        fs::write(root.join("go.mod"), "module x\n").unwrap();
+        assert_eq!(listed(), vec!["go.mod"]);
+    }
+
+    #[test]
+    fn past_the_file_limit_what_says_what_the_project_is_stays_listed() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        // Whatever order the walk takes, the data takes up the limit.
+        for name in ["a-data", "z-data"] {
+            fs::create_dir_all(root.join(name)).unwrap();
+            for i in 0..20 {
+                fs::write(root.join(name).join(format!("{i}.csv")), "1").unwrap();
+            }
+        }
+        let api = root.join("m/api");
+        fs::create_dir_all(&api).unwrap();
+        fs::write(api.join("pom.xml"), "<project/>").unwrap();
+        fs::write(api.join("App.java"), "").unwrap();
+        let opts = WalkOptions {
+            max_files: 10,
+            ..Default::default()
+        };
+        let result = walk(root, &opts, &CancelToken::new()).unwrap();
+        assert!(result.report.truncated);
+        assert_eq!(result.report.limits_hit.len(), 1);
+        assert!(result.files.iter().any(|(p, _)| p == "m/api/pom.xml"));
+        assert!(result.files.len() <= 11, "{:?}", result.files);
+    }
+
+    #[test]
+    fn the_walk_gives_up_on_a_tree_far_past_the_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        for i in 0..100 {
+            fs::write(dir.path().join(format!("{i}.csv")), "1").unwrap();
+        }
+        let opts = WalkOptions {
+            max_files: 2,
+            ..Default::default()
+        };
+        let result = walk(dir.path(), &opts, &CancelToken::new()).unwrap();
+        assert!(result.report.truncated);
+        assert_eq!(result.files.len(), 2);
     }
 
     #[test]

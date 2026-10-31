@@ -566,8 +566,8 @@ fn content_probe_limit_does_not_turn_file_absence_into_unknown() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path();
     write(root, "pom.xml", &pom("svc", &[], &[]));
-    for i in 0..650 {
-        write(root, &format!("fixtures/data/f{i:04}.json"), "{}");
+    for i in 0..5_050 {
+        write(root, &format!("data/f{i:05}.json"), "{}");
     }
     let inspection = inspect_dir(root);
     let no_docker = cond(serde_json::json!({"not": {"file": "**/Dockerfile"}}));

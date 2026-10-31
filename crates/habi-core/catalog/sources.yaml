@@ -291,6 +291,12 @@ sources:
       - "The agents, instructions and extensions in the same repository are not skills and are not read."
     # Picks checked at 5269f7ea2d6c3a9bfda5ed878b6726cf509121fd on 2026-10-30.
     picks:
+      - skill: skills/java-add-graalvm-native-image-support
+        title: GraalVM native images
+        gist: "Add native image support to a Java build and iterate until it compiles."
+        why: "GraalVM native images"
+        tokens: 93
+        applies_when: { tag: "runtime:graalvm" }
       - skill: skills/spring-boot-testing
         title: Spring Boot testing
         gist: "Test Spring Boot with focused slices, not a full context for every test."
@@ -567,6 +573,38 @@ sources:
           all:
             - tag: "lang:csharp"
             - file: "**/appsettings.json"
+      # The next five checked at 7e2fb559cf4b824b27f1fec49fe88f7511066d26 on 2026-10-31.
+      - skill: plugins/cloud-infrastructure/skills/terraform-module-library
+        title: Terraform modules
+        gist: "Build reusable Terraform modules for AWS, Azure, GCP and OCI."
+        why: "Terraform projects"
+        tokens: 67
+        applies_when: { tag: "infra:terraform" }
+      - skill: plugins/kubernetes-operations/skills/helm-chart-scaffolding
+        title: Helm charts
+        gist: "Organize Helm charts so templates and values stay reusable."
+        why: "Helm charts"
+        tokens: 63
+        scripts: true
+        applies_when: { tag: "infra:helm" }
+      - skill: plugins/kubernetes-operations/skills/k8s-manifest-generator
+        title: Kubernetes manifests
+        gist: "Write production-ready Deployments, Services and ConfigMaps."
+        why: "Kubernetes manifests"
+        tokens: 75
+        applies_when: { tag: "infra:kubernetes" }
+      - skill: plugins/shell-scripting/skills/bash-defensive-patterns
+        title: Defensive Bash
+        gist: "Write Bash scripts, pipelines and utilities that tolerate faults safely."
+        why: "Shell scripts"
+        tokens: 53
+        applies_when: { tag: "lang:shell" }
+      - skill: plugins/shell-scripting/skills/shellcheck-configuration
+        title: ShellCheck setup
+        gist: "Configure ShellCheck for script quality and portability."
+        why: "Shell scripts"
+        tokens: 51
+        applies_when: { tag: "lang:shell" }
       - skill: plugins/systems-programming/skills/go-concurrency-patterns
         title: Go concurrency
         gist: "Worker pools, cancellation and shutdown in Go without leaks or data races."

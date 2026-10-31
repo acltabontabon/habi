@@ -70,6 +70,32 @@ pub struct Settings {
     pub notes: Vec<String>,
 }
 
+/// Whether a path is inside `buildSrc` or `build-logic`, at any depth: the build's
+/// own tooling, not a module of the project.
+pub fn in_convention_build(path: &str) -> bool {
+    path.split('/')
+        .any(|part| part == "buildSrc" || part == "build-logic")
+}
+
+/// Whether a file is a convention source of the build rooted at `root`.
+pub fn is_convention_source(path: &str, root: &str) -> bool {
+    let inside = if root == "." {
+        Some(path)
+    } else {
+        path.strip_prefix(root).and_then(|p| p.strip_prefix('/'))
+    };
+    inside.is_some_and(|p| p.starts_with("buildSrc/") || p.starts_with("build-logic/"))
+}
+
+/// Where the build rooted at `root` keeps its version catalog.
+pub fn catalog_path(root: &str) -> String {
+    if root == "." {
+        "gradle/libs.versions.toml".into()
+    } else {
+        format!("{root}/gradle/libs.versions.toml")
+    }
+}
+
 /// Removes `//` and `/* */` comments, leaving string literals intact and
 /// preserving line breaks so line numbers stay correct.
 #[allow(
@@ -142,9 +168,20 @@ fn normalize_alias(alias: &str) -> String {
 }
 
 static STRING_DEP: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^\s*([A-Za-z][A-Za-z0-9]*)\s*\(?\s*(?:(?:enforced)?[Pp]latform\s*\(\s*)?["']([^"']+)["']"#)
+    Regex::new(r#"^\s*["']?([A-Za-z][A-Za-z0-9]*)["']?\s*\(?\s*(?:(?:enforced)?[Pp]latform\s*\(\s*)?["']([^"']+)["']"#)
         .unwrap()
 });
+/// `implementation(kotlin("test"))`: the Kotlin plugin's shorthand for a library.
+static KOTLIN_DEP: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^\s*([A-Za-z][A-Za-z0-9]*)\s*\(?\s*kotlin\s*\(\s*["']([^"']+)["'](?:\s*,\s*["']([^"']+)["'])?"#).unwrap()
+});
+/// `mavenBom "g:a:1"`, in the dependency management plugin's `imports` block.
+static MAVEN_BOM: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^\s*mavenBom\s*\(?\s*["']([^"':]+):([^"':]+)(?::([^"']*))?["']"#).unwrap()
+});
+/// A plugin named for its version, and applied by each project that wants it.
+static APPLY_FALSE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"\bapply\s*\(?\s*false\s*\)?\s*;?\s*$"#).unwrap());
 static MAP_DEP: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"^\s*([A-Za-z][A-Za-z0-9]*)\s*\(?\s*group\s*[:=]\s*["']([^"']+)["']\s*,\s*name\s*[:=]\s*["']([^"']+)["'](?:\s*,\s*version\s*[:=]\s*["']([^"']+)["'])?"#)
         .unwrap()
@@ -154,7 +191,7 @@ static CATALOG_DEP: LazyLock<Regex> = LazyLock::new(|| {
         .unwrap()
 });
 static PROJECT_DEP: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^\s*[A-Za-z][A-Za-z0-9]*\s*\(?\s*(project\s*\(|files\s*\(|fileTree\s*\(|gradleApi|localGroovy|testFixtures\s*\(\s*project)"#).unwrap()
+    Regex::new(r#"^\s*[A-Za-z][A-Za-z0-9]*\s*\(?\s*(project\s*\(|projects\.|files\s*\(|fileTree\s*\(|gradleApi|gradleTestKit|localGroovy|testFixtures\s*\(\s*projects?\b|(?:enforced)?[Pp]latform\s*\(\s*projects?\b)"#).unwrap()
 });
 static PLUGIN_ID: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"^\s*id\s*\(?\s*["']([^"']+)["']\s*\)?(?:\s*version\s*\(?\s*["']([^"']+)["'])?"#)
@@ -262,6 +299,8 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
     // declaration is read: the stack can be deep, and there is a look per piece.
     let mut stack: Vec<String> = Vec::new();
     let (mut subprojects, mut allprojects, mut buildscript) = (0usize, 0usize, 0usize);
+    // Inside `dependencyManagement {}`, versions are managed and nothing is used.
+    let mut managing = 0usize;
     // Blocks open past the depth limit: their names are not kept.
     let mut too_deep = 0usize;
     let mut went_too_deep = false;
@@ -306,6 +345,7 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
                         "subprojects" => subprojects += 1,
                         "allprojects" => allprojects += 1,
                         "buildscript" => buildscript += 1,
+                        "dependencyManagement" => managing += 1,
                         _ => {}
                     }
                     stack.push(name);
@@ -320,6 +360,7 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
                         Some("subprojects") => subprojects -= 1,
                         Some("allprojects") => allprojects -= 1,
                         Some("buildscript") => buildscript -= 1,
+                        Some("dependencyManagement") => managing -= 1,
                         _ => {}
                     }
                     continue;
@@ -352,8 +393,23 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
                 });
             }
 
+            if top == Some("imports")
+                && managing > 0
+                && let Some(c) = MAVEN_BOM.captures(trimmed)
+            {
+                build.dependencies.push(GradleDep {
+                    configuration: "mavenBom".into(),
+                    name: format!("{}:{}", &c[1], &c[2]),
+                    version: c.get(3).map(|m| m.as_str().to_string()),
+                    line: line_no,
+                    shared,
+                });
+            }
+
             if top == Some("plugins") {
-                if let Some(c) = PLUGIN_ID.captures(trimmed) {
+                if APPLY_FALSE.is_match(trimmed) {
+                    // Declared here, applied elsewhere: it says nothing of this project.
+                } else if let Some(c) = PLUGIN_ID.captures(trimmed) {
                     build.plugins.push(GradlePlugin {
                         id: c[1].to_string(),
                         version: c.get(2).map(|m| m.as_str().to_string()),
@@ -386,7 +442,7 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
                 }
             }
 
-            if top == Some("dependencies") && buildscript == 0 {
+            if top == Some("dependencies") && buildscript == 0 && managing == 0 {
                 if trimmed.starts_with("if ")
                     || trimmed.starts_with("if(")
                     || trimmed.contains(".forEach")
@@ -400,6 +456,14 @@ pub fn parse_build(path: &str, module: &str, text: &str) -> GradleBuild {
                         configuration: c[1].to_string(),
                         name: format!("{}:{}", &c[2], &c[3]),
                         version: c.get(4).map(|m| m.as_str().to_string()),
+                        line: line_no,
+                        shared,
+                    });
+                } else if let Some(c) = KOTLIN_DEP.captures(trimmed) {
+                    build.dependencies.push(GradleDep {
+                        configuration: c[1].to_string(),
+                        name: format!("org.jetbrains.kotlin:kotlin-{}", &c[2]),
+                        version: c.get(3).map(|m| m.as_str().to_string()),
                         line: line_no,
                         shared,
                     });
@@ -668,12 +732,13 @@ fn version_info(raw: Option<&str>, via: Option<&str>) -> VersionInfo {
 /// module to the root module whose `subprojects {}` blocks apply to it.
 pub fn collect(
     builds: &[GradleBuild],
+    build_root: &str,
     catalog: Option<&Catalog>,
     settings: Option<&Settings>,
     has_convention_sources: bool,
     out: &mut Collector,
 ) {
-    let root_build = builds.iter().find(|b| b.module == ".");
+    let root_build = builds.iter().find(|b| b.module == build_root);
     // What the root shares with every build, each name once: a shared block's
     // length is multiplied by the number of builds below it.
     let (root_deps, root_plugins) = {
@@ -778,13 +843,13 @@ pub fn collect(
             match dep.shared {
                 None => record(dep, &build.path, FactOrigin::Direct, &mut notes),
                 // Shared blocks apply to the root only for allprojects.
-                Some(SharedScope::AllProjects) if build.module == "." => {
+                Some(SharedScope::AllProjects) if build.module == build_root => {
                     record(dep, &build.path, FactOrigin::Direct, &mut notes)
                 }
                 _ => {}
             }
         }
-        if build.module != "."
+        if build.module != build_root
             && let Some(root) = root_build
         {
             for dep in &root_deps {
@@ -803,12 +868,12 @@ pub fn collect(
             .iter()
             .filter(|p| match p.shared {
                 None => true,
-                Some(SharedScope::AllProjects) => build.module == ".",
+                Some(SharedScope::AllProjects) => build.module == build_root,
                 Some(SharedScope::Subprojects) => false,
             })
             .map(|p| (p, &build.path, FactOrigin::Direct));
         let inherited = root_build
-            .filter(|_| build.module != ".")
+            .filter(|_| build.module != build_root)
             .into_iter()
             .flat_map(|root| {
                 root_plugins
@@ -934,7 +999,7 @@ spring-boot = { id = "org.springframework.boot", version = "3.3.2" }
             "plugins {\n alias(libs.plugins.spring.boot)\n}\ndependencies {\n implementation(libs.liquibase.core)\n implementation(libs.bundles.db)\n}\n",
         );
         let mut out = Collector::default();
-        collect(&[build], Some(&catalog), None, false, &mut out);
+        collect(&[build], ".", Some(&catalog), None, false, &mut out);
         let lq = out
             .find_dependency(".", "org.liquibase:liquibase-core")
             .unwrap();
@@ -959,7 +1024,7 @@ spring-boot = { id = "org.springframework.boot", version = "3.3.2" }
         );
         let child = parse_build("api/build.gradle", "api", "dependencies {\n}\n");
         let mut out = Collector::default();
-        collect(&[root, child], None, None, false, &mut out);
+        collect(&[root, child], ".", None, None, false, &mut out);
         assert!(
             out.find_dependency("api", "org.junit.jupiter:junit-jupiter")
                 .is_some()
@@ -1033,7 +1098,7 @@ subprojects { dependencies { implementation 'org.jooq:jooq:3.19.0' } }
         );
         let child = parse_build("api/build.gradle", "api", "dependencies {\n}\n");
         let mut out = Collector::default();
-        collect(&[root, child], None, None, false, &mut out);
+        collect(&[root, child], ".", None, None, false, &mut out);
         assert!(
             out.find_dependency("api", "org.springframework.boot")
                 .is_some()

@@ -23,6 +23,7 @@ pub mod walk;
 use crate::cancel::CancelToken;
 use crate::error::Result;
 use crate::fsutil::{Bounded, read_bounded, sha256, tree_digest};
+use crate::redact::redact;
 use model::*;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
@@ -135,7 +136,13 @@ const FACTS_NOTE: &str =
     "This project declares more dependencies than Habi records, so some were not looked at.";
 
 /// A version that long is not one; what follows from it is not established.
+/// A manifest's version can be a URL, and a URL can carry a token: what is kept
+/// is what could be shown to anyone. Redaction comes first: cut short, a URL no
+/// longer looks like one that holds a credential.
 fn bounded_version(mut version: VersionInfo) -> VersionInfo {
+    version.declared = version.declared.map(|d| redact(&d));
+    version.resolved = version.resolved.map(|r| redact(&r));
+    version.note = version.note.map(|n| redact(&n));
     let long = |text: &Option<String>| text.as_ref().is_some_and(|t| t.len() > MAX_TEXT);
     if long(&version.declared) || long(&version.resolved) {
         version.state = VersionState::Unresolved;
@@ -239,7 +246,25 @@ impl Collector {
             );
             return String::new();
         }
-        evidence.excerpt = evidence.excerpt.map(|e| clip(&e, MAX_TEXT).to_string());
+        // A URL read as a coordinate: split at its colons, a password in it would
+        // read as a version, past what any redaction can recognise.
+        if name.contains("://") {
+            self.coverage(
+                module,
+                &area,
+                CoverageStatus::Partial,
+                vec![format!(
+                    "A dependency in {} is given as a URL and was not read.",
+                    evidence.file
+                )],
+            );
+            return String::new();
+        }
+        evidence.excerpt = evidence
+            .excerpt
+            .map(|e| clip(&redact(&e), MAX_TEXT).to_string());
+        let redacted_name = redact(name);
+        let name = redacted_name.as_str();
         let id = format!("dep:{module}:{area}:{name}");
         self.push_or_merge(Fact {
             id,
@@ -247,7 +272,7 @@ impl Collector {
             subject: FactSubject::Dependency {
                 ecosystem,
                 name: name.to_string(),
-                scope: scope.map(|s| clip(&s, MAX_TEXT).to_string()),
+                scope: scope.map(|s| clip(&redact(&s), MAX_TEXT).to_string()),
                 version: bounded_version(version),
             },
             origin,
@@ -255,6 +280,7 @@ impl Collector {
             evidence: vec![evidence],
             derived_from: Vec::new(),
             note: None,
+            incidental: false,
         })
     }
 
@@ -278,6 +304,7 @@ impl Collector {
             evidence: vec![files::evidence(path, line)],
             derived_from: Vec::new(),
             note: None,
+            incidental: false,
         });
     }
 
@@ -300,10 +327,18 @@ impl Collector {
             evidence,
             derived_from: vec![from.to_string()],
             note: None,
+            incidental: false,
         });
     }
 
-    pub fn language(&mut self, module: &str, tag: &str, example: &str, count: u32) {
+    pub fn language(
+        &mut self,
+        module: &str,
+        tag: &str,
+        example: &str,
+        count: u32,
+        incidental: bool,
+    ) {
         self.push_or_merge(Fact {
             id: format!("tag:{module}:{tag}"),
             module: module.to_string(),
@@ -318,6 +353,7 @@ impl Collector {
                 "{count} source file{} in this module",
                 if count == 1 { "" } else { "s" }
             )),
+            incidental,
         });
     }
 
@@ -355,6 +391,7 @@ impl Collector {
             entry.status = status;
         }
         for note in notes {
+            let note = redact(&note);
             let note = if note.len() > MAX_NOTE {
                 clip(&note, MAX_NOTE).to_string()
             } else {
@@ -468,14 +505,24 @@ impl ManifestReader<'_> {
         match self.read(rel, MANIFEST_LIMIT) {
             Ok(text) => Some(text),
             Err(Unread::Spent(note)) => {
-                out.coverage(&dir_of(rel), area, CoverageStatus::Partial, vec![note]);
+                out.coverage(
+                    &python::module_dir(rel),
+                    area,
+                    CoverageStatus::Partial,
+                    vec![note],
+                );
                 None
             }
             Err(Unread::Failed(note)) => {
                 if report.unreadable.len() < 100 {
                     report.unreadable.push(rel.to_string());
                 }
-                out.coverage(&dir_of(rel), area, CoverageStatus::Failed, vec![note]);
+                out.coverage(
+                    &python::module_dir(rel),
+                    area,
+                    CoverageStatus::Failed,
+                    vec![note],
+                );
                 None
             }
         }
@@ -541,8 +588,9 @@ fn inspect_within(
     };
 
     // Paths by file name, built once: looked up for every manifest kind.
+    // A test's sample project is not a module of this one.
     let mut by_name: HashMap<&str, Vec<&str>> = HashMap::new();
-    for (p, _) in &files {
+    for (p, _) in files.iter().filter(|(p, _)| !files::in_fixture(p)) {
         let name = p.rsplit('/').next().unwrap_or(p);
         by_name.entry(name).or_default().push(p);
     }
@@ -556,7 +604,7 @@ fn inspect_within(
     let gradle_builds: Vec<String> = names("build.gradle")
         .into_iter()
         .chain(names("build.gradle.kts"))
-        .filter(|p| !p.starts_with("buildSrc/") && !p.starts_with("build-logic/"))
+        .filter(|p| !gradle::in_convention_build(p))
         .collect();
     let package_jsons = names("package.json");
     let go_mods = names("go.mod");
@@ -567,8 +615,9 @@ fn inspect_within(
     let pipfiles = names("Pipfile");
     let mut requirement_files: Vec<String> = by_name
         .iter()
-        .filter(|(n, _)| n.starts_with("requirements") && n.ends_with(".txt"))
+        .filter(|(n, _)| n.ends_with(".txt"))
         .flat_map(|(_, paths)| paths.iter().map(|p| p.to_string()))
+        .filter(|p| python::is_requirements_file(p))
         .collect();
     requirement_files.sort();
     let setup_pys = names("setup.py");
@@ -606,7 +655,7 @@ fn inspect_within(
     for (paths, ecosystem) in other_manifests {
         for p in paths {
             module_ecosystems
-                .entry(dir_of(p))
+                .entry(python::module_dir(p))
                 .or_default()
                 .insert(ecosystem);
         }
@@ -628,7 +677,7 @@ fn inspect_within(
     let kept = |paths: Vec<String>| -> Vec<String> {
         paths
             .into_iter()
-            .filter(|p| !capped || module_ecosystems.contains_key(&dir_of(p)))
+            .filter(|p| !capped || module_ecosystems.contains_key(&python::module_dir(p)))
             .collect()
     };
     let poms = kept(poms);
@@ -672,60 +721,93 @@ fn inspect_within(
     cancel.check()?;
     maven::collect(&parsed_poms, &mut out);
 
-    // Gradle.
-    let settings = names("settings.gradle")
+    // Gradle. A repository can hold several builds side by side (`backend/`
+    // beside `frontend/`): each has its own settings, catalog and conventions.
+    let settings_files: Vec<String> = names("settings.gradle")
         .into_iter()
         .chain(names("settings.gradle.kts"))
-        .find(|p| !p.contains('/'))
-        .and_then(|p| {
-            let text = reader.read(&p, MANIFEST_LIMIT).ok()?;
-            Some(gradle::parse_settings(&p, &text))
-        });
-    if let Some(s) = &settings
-        && !s.includes.is_empty()
-    {
-        signals.push(format!(
-            "Gradle includes in {} ({})",
-            s.path,
-            s.includes.len()
-        ));
-    }
-    let catalog = if files.iter().any(|(p, _)| p == "gradle/libs.versions.toml") {
-        match reader.read("gradle/libs.versions.toml", MANIFEST_LIMIT) {
-            Ok(text) => match gradle::parse_catalog("gradle/libs.versions.toml", &text) {
-                Ok(c) => Some(c),
-                Err(e) => {
-                    out.coverage(".", "gradle", CoverageStatus::Partial, vec![e]);
-                    None
-                }
-            },
-            Err(_) => None,
-        }
-    } else {
-        None
+        .filter(|p| !gradle::in_convention_build(p))
+        .collect();
+    let catalog_files: Vec<String> = names("libs.versions.toml")
+        .into_iter()
+        .filter(|p| p == "gradle/libs.versions.toml" || p.ends_with("/gradle/libs.versions.toml"))
+        .filter(|p| !gradle::in_convention_build(p))
+        .collect();
+    let mut gradle_roots: BTreeSet<String> = settings_files.iter().map(|p| dir_of(p)).collect();
+    gradle_roots.extend(catalog_files.iter().map(|p| {
+        p.strip_suffix("/gradle/libs.versions.toml")
+            .unwrap_or(".")
+            .to_string()
+    }));
+    gradle_roots.insert(".".to_string());
+    let root_of = |module: &str| -> String {
+        gradle_roots
+            .iter()
+            .filter(|root| is_within(module, root))
+            .max_by_key(|root| if *root == "." { 0 } else { root.len() })
+            .cloned()
+            .unwrap_or_else(|| ".".to_string())
     };
-    let has_convention_sources = files
-        .iter()
-        .any(|(p, _)| p.starts_with("buildSrc/") || p.starts_with("build-logic/"))
-        || settings
-            .as_ref()
-            .is_some_and(|s| s.notes.iter().any(|n| n.contains("Included builds")));
-    let mut parsed_gradle = Vec::new();
+    let mut parsed_gradle: BTreeMap<String, Vec<gradle::GradleBuild>> = BTreeMap::new();
     for p in &gradle_builds {
         cancel.check()?;
         let module = dir_of(p);
         if let Some(text) = reader.manifest(p, "gradle", &mut out, &mut report) {
-            parsed_gradle.push(gradle::parse_build(p, &module, &text));
+            parsed_gradle
+                .entry(root_of(&module))
+                .or_default()
+                .push(gradle::parse_build(p, &module, &text));
         }
     }
     cancel.check()?;
-    gradle::collect(
-        &parsed_gradle,
-        catalog.as_ref(),
-        settings.as_ref(),
-        has_convention_sources,
-        &mut out,
-    );
+    for (build_root, builds) in &parsed_gradle {
+        let here = |p: &String| root_of(&dir_of(p)) == *build_root;
+        let settings = settings_files
+            .iter()
+            .find(|p| dir_of(p) == *build_root && here(p))
+            .and_then(|p| {
+                let text = reader.read(p, MANIFEST_LIMIT).ok()?;
+                Some(gradle::parse_settings(p, &text))
+            });
+        if let Some(s) = &settings
+            && !s.includes.is_empty()
+        {
+            signals.push(format!(
+                "Gradle includes in {} ({})",
+                s.path,
+                s.includes.len()
+            ));
+        }
+        let catalog_path = gradle::catalog_path(build_root);
+        let catalog = if catalog_files.contains(&catalog_path) {
+            match reader.read(&catalog_path, MANIFEST_LIMIT) {
+                Ok(text) => match gradle::parse_catalog(&catalog_path, &text) {
+                    Ok(c) => Some(c),
+                    Err(e) => {
+                        out.coverage(build_root, "gradle", CoverageStatus::Partial, vec![e]);
+                        None
+                    }
+                },
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        let has_convention_sources = files
+            .iter()
+            .any(|(p, _)| gradle::is_convention_source(p, build_root))
+            || settings
+                .as_ref()
+                .is_some_and(|s| s.notes.iter().any(|n| n.contains("Included builds")));
+        gradle::collect(
+            builds,
+            build_root,
+            catalog.as_ref(),
+            settings.as_ref(),
+            has_convention_sources,
+            &mut out,
+        );
+    }
 
     // npm.
     let mut packages = Vec::new();
@@ -832,7 +914,7 @@ fn inspect_within(
     let mut python_manifests = Vec::new();
     for p in pyprojects.iter().chain(&pipfiles).chain(&requirement_files) {
         cancel.check()?;
-        let module = dir_of(p);
+        let module = python::module_dir(p);
         let Some(text) = reader.manifest(p, "pypi", &mut out, &mut report) else {
             continue;
         };
@@ -917,7 +999,7 @@ fn inspect_within(
     cancel.check()?;
     files::collect(&root, &files, &mut out, &module_of);
     cancel.check()?;
-    tags::derive(&mut out, &files, &module_of);
+    tags::derive(&mut out, &files, &module_of, &module_ecosystems);
 
     // File coverage per module: the listing is incomplete when a traversal
     // limit stopped the walk or some directories could not be read.
@@ -963,7 +1045,7 @@ fn inspect_within(
             } else {
                 Some(lookup.parent(id).to_string())
             };
-            let name = module_names.get(id).cloned().unwrap_or_else(|| {
+            let name = module_names.get(id).map(|n| redact(n)).unwrap_or_else(|| {
                 if id == "." {
                     root.file_name()
                         .map(|n| n.to_string_lossy().into_owned())
@@ -1031,6 +1113,7 @@ fn inspect_within(
         watched.extend(names(name));
     }
     watched.extend(describe::readme_of(&files).map(str::to_string));
+    watched.extend(catalog_files.iter().cloned());
     watched.push("gradle/libs.versions.toml".into());
     watched.push(".git/HEAD".into());
     // Content probes and check freshness also depend on ordinary files.
@@ -1077,7 +1160,8 @@ fn inspect_within(
         .find(|m| m.id == ".")
         .map(|m| m.name.clone())
         .unwrap_or_default();
-    let description = describe::describe(&root, &name, &files);
+    // What the authors wrote is shown as written, short of a credential in it.
+    let description = describe::describe(&root, &name, &files).map(|d| redact(&d));
 
     let inspection = ProjectInspection {
         root: crate::paths::display_path(&root),
@@ -1261,8 +1345,8 @@ mod tests {
     fn content_probe_limit_does_not_make_file_absence_unknown() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("data")).unwrap();
-        for i in 0..650 {
-            std::fs::write(dir.path().join(format!("data/f{i:04}.json")), "{}").unwrap();
+        for i in 0..files::MAX_CONTENT_CHECKS + 50 {
+            std::fs::write(dir.path().join(format!("data/f{i:05}.json")), "{}").unwrap();
         }
         std::fs::write(dir.path().join("pom.xml"), "<project/>").unwrap();
         let i = inspect(dir.path(), &WalkOptions::default(), &CancelToken::new()).unwrap();
@@ -1461,7 +1545,7 @@ mod tests {
             ".",
             "dependencies { implementation 'g:b:1' }\n",
         );
-        gradle::collect(&[build], None, None, false, &mut out);
+        gradle::collect(&[build], ".", None, None, false, &mut out);
         assert!(out.facts.is_empty());
     }
 
