@@ -59,7 +59,7 @@ See [example library](../../fixtures/libraries/example-team-library) (uses all f
 | `habi` | **Required.** Schema version (`1`). |
 | `id` | Stable ID in the library (defaults to SKILL.md `name`). |
 | `title`, `owner` | Display name & maintainer (attribution only, not access control). |
-| `kind` | `skill` (default) or `workflow` (ordered procedure). |
+| `kind` | `skill` (default). `workflow` is still accepted and reads as a skill; `workflow.steps` is what adds the steps view. |
 | `requirement` | `recommended` (default) or `required` (team-level; always shown, never filtered). Only a team library can require: in a community library, `required` counts as `recommended`. |
 | `priority` | −100…100 (explicit team ordering). |
 | `scope` | `module` (default) or `repository` (evaluate-once flag). |

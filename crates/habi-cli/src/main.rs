@@ -52,7 +52,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Manage libraries: your team's and community ones (sources of skills and workflows).
+    /// Manage libraries: your team's and community ones (sources of skills).
     #[command(subcommand)]
     Source(SourceCmd),
     /// Public skill libraries Habi suggests: look inside before you connect one.
@@ -60,7 +60,7 @@ enum Command {
     Catalog(CatalogCmd),
     /// Show what Habi detects in a project, with evidence.
     Inspect(ProjectArg),
-    /// List the skills and workflows that fit a project, from every library and My skills.
+    /// List the skills that fit a project, from every library and My skills.
     Recommend {
         #[command(flatten)]
         project: ProjectArg,

@@ -21,6 +21,19 @@ All notable changes to Habi are listed here. The format follows
 
 ### Changed
 
+- **Home is the cloth.** Once you have projects the headline shrinks to one line and the loom takes the page.
+  Each skill is a thread of its own, taut when installed and slack when it only fits, and what waits on you is
+  tied off in the margin of the project it concerns. A key says how to read it.
+- **Install everything your team requires at once.** The *Team requirements* group has **Install all…**,
+  through the usual review.
+- **How a skill reaches your agent, said plainly.** Each skill's page says where its files go and when the
+  agent reads them.
+- **The Skill Studio says where a skill would be suggested as you write it.** One line under the bar names the
+  projects, and **Use** is now **Add to a project…**. The purpose line asks for a trigger, and broken links
+  always count in *to improve*.
+- **One kind of thing: skills.** "Workflow" is gone from filters and labels. A skill that declares steps says
+  *has steps* and keeps its **Steps** panel. `kind: workflow` still loads.
+- **The install review lists the agents on this machine.** The others are behind **Other agents**.
 - **A tidier library header.** **Check for updates** sits beside **Disconnect** with when it last
   looked, not on a row of its own, and only one remains now that the Source panel no longer has a
   second. The row below the header appears only when there is an update to take or a change to read.

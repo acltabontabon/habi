@@ -141,7 +141,8 @@ export const groupHint: Record<Group, string> = {
 
 export const kindLabel: Record<ItemKind, string> = {
   skill: "Skill",
-  workflow: "Workflow",
+  // One concept: a workflow is a skill whose steps Habi can show.
+  workflow: "Skill",
   instructions: "Project instructions",
 };
 

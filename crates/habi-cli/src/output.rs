@@ -193,8 +193,8 @@ fn version_state(v: VersionState) -> &'static str {
 
 fn item_kind(k: ItemKind) -> &'static str {
     match k {
-        ItemKind::Skill => "skill",
-        ItemKind::Workflow => "workflow",
+        // One concept: a workflow is a skill with steps.
+        ItemKind::Skill | ItemKind::Workflow => "skill",
         ItemKind::Instructions => "instructions",
     }
 }

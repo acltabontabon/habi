@@ -1,5 +1,5 @@
 /**
- * Use a local skill in a project. Projects are listed with what the skill's
+ * Add a local skill to a project. Projects are listed with what the skill's
  * own rules say about them; the target agents are chosen next, at the point
  * of use, and the change goes through the same reviewed plan as any other
  * install: every file listed, nothing written until confirmed.
@@ -98,7 +98,7 @@ export function UseSkillDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={`Use ${skill.summary.title || "this skill"}`}
+      title={`Add ${skill.summary.title || "this skill"} to a project`}
       description="Habi puts it where your agents read skills. Nothing is run."
       footer={
         <>

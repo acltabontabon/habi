@@ -421,9 +421,25 @@ export function ReviewDialog({
     queryFn: () => api.detectedClients(projectId),
     retry: false,
   });
-  const detecting = clients === null && detected.isPending;
+  // What this machine has set up: what the list shows, whatever this project has used so far.
+  const onThisMachine = useQuery({
+    queryKey: ["detectedClients", null],
+    queryFn: () => api.detectedClients(null),
+    enabled: !machine,
+    retry: false,
+  });
+  const detecting = clients === null && (detected.isPending || (!machine && onThisMachine.isPending));
   const found = detected.data ?? [];
-  const chosen: ClientId[] = clients ?? (found.length > 0 ? found : ["claude-code"]);
+  const present = machine ? found : (onThisMachine.data ?? []);
+  const chosen: ClientId[] =
+    clients ?? (found.length > 0 ? found : present.length > 0 ? present : ["claude-code"]);
+  const [everyAgent, setEveryAgent] = useState(false);
+  // Only the tools that are here, and any already chosen. With none found, all of them: there is nothing to go on.
+  const shownAgents = ALL_CLIENTS.filter(
+    (c) =>
+      present.length === 0 || everyAgent || present.includes(c) || found.includes(c) || chosen.includes(c),
+  );
+  const otherAgents = ALL_CLIENTS.length - shownAgents.length;
   const unaudited = machine && request.kind === "install" && request.unaudited === true;
 
   // What a machine install would sit next to: projects that already hold the skill.
@@ -625,7 +641,7 @@ export function ReviewDialog({
       <fieldset className="clients">
         <legend className="review-heading">Install for</legend>
         <div className="agent-list">
-          {ALL_CLIENTS.map((c) => (
+          {shownAgents.map((c) => (
             <label key={c} className="agent-pick">
               <input
                 type="checkbox"
@@ -643,6 +659,11 @@ export function ReviewDialog({
             </label>
           ))}
         </div>
+        {otherAgents > 0 || everyAgent ? (
+          <button type="button" className="link-btn agent-more" onClick={() => setEveryAgent((e) => !e)}>
+            {everyAgent ? "Only the agents on this machine" : `Other agents (${otherAgents})`}
+          </button>
+        ) : null}
         {asksMcp ? (
           <label className="check mcp-option" title="Only servers the item needs; no secrets are written.">
             <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />

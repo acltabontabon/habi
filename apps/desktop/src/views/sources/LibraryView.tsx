@@ -133,7 +133,7 @@ function IndexRow({
           {fits ? <span className="index-fit">fits</span> : null}
           {required ? <span>required</span> : null}
           {item.kind === "instructions" ? <span>instructions</span> : null}
-          {item.kind === "workflow" ? <span>workflow</span> : null}
+          {item.workflow ? <span>has steps</span> : null}
           {item.metadataStatus === "declared" ? <span>rules</span> : null}
           {code > 0 ? (
             <span className="index-runs">

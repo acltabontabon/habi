@@ -43,12 +43,15 @@ its one signature — used only where it carries meaning.
   machine with how to install it when missing; the project stacks inspection reads (each
   chip's tooltip names the files); the seven agent tools. The optional GitHub and GitLab CLIs
   are not asked for here; Settings → This machine lists them with how to add each.
-- **Home: the loom** — the brand headline ("What one developer learns, every project
-  keeps."), the tagline under it ("Find what applies. Improve what works. Share what you
-  learn."), and the loom: warp threads are knowledge sources, weft rows are your projects, and a
-  source's thread surfaces as a float where its knowledge applies to that project: solid where
-  something from it is installed there (woven in), washed out where its skills fit but none is
-  installed yet (a loose thread). Pointing at a crossing lights its row and column and says
+- **Home: the loom** — on a first run the brand headline ("What one developer learns, every
+  project keeps.") and the tagline under it ("Find what applies. Improve what works. Share what
+  you learn."). Once there are projects the headline shrinks to one line, the tagline goes, and the
+  cloth takes the page. *Waiting for you* is its margin: a project's thread runs on and is tied off
+  in a saffron knot beside what waits on it (*5 skills fit, none added*, an edit not sent); a failed
+  refresh hangs below. No note, no margin. A key along the foot reads the threads, with only the marks
+  on show. The loom: warp threads are knowledge sources, weft rows are your projects, and at each crossing
+  every skill that belongs there is a thread of its own: taut where it is installed, slack
+  where it fits and is not installed yet. Pointing at a crossing lights its row and column and says
   what it holds: what is installed, and how many fit. A saffron
   knot marks where a refinement from a project went back into a library. The last row is
   unwoven and holds the one primary action, *Open a project…* (read-only). Rows and source
@@ -66,8 +69,9 @@ its one signature — used only where it carries meaning.
   (*Ready*, or *Draft · missing purpose*). Facets appear
   only when they match something; `/` finds, ↑/↓ or j/k move. Under the title, a thin strip
   of threads shows where the collection comes from, by count.
-- **Skill Studio** — one skill as one document with layers; the knowledge dominates. Two
-  regions only: a slim bar (back, where you are, *Ready/Draft*, *Use*, ⋯) and the stage. The
+- **Skill Studio** — one skill as one document with layers; the knowledge dominates. A slim bar
+  (back, where you are, *Ready/Draft*, *Add to a project…*, ⋯), one line under it saying where its
+  rules would suggest it (*Would be suggested in billing-service and orders-api*), and the stage. The
   stage opens on the skill: title, purpose as the lede, the provenance thread (the source's
   dye → the knot where it became yours → saffron for what changed here), one line each for
   *When to use* and *Comes with*, then the instructions in a reading measure. Markdown steps
@@ -130,9 +134,10 @@ its one signature — used only where it carries meaning.
 - **Why this fits** — the four facets, a specific next action, the evaluation tree with
   threads to file:line chips that open an excerpt of the exact file, exclusions,
   prerequisites, evidence and scope/limits.
-- **Workflow** — numbered steps on a vertical thread, references opening inline, "Prepare
+- **Steps** — one concept, the skill: a skill that declares steps gets this panel and a quiet
+  *has steps* mark. Numbered steps on a vertical thread, references opening inline, "Prepare
   for my agent" kept apart from "Run a check".
-- **Review** — clients and scope, every file with an expandable diff and plain explanation,
+- **Review** — the agent tools on this machine (the rest behind *Other agents*), scope, every file with an expandable diff and plain explanation,
   conflicts with explicit choices, skills the chosen ones call by name (with one button to add
   them), notes, the recovery promise, and a final button that names the action ("Install for
   Cursor in this project").

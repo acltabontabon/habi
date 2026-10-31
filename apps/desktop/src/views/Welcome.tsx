@@ -4,6 +4,9 @@
  * row. One next step leads: open a project. On first run connecting a
  * library is a quiet link beneath; the rest lives in the sidebar, the
  * palette and the project views.
+ *
+ * Once there are projects the question has been answered: it shrinks to one
+ * line, and the cloth takes the page, with what waits on you in its margin.
  */
 import { useMemo } from "react";
 import { Button, ErrorNotice, Kbd, Notice, Working } from "../components/ui";
@@ -13,10 +16,11 @@ import { plural, relativeTime } from "../lib/format";
 import { useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
 import { useAppInfo, useContributions, useRecentProjects, useSkills, useSources } from "../lib/queries";
-import { Loom, type LoomProject, type LoomSource } from "./Loom";
+import { Loom, LoomKey, type LoomNote, type LoomProject, type LoomSource } from "./Loom";
 
 const LOCAL = "local";
 const SHOWN = 7;
+const ELSEWHERE_SHOWN = 4;
 
 /** What fits a project, with fits Habi read from descriptions said apart from declared ones. */
 function fitsMeta(s: { fits: number; described: number }): string {
@@ -66,6 +70,42 @@ export function Welcome() {
     when: relativeTime(p.lastOpenedAt),
   }));
 
+  const returning = projects.length > 0;
+  // Only what asks something of the person, each read from what Habi already knows. A note about a
+  // project goes at the end of its thread, one to a thread; the rest is listed under the margin.
+  const rows = new Map(loomProjects.map((p) => [p.id, p]));
+  const elsewhere: LoomNote[] = (sources.data ?? [])
+    .filter((s) => s.lastError)
+    .map((s) => ({
+      key: `source:${s.id}`,
+      name: s.name,
+      detail: "could not be refreshed",
+      go: () => navigate({ name: "sources", sourceId: s.id }),
+    }));
+  const place = (projectId: string | null, note: LoomNote) => {
+    const row = projectId ? rows.get(projectId) : undefined;
+    if (row && !row.note) row.note = note;
+    else elsewhere.push(note);
+  };
+  for (const c of shared) {
+    if (c.state !== "draft" && c.state !== "committed") continue;
+    place(c.origin.type === "projectSkill" ? c.origin.projectId : null, {
+      key: `contribution:${c.id}`,
+      name: c.form.title,
+      detail: "not sent yet",
+      go: () => navigate({ name: "contributions", contributionId: c.id }),
+    });
+  }
+  for (const p of projects) {
+    if (!p.summary || p.summary.fits === 0 || p.summary.installed > 0) continue;
+    place(p.id, {
+      key: `project:${p.id}`,
+      name: p.name,
+      detail: `${plural(p.summary.fits, "skill")} ${p.summary.fits === 1 ? "fits" : "fit"}, none added`,
+      go: () => navigate({ name: "project", projectId: p.id, tab: "recommendations" }),
+    });
+  }
+
   // Until the projects are known, a returning user must not see the first-run screen.
   if (recent.isPending) {
     return (
@@ -91,12 +131,14 @@ export function Welcome() {
   }
 
   return (
-    <div className="home">
+    <div className={`home${returning ? " is-returning" : ""}`}>
       <header className="home-head">
         <h1 className="home-title">
           What one developer learns, <em>every project</em> keeps.
         </h1>
-        <p className="home-lead">Find what applies. Improve what works. Share what you learn.</p>
+        {returning ? null : (
+          <p className="home-lead">Find what applies. Improve what works. Share what you learn.</p>
+        )}
         {info.data && !info.data.gitAvailable ? (
           <div className="home-setup">
             <Notice
@@ -118,6 +160,7 @@ export function Welcome() {
         sources={loomSources}
         projects={loomProjects}
         moreProjects={Math.max(0, projects.length - SHOWN)}
+        elsewhere={elsewhere.slice(0, ELSEWHERE_SHOWN)}
         onOpenProject={(id) => navigate({ name: "project", projectId: id, tab: "recommendations" })}
         onOpenSource={(id) =>
           id === LOCAL ? navigate({ name: "skills" }) : navigate({ name: "sources", sourceId: id })
@@ -138,6 +181,12 @@ export function Welcome() {
       />
 
       <footer className="home-foot">
+        {returning && loomSources.length > 0 ? (
+          <LoomKey
+            community={loomSources.some((s) => s.kind === "community")}
+            shared={loomProjects.some((p) => p.sharedTo.length > 0)}
+          />
+        ) : null}
         <div className="home-left">
           {projects.length === 0 ? (
             <p className="home-more">

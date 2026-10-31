@@ -81,11 +81,193 @@
 
 /* Names, then the weave, which runs to the page's right edge: what fits a project is told by its
    threads, and its counts are in the name's tooltip. */
-.loom {
+/* The room the home page has left; the loom is laid into it, so its rows can size to it. */
+.loom-room {
   position: relative;
+  min-width: 0;
+}
+
+.loom {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  grid-auto-rows: minmax(100%, auto);
   column-gap: var(--s5);
+}
+
+/* The margin hangs off the cloth's right edge: the weft runs straight on into it. */
+.loom.has-margin {
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(190px, 24%);
+}
+
+.loom-margin {
+  margin-left: calc(-1 * var(--s5));
+  min-width: 0;
+}
+
+.loom-margin-head {
+  height: var(--loom-head);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 0 24px calc(var(--s5) + 22px);
+}
+
+.loom-margin-head .kicker {
+  color: var(--ink-faint);
+}
+
+.loom-note {
+  position: relative;
+  height: var(--loom-row);
+  display: flex;
+  align-items: center;
+  transition: opacity 200ms var(--ease);
+}
+
+/* Where something waits, the project's thread carries on and is tied off. */
+.loom-note.has-note::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: calc(var(--s5) + 10px);
+  height: 1.5px;
+  background: var(--hairline-strong);
+}
+
+.loom-note.has-note::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--s5) + 8px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+
+.loom-note-go {
+  display: grid;
+  max-width: 100%;
+  margin-left: calc(var(--s5) + 22px);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.loom-note-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 520;
+}
+
+/* On its own thread the row already says which project. */
+.loom-note-name.is-row {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.loom-note-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  text-decoration: underline transparent;
+  text-underline-offset: 3px;
+  transition:
+    color var(--duration) var(--ease),
+    text-decoration-color var(--duration) var(--ease);
+}
+
+.loom-note-go:hover .loom-note-detail,
+.loom-note-go:focus-visible .loom-note-detail {
+  color: var(--thread-strong);
+  text-decoration-color: currentColor;
+}
+
+/* What belongs to no row: small knots hanging below the margin. */
+.loom-elsewhere {
+  position: relative;
+  display: grid;
+  gap: var(--s3);
+  margin: var(--s2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.loom-elsewhere li {
+  position: relative;
+}
+
+.loom-elsewhere li::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: calc(var(--s5) + 8px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--thread);
+}
+
+/* Too narrow for a margin: what waits is a plain list under the cloth, each saying what it is about. */
+.loom.is-narrow {
+  position: relative;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  grid-auto-rows: auto;
+}
+
+.loom.is-narrow .home-trust {
+  display: none;
+}
+
+.is-narrow .loom-margin {
+  grid-column: 1 / -1;
+  margin: var(--s5) 0 0;
+}
+
+.is-narrow .loom-margin-head {
+  height: auto;
+  padding: 0 0 var(--s2);
+}
+
+.is-narrow .loom-note {
+  height: auto;
+  padding-block: 3px;
+}
+
+.is-narrow .loom-note.has-note::before,
+.is-narrow .loom-note.is-new,
+.is-narrow .loom-note:not(.has-note) {
+  display: none;
+}
+
+.is-narrow .loom-note.has-note::after,
+.is-narrow .loom-elsewhere li::before {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.is-narrow .loom-note-go {
+  margin-left: 18px;
+}
+
+.is-narrow .loom-note-name.is-row {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
 }
 
 .loom-labels {
@@ -115,9 +297,9 @@
   background: none;
   padding: 0;
   font-size: var(--text-md);
-  font-weight: 560;
+  font-weight: 500;
   letter-spacing: -0.005em;
-  color: var(--ink);
+  color: var(--ink-soft);
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -160,7 +342,6 @@
 .loom-tail {
   position: absolute;
   left: 0;
-  bottom: 0;
   width: 100%;
   pointer-events: none;
   -webkit-mask-image: linear-gradient(#000, transparent);
@@ -240,20 +421,21 @@
 
 .loom-strand {
   stroke: var(--hairline-strong);
-  stroke-width: 2;
+  stroke-width: 1.25;
+  opacity: 0.5;
   stroke-linecap: round;
   transition: opacity 200ms var(--ease);
 }
 
 .loom-halo {
   stroke: var(--paper);
-  stroke-width: 11;
+  stroke-width: 7;
   stroke-linecap: round;
 }
 
 .loom-pick {
   stroke: var(--hairline-strong);
-  stroke-width: 5;
+  stroke-width: 1.5;
   stroke-linecap: round;
   transition: stroke var(--duration) var(--ease);
 }
@@ -264,13 +446,13 @@
 
 /* Rows not matched yet: quiet hairlines, no pattern. */
 .loom-pick.is-unmatched {
-  stroke-width: 1.5;
+  stroke-width: 1;
 }
 
 /* The next project: an unwoven saffron row. */
 .loom-pick.is-new {
   stroke: var(--thread);
-  stroke-width: 2;
+  stroke-width: 1.5;
   stroke-dasharray: 1 9;
   opacity: 0.8;
 }
@@ -280,20 +462,20 @@
 }
 
 .loom-float {
-  stroke-width: 4;
+  fill: none;
   stroke-linecap: round;
   transition: opacity 200ms var(--ease);
 }
 
-/* Something from this library is installed here: the thread is woven in, solid and full. */
+/* Installed here: pulled taut, tied into the cloth. */
 .loom-float.is-woven {
-  stroke-width: 6;
+  stroke-width: 3.25;
 }
 
-/* It fits, nothing installed yet: a loose thread, as wide as a fit but washed out, not tied in. */
+/* It fits, nothing has tied it in: a thin thread left slack. */
 .loom-float.is-loose {
-  stroke-width: 5;
-  opacity: 0.32;
+  stroke-width: 1.6;
+  opacity: 0.8;
 }
 
 /* Where a crossing can be pointed at. */
@@ -314,6 +496,38 @@
 
 .loom .is-dim {
   opacity: 0.18;
+}
+
+.loom-key {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+.loom-key li {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.loom-key-mark {
+  flex: none;
+}
+
+.loom-key-mark .loom-float {
+  stroke: var(--ink-muted);
+}
+
+.loom-key-warp {
+  stroke: var(--ink-soft);
+  stroke-width: 1.5;
 }
 
 .loom-labels .is-dim,

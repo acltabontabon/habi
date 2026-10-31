@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { realWords, refinements, unfinishedLines } from "./coach";
+import { purposeHint, realWords, refinements, unfinishedLines } from "./coach";
 import { tagLabel } from "./tags";
 
 const starter = `## When to use this
@@ -47,6 +47,17 @@ describe("refinements", () => {
     expect(r.find((x) => x.kind === "inferred")).toMatchObject({
       text: "Looks related to Liquibase projects.",
     });
+  });
+
+  it("asks for a trigger under the purpose, and for the key use first once it is long", () => {
+    expect(purposeHint("")).toMatch(/Agents read only this/);
+    expect(purposeHint("Reviews Liquibase changesets for safe rollback and locks")).toMatch(/No trigger yet/);
+    expect(purposeHint("Reviews Liquibase changesets. Use when a change edits a changelog.")).toMatch(
+      /Agents read only this/,
+    );
+    expect(purposeHint(`Use when ${"reviewing ".repeat(60)}`)).toMatch(/Key use first/);
+    const r = ask({ description: `Use when ${"reviewing ".repeat(60)}`, body: "", signals: 1 });
+    expect(r.find((x) => x.kind === "purpose")?.text).toMatch(/Say the key use first/);
   });
 
   it("says nothing once the skill is well made", () => {

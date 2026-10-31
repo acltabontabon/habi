@@ -17,6 +17,7 @@ import {
   applicabilityTone,
   checkCoverageText,
   clientLabel,
+  clientsPhrase,
   evidenceLabel,
   evidenceTone,
   freshnessText,
@@ -81,6 +82,36 @@ function InstalledFor({ r }: { r: Recommendation }) {
   );
 }
 
+/**
+ * How a skill reaches the agent, in a line, for the question everyone has first. What it says holds
+ * for every tool that reads Agent Skills: the name and description at the start, the rest on use.
+ */
+function ReachLine({ r }: { r: Recommendation }) {
+  if (r.item.kind === "instructions") return null;
+  const installation = r.installation;
+  const where = installation ? installedPlaces(installation.files).join(" and ") : "";
+  return (
+    <p className="detail-reach">
+      <Icon name="info" size={13} />
+      <span>
+        {installation ? (
+          <>
+            {where ? (
+              <>
+                Its files are in <span className="mono">{where}</span>.{" "}
+              </>
+            ) : null}
+            In a new session, {clientsPhrase(installation.clients)} sees its name and description, and reads
+            the rest when a task calls for it.
+          </>
+        ) : (
+          "Installing copies its files into the folder your agent reads. In a new session, the agent sees its name and description, and reads the rest when a task calls for it."
+        )}
+      </span>
+    </p>
+  );
+}
+
 export function ItemDetailPane({
   overview,
   recommendation: r,
@@ -130,7 +161,7 @@ export function ItemDetailPane({
 
   const panels = [
     ["why", "Why this fits"],
-    ...(r.item.hasWorkflow ? [["workflow", "Workflow"]] : []),
+    ...(r.item.hasWorkflow ? [["workflow", "Steps"]] : []),
     ["content", "Content"],
     ...(r.item.hasChecks ? [["checks", "Checks"]] : []),
   ] as [Panel, string][];
@@ -362,6 +393,7 @@ export function ItemDetailPane({
           </Notice>
         ) : null}
       </header>
+      <ReachLine r={r} />
 
       <div className="subtabs" role="tablist" aria-label="Item views">
         {panels.map(([id, label]) => (

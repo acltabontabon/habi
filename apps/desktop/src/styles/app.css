@@ -821,6 +821,24 @@
   color: var(--thread-strong);
 }
 
+/* After the first run the headline has said its piece: the room goes to the loom. */
+.home.is-returning {
+  gap: var(--s5);
+  padding-top: clamp(var(--s5), 4vh, var(--s6));
+}
+
+.home.is-returning .home-head {
+  gap: var(--s5);
+}
+
+.home.is-returning .home-title {
+  max-width: none;
+  font-size: var(--text-lg);
+  font-weight: 560;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+
 .home-lead {
   margin-top: var(--s3);
   color: var(--ink-muted);
@@ -862,7 +880,7 @@
 .home-foot {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--s3) var(--s6);
   padding-top: var(--s4);
@@ -2423,6 +2441,11 @@ select.input {
 }
 
 /* The agents are one list, not three boxes; a picked row has the thread through its edge. */
+.agent-more {
+  justify-self: start;
+  margin-top: var(--s2);
+}
+
 .agent-list {
   display: grid;
   border: 1px solid var(--hairline-strong);
@@ -9729,4 +9752,19 @@ button.chooser-crumb:focus-visible {
   .lib-num {
     display: none;
   }
+}
+
+.detail-reach {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: 0 var(--s6) var(--s4);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  max-width: calc(78ch + 2 * var(--s6));
+}
+
+.detail-reach svg {
+  flex: none;
+  transform: translateY(2px);
 }
