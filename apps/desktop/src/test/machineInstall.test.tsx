@@ -56,6 +56,11 @@ function plan(over: Partial<Plan> = {}): Plan {
         version: "3c5e131423",
         clients: ["claude-code"],
         notes: [],
+        signals: [],
+        newSignals: [],
+        origin: null,
+        provenance: null,
+        provenanceSummary: null,
       },
     ],
     changes: [
@@ -236,7 +241,9 @@ describe("review for this machine", () => {
     const onClose = vi.fn();
     wrap(<ReviewDialog projectId={null} request={install} onClose={onClose} />);
     await userEvent.click(await screen.findByRole("button", { name: /Install on this machine/ }));
-    await waitFor(() => expect(invoke).toHaveBeenCalledWith("apply_plan", { planId: "plan-1" }));
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("apply_plan", { planId: "plan-1", acceptCautions: false }),
+    );
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(screen.queryByText(/Installed & history/)).toBeNull();
   });
@@ -304,7 +311,42 @@ describe("review for this machine", () => {
     expect(invoke.mock.calls.filter((c) => c[0] === "plan_install")).toHaveLength(1);
     expect((screen.getByRole("checkbox", { name: /Cursor/ }) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByRole("checkbox", { name: /Gemini CLI/ }) as HTMLInputElement).checked).toBe(true);
+    // Tools with no sign here wait behind one link, unticked.
+    expect(screen.queryByRole("checkbox", { name: /Claude Code/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Other agents (5)" }));
     expect((screen.getByRole("checkbox", { name: /Claude Code/ }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("lists what this machine has, and starts from it when the project shows nothing", async () => {
+    invoke.mockImplementation(async (cmd: string, args?: { projectId?: string | null }) => {
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "detected_clients") return args?.projectId ? [] : ["cursor", "codex"];
+      if (cmd === "plan_install") return plan({ project: "~/work/billing" });
+      if (cmd === "library") return { sourceId: "lib", items: [{ id: "liquibase", mcp: [] }] };
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<ReviewDialog projectId="p1" request={install} onClose={() => {}} />);
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        "plan_install",
+        expect.objectContaining({ clients: expect.arrayContaining(["cursor", "codex"]) }),
+      ),
+    );
+    expect(screen.getAllByRole("checkbox", { name: /Cursor|Codex/ })).toHaveLength(2);
+    expect(screen.queryByRole("checkbox", { name: /Gemini CLI/ })).not.toBeInTheDocument();
+  });
+
+  it("lists every agent when none is found anywhere", async () => {
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_settings") return { autoRefreshHours: 12 };
+      if (cmd === "detected_clients") return [];
+      if (cmd === "plan_install") return plan({ project: "~/work/billing" });
+      if (cmd === "library") return { sourceId: "lib", items: [{ id: "liquibase", mcp: [] }] };
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<ReviewDialog projectId="p1" request={install} onClose={() => {}} />);
+    expect(await screen.findByRole("checkbox", { name: /Gemini CLI/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Other agents/ })).not.toBeInTheDocument();
   });
 
   it("falls back to Claude Code when the project shows no sign of an agent", async () => {
@@ -443,7 +485,7 @@ describe("skills Habi installed on this machine", () => {
     await screen.findByText("liquibase");
     // The row's menu offers the ways out, and nothing to update or remove.
     await userEvent.click(screen.getByRole("button", { name: "More for liquibase" }));
-    expect(await screen.findByRole("menuitem", { name: /Use in a project/ })).toBeTruthy();
+    expect(await screen.findByRole("menuitem", { name: /Add to a project/ })).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: /Update…/ })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: /Remove from this machine/ })).toBeNull();
   });

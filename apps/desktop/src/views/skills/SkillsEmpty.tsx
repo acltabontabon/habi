@@ -39,12 +39,12 @@ const IDEAS: { title: string; template: SkillTemplate; kind: string }[] = [
   {
     title: "Ship a release",
     template: "workflow",
-    kind: "Workflow",
+    kind: "Step by step",
   },
   {
     title: "Add an API endpoint",
     template: "workflow",
-    kind: "Workflow",
+    kind: "Step by step",
   },
   {
     title: "Triage a flaky test",

@@ -310,8 +310,8 @@ describe("On this machine", () => {
   it("brings a skill into My skills and then asks which project to use it in", async () => {
     machine = [machineSkill()];
     wrap(<OnThisMachine />);
-    await userEvent.click(await menuItem("alpha", /Use in a project/));
-    expect(await screen.findByRole("dialog", { name: /Use Alpha/ })).toBeTruthy();
+    await userEvent.click(await menuItem("alpha", /Add to a project/));
+    expect(await screen.findByRole("dialog", { name: /Add Alpha to a project/ })).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_skills", {
       from: { type: "machine", id: "claude/alpha" },
       selections: [{ path: "", rename: null }],
@@ -331,7 +331,7 @@ describe("On this machine", () => {
       throw { code: "notFound", message: `no mock for ${cmd}` };
     });
     wrap(<OnThisMachine />);
-    await userEvent.click(await menuItem("alpha", /Use in a project/));
+    await userEvent.click(await menuItem("alpha", /Add to a project/));
     await waitFor(() =>
       expect(actions.addSkills).toHaveBeenCalledWith({ source: "machine", id: "claude/alpha" }),
     );
@@ -342,21 +342,21 @@ describe("On this machine", () => {
     machine = [machineSkill({ mentionsHome: ["SKILL.md", "references/setup.md"] })];
     wrap(<OnThisMachine />);
     expect(await screen.findByText("Mentions a home folder")).toBeTruthy();
-    await userEvent.click(await menuItem("alpha", /Use in a project/));
+    await userEvent.click(await menuItem("alpha", /Add to a project/));
     const warning = await screen.findByRole("dialog", { name: /mentions folders on your machine/ });
     expect(within(warning).getByText("references/setup.md")).toBeTruthy();
     // Nothing has been copied yet.
     expect(invoke).not.toHaveBeenCalledWith("import_skills", expect.anything());
 
     await userEvent.click(within(warning).getByRole("button", { name: "Continue anyway" }));
-    expect(await screen.findByRole("dialog", { name: /Use Alpha/ })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: /Add Alpha to a project/ })).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_skills", expect.anything());
   });
 
   it("cancelling the warning copies nothing", async () => {
     machine = [machineSkill({ mentionsHome: ["SKILL.md"] })];
     wrap(<OnThisMachine />);
-    await userEvent.click(await menuItem("alpha", /Use in a project/));
+    await userEvent.click(await menuItem("alpha", /Add to a project/));
     const warning = await screen.findByRole("dialog");
     await userEvent.click(within(warning).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -370,7 +370,7 @@ describe("On this machine", () => {
     const add = await menuItem("alpha", /Add to My skills/);
     expect((add as HTMLButtonElement).disabled).toBe(true);
     expect(
-      ((await screen.findByRole("menuitem", { name: /Use in a project/ })) as HTMLButtonElement).disabled,
+      ((await screen.findByRole("menuitem", { name: /Add to a project/ })) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect(screen.getAllByText(/can’t be copied|cannot be copied/).length).toBeGreaterThan(0);
   });

@@ -36,6 +36,9 @@ it("opens project install review with the shipped fixture contract", async () =>
   await user.click(await screen.findByRole("button", { name: "Review and install…" }));
   const dialog = await screen.findByRole("dialog");
   expect(await within(dialog).findByText(/files will change/)).toBeInTheDocument();
+  // The preview's machine has Claude Code; the others are one click away.
+  expect(within(dialog).queryByRole("checkbox", { name: "Codex" })).not.toBeInTheDocument();
+  await user.click(within(dialog).getByRole("button", { name: /Other agents/ }));
   expect(within(dialog).getByRole("checkbox", { name: "Codex" })).toBeInTheDocument();
   expect(screen.queryByText("Habi could not show this screen")).not.toBeInTheDocument();
 });

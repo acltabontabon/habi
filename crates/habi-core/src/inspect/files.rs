@@ -10,12 +10,15 @@ use super::model::Evidence;
 use crate::fsutil::read_prefix;
 use globset::{GlobSet, GlobSetBuilder};
 use regex::Regex;
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::LazyLock;
 
 const DETECTOR: &str = "files";
 const PREFIX_BYTES: usize = 4096;
-const MAX_CONTENT_CHECKS: usize = 600;
+/// Enough to tell a Databricks notebook by its first line, and no more of a source file.
+const NOTEBOOK_PREFIX_BYTES: usize = 64;
+pub(crate) const MAX_CONTENT_CHECKS: usize = 5_000;
 
 /// Roles recognized purely from the path.
 const NAME_ROLES: &[(&str, &str)] = &[
@@ -68,6 +71,83 @@ const NAME_ROLES: &[(&str, &str)] = &[
     ("**/gradlew", "build-wrapper:gradle"),
     ("gradlew", "build-wrapper:gradle"),
     ("**/db/migration/V*__*.sql", "flyway-migration"),
+    ("**/*.tf", "infra:terraform-config"),
+    ("**/.terraform.lock.hcl", "infra:terraform-config"),
+    ("**/terragrunt.hcl", "infra:terragrunt-config"),
+    ("**/Chart.yaml", "infra:helm-chart"),
+    ("**/helmfile.yaml", "infra:helm-chart"),
+    ("**/helmfile.yaml.gotmpl", "infra:helm-chart"),
+    ("**/kustomization.yaml", "infra:kustomization"),
+    ("**/kustomization.yml", "infra:kustomization"),
+    ("**/ansible.cfg", "infra:ansible-config"),
+    ("**/playbook.yml", "infra:ansible-config"),
+    ("**/playbook.yaml", "infra:ansible-config"),
+    ("**/Pulumi.yaml", "infra:pulumi-project"),
+    ("**/Pulumi.yml", "infra:pulumi-project"),
+    ("**/databricks.yml", "data:databricks-bundle"),
+    ("**/databricks.yaml", "data:databricks-bundle"),
+    ("**/*.ipynb", "data:notebook"),
+    ("**/*.bats", "test-config:bats"),
+    ("**/*.cpt", "test-config:gauge"),
+    ("**/*.robot", "test-config:robot"),
+    ("**/*.feature", "test-config:gherkin"),
+    ("**/testng.xml", "test-config:testng"),
+    ("**/*.jmx", "test-config:jmeter"),
+    ("**/karma.conf.*", "test-config:karma"),
+    ("**/*.postman_collection.json", "test-config:postman"),
+];
+
+/// Roles told by where a file sits. Plain comparisons: a pattern with a folder in
+/// its middle turns every path of the project into a regular expression match.
+fn role_by_place(path: &str) -> Option<&'static str> {
+    let (dirs, name) = path.rsplit_once('/')?;
+    let dirs_end = |folder: &str| {
+        dirs == folder
+            || dirs
+                .strip_suffix(folder)
+                .is_some_and(|above| above.ends_with('/'))
+    };
+    let yaml = name.ends_with(".yml") || name.ends_with(".yaml");
+    if yaml && dirs_end("playbooks") {
+        return Some("infra:ansible-config");
+    }
+    if (name == "main.yml" || name == "main.yaml")
+        && let Some(above) = dirs.strip_suffix("/tasks")
+        && above
+            .rsplit('/')
+            .nth(1)
+            .is_some_and(|parent| parent == "roles")
+    {
+        return Some("infra:ansible-config");
+    }
+    // `.spec` alone is also an RPM recipe; Gauge keeps its own in `specs/`.
+    if name.ends_with(".spec") && dirs.split('/').any(|d| d == "specs") {
+        return Some("test-config:gauge");
+    }
+    if dirs.contains("META-INF/native-image") {
+        return Some("graalvm-config");
+    }
+    None
+}
+
+/// Roles a project can hold thousands of files in, and that one file establishes:
+/// the first in each module stands for the rest.
+const ONE_PER_MODULE: &[&str] = &[
+    "infra:terraform-config",
+    "infra:terragrunt-config",
+    "infra:helm-chart",
+    "infra:kustomization",
+    "infra:ansible-config",
+    "data:notebook",
+    "data:databricks-notebook",
+    "test-config:bats",
+    "test-config:gauge",
+    "test-config:robot",
+    "test-config:gherkin",
+    "test-config:jmeter",
+    "test-config:postman",
+    "graalvm-config",
+    "kubernetes-manifest",
 ];
 
 static NAME_SET: LazyLock<(GlobSet, Vec<&'static str>)> = LazyLock::new(|| {
@@ -93,6 +173,14 @@ static LIQUIBASE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"(<databaseChangeLog|(?m)^databaseChangeLog:|"databaseChangeLog"\s*:|(?mi)^--\s*liquibase formatted sql)"#)
         .unwrap()
 });
+
+/// A Kubernetes resource names its API and its kind at the top level.
+static KUBERNETES_API: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^apiVersion:\s*\S+\s*$").unwrap());
+static KUBERNETES_KIND: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^kind:\s*[A-Z][A-Za-z0-9]+\s*$").unwrap());
+static DATABRICKS_NOTEBOOK: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(#|//|--)\s*Databricks notebook source").unwrap());
 
 fn extension(path: &str) -> &str {
     path.rsplit_once('.').map(|(_, e)| e).unwrap_or("")
@@ -144,7 +232,60 @@ const NOT_SPEC_NAMES: &[&str] = &[
     "checkstyle.xml",
     "spotbugs-exclude.xml",
     "AndroidManifest.xml",
+    "Chart.yaml",
+    "helmfile.yaml",
+    "kustomization.yaml",
+    "kustomization.yml",
+    "databricks.yml",
+    "databricks.yaml",
+    "dbt_project.yml",
 ];
+
+/// Whether a file is a test's input: a sample project inside a project. A
+/// `pom.xml` in `src/test/resources` is what a test reads, and says nothing about
+/// what the project is built on.
+pub(crate) fn in_fixture(path: &str) -> bool {
+    const FIXTURE_DIRS: &[&str] = &[
+        "fixtures",
+        "__fixtures__",
+        "test-fixtures",
+        "testdata",
+        "archetype-resources",
+    ];
+    let Some((dirs, _)) = path.rsplit_once('/') else {
+        return false;
+    };
+    let mut parts = dirs.split('/').peekable();
+    while let Some(part) = parts.next() {
+        if FIXTURE_DIRS.contains(&part) {
+            return true;
+        }
+        if part == "src" && matches!(parts.peek(), Some(&"it")) {
+            return true;
+        }
+    }
+    dirs.contains("src/test/resources")
+}
+
+/// A Python, Scala or R file that may be an exported notebook. Only these source
+/// files are opened, and only for their first line.
+fn notebook_source(path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    matches!(extension(path), "py" | "scala" | "r")
+        && (lower.contains("notebook") || lower.contains("databricks"))
+}
+
+/// Helm templates and values are never specifications: a chart repository can
+/// hold thousands, and the chart itself says what they are.
+fn chart_material(path: &str) -> bool {
+    let name = file_name(path);
+    path.starts_with("templates/")
+        || path.contains("/templates/")
+        || path.contains("META-INF/native-image/")
+        || ((name.starts_with("values-") || name.starts_with("values."))
+            && matches!(extension(path), "yaml" | "yml"))
+        || name == "values.yaml"
+}
 
 fn content_candidate(path: &str) -> bool {
     let ext = extension(path);
@@ -154,15 +295,22 @@ fn content_candidate(path: &str) -> bool {
         || path.starts_with(".github/")
         || path.starts_with(".vscode/")
         || path.contains("/.vscode/")
+        || chart_material(path)
+        || in_fixture(path)
     {
         return false;
     }
-    matches!(ext, "yaml" | "yml" | "json" | "xml" | "sql")
+    matches!(ext, "yaml" | "yml" | "json" | "xml" | "sql") || notebook_source(path)
 }
 
 /// File roles that can only be recognized by reading content. Tags built on
 /// them depend on the `content` coverage area as well as `files`.
-pub const CONTENT_ROLES: &[&str] = &["openapi", "liquibase-changelog"];
+pub const CONTENT_ROLES: &[&str] = &[
+    "openapi",
+    "liquibase-changelog",
+    "kubernetes-manifest",
+    "data:databricks-notebook",
+];
 
 /// Higher score = checked first, so specs and changelogs in conventional
 /// places are found even in large repositories.
@@ -174,6 +322,11 @@ fn candidate_score(path: &str) -> u8 {
         || lower.contains("spec")
         || lower.contains("/db/")
         || lower.contains("contract")
+        || lower.contains("k8s")
+        || lower.contains("kube")
+        || lower.contains("manifest")
+        || lower.contains("deploy")
+        || lower.contains("notebook")
     {
         2
     } else if extension(path) == "sql" || extension(path) == "xml" {
@@ -207,15 +360,25 @@ pub fn collect(
 ) {
     let (set, roles) = &*NAME_SET;
     let mut matched = Vec::new();
-    for (path, _) in files.iter().filter(|(p, _)| !inside_skill_package(p)) {
+    for (path, _) in files
+        .iter()
+        .filter(|(p, _)| !inside_skill_package(p) && !in_fixture(p))
+    {
         for idx in set.matches(path) {
             matched.extend(roles.get(idx).map(|role| (path.clone(), *role)));
         }
+        matched.extend(role_by_place(path).map(|role| (path.clone(), role)));
     }
     matched.sort();
     matched.dedup();
+    let mut stands_for: HashSet<(String, &str)> = HashSet::new();
+    let mut record = |out: &mut Collector, module: String, path: &str, role: &'static str, line| {
+        if !ONE_PER_MODULE.contains(&role) || stands_for.insert((module.clone(), role)) {
+            out.file(&module, path, role, DETECTOR, line);
+        }
+    };
     for (path, role) in matched {
-        out.file(&module_of(&path), &path, role, DETECTOR, None);
+        record(out, module_of(&path), &path, role, None);
     }
 
     // Content checks for OpenAPI documents and Liquibase changelogs.
@@ -240,7 +403,13 @@ pub fn collect(
             Ok(m) if m.is_file() => {}
             _ => continue,
         }
-        let Ok(prefix) = read_prefix(&full, PREFIX_BYTES) else {
+        let source = notebook_source(path);
+        let limit = if source {
+            NOTEBOOK_PREFIX_BYTES
+        } else {
+            PREFIX_BYTES
+        };
+        let Ok(prefix) = read_prefix(&full, limit) else {
             *out.content_skipped.entry(module_of(path)).or_insert(0) += 1;
             continue;
         };
@@ -248,6 +417,24 @@ pub fn collect(
         // Some editors start a file with a byte order mark.
         let text = text.trim_start_matches('\u{feff}');
         let ext = extension(path);
+        if (source || ext == "sql") && DATABRICKS_NOTEBOOK.is_match(text) {
+            record(
+                out,
+                module_of(path),
+                path,
+                "data:databricks-notebook",
+                Some(1),
+            );
+        }
+        if source {
+            continue;
+        }
+        if matches!(ext, "yaml" | "yml")
+            && KUBERNETES_API.is_match(text)
+            && KUBERNETES_KIND.is_match(text)
+        {
+            record(out, module_of(path), path, "kubernetes-manifest", None);
+        }
         let is_openapi = match ext {
             "yaml" | "yml" => OPENAPI_YAML.is_match(text),
             "json" => OPENAPI_JSON.is_match(text),
@@ -280,7 +467,7 @@ pub fn collect(
 /// Coverage note for a module whose content probes were cut by the limit.
 pub fn content_note(skipped: u32) -> String {
     format!(
-        "{skipped} YAML/JSON/XML/SQL file{} in this module {} not checked for OpenAPI or Liquibase content (Habi reads at most {MAX_CONTENT_CHECKS} per project, and skips files it cannot read).",
+        "{skipped} YAML/JSON/XML/SQL file{} in this module {} not checked for OpenAPI, Liquibase, Kubernetes or Databricks content (Habi reads at most {MAX_CONTENT_CHECKS} per project, and skips files it cannot read).",
         if skipped == 1 { "" } else { "s" },
         if skipped == 1 { "was" } else { "were" },
     )
@@ -298,6 +485,9 @@ pub fn language_of(path: &str) -> Option<&'static str> {
         "rs" => Some("lang:rust"),
         "cs" => Some("lang:csharp"),
         "php" => Some("lang:php"),
+        "scala" => Some("lang:scala"),
+        "sh" | "bash" | "zsh" | "ksh" | "bats" => Some("lang:shell"),
+        "tf" | "hcl" => Some("lang:hcl"),
         _ => None,
     }
 }
@@ -387,6 +577,82 @@ mod tests {
         collect(root, &files, &mut out, &module_of);
         assert_eq!(out.content_skipped.get("."), Some(&5));
         assert_eq!(out.content_skipped.get("api"), None);
+    }
+
+    #[test]
+    fn kubernetes_detection_needs_a_kind_and_an_api() {
+        let both = |t| KUBERNETES_API.is_match(t) && KUBERNETES_KIND.is_match(t);
+        assert!(both("apiVersion: apps/v1\nkind: Deployment\n"));
+        assert!(both("# c\nkind: ConfigMap\napiVersion: v1\nmetadata: {}\n"));
+        assert!(!both("apiVersion: v2\nname: chart\n"));
+        assert!(!both("kind: string\nversion: 1\n"));
+        assert!(!both("docs: |\n  apiVersion: v1\n  kind: Pod\n"));
+    }
+
+    #[test]
+    fn roles_by_place() {
+        for p in [
+            "playbooks/site.yml",
+            "ansible/playbooks/site.yaml",
+            "ansible/roles/web/tasks/main.yml",
+            "roles/web/tasks/main.yaml",
+        ] {
+            assert_eq!(role_by_place(p), Some("infra:ansible-config"), "{p}");
+        }
+        assert_eq!(
+            role_by_place("src/main/resources/META-INF/native-image/a/b/reflect-config.json"),
+            Some("graalvm-config")
+        );
+        for p in [
+            "site.yml",
+            "myplaybooks/site.yml",
+            "playbooks/notes.md",
+            "tasks/main.yml",
+            "src/roles/x.yml",
+            "packaging/app.spec",
+        ] {
+            assert_eq!(role_by_place(p), None, "{p}");
+        }
+        assert_eq!(
+            role_by_place("e2e/specs/login.spec"),
+            Some("test-config:gauge")
+        );
+    }
+
+    #[test]
+    fn test_inputs_are_told_from_the_project() {
+        for p in [
+            "src/test/resources/projects/a/pom.xml",
+            "api/src/test/resources/pom.xml",
+            "src/it/simple/pom.xml",
+            "testdata/chart/Chart.yaml",
+            "pkg/testdata/main.tf",
+            "fixtures/repos/x/package.json",
+            "src/main/resources/archetype-resources/pom.xml",
+        ] {
+            assert!(in_fixture(p), "{p}");
+        }
+        for p in [
+            "pom.xml",
+            "services/fixtures.py",
+            "src/main/resources/application.yml",
+            "src/test/java/ATest.java",
+            "src/iterate/pom.xml",
+        ] {
+            assert!(!in_fixture(p), "{p}");
+        }
+    }
+
+    #[test]
+    fn only_notebook_folders_open_source_files() {
+        assert!(content_candidate("notebooks/ingest.py"));
+        assert!(content_candidate("src/databricks/job.scala"));
+        assert!(!content_candidate("src/app.py"));
+        assert!(!content_candidate("charts/a/templates/deploy.yaml"));
+        assert!(!content_candidate("charts/a/values-prod.yaml"));
+        assert!(content_candidate("k8s/deployment.yaml"));
+        assert!(DATABRICKS_NOTEBOOK.is_match("# Databricks notebook source\nx = 1"));
+        assert!(!DATABRICKS_NOTEBOOK.is_match("x = 1  # Databricks notebook source"));
     }
 
     #[test]

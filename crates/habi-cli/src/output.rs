@@ -9,11 +9,12 @@ use habi_core::inspect::model::{
 };
 use habi_core::install::apply::{JournalState, OperationSummary};
 use habi_core::install::diff::LineTag;
-use habi_core::install::plan::{ChangeOp, Plan};
+use habi_core::install::plan::{ChangeOp, Plan, PlanAction};
 use habi_core::install::status::{FileState, InstallState};
 use habi_core::library::model::{
     DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem, Requirement,
 };
+use habi_core::library::signals::SignalSeverity;
 use habi_core::maintenance::PruneReport;
 use habi_core::matching::Applicability;
 use habi_core::matching::eval::{Declaration, DeclaredSubject, EvalNode, Tri};
@@ -123,6 +124,7 @@ fn file_state(s: FileState) -> &'static str {
         FileState::Unchanged => "unchanged",
         FileState::Modified => "edited locally",
         FileState::Missing => "missing",
+        FileState::Added => "added, not installed by Habi",
     }
 }
 
@@ -191,8 +193,8 @@ fn version_state(v: VersionState) -> &'static str {
 
 fn item_kind(k: ItemKind) -> &'static str {
     match k {
-        ItemKind::Skill => "skill",
-        ItemKind::Workflow => "workflow",
+        // One concept: a workflow is a skill with steps.
+        ItemKind::Skill | ItemKind::Workflow => "skill",
         ItemKind::Instructions => "instructions",
     }
 }
@@ -547,7 +549,7 @@ fn group_label(g: Group) -> &'static str {
 pub fn recommendations(o: &ProjectOverview, all: bool) {
     if o.sources.is_empty() {
         println!(
-            "No fetched team library. Add one with: habi source add <name> <git-url-or-folder>, then: habi source refresh"
+            "No fetched library. Add one with: habi source add <name> <git-url-or-folder>, then: habi source refresh"
         );
         return;
     }
@@ -772,6 +774,7 @@ pub fn plan(p: &Plan) {
     for item in &p.items {
         println!("  • {} from {} ({})", item.title, item.source, item.version);
     }
+    plan_trust(p);
     if p.changes.is_empty() {
         println!("\nNothing to change: the project already matches.");
     }
@@ -788,10 +791,21 @@ pub fn plan(p: &Plan) {
         if !c.explanation.is_empty() {
             println!("    {}", c.explanation);
         }
-        if c.op == ChangeOp::Modify {
-            for h in c.diff.hunks.iter().take(3) {
+        // What will run is shown, not only counted: a new script as much as a changed one.
+        if c.op == ChangeOp::Modify || (c.op == ChangeOp::Create && runs(&c.path)) {
+            let (shown_hunks, shown_lines) = if c.op == ChangeOp::Create {
+                (1, 60)
+            } else {
+                (3, 20)
+            };
+            let mut left_out = 0usize;
+            for (at, h) in c.diff.hunks.iter().enumerate() {
+                if at >= shown_hunks {
+                    left_out += h.lines.len();
+                    continue;
+                }
                 println!("    {}", h.header);
-                for l in h.lines.iter().take(20) {
+                for l in h.lines.iter().take(shown_lines) {
                     let sign = match l.tag {
                         LineTag::Added => "+",
                         LineTag::Removed => "-",
@@ -799,6 +813,10 @@ pub fn plan(p: &Plan) {
                     };
                     println!("    {sign}{}", l.text);
                 }
+                left_out += h.lines.len().saturating_sub(shown_lines);
+            }
+            if left_out > 0 {
+                println!("    … and {} not shown", plural(left_out, "more line"));
             }
         }
     }
@@ -822,6 +840,67 @@ pub fn plan(p: &Plan) {
     }
     if !p.changes.is_empty() {
         println!("\n{}", cli_wording(&p.recovery));
+    }
+}
+
+/// A file an agent or a tool could run, by its name.
+fn runs(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let file = habi_core::library::model::ItemFile {
+        path: name.to_string(),
+        digest: String::new(),
+        size: 0,
+        executable: false,
+    };
+    file.is_code()
+        || path.contains("/scripts/")
+        || path.contains("/hooks/")
+        || name == "hooks.json"
+        || name == "settings.json"
+}
+
+/// Where each item comes from and what its scan found, ahead of the file list: this
+/// is what a person decides on. Popularity is not in it, on purpose.
+fn plan_trust(p: &Plan) {
+    for i in &p.items {
+        let cautions = i.cautions(p.action);
+        let listed = match p.action {
+            PlanAction::Update => &i.new_signals,
+            PlanAction::Install => &i.signals,
+            _ => continue,
+        };
+        if let (Some(origin), Some(summary)) = (&i.origin, &i.provenance_summary) {
+            println!("\n  {}", i.title);
+            println!("    from {origin} at {}", i.version);
+            println!("    {summary}");
+        }
+        if !listed.is_empty() && p.action == PlanAction::Update {
+            println!("    New in this update:");
+        }
+        for s in listed {
+            let mark = match s.severity {
+                SignalSeverity::Caution => "CAUTION",
+                SignalSeverity::Notice => "notice ",
+                SignalSeverity::Info => "info   ",
+            };
+            let place = match s.line {
+                Some(line) => format!("{}:{line}", s.path),
+                None => s.path.clone(),
+            };
+            println!("    {mark} {} ({place})", s.summary);
+            if let Some(detail) = &s.detail {
+                println!("            {detail}");
+            }
+            if s.more > 0 {
+                println!("            and {} more", s.more);
+            }
+        }
+        if !cautions.is_empty() {
+            println!(
+                "    {} to accept before this can be applied.",
+                plural(cautions.len(), "caution")
+            );
+        }
     }
 }
 
@@ -853,6 +932,17 @@ pub fn status(o: &ProjectOverview) {
             short(&i.snapshot),
             clients.join(", ")
         );
+        if !i.source_identity.is_empty() {
+            match &i.provenance {
+                Some(provenance) => {
+                    println!("    from {}: {}", i.source_identity, provenance.summary());
+                }
+                None => println!("    from {}", i.source_identity),
+            }
+        }
+        for warning in &i.warnings {
+            println!("    WARNING {warning}");
+        }
         for f in &i.files {
             if !matches!(f.state, FileState::Unchanged) || f.upstream_changed {
                 println!(

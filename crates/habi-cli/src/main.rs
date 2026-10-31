@@ -30,7 +30,7 @@ use std::sync::{Mutex, PoisonError};
 
 const QUICK_START: &str = "\
 Quick start:
-  habi source add Team https://github.com/your-team/skills.git   # or a local folder
+  habi source add Team https://github.com/your-team/skills.git --team   # or a local folder
   habi source refresh
   habi recommend                     # in your project folder (or pass -C <project>)";
 
@@ -52,7 +52,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Manage libraries: your team's and community ones (sources of skills and workflows).
+    /// Manage libraries: your team's and community ones (sources of skills).
     #[command(subcommand)]
     Source(SourceCmd),
     /// Public skill libraries Habi suggests: look inside before you connect one.
@@ -60,7 +60,7 @@ enum Command {
     Catalog(CatalogCmd),
     /// Show what Habi detects in a project, with evidence.
     Inspect(ProjectArg),
-    /// List the skills and workflows that fit a project, from every library and My skills.
+    /// List the skills that fit a project, from every library and My skills.
     Recommend {
         #[command(flatten)]
         project: ProjectArg,
@@ -231,6 +231,9 @@ struct ApplyArgs {
     /// Apply without asking for confirmation.
     #[arg(long)]
     yes: bool,
+    /// Also accept what the scan flags as a caution. Without it, --yes refuses them.
+    #[arg(long)]
+    accept_cautions: bool,
     /// Keep the file on disk for a conflict (repeatable).
     #[arg(long)]
     keep: Vec<String>,
@@ -287,8 +290,12 @@ enum SourceCmd {
         /// Track this tag instead of a branch.
         #[arg(long)]
         tag: Option<String>,
-        /// A community library (published by others, not reviewed by your team).
+        /// Your team's own library: its required skills are required here.
+        /// Without this it is a community library (published by others, not reviewed by your team).
         #[arg(long)]
+        team: bool,
+        /// A community library. This is the default; kept so existing scripts still work.
+        #[arg(long, conflicts_with = "team", hide = true)]
         community: bool,
     },
     /// Mark a library as your team's own or as a community library.
@@ -885,6 +892,24 @@ fn confirm(question: &str, action: &str) -> Result<bool> {
     Ok(matches!(answer.trim(), "y" | "Y" | "yes"))
 }
 
+/// Asks about cautions: a stray `y` is not enough for these.
+fn confirm_cautions(cautions: usize, action: &str) -> Result<bool> {
+    if !std::io::stdin().is_terminal() {
+        return Err(fail(
+            "confirmationRequired",
+            format!("refusing to {action} without --yes --accept-cautions (no terminal to ask on)"),
+        ));
+    }
+    eprint!(
+        "{} above. Type `accept` to go ahead anyway: ",
+        output::plural(cautions, "caution")
+    );
+    std::io::stderr().flush()?;
+    let mut answer = String::new();
+    std::io::stdin().read_line(&mut answer)?;
+    Ok(answer.trim() == "accept")
+}
+
 /// In JSON mode nothing is asked: changing files needs --yes.
 fn require_yes(ctx: &Ctx, yes: bool, preview_only: bool, action: &str) -> Result<()> {
     if ctx.json && !yes && !preview_only {
@@ -920,12 +945,31 @@ fn review_and_apply(
     if plan.is_empty() || args.dry_run {
         return Ok(json!({ "plan": plan_value, "operation": null, "applied": false }));
     }
-    if !args.yes && !confirm(&format!("{}?", plan.title), action)? {
+    let cautions = plan.cautions();
+    if cautions > 0 && args.yes && !args.accept_cautions {
+        return Err(fail_with(
+            "cautionsNotAccepted",
+            format!(
+                "this has {} that --yes does not accept. Read them in the preview, then add --accept-cautions to go ahead",
+                output::plural(cautions, "caution")
+            ),
+            "plan",
+            plan_value,
+        ));
+    }
+    let accepted = if args.yes {
+        true
+    } else if cautions > 0 && !args.accept_cautions {
+        confirm_cautions(cautions, action)?
+    } else {
+        confirm(&format!("{}?", plan.title), action)?
+    };
+    if !accepted {
         note("Nothing changed.");
         return Ok(json!({ "plan": plan_value, "operation": null, "applied": false }));
     }
     APPLYING.store(true, Ordering::SeqCst);
-    let applied = ctx.habi.apply(&plan.id);
+    let applied = ctx.habi.apply_accepting_cautions(&plan.id);
     APPLYING.store(false, Ordering::SeqCst);
     let op = applied?;
     if !ctx.json {
@@ -1477,7 +1521,8 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
             subdir,
             branch,
             tag,
-            community,
+            team,
+            community: _,
         } => {
             let tracked = match (branch, tag) {
                 (Some(b), _) => TrackedRef::Branch { name: b },
@@ -1490,17 +1535,23 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
                 subdir,
                 tracked,
             })?;
-            let s = if community {
-                habi.sources().set_role(&s.id, SourceRole::Community)?
-            } else {
+            let s = if team {
                 s
+            } else {
+                habi.sources().set_role(&s.id, SourceRole::Community)?
             };
             emit(ctx, &s, || {
                 println!(
                     "Connected `{}`. Fetch it with: habi source refresh {}",
                     s.name,
                     shell_word(&s.name)
-                )
+                );
+                if !team {
+                    println!(
+                        "It is connected as a community library: it cannot require skills here. If it is your team's own, run: habi source role {} team",
+                        shell_word(&s.name)
+                    );
+                }
             })
         }
         SourceCmd::List => {

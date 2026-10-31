@@ -14,7 +14,6 @@ import {
   groupLabel,
   installLabel,
   installTone,
-  kindLabel,
   plural,
 } from "../../lib/format";
 import { useNav } from "../../lib/nav";
@@ -193,6 +192,10 @@ export function Workbench({
   const selectedHere = chosenHere ?? (selected ? undefined : here[0]);
   const activeKey = selectedHere?.key ?? selected?.item.key;
   const updatable = overview.recommendations.filter((r) => r.installState === "updateAvailable");
+  // Whatever the filter shows: the team's list is the whole list.
+  const missingRequired = overview.recommendations.filter(
+    (r) => r.group === "required" && r.installState === "notInstalled" && r.item.installable,
+  );
   useEffect(() => {
     // An installed item is in the Installed section, which never folds away.
     if (chosen?.installState !== "notInstalled" || fitsProject(chosen)) return;
@@ -246,8 +249,9 @@ export function Workbench({
               <Strand dye={dyes(r.item.sourceId)} size={13} />
               {r.item.sourceName}
             </span>
-            {/* A plain skill is the default; only the other kinds are worth saying. */}
-            {r.item.kind !== "skill" ? <span>{kindLabel[r.item.kind]}</span> : null}
+            {/* Everything here is a skill; only what changes how it reads is worth saying. */}
+            {r.item.kind === "instructions" ? <span>Project instructions</span> : null}
+            {r.item.hasWorkflow ? <span>has steps</span> : null}
             {r.item.requirement === "required" ? <span>required</span> : null}
             {/* Whose rule it is, when it is not the author's. */}
             {r.pick ? (
@@ -275,7 +279,7 @@ export function Workbench({
           <input
             id="rec-filter"
             type="search"
-            placeholder="Filter skills and workflows"
+            placeholder="Filter skills"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -413,6 +417,25 @@ export function Workbench({
                       {counts[group]}
                       <span className="visually-hidden"> items</span>
                     </span>
+                    {group === "required" && missingRequired.length > 1 ? (
+                      <button
+                        type="button"
+                        className="link-btn"
+                        aria-label={`Install all ${missingRequired.length} team requirements`}
+                        onClick={() =>
+                          setReview({
+                            kind: "install",
+                            items: missingRequired.map((r) => ({
+                              sourceId: r.item.sourceId,
+                              itemId: r.item.id,
+                            })),
+                            title: `${missingRequired.length} team requirements`,
+                          })
+                        }
+                      >
+                        Install all…
+                      </button>
+                    ) : null}
                     {collapsible ? (
                       <button
                         type="button"

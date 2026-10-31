@@ -8,8 +8,8 @@
  * suggest it, the materials that come with it (and, for developers, the
  * package as files). Testing it against a project and its provenance slide
  * in as sheets and leave again. The bar above says only where you are,
- * whether it is ready, and the one thing to do next: Use when it is ready,
- * and while it is a draft, the step that gets it there.
+ * whether it is ready, and the one thing to do next: Add to a project when it
+ * is ready, and while it is a draft, the step that gets it there.
  *
  * Habi handles the machinery. While the skill is a fresh draft, its title
  * follows the first heading and its identifier follows the title; saving is
@@ -28,7 +28,7 @@ import { useToast } from "../../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
 import { useActions } from "../../../lib/actions";
 import { api } from "../../../lib/api";
-import { type Refinement, refinements } from "../../../lib/coach";
+import { purposeHint, type Refinement, refinements } from "../../../lib/coach";
 import {
   firstHeading,
   isMaterial,
@@ -59,6 +59,7 @@ import { Instructions, Outline, useOutline } from "./Instructions";
 import { ProjectEvaluation } from "./ProjectEvaluation";
 import { isCopy, onward, Provenance, ProvenanceSheet } from "./Provenance";
 import { nextStep, Readiness } from "./Readiness";
+import { SuggestedStrip } from "./SuggestedStrip";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
 import { addSignal, removeSignal, WhenToUse, whenLine } from "./WhenToUse";
 
@@ -573,7 +574,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
         ? [
             {
               id: "use",
-              label: "Use in a project…",
+              label: "Add to a project…",
               keywords: "install apply",
               icon: "download" as const,
               run: () => void commandsRef.current.openDialog("use"),
@@ -769,7 +770,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     </Button>
                   ) : null}
                   <Button variant="primary" onClick={() => void openDialog("use")}>
-                    Use
+                    Add to a project…
                   </Button>
                 </>
               ) : null}
@@ -821,6 +822,14 @@ function Studio({ initial }: { initial: LocalSkill }) {
           )}
         </div>
       </header>
+      {!trashed && !broken && !fresh && available.length > 0 ? (
+        <SuggestedStrip
+          draft={draft}
+          projectIds={available.map((p) => p.id)}
+          onTest={() => openSheet("test")}
+          onRules={() => go("when")}
+        />
+      ) : null}
 
       <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} inert={sheet !== null} />
 
@@ -891,8 +900,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
                   className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
                 >
                   {purposeLength > DESCRIPTION_LIMIT
-                    ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}.`
-                    : `Agents read only this to decide whether to use it.${
+                    ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}, and tools may cut or refuse the rest.`
+                    : `${purposeHint(document.description)}${
                         purposeLength > DESCRIPTION_LIMIT - 150
                           ? ` ${DESCRIPTION_LIMIT - purposeLength} left.`
                           : ""

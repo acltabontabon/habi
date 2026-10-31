@@ -133,7 +133,7 @@ function IndexRow({
           {fits ? <span className="index-fit">fits</span> : null}
           {required ? <span>required</span> : null}
           {item.kind === "instructions" ? <span>instructions</span> : null}
-          {item.kind === "workflow" ? <span>workflow</span> : null}
+          {item.workflow ? <span>has steps</span> : null}
           {item.metadataStatus === "declared" ? <span>rules</span> : null}
           {code > 0 ? (
             <span className="index-runs">
@@ -658,8 +658,11 @@ function SkillHead({
           ) : null}
           {item.basedOn ? (
             <>
-              <dt>Lineage</dt>
-              <dd className="mono">{item.basedOn}</dd>
+              <dt>Based on</dt>
+              <dd>
+                <span className="mono">{item.basedOn}</span>{" "}
+                <span className="muted">The author says so. Habi has not checked it.</span>
+              </dd>
             </>
           ) : null}
           {item.diagnostics.length > 0 ? (

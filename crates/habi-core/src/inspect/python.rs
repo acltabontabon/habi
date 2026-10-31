@@ -252,6 +252,34 @@ fn stands_for_requirements(line: &str) -> bool {
         .any(|option| line.starts_with(option))
 }
 
+/// Whether a text file lists requirements: `requirements*.txt`,
+/// `dev-requirements.txt`, or anything in a `requirements/` folder.
+pub fn is_requirements_file(path: &str) -> bool {
+    let (dir, name) = path.rsplit_once('/').unwrap_or(("", path));
+    let Some(stem) = name.strip_suffix(".txt") else {
+        return false;
+    };
+    stem.starts_with("requirements")
+        || stem.ends_with("-requirements")
+        || stem.ends_with("_requirements")
+        || dir == "requirements"
+        || dir.ends_with("/requirements")
+}
+
+/// The module a manifest belongs to: its folder, or the folder above a
+/// `requirements/` folder, which holds requirements and not a project.
+pub fn module_dir(path: &str) -> String {
+    let dir = path.rsplit_once('/').map_or(".", |(d, _)| d);
+    if !path.ends_with(".txt") {
+        return dir.to_string();
+    }
+    match dir.rsplit_once('/') {
+        Some((above, "requirements")) => above.to_string(),
+        None if dir == "requirements" => ".".to_string(),
+        _ => dir.to_string(),
+    }
+}
+
 pub fn parse_requirements(path: &str, module: &str, text: &str) -> PythonManifest {
     let section = if path.contains("dev") || path.contains("test") {
         "dev"
@@ -271,7 +299,7 @@ pub fn parse_requirements(path: &str, module: &str, text: &str) -> PythonManifes
             Some((n, s)) => dependencies.push((n, s, section.to_string(), Some(number))),
             None if stands_for_requirements(line) => gaps.push(format!(
                 "{path}, line {number}: `{}` may stand for requirements Habi does not read.",
-                super::clip(line, 80)
+                super::clip(&crate::redact::redact(line), 80)
             )),
             None => {}
         }
@@ -438,6 +466,27 @@ pub fn collect(manifests: &[PythonManifest], locks: &[PythonLock], out: &mut Col
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn requirement_files_are_found_by_how_people_name_them() {
+        for p in [
+            "requirements.txt",
+            "requirements-dev.txt",
+            "py/dev-requirements.txt",
+            "requirements/base.txt",
+            "py/requirements/prod.txt",
+        ] {
+            assert!(is_requirements_file(p), "{p}");
+        }
+        for p in ["notes.txt", "requirements.md", "requirements/README.md"] {
+            assert!(!is_requirements_file(p), "{p}");
+        }
+        assert_eq!(module_dir("requirements/base.txt"), ".");
+        assert_eq!(module_dir("py/requirements/base.txt"), "py");
+        assert_eq!(module_dir("py/dev-requirements.txt"), "py");
+        assert_eq!(module_dir("api/pom.xml"), "api");
+        assert_eq!(module_dir("pom.xml"), ".");
+    }
 
     #[test]
     fn requirements_read_like_pip_reads_them() {

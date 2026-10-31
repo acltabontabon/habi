@@ -200,31 +200,9 @@ button.rd-word:hover,
   background: var(--thread);
 }
 
-/* The count stays folded until asked for, and is always there for assistive technology. */
 .rd-better-count {
-  display: inline-block;
-  max-width: 0;
-  overflow: hidden;
   white-space: nowrap;
-  vertical-align: bottom;
   color: var(--thread-strong);
-  opacity: 0;
-  transition:
-    max-width 220ms var(--ease),
-    opacity 160ms var(--ease);
-}
-
-.rd-word:hover .rd-better-count,
-.rd-word:focus-visible .rd-better-count,
-.rd-word[aria-expanded="true"] .rd-better-count {
-  max-width: 14ch;
-  opacity: 1;
-}
-
-.rd-word:hover .rd-better-dot,
-.rd-word:focus-visible .rd-better-dot,
-.rd-word[aria-expanded="true"] .rd-better-dot {
-  display: none;
 }
 
 .rd-word.is-trashed {
@@ -3451,4 +3429,47 @@ button.rd-word:hover,
 .mach-tools .mach-search {
   flex: 1;
   margin-bottom: 0;
+}
+
+/* ---------- Where its rules would suggest it ---------- */
+
+.sk-suggested {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+  min-height: 30px;
+  padding: 2px var(--gutter);
+  border-block: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.sk-suggested strong {
+  color: var(--ink);
+  font-weight: 560;
+}
+
+.sk-suggested.is-stale .sk-suggested-text {
+  opacity: 0.6;
+}
+
+.sk-suggested-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-suggested-knot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--ink-faint);
+  border-radius: 50%;
+}
+
+.sk-suggested-knot.is-on {
+  border-color: var(--thread);
+  background: var(--thread);
 }

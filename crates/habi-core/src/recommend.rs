@@ -15,7 +15,9 @@ use crate::library::model::{DeclaredEvidence, ItemKind, LibraryItem, MetadataSta
 use crate::matching::condition::Condition;
 use crate::matching::described::{self, described_rule};
 use crate::matching::eval::Declaration;
-use crate::matching::{Applicability, ApplicabilityResult, Views, assess_in};
+use crate::matching::{
+    Applicability, ApplicabilityResult, Views, assess_in, rests_on_incidental_code,
+};
 use crate::paths::display_path;
 use crate::source::SourceRole;
 use serde::{Deserialize, Serialize};
@@ -525,6 +527,21 @@ fn unmatched_by_description(found: ApplicabilityResult, names: &[String]) -> App
     }
 }
 
+/// The outcome for a rule of Habi's that held only on incidental code: unmatched,
+/// with the reason saying so.
+fn incidental_match(found: ApplicabilityResult, rule: Option<&Condition>) -> ApplicabilityResult {
+    let named = rule.map(described::names).unwrap_or_default().join(" and ");
+    ApplicabilityResult {
+        applicability: Applicability::Undeclared,
+        scope: found.scope,
+        modules: Vec::new(),
+        reason: format!(
+            "Habi found {named} here, but only in a few files beside the project's main code, so it is not matched. It remains available to use manually."
+        ),
+        specificity: 0,
+    }
+}
+
 /// Everything needed to rank one item.
 pub struct Candidate<'a> {
     pub item: &'a LibraryItem,
@@ -580,6 +597,12 @@ pub fn recommend(
             // absent or cannot be established, the skill stays where it was
             // before Habi read anything: available, unmatched.
             let applicability = match (basis, applicability.applicability) {
+                // One stray script is no reason to suggest a skill for its language.
+                (Basis::Described | Basis::CatalogHint, Applicability::Applies)
+                    if rests_on_incidental_code(&applicability, inspection) =>
+                {
+                    incidental_match(applicability, applies_when)
+                }
                 (Basis::Described, Applicability::Applies) => applicability,
                 (Basis::Described, _) => unmatched_by_description(
                     applicability,

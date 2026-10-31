@@ -33,6 +33,11 @@ pub struct LockedFile {
     pub digest: String,
     /// Clients this copy serves.
     pub clients: Vec<ClientId>,
+    /// Whether it was installed executable. Absent in older lock files, where
+    /// a change of mode cannot be told.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub executable: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -87,6 +92,102 @@ pub struct LockedItem {
     pub sections: Vec<LockedSection>,
     #[serde(default)]
     pub mcp: Vec<LockedMcpEntry>,
+    /// Who it came from, as known when it was installed. Absent in older lock files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub provenance: Option<Provenance>,
+}
+
+/// Who stands behind a skill, recorded when it is installed so it can be read
+/// later without the library. A popular repository is no reason to trust one, so
+/// nothing here comes from stars or downloads: only what was checked, and what
+/// was merely said is named as such.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Provenance {
+    pub curation: Curation,
+    /// The publisher named in Habi's catalog, when the library is listed there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub publisher: Option<String>,
+    /// The commit Habi's catalog records inspecting, when it has.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub reviewed_at: Option<String>,
+    /// One of the few skills Habi's catalog stands behind.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    #[ts(optional, as = "Option<bool>")]
+    pub picked: bool,
+    /// The licence its author declares. Never an interpretation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub license: Option<String>,
+    /// What its author says it derives from. Their word: Habi has not checked it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub claimed_origin: Option<String>,
+}
+
+/// How a skill reached the person, from most to least accountable to them.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Curation {
+    /// A library the person said is their team's.
+    Team,
+    /// Their own skill, on this machine.
+    Personal,
+    /// Community, from a publisher whose ownership of the repository Habi's catalog verified.
+    VerifiedPublisher,
+    /// Community, listed in Habi's catalog with no verified owner.
+    ListedCommunity,
+    /// Community, and known to nobody but the person who connected it.
+    #[default]
+    Unlisted,
+}
+
+impl Provenance {
+    /// One plain line, so every front end says the same thing.
+    pub fn summary(&self) -> String {
+        let who = match (self.curation, self.publisher.as_deref()) {
+            (Curation::Team, _) => "your team's library".to_string(),
+            (Curation::Personal, _) => "your own skill".to_string(),
+            (Curation::VerifiedPublisher, Some(p)) => {
+                format!("community library, published by {p} (ownership verified)")
+            }
+            (Curation::VerifiedPublisher, None) => {
+                "community library, ownership verified".to_string()
+            }
+            (Curation::ListedCommunity, Some(p)) => {
+                format!("community library by {p}, in Habi's catalog, owner not verified")
+            }
+            (Curation::ListedCommunity, None) => {
+                "community library in Habi's catalog, owner not verified".to_string()
+            }
+            (Curation::Unlisted, _) => {
+                "community library you connected, not in Habi's catalog".to_string()
+            }
+        };
+        let mut parts = vec![who];
+        if self.picked {
+            parts.push("a Habi pick".to_string());
+        }
+        if !matches!(self.curation, Curation::Team | Curation::Personal) {
+            parts.push(match &self.reviewed_at {
+                Some(at) => format!("inspected by Habi at {}", at.get(..10).unwrap_or(at)),
+                None => "not inspected by Habi or your team".to_string(),
+            });
+        }
+        parts.push(match &self.license {
+            Some(l) => format!("licence: {l}"),
+            None => "no licence stated".to_string(),
+        });
+        if let Some(origin) = &self.claimed_origin {
+            parts.push(format!("says it is based on {origin} (not checked)"));
+        }
+        parts.join(" · ")
+    }
 }
 
 impl LockedItem {

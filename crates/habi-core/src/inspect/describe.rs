@@ -226,8 +226,10 @@ fn tidy(text: &str, name: &str) -> Option<String> {
 
 /// At most `MAX_CHARS`: the last whole sentence that fits, or the last whole word.
 fn shorten(text: &str) -> String {
+    // Before the cut: a URL cut short no longer looks like one with a credential.
+    let text = crate::redact::redact(text);
     if text.chars().count() <= MAX_CHARS {
-        return text.to_string();
+        return text;
     }
     let head: Vec<char> = text.chars().take(MAX_CHARS).collect();
     // A sentence boundary far enough in to say something.

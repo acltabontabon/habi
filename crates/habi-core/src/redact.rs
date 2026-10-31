@@ -17,7 +17,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     let rules: [(&str, &str); 18] = [
         // https://user:secret@host -> https://***@host
         (
-            r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@]+:[^/\s]*@",
+            r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@]*:[^/\s]*@",
             "${1}***@",
         ),
         // Private keys.
@@ -74,8 +74,26 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         .collect()
 });
 
+/// `https://token@host`: a credential with no password. `git@` is how SSH and
+/// Git URLs say who connects, and names no one.
+static URL_USER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b([a-z][a-z0-9+.-]*://)([^/\s:@]+)@").expect("redaction pattern compiles")
+});
+
+/// Something every rule needs to find. Inspection redacts each of up to 250,000
+/// dependencies, nearly all of them plain coordinates that need no more than this.
+static WORTH_A_LOOK: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)://|-----BEGIN|gh[pousr]_|sk-|AIza|npm_|_live_|SG\.|eyJ|github_pat_|glpat-|xox|AKIA|bearer|key|token|passw|secret",
+    )
+    .expect("redaction pattern compiles")
+});
+
 /// Returns `text` with credentials and token-like values replaced.
 pub fn redact(text: &str) -> String {
+    if !WORTH_A_LOOK.is_match(text) {
+        return text.to_string();
+    }
     let mut out = text.to_string();
     for rule in RULES.iter() {
         if rule.pattern.is_match(&out) {
@@ -84,6 +102,14 @@ pub fn redact(text: &str) -> String {
                 .replace_all(&out, rule.replacement)
                 .into_owned();
         }
+    }
+    if URL_USER.is_match(&out) {
+        out = URL_USER
+            .replace_all(&out, |c: &regex::Captures<'_>| match &c[2] {
+                "git" | "***" => c[0].to_string(),
+                _ => format!("{}***@", &c[1]),
+            })
+            .into_owned();
     }
     out
 }
@@ -286,5 +312,59 @@ mod tests {
     fn secret_detection_is_high_signal() {
         assert!(looks_secret("password: ask the team lead").is_none());
         assert!(looks_secret(&["AKIA", "ABCDEFGHIJKLMNOP"].concat()).is_some());
+    }
+
+    #[test]
+    fn plain_text_passes_and_what_each_rule_finds_is_still_looked_at() {
+        for plain in [
+            "org.springframework.boot:spring-boot-starter",
+            "^18.2.0",
+            "1.2.3-jre",
+        ] {
+            assert!(!WORTH_A_LOOK.is_match(plain), "{plain}");
+            assert_eq!(redact(plain), plain);
+        }
+        for secret in [
+            "https://u:p@host/x",
+            "-----BEGIN RSA PRIVATE KEY-----\nabc",
+            "ghp_0123456789012345678901234567890123456789",
+            "sk-ant-abcdefghijklmnopqrstuvwxyz",
+            "AIzaSyA1234567890123456789012345678901234",
+            "npm_012345678901234567890123456789012345",
+            "sk_live_0123456789012345",
+            "SG.abcdefghijklmnopqr.abcdefghijklmnopqr",
+            "eyJabcdefghij.eyJabcdefghij.abcdefghij",
+            "github_pat_012345678901234567890",
+            "glpat-01234567890123456789",
+            "xoxb-0123456789",
+            "AKIA0123456789012345",
+            "Bearer abcdefghijklmnop",
+            "api_key=abc",
+            "PASSWORD: abc",
+            "passwd=abc",
+            "secret=abc",
+            "token=abc",
+        ] {
+            assert!(WORTH_A_LOOK.is_match(secret), "{secret}");
+            assert_ne!(redact(secret), secret, "{secret}");
+        }
+    }
+
+    #[test]
+    fn a_token_as_the_user_of_a_url_is_removed_and_git_is_kept() {
+        assert_eq!(
+            redact("git+https://abc123@github.com/a/b.git"),
+            "git+https://***@github.com/a/b.git"
+        );
+        assert_eq!(
+            redact("ssh://git@github.com/a/b.git"),
+            "ssh://git@github.com/a/b.git"
+        );
+        assert_eq!(redact("https://github.com/a/b"), "https://github.com/a/b");
+        assert_eq!(
+            redact("https://:abc123@acme.dev/a"),
+            "https://***@acme.dev/a"
+        );
+        assert_eq!(redact("http://host:8080/a@b"), "http://host:8080/a@b");
     }
 }

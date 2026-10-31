@@ -203,7 +203,7 @@ fn rank(a: Applicability) -> u8 {
 /// a whole and each module. Built once and shared by every item assessed
 /// against the project (see `assess_in`).
 pub struct Views<'a> {
-    inspection: &'a ProjectInspection,
+    pub(crate) inspection: &'a ProjectInspection,
     repository: View<'a>,
     modules: Vec<View<'a>>,
 }
@@ -236,6 +236,39 @@ pub fn assess(
         scope,
         &Views::new(inspection, declarations),
     )
+}
+
+/// Whether a rule that holds would stop holding without languages that are only
+/// incidental here: `lang:python` on the strength of one script in a Java service.
+/// For rules Habi supplied; what a skill's author wrote stands as written.
+pub fn rests_on_incidental_code(
+    result: &ApplicabilityResult,
+    inspection: &ProjectInspection,
+) -> bool {
+    fn holds(node: &EvalNode, inspection: &ProjectInspection) -> bool {
+        if node.outcome != Tri::True {
+            return false;
+        }
+        match &node.condition {
+            Condition::Any { .. } => node.children.iter().any(|c| holds(c, inspection)),
+            Condition::All { .. } => node.children.iter().all(|c| holds(c, inspection)),
+            Condition::Tag { tag } if tag.starts_with("lang:") => {
+                !node.declarations.is_empty()
+                    || node
+                        .facts
+                        .iter()
+                        .filter_map(|id| inspection.fact(id))
+                        .any(|f| f.tag() == Some(tag.as_str()) && !f.incidental)
+            }
+            _ => true,
+        }
+    }
+    result.applicability == Applicability::Applies
+        && result
+            .modules
+            .iter()
+            .filter(|m| m.applicability == Applicability::Applies)
+            .all(|m| m.applies.as_ref().is_some_and(|n| !holds(n, inspection)))
 }
 
 /// `assess` with views built beforehand, for assessing many items.

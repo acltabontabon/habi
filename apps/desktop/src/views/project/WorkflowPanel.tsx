@@ -1,4 +1,4 @@
-/** A workflow as a readable sequence: guidance, not enforced transitions. */
+/** A skill's steps as a readable sequence: guidance, not enforced transitions. */
 import { useState } from "react";
 import type { Recommendation } from "../../bindings/Recommendation";
 import { Icon } from "../../components/Icon";
@@ -18,7 +18,7 @@ export function WorkflowPanel({
 }) {
   const detail = useItemDetail(r.item.sourceId, r.item.id);
   const [reference, setReference] = useState<string | null>(null);
-  if (detail.isPending) return <Working>Loading the workflow…</Working>;
+  if (detail.isPending) return <Working>Loading the steps…</Working>;
   if (detail.isError) return <ErrorNotice error={detail.error} />;
   const wf = detail.data.item.workflow;
   if (!wf) return <p className="muted">This item does not describe a procedure.</p>;
@@ -94,8 +94,8 @@ export function WorkflowPanel({
           {onInstall ? (
             <>
               <p className="muted">
-                Installs the workflow as a standard skill your agent can discover. You see every file before
-                anything changes.
+                Installs it as a standard skill your agent can discover. You see every file before anything
+                changes.
               </p>
               <Button size="sm" variant="primary" icon="download" onClick={onInstall}>
                 Review and install…

@@ -254,6 +254,25 @@ What it can and cannot say:
   Rules read a file's first 5,000 lines and a longer file says so; invisible characters are looked
   for throughout.
   The wording is "found by reading the files"; a skill with no signals is not called safe.
+- **Things that run by themselves** are a caution: hooks in a skill's frontmatter (whose commands are
+  read as code), `hooks.json`, plugin definitions, Git hooks, an agent's settings with hooks, and
+  package install scripts. `allowed-tools` is a notice, and unbounded shell a caution. An MCP configuration
+  is a notice. Commands in JSON, YAML and TOML files are read like scripts, and a skill that ships
+  code says so whatever the code looks like, since patterns only see what they know.
+- **Cautions are a gate.** `Habi::apply` refuses a plan with cautions; only `apply_accepting_cautions`
+  runs it, which the CLI calls after `accept` is typed or `--accept-cautions` is given, and the
+  desktop review after a tick for that preview. `--yes` alone is not enough. An update asks only about
+  cautions the installed copy, scanned the same way, did not have.
+- **`SKILL.md` is validated before install.** Frontmatter that does not parse, or a missing or invalid name or
+  description, is refused. A skill whose folder and name differ, the same content under another name, and a same-named
+  folder Habi did not install are all said in the preview.
+- **Provenance and curation** are recorded in the lock file at install: the role the person gave its library, the
+  publisher and whether Habi's catalog verified that they own the repository, whether it is a Habi pick, the commit Habi inspected if
+  any, the stated licence, and the origin its author claims, named as a claim and not checked. **Popularity plays no part:** stars
+  are shown to the person, and read by nothing that recommends, ticks or trusts.
+- **After install,** status notices edited and missing files, files added to a skill's folder, a changed executable
+  bit, and a lock file that disagrees with its library at the same revision. The lock file is not signed: if the library is
+  gone or has moved on, a lock file rewritten along with the files cannot be told from the real one.
 - A rule suggested by the catalog for a skill whose author declared none is labelled as Habi's
   judgement wherever it is shown, never overrides the author's own rules, and uses only
   specific, checkable project features (a file, a dependency, a detected tag).
@@ -305,6 +324,13 @@ re-creation of deleted files. All were fixed, with regression tests.
 
 By design, or not solved yet:
 
+- **Signals are not a sandbox.** Static patterns catch what they know. A hook or script written to avoid them
+  will pass, which is why every skill that ships code says so and the preview shows new scripts.
+- **A library's role is your word.** `habi source add` connects a library as community unless you pass `--team`, and the
+  app asks, with team preselected. Either way, Habi does not check the choice against the URL, and only a team library's
+  required skills count.
+- **A re-hosted copy** is only noticed when it is installed beside its original with the same content; a re-host with any
+  edit, or one that is not installed here, is not recognized.
 - **What an agent does** with installed content is invisible to Habi, and Habi does not claim
   to know, except for how often Claude Code's own history on this machine shows a skill being loaded
   ([what is read](#claude-code-session-history)). That count misses other agents, other people, and a

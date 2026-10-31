@@ -92,6 +92,8 @@ fn payload(id: &str) -> Payload {
         },
         snapshot: library.snapshot.clone(),
         files,
+        provenance: Default::default(),
+        origin: None,
     }
 }
 
