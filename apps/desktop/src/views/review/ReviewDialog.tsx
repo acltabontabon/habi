@@ -12,8 +12,10 @@ import type { FileChange } from "../../bindings/FileChange";
 import type { InstallShadow } from "../../bindings/InstallShadow";
 import type { ItemRef } from "../../bindings/ItemRef";
 import type { Plan } from "../../bindings/Plan";
+import type { PlanItem } from "../../bindings/PlanItem";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Resolution } from "../../bindings/Resolution";
+import type { Signal } from "../../bindings/Signal";
 import { Dialog } from "../../components/Dialog";
 import { DiffStat, DiffView } from "../../components/DiffView";
 import { Icon } from "../../components/Icon";
@@ -267,6 +269,84 @@ export function ChangeTree({ changes }: { changes: FileChange[] }) {
 }
 
 /** Projects that already hold the skill, and which copy each agent would use. */
+/** What an item's scan found that this change brings: everything when it is new, and for an update only what the installed copy does not have. */
+function signalsOf(plan: Plan, item: PlanItem): Signal[] {
+  if (plan.action === "install") return item.signals;
+  if (plan.action === "update") return item.newSignals;
+  return [];
+}
+
+function cautionsOf(plan: Plan): number {
+  return plan.items.reduce(
+    (n, i) => n + signalsOf(plan, i).filter((s) => s.severity === "caution").length,
+    0,
+  );
+}
+
+/** Where each item comes from and what its scan found: what a person decides on, ahead of the file list. */
+function PlanTrust({
+  plan,
+  accepted,
+  onAccept,
+}: {
+  plan: Plan;
+  accepted: boolean;
+  onAccept: (accepted: boolean) => void;
+}) {
+  if (plan.action !== "install" && plan.action !== "update") return null;
+  const cautions = cautionsOf(plan);
+  return (
+    <section className="review-trust" aria-labelledby="trust-title">
+      <h3 id="trust-title" className="review-heading">
+        Where it comes from and what it does
+      </h3>
+      <ul className="review-notes">
+        {plan.items.map((item) => {
+          const signals = signalsOf(plan, item);
+          return (
+            <li key={item.key}>
+              <strong>{item.title}</strong>
+              {item.origin ? (
+                <div className="muted">
+                  From <span className="mono">{item.origin}</span> at{" "}
+                  <span className="mono">{item.version}</span>
+                </div>
+              ) : null}
+              {item.provenanceSummary ? <div className="muted">{item.provenanceSummary}</div> : null}
+              {signals.length > 0 ? (
+                <ul className="review-signals">
+                  {plan.action === "update" ? <li className="muted">New in this update:</li> : null}
+                  {signals.map((s) => (
+                    <li
+                      key={`${s.kind}:${s.path}:${s.line ?? 0}`}
+                      className={s.severity === "caution" ? "is-caution" : undefined}
+                    >
+                      <strong>{s.severity === "caution" ? "Caution: " : ""}</strong>
+                      {s.summary}{" "}
+                      <span className="mono muted">
+                        {s.path}
+                        {s.line ? `:${s.line}` : ""}
+                      </span>
+                      {s.detail ? <div className="mono">{s.detail}</div> : null}
+                      {s.more > 0 ? <span className="muted"> and {s.more} more</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {cautions > 0 ? (
+        <label className="review-accept">
+          <input type="checkbox" checked={accepted} onChange={(e) => onAccept(e.target.checked)} /> I have
+          read {cautions === 1 ? "this caution" : `these ${cautions} cautions`} and want to go ahead
+        </label>
+      ) : null}
+    </section>
+  );
+}
+
 function ShadowNotice({ shadows }: { shadows: InstallShadow[] }) {
   const copies = shadows.flatMap((s) => s.copies.map((c) => ({ skill: s, copy: c })));
   if (copies.length === 0) return null;
@@ -332,6 +412,8 @@ export function ReviewDialog({
   const items: ItemRef[] = request.kind === "install" ? [...request.items, ...extra] : [];
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
+  // By plan: accepting the cautions of one preview says nothing of the next.
+  const [acceptedPlan, setAcceptedPlan] = useState<string | null>(null);
   // At least one agent is always picked: the last one cannot be unticked, so there is never an empty preview.
   // Preselected: the agents the project (or this machine) already shows signs of using.
   const detected = useQuery({
@@ -464,7 +546,7 @@ export function ReviewDialog({
     setApplyError(null);
     if (projectId !== null) beginOwnChange(projectId);
     try {
-      const op = await api.applyPlan(p.id);
+      const op = await api.applyPlan(p.id, cautionsOf(p) > 0 && acceptedPlan === p.id);
       if (projectId !== null) {
         // These are Habi's own writes, not outside changes to warn about.
         client.setQueryData(staleKey(projectId), null);
@@ -611,7 +693,11 @@ export function ReviewDialog({
               // While the preview for new choices loads, the shown plan is the old one: the button is
               // busy until the matching preview arrives, so a click never applies other choices.
               busy={applying || plan.isPlaceholderData}
-              disabled={unresolved > 0 || p.conflicts.some((c) => c.options.length === 0)}
+              disabled={
+                unresolved > 0 ||
+                p.conflicts.some((c) => c.options.length === 0) ||
+                (cautionsOf(p) > 0 && acceptedPlan !== p.id)
+              }
               onClick={() => {
                 if (!plan.isPlaceholderData) void apply(p);
               }}
@@ -647,6 +733,11 @@ export function ReviewDialog({
 
             {p ? (
               <div className="review">
+                <PlanTrust
+                  plan={p}
+                  accepted={acceptedPlan === p.id}
+                  onAccept={(yes) => setAcceptedPlan(yes ? p.id : null)}
+                />
                 {p.items.length > 1 ? (
                   <ul className="review-items">
                     {p.items.map((i) => (

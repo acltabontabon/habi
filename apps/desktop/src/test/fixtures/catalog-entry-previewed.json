@@ -30,14 +30,14 @@
   "picks": [],
   "groupSegment": 1,
   "availability": "previewed",
-  "sourceId": "aa1893d04afe",
+  "sourceId": "fcb2967e53c2",
   "fetched": {
-    "snapshot": "5ff9836d17aa8dcfa348fa946e8091993a7a7c7c",
-    "snapshotAt": "2026-10-30T10:04:34Z",
+    "snapshot": "7bb83d257600765f65d17ca8df6659d76c0a3a70",
+    "snapshotAt": "2026-10-31T10:54:28Z",
     "branch": "main",
     "release": null,
-    "commitSummary": "Add skills — Example, 2026-10-30",
-    "updated": "2026-10-30",
+    "commitSummary": "Add skills — Example, 2026-10-31",
+    "updated": "2026-10-31",
     "freshness": "current",
     "warning": null
   },
@@ -53,7 +53,7 @@
     "signals": {
       "caution": 1,
       "notice": 1,
-      "info": 0
+      "info": 1
     },
     "groups": [
       {

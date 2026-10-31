@@ -483,6 +483,10 @@
     "fitsWhen": [
       {
         "kind": "tag",
+        "text": "uses GraalVM"
+      },
+      {
+        "kind": "tag",
         "text": "uses Spring Boot"
       },
       {
@@ -507,6 +511,13 @@
       }
     ],
     "picks": [
+      {
+        "skill": "skills/java-add-graalvm-native-image-support",
+        "title": "GraalVM native images",
+        "gist": "Add native image support to a Java build and iterate until it compiles.",
+        "why": "GraalVM native images",
+        "anywhere": false
+      },
       {
         "skill": "skills/spring-boot-testing",
         "title": "Spring Boot testing",
@@ -1046,6 +1057,22 @@
       },
       {
         "kind": "tag",
+        "text": "uses Terraform"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Helm"
+      },
+      {
+        "kind": "tag",
+        "text": "uses Kubernetes"
+      },
+      {
+        "kind": "tag",
+        "text": "contains shell scripts"
+      },
+      {
+        "kind": "tag",
         "text": "contains Go code"
       },
       {
@@ -1070,6 +1097,41 @@
         "title": ".NET backend patterns",
         "gist": "Structure a C# API so data access, DI and tests stay simple.",
         "why": "ASP.NET Core services",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/cloud-infrastructure/skills/terraform-module-library",
+        "title": "Terraform modules",
+        "gist": "Build reusable Terraform modules for AWS, Azure, GCP and OCI.",
+        "why": "Terraform projects",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/kubernetes-operations/skills/helm-chart-scaffolding",
+        "title": "Helm charts",
+        "gist": "Organize Helm charts so templates and values stay reusable.",
+        "why": "Helm charts",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/kubernetes-operations/skills/k8s-manifest-generator",
+        "title": "Kubernetes manifests",
+        "gist": "Write production-ready Deployments, Services and ConfigMaps.",
+        "why": "Kubernetes manifests",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/shell-scripting/skills/bash-defensive-patterns",
+        "title": "Defensive Bash",
+        "gist": "Write Bash scripts, pipelines and utilities that tolerate faults safely.",
+        "why": "Shell scripts",
+        "anywhere": false
+      },
+      {
+        "skill": "plugins/shell-scripting/skills/shellcheck-configuration",
+        "title": "ShellCheck setup",
+        "gist": "Configure ShellCheck for script quality and portability.",
+        "why": "Shell scripts",
         "anywhere": false
       },
       {

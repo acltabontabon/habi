@@ -5,9 +5,14 @@ import type { LockedFile } from "./LockedFile";
 import type { LockedMcpEntry } from "./LockedMcpEntry";
 import type { LockedSection } from "./LockedSection";
 import type { LockedSource } from "./LockedSource";
+import type { Provenance } from "./Provenance";
 
 export type LockedItem = { source: LockedSource, id: string, kind: ItemKind, title: string, 
 /**
  * Commit (Git) or content digest (folder) the item was installed from.
  */
-snapshot: string, contentDigest: string, installedAt: string, clients: Array<ClientId>, files: Array<LockedFile>, sections: Array<LockedSection>, mcp: Array<LockedMcpEntry>, };
+snapshot: string, contentDigest: string, installedAt: string, clients: Array<ClientId>, files: Array<LockedFile>, sections: Array<LockedSection>, mcp: Array<LockedMcpEntry>, 
+/**
+ * Who it came from, as known when it was installed. Absent in older lock files.
+ */
+provenance?: Provenance, };

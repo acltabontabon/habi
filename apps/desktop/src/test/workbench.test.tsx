@@ -146,6 +146,9 @@ describe("workbench", () => {
                 installedAt: "2026-10-04T00:00:00Z",
                 clients: ["claude-code", "codex"],
                 state: "current",
+                sourceIdentity: "github.com/acme/skills",
+                provenance: null,
+                warnings: [],
                 files: [
                   {
                     path: ".claude/skills/liquibase-migration-review/SKILL.md",
@@ -405,6 +408,11 @@ describe("review dialog", () => {
         version: "abc",
         clients: ["claude-code"],
         notes: [],
+        signals: [],
+        newSignals: [],
+        origin: null,
+        provenance: null,
+        provenanceSummary: null,
       },
     ],
     changes: [],

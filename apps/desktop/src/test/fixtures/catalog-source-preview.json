@@ -1,5 +1,5 @@
 {
-  "id": "aa1893d04afe",
+  "id": "fcb2967e53c2",
   "name": "~preview:acme",
   "kind": "git",
   "role": "community",
@@ -8,11 +8,11 @@
   "tracked": {
     "kind": "default"
   },
-  "createdAt": "2026-10-30T10:04:34Z",
-  "snapshot": "5ff9836d17aa8dcfa348fa946e8091993a7a7c7c",
-  "snapshotAt": "2026-10-30T10:04:34Z",
-  "commitSummary": "Add skills — Example, 2026-10-30",
-  "lastAttemptAt": "2026-10-30T10:04:34Z",
+  "createdAt": "2026-10-31T10:54:28Z",
+  "snapshot": "7bb83d257600765f65d17ca8df6659d76c0a3a70",
+  "snapshotAt": "2026-10-31T10:54:28Z",
+  "commitSummary": "Add skills — Example, 2026-10-31",
+  "lastAttemptAt": "2026-10-31T10:54:28Z",
   "lastError": null,
   "warning": null,
   "freshness": "current",

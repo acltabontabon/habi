@@ -47,8 +47,8 @@ done
 P="$OUT/projects"
 
 step "Connect and fetch the libraries"
-"$HABI" source add "Team library" "$OUT/libraries/team-skills" --branch main
-"$HABI" source add "Security guild" "$OUT/libraries/security-skills" --tag v1
+"$HABI" source add "Team library" "$OUT/libraries/team-skills" --branch main --team
+"$HABI" source add "Security guild" "$OUT/libraries/security-skills" --tag v1 --team
 "$HABI" source refresh
 
 step "Install items (the 'Installed' state)"

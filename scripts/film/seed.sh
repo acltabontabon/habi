@@ -41,8 +41,8 @@ for repo in billing-service orders-api storefront-web platform-monorepo \
   (cd "$P/$repo" && g init -q && g add -A && g commit -qm "Project")
 done
 
-"$HABI" source add "team-skills" "$OUT/libraries/team-skills" --branch main
-"$HABI" source add "security-guild" "$OUT/libraries/security-guild" --branch main
+"$HABI" source add "team-skills" "$OUT/libraries/team-skills" --branch main --team
+"$HABI" source add "security-guild" "$OUT/libraries/security-guild" --branch main --team
 "$HABI" source refresh
 
 "$HABI" install "team-skills/liquibase-migration-review" "team-skills/java-service-conventions" \

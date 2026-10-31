@@ -22,7 +22,7 @@
     "managed": {
       "key": "local:Example team library#liquibase-migration-review",
       "library": "Example team library",
-      "libraryItemKey": "1526b695b1eb/liquibase-migration-review",
+      "libraryItemKey": "75ed7ed9fc4a/liquibase-migration-review",
       "clients": [
         "claude-code"
       ],

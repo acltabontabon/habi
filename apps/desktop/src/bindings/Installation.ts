@@ -2,5 +2,18 @@
 import type { ClientId } from "./ClientId";
 import type { InstallState } from "./InstallState";
 import type { InstalledFile } from "./InstalledFile";
+import type { Provenance } from "./Provenance";
 
-export type Installation = { key: string, id: string, title: string, sourceName: string, snapshot: string, installedAt: string, clients: Array<ClientId>, state: InstallState, files: Array<InstalledFile>, upstreamSnapshot: string | null, };
+export type Installation = { key: string, id: string, title: string, sourceName: string, snapshot: string, installedAt: string, clients: Array<ClientId>, state: InstallState, files: Array<InstalledFile>, upstreamSnapshot: string | null, 
+/**
+ * The library's address as the lock file records it.
+ */
+sourceIdentity: string, 
+/**
+ * Who it came from, when the lock file says.
+ */
+provenance: Provenance | null, 
+/**
+ * What does not add up, in a sentence each.
+ */
+warnings: Array<string>, };

@@ -1861,6 +1861,28 @@ button.chip:hover {
 .declared-evidence,
 .history,
 .validation,
+.review-trust {
+  margin-bottom: var(--s4);
+}
+
+.review-signals {
+  list-style: none;
+  margin: var(--s1) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+}
+
+.review-signals .is-caution {
+  color: var(--warn-ink);
+}
+
+.review-accept {
+  display: block;
+  margin-top: var(--s2);
+  font-weight: 600;
+}
+
 .review-notes,
 .publish-files {
   list-style: none;

@@ -798,6 +798,7 @@ fn a_lock_written_over_https_is_matched_by_a_library_connected_over_ssh() {
             files: Vec::new(),
             sections: Vec::new(),
             mcp: Vec::new(),
+            provenance: None,
         }],
         ..LockFile::default()
     };

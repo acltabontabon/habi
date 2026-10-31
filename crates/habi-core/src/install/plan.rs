@@ -8,13 +8,15 @@
 
 use super::diff::{TextDiff, diff};
 use super::lock::{
-    LockFile, LockedFile, LockedItem, LockedMcpEntry, LockedSection, LockedSource, lock_key,
+    LockFile, LockedFile, LockedItem, LockedMcpEntry, LockedSection, LockedSource, Provenance,
+    lock_key,
 };
 use crate::brand;
 use crate::clients::{ClientId, layout, mcp, sections};
 use crate::error::{HabiError, Result};
 use crate::fsutil::{Bounded, digest_matches, read_bounded, same_text, sha256, short, text_digest};
-use crate::library::model::{ItemKind, LibraryItem};
+use crate::library::model::{DiagnosticLevel, ItemFile, ItemKind, LibraryItem};
+use crate::library::signals::{Signal, SignalSeverity, scan_files};
 use crate::paths::{RelPath, resolve_for_read, resolve_links};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -170,6 +172,36 @@ pub struct PlanItem {
     pub version: String,
     pub clients: Vec<ClientId>,
     pub notes: Vec<String>,
+    /// What the scan of this version's files found.
+    #[serde(default)]
+    pub signals: Vec<Signal>,
+    /// For an update: what the installed version does not have.
+    #[serde(default)]
+    pub new_signals: Vec<Signal>,
+    /// Where it comes from: the library's address and revision.
+    #[serde(default)]
+    pub origin: Option<String>,
+    #[serde(default)]
+    pub provenance: Option<Provenance>,
+    /// `provenance` in one line, so that every front end says the same thing.
+    #[serde(default)]
+    pub provenance_summary: Option<String>,
+}
+
+impl PlanItem {
+    /// The cautions a person has to accept to go ahead: all of them for something
+    /// new, and for an update only those the installed version did not have.
+    pub fn cautions(&self, action: PlanAction) -> Vec<&Signal> {
+        let signals = match action {
+            PlanAction::Install => &self.signals,
+            PlanAction::Update => &self.new_signals,
+            _ => return Vec::new(),
+        };
+        signals
+            .iter()
+            .filter(|s| s.severity == SignalSeverity::Caution)
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -215,6 +247,13 @@ impl Plan {
     pub fn is_blocked(&self) -> bool {
         !self.conflicts.is_empty()
     }
+    /// Cautions to accept before this plan may be applied.
+    pub fn cautions(&self) -> usize {
+        self.items
+            .iter()
+            .map(|i| i.cautions(self.action).len())
+            .sum()
+    }
 }
 
 /// An item and its content, ready to install.
@@ -224,6 +263,9 @@ pub struct Payload {
     pub source: LockedSource,
     pub snapshot: String,
     pub files: Vec<PayloadFile>,
+    pub provenance: Provenance,
+    /// The library's portable address: no credential and no path on this machine.
+    pub origin: Option<String>,
 }
 
 /// One file of an item to install.
@@ -523,6 +565,25 @@ struct Planner<'a> {
     notes: Vec<String>,
     mcp_suggestions: Vec<McpSuggestion>,
     items: Vec<PlanItem>,
+    /// What is being installed in this plan, by what it holds.
+    planned: Vec<(String, String)>,
+}
+
+/// What a skill holds, whatever it is called: its files, and its `SKILL.md` less
+/// the frontmatter's `name`. Two with the same key are one skill under two names.
+fn content_key<'a>(files: impl Iterator<Item = (&'a str, &'a str)>, skill_md: &[u8]) -> String {
+    let mut others: Vec<String> = files
+        .filter(|(rel, _)| *rel != crate::library::SKILL_FILE)
+        .map(|(rel, digest)| format!("{rel}\0{digest}"))
+        .collect();
+    others.sort();
+    let text = String::from_utf8_lossy(skill_md);
+    let body: String = text
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("name:"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    crate::fsutil::sha256(format!("{}\0{body}", others.join("\n")).as_bytes())
 }
 
 fn conflict(
@@ -571,6 +632,7 @@ impl<'a> Planner<'a> {
             notes: Vec::new(),
             mcp_suggestions: Vec::new(),
             items: Vec::new(),
+            planned: Vec::new(),
         })
     }
 
@@ -1000,6 +1062,70 @@ impl<'a> Planner<'a> {
             }))
     }
 
+    /// Says so when this skill's content is already here under another name, or
+    /// its name is already taken by a folder Habi did not put there.
+    fn note_duplicates(&mut self, p: &Payload, existing: Option<&LockedItem>) {
+        let item = &p.item;
+        let skill_md = p
+            .files
+            .iter()
+            .find(|f| f.path == crate::library::SKILL_FILE)
+            .map_or(&[][..], |f| f.bytes.as_slice());
+        let key = content_key(
+            item.files
+                .iter()
+                .map(|f| (f.path.as_str(), f.digest.as_str())),
+            skill_md,
+        );
+        let same_in_plan = self
+            .planned
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, title)| title.clone());
+        let same_installed =
+            self.lock
+                .items
+                .iter()
+                .filter(|other| other.key() != p.key() && other.kind != ItemKind::Instructions)
+                .find_map(|other| {
+                    let in_folder = |path: &str| -> Option<String> {
+                        [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
+                            .iter()
+                            .find_map(|base| path.strip_prefix(&format!("{base}/")))
+                            .and_then(|rest| rest.split_once('/'))
+                            .map(|(_, rel)| rel.to_string())
+                    };
+                    let relative: Vec<(String, &str)> = other
+                        .files
+                        .iter()
+                        .filter_map(|f| Some((in_folder(&f.path)?, f.digest.as_str())))
+                        .collect();
+                    let first = other.files.iter().find(|f| {
+                        in_folder(&f.path).as_deref() == Some(crate::library::SKILL_FILE)
+                    })?;
+                    let bytes = read_project_file(self.ws.root, &first.path).ok()??;
+                    (content_key(relative.iter().map(|(r, d)| (r.as_str(), *d)), &bytes) == key)
+                        .then(|| other.title.clone())
+                });
+        if let Some(twin) = same_in_plan.or(same_installed) {
+            self.notes.push(format!(
+                "{} holds the same content as {twin}, under another name. Installing both gives an agent the same instructions twice.",
+                item.title
+            ));
+        }
+        self.planned.push((key, item.title.clone()));
+        if existing.is_none() && self.scope == Scope::Project {
+            let copies = super::status::unmanaged_copies(self.ws.root, &item.name, &self.lock);
+            if !copies.is_empty() {
+                self.notes.push(format!(
+                    "{} already exists in this project and Habi did not install it ({}). This adds to that folder: files it has that this skill does not will stay.",
+                    item.name,
+                    copies.join(", ")
+                ));
+            }
+        }
+    }
+
     fn install_skill(
         &mut self,
         p: &Payload,
@@ -1019,6 +1145,26 @@ impl<'a> Planner<'a> {
                 item.title
             )));
         }
+        // A file an agent cannot read properly is no skill, whatever else is in it.
+        if let Some(broken) = item.diagnostics.iter().find(|d| {
+            d.level == DiagnosticLevel::Error
+                && d.path
+                    .as_deref()
+                    .is_some_and(|f| f.ends_with(crate::library::SKILL_FILE))
+        }) {
+            return Err(HabiError::invalid(format!(
+                "`{}` cannot be installed: {}",
+                item.title, broken.message
+            )));
+        }
+        let folder = item.path.rsplit('/').next().unwrap_or(&item.path);
+        if !folder.is_empty() && folder != item.name {
+            self.notes.push(format!(
+                "{} is in a folder called `{folder}` and installs as `{}`.",
+                item.title, item.name
+            ));
+        }
+        self.note_duplicates(p, existing);
         if item.license_restricted && existing.is_none() {
             let terms = item
                 .license_file
@@ -1096,6 +1242,7 @@ impl<'a> Planner<'a> {
                             path: old_path.clone(),
                             digest: old_digest.clone(),
                             clients: old_clients.clone(),
+                            executable: Some(file.executable),
                         }),
                         // Kept: on this file system the new name is the file they chose to keep.
                         Removal::Kept if at_target.is_some() => {}
@@ -1119,6 +1266,7 @@ impl<'a> Planner<'a> {
                                     path: target.clone(),
                                     digest,
                                     clients: dir.clients.clone(),
+                                    executable: Some(file.executable),
                                 });
                             }
                         }
@@ -1137,6 +1285,7 @@ impl<'a> Planner<'a> {
                                 path: target.clone(),
                                 digest: sha256(bytes),
                                 clients: dir.clients.clone(),
+                                executable: Some(file.executable),
                             });
                         }
                     }
@@ -1168,6 +1317,7 @@ impl<'a> Planner<'a> {
                         path: target.clone(),
                         digest,
                         clients: dir.clients.clone(),
+                        executable: Some(file.executable),
                     });
                 }
                 written.insert(target);
@@ -1196,6 +1346,7 @@ impl<'a> Planner<'a> {
             files,
             sections: Vec::new(),
             mcp: existing.map(|e| e.mcp.clone()).unwrap_or_default(),
+            provenance: Some(p.provenance.clone()),
         })
     }
 
@@ -1353,6 +1504,7 @@ impl<'a> Planner<'a> {
                 files: Vec::new(),
                 sections: existing.map(|e| e.sections.clone()).unwrap_or_default(),
                 mcp: Vec::new(),
+                provenance: Some(p.provenance.clone()),
             });
         }
         let baseline = existing
@@ -1401,6 +1553,7 @@ impl<'a> Planner<'a> {
                 })
                 .unwrap_or_default(),
             mcp: existing.map(|e| e.mcp.clone()).unwrap_or_default(),
+            provenance: Some(p.provenance.clone()),
         })
     }
 
@@ -1865,6 +2018,7 @@ impl<'a> Planner<'a> {
                             created,
                         }],
                         mcp: Vec::new(),
+                        provenance: None,
                     });
                 }
             }
@@ -2195,12 +2349,70 @@ fn install_in(
             version: short(&p.snapshot).to_string(),
             clients: wanted.clone(),
             notes: Vec::new(),
+            signals: p.item.signals.clone(),
+            new_signals: Vec::new(),
+            origin: p.origin.clone(),
+            provenance: Some(p.provenance.clone()),
+            provenance_summary: Some(p.provenance.summary()),
         });
         planner.upsert_lock(locked);
     }
     let clients: Vec<ClientId> = all_clients.into_iter().collect();
     let title = format!("Install for {} {}", clients_phrase(&clients), scope.on());
     planner.finish(root, PlanAction::Install, title)
+}
+
+/// What an update brings that the installed copy does not have. What the copy
+/// is scanned the same way, so that a command added upstream is told from one the
+/// person accepted when they installed it.
+fn new_since(root: &Path, existing: &LockedItem, signals: &[Signal]) -> Vec<Signal> {
+    let mut folder = None;
+    let mut files = Vec::new();
+    for locked in &existing.files {
+        let Some((base, rel)) = [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
+            .iter()
+            .find_map(|base| {
+                let rest = locked.path.strip_prefix(&format!("{base}/"))?;
+                let (name, rel) = rest.split_once('/')?;
+                Some((format!("{base}/{name}"), rel.to_string()))
+            })
+        else {
+            continue;
+        };
+        // One copy is enough: every client has the same files.
+        if *folder.get_or_insert_with(|| base.clone()) != base {
+            continue;
+        }
+        files.push(ItemFile {
+            path: rel,
+            digest: locked.digest.clone(),
+            size: read_project_file(root, &locked.path)
+                .ok()
+                .flatten()
+                .map_or(0, |b| b.len() as u64),
+            executable: locked.executable.unwrap_or(false),
+        });
+    }
+    let Some(folder) = folder else {
+        return signals.to_vec();
+    };
+    let read = |rel: &str| -> std::result::Result<Vec<u8>, String> {
+        read_project_file(root, &format!("{folder}/{rel}"))
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("{rel} is missing"))
+    };
+    let (before, _) = scan_files(&files, &read);
+    signals
+        .iter()
+        .filter(|s| {
+            !before.iter().any(|old| {
+                old.severity >= s.severity
+                    && old.kind == s.kind
+                    && (s.path == old.path || s.path.ends_with(&format!("/{}", old.path)))
+            })
+        })
+        .cloned()
+        .collect()
 }
 
 /// Plans updating installed items to the given payloads (same clients).
@@ -2252,6 +2464,11 @@ fn update_in(
             version: format!("{} → {}", short(&existing.snapshot), short(&p.snapshot)),
             clients: clients.clone(),
             notes: Vec::new(),
+            signals: p.item.signals.clone(),
+            new_signals: new_since(root, &existing, &p.item.signals),
+            origin: p.origin.clone(),
+            provenance: Some(p.provenance.clone()),
+            provenance_summary: Some(p.provenance.summary()),
         });
         planner.upsert_lock(locked);
     }
@@ -2325,6 +2542,11 @@ fn remove_in(root: &Path, keys: &[String], decisions: &Decisions, scope: Scope) 
             version: short(&existing.snapshot).to_string(),
             clients: existing.clients.clone(),
             notes: Vec::new(),
+            signals: Vec::new(),
+            new_signals: Vec::new(),
+            origin: None,
+            provenance: existing.provenance.clone(),
+            provenance_summary: existing.provenance.as_ref().map(Provenance::summary),
         });
         planner.lock.items.retain(|i| &i.key() != key);
     }

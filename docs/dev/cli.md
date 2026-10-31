@@ -29,9 +29,9 @@ habi --help                             # every command; `habi <command> --help`
 ## Libraries
 
 ```sh
-habi source add Team git@github.com:your-team/skills.git --branch main
+habi source add Team git@github.com:your-team/skills.git --branch main --team
 habi source add Local ./path/to/library                 # a folder on this machine
-habi source add Superpowers https://github.com/obra/superpowers --community
+habi source add Superpowers https://github.com/obra/superpowers
 habi source refresh                                     # fetch; never changes a project
 habi source list
 habi source items Team
@@ -41,7 +41,8 @@ habi source remove Team                                 # installed copies are k
 
 `source add` takes `--subdir` to use one folder of the repository, and `--branch` or `--tag`
 to track something other than the default branch. It does not fetch; run `habi source refresh`
-next.
+next. A library is connected as a community library, which cannot require skills, unless you pass
+`--team` to say it is your team's own.
 
 The built-in [catalog](../library-authors/catalog.md) of public libraries:
 
@@ -84,6 +85,17 @@ already uses ([how it tells](../guide/agent-tools.md#choosing-which-tools)); if 
 you to name them. `--mcp` also adds the MCP server configuration an item suggests.
 
 Installing on this machine (into your own skill folders) is available in the desktop app only.
+
+Every install and update preview says where each skill comes from, who stands behind it and what
+the scan of its files found, and shows a new script's contents. Anything flagged as a **caution**
+(hooks and other commands that run by themselves, `curl … | sh`, unbounded shell permissions, a
+compiled program, invisible characters) has to be accepted: at the prompt by typing `accept`, or with
+`--accept-cautions` beside `--yes`, which refuses it alone. An update only asks about cautions the
+installed copy did not have.
+
+`habi status` shows each installed skill's origin and provenance, and says when a file was dropped into its
+folder, when a file's executable bit changed, or when the lock file disagrees with the library at the
+same revision.
 
 ## Correcting what Habi detected
 

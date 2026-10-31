@@ -658,8 +658,11 @@ function SkillHead({
           ) : null}
           {item.basedOn ? (
             <>
-              <dt>Lineage</dt>
-              <dd className="mono">{item.basedOn}</dd>
+              <dt>Based on</dt>
+              <dd>
+                <span className="mono">{item.basedOn}</span>{" "}
+                <span className="muted">The author says so. Habi has not checked it.</span>
+              </dd>
             </>
           ) : null}
           {item.diagnostics.length > 0 ? (

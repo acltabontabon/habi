@@ -4,7 +4,8 @@ import type { ItemFile } from "../bindings/ItemFile";
 import { tagLabel } from "./tags";
 
 /** Source files an agent could run. Schemas, templates and data under `scripts/` are not code. */
-const CODE_FILE = /\.(py|sh|bash|zsh|fish|js|mjs|cjs|ts|mts|rb|pl|php|ps1|lua|go|rs|swift|kts?)$/i;
+const CODE_FILE =
+  /\.(py|sh|bash|zsh|fish|js|mjs|cjs|ts|mts|rb|pl|php|ps1|bat|cmd|lua|go|rs|swift|kts?|java|c|cpp)$/i;
 
 export function isCode(file: ItemFile): boolean {
   return file.executable || CODE_FILE.test(file.path);

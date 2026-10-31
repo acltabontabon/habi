@@ -206,7 +206,8 @@ export const api = {
     call<InstallShadow[]>("machine_install_preview", { items, clients }),
   machineHistory: () => call<OperationSummary[]>("machine_history"),
   machineRecover: () => call<OperationSummary[]>("machine_recover"),
-  applyPlan: (planId: string) => call<OperationSummary>("apply_plan", { planId }),
+  applyPlan: (planId: string, acceptCautions = false) =>
+    call<OperationSummary>("apply_plan", { planId, acceptCautions }),
   history: (projectId: string) => call<OperationSummary[]>("history", { projectId }),
   recover: (projectId: string) => call<OperationSummary[]>("recover", { projectId }),
 

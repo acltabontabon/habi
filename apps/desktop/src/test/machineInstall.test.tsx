@@ -56,6 +56,11 @@ function plan(over: Partial<Plan> = {}): Plan {
         version: "3c5e131423",
         clients: ["claude-code"],
         notes: [],
+        signals: [],
+        newSignals: [],
+        origin: null,
+        provenance: null,
+        provenanceSummary: null,
       },
     ],
     changes: [
@@ -236,7 +241,9 @@ describe("review for this machine", () => {
     const onClose = vi.fn();
     wrap(<ReviewDialog projectId={null} request={install} onClose={onClose} />);
     await userEvent.click(await screen.findByRole("button", { name: /Install on this machine/ }));
-    await waitFor(() => expect(invoke).toHaveBeenCalledWith("apply_plan", { planId: "plan-1" }));
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("apply_plan", { planId: "plan-1", acceptCautions: false }),
+    );
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(screen.queryByText(/Installed & history/)).toBeNull();
   });
