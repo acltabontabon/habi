@@ -1,9 +1,9 @@
 {
-  "id": "6fa30518-5c33-470c-bad5-71aee5eda92f",
+  "id": "3876a4bc-41a7-42f7-8188-90cb02fcce37",
   "action": "restore",
   "title": "Restore files changed by “Install for Claude Code on this machine”",
   "project": "~",
-  "createdAt": "2026-10-31T16:43:40Z",
+  "createdAt": "2026-10-31T21:54:57Z",
   "items": [],
   "changes": [
     {
@@ -618,7 +618,7 @@
       "kind": "lockFile",
       "items": [],
       "clients": [],
-      "before": "sha256:443f5ae7ee39a5b79bb18c871665faa96b90a6b2181647d9c6f9eb04a3b93e9a",
+      "before": "sha256:ae3cb2c8fe700b49a9fdd4a4df09ba539b8593498255fab8f1b3b254c1e6a03c",
       "after": null,
       "explanation": "Records what Habi installed on this machine (sources, versions, file digests) so it can detect updates and local edits. Personal to this machine; contains no absolute paths or secrets.",
       "diff": {
@@ -702,7 +702,7 @@
                 "tag": "removed",
                 "oldLine": 13,
                 "newLine": null,
-                "text": "      \"snapshot\": \"23512cb9a5a3ff13ab6b39772ee513c6b9a678b4\","
+                "text": "      \"snapshot\": \"d8270090cbfda663c348eccdb4c3664b237496c6\","
               },
               {
                 "tag": "removed",
@@ -714,7 +714,7 @@
                 "tag": "removed",
                 "oldLine": 15,
                 "newLine": null,
-                "text": "      \"installedAt\": \"2026-10-31T16:43:40Z\","
+                "text": "      \"installedAt\": \"2026-10-31T21:54:57Z\","
               },
               {
                 "tag": "removed",

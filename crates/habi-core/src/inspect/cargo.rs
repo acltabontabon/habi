@@ -22,6 +22,8 @@ pub struct CargoToml {
     pub dependencies: Vec<(String, Option<String>, &'static str, Option<u32>)>,
     /// `[workspace.dependencies]`, for members that inherit.
     pub workspace_dependencies: HashMap<String, String>,
+    /// The manifest has a `[workspace]` with members.
+    pub workspace: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -88,12 +90,18 @@ pub fn parse(path: &str, module: &str, text: &str) -> Result<CargoToml, String> 
                 .collect()
         })
         .unwrap_or_default();
+    let workspace = doc
+        .get("workspace")
+        .and_then(|w| w.get("members"))
+        .and_then(|m| m.as_array())
+        .is_some_and(|m| !m.is_empty());
     Ok(CargoToml {
         path: path.to_string(),
         module: module.to_string(),
         name,
         dependencies,
         workspace_dependencies,
+        workspace,
     })
 }
 

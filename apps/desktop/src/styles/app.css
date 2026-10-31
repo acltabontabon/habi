@@ -1611,6 +1611,13 @@
   color: var(--ink-muted);
 }
 
+.rec-subhead {
+  padding: var(--s3) var(--s4) 6px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
 .rec-list {
   list-style: none;
   margin: 0;

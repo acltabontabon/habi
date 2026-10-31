@@ -21,11 +21,12 @@ use crate::install::lock::lock_key;
 use crate::install::status::SkillFolders;
 use crate::library::model::{ItemFile, LibraryIndex, LibraryItem};
 use crate::library::signals::SignalSeverity;
-use crate::matching::condition::Condition;
 use crate::matching::{
     Applicability, ApplicabilityResult, Scope, Views, assess_in, rests_on_incidental_code,
 };
-use crate::recommend::{Basis, Group, Recommendation};
+use crate::recommend::{
+    Basis, Group, Recommendation, breadth, is_tooling, names_only_languages, rule_of,
+};
 use crate::service::ItemRef;
 use crate::source::{Source, SourceRole, portable_identity};
 use serde::{Deserialize, Serialize};
@@ -519,50 +520,6 @@ fn catalog_order(catalog: &[Entry], entry_id: &str, pick: usize) -> usize {
     entry.saturating_mul(1000).saturating_add(pick)
 }
 
-/// The rule an evaluation held: the first module's, where every module has the same.
-fn rule_of(a: &ApplicabilityResult) -> Option<&Condition> {
-    a.modules
-        .iter()
-        .find_map(|m| m.applies.as_ref())
-        .map(|n| &n.condition)
-}
-
-/// Whether every tag a rule names is about building and shipping the
-/// project (`ci:`, `container:`, `build:`, `infra:`) rather than what it is built on.
-fn is_tooling(rule: &Condition) -> bool {
-    fn walk(c: &Condition, tooling: &mut bool, other: &mut bool) {
-        match c {
-            Condition::All { items } | Condition::Any { items } => {
-                for i in items {
-                    walk(i, tooling, other);
-                }
-            }
-            Condition::Not { .. } => {}
-            Condition::Tag { tag }
-                if ["ci:", "container:", "build:", "infra:"]
-                    .iter()
-                    .any(|p| tag.starts_with(p)) =>
-            {
-                *tooling = true
-            }
-            _ => *other = true,
-        }
-    }
-    let (mut tooling, mut other) = (false, false);
-    walk(rule, &mut tooling, &mut other);
-    tooling && !other
-}
-
-/// How many alternatives a rule accepts: one for a single fact, the sum for
-/// "any of", the narrowest for "all of".
-fn breadth(rule: &Condition) -> usize {
-    match rule {
-        Condition::Any { items } => items.iter().map(breadth).sum(),
-        Condition::All { items } => items.iter().map(breadth).min().unwrap_or(1),
-        _ => 1,
-    }
-}
-
 fn basis_rank(basis: Basis) -> u8 {
     match basis {
         Basis::Declared => 0,
@@ -605,30 +562,6 @@ fn from_pick(
         caution: pick.caution.iter().cloned().collect(),
         chosen: false,
     }
-}
-
-/// Whether every condition that held names a language only (`lang:python`):
-/// true of many projects, so a weaker reason than a framework or a file.
-fn names_only_languages(a: &ApplicabilityResult) -> bool {
-    fn walk(c: &Condition, langs: &mut bool, other: &mut bool) {
-        match c {
-            Condition::All { items } | Condition::Any { items } => {
-                for i in items {
-                    walk(i, langs, other);
-                }
-            }
-            Condition::Not { .. } => {}
-            Condition::Tag { tag } if tag.starts_with("lang:") => *langs = true,
-            _ => *other = true,
-        }
-    }
-    let (mut langs, mut other) = (false, false);
-    for m in &a.modules {
-        if let Some(node) = &m.applies {
-            walk(&node.condition, &mut langs, &mut other);
-        }
-    }
-    langs && !other
 }
 
 #[cfg(test)]

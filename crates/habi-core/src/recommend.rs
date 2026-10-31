@@ -1,9 +1,13 @@
 //! Recommendations: applicability, readiness, installation and evidence,
 //! kept as separate facts and combined only for ordering and the next action.
 //!
-//! Ordering is transparent: team requirements first, then relevant items by
-//! explicit team priority, specificity of the match, and readiness. There are
-//! no popularity signals and no confidence percentages.
+//! Ordering is stated, not scored: team requirements first, then relevant items
+//! by explicit team priority, whose rule it is (the author's, Habi's pick, Habi's
+//! other rules, the skill's own words), one technology before a few before many,
+//! what the project is built on before how it is shipped, a framework before a
+//! language, how much of the project it holds for, and readiness. The first few
+//! are marked as where to start. There are no popularity signals and no
+//! confidence percentages.
 
 use crate::checks::{CheckRun, CheckStatus};
 use crate::clients::{ClientId, mcp};
@@ -13,10 +17,10 @@ use crate::install::plan::read_project_file;
 use crate::install::status::{InstallState, Installation};
 use crate::library::model::{DeclaredEvidence, ItemKind, LibraryItem, MetadataStatus, Requirement};
 use crate::matching::condition::Condition;
-use crate::matching::described::{self, described_rule};
+use crate::matching::described::{self, Reading};
 use crate::matching::eval::Declaration;
 use crate::matching::{
-    Applicability, ApplicabilityResult, Views, assess_in, rests_on_incidental_code,
+    Applicability, ApplicabilityResult, Views, assess_in, held_conditions, rests_on_incidental_code,
 };
 use crate::paths::display_path;
 use crate::source::SourceRole;
@@ -238,7 +242,13 @@ pub struct Recommendation {
     /// Set when the skill is one of Habi's picks.
     #[serde(default)]
     pub pick: Option<PickNote>,
+    /// One of the few skills to start with, among those that fit.
+    #[serde(default)]
+    pub top: bool,
 }
+
+/// Skills marked as where to start.
+const MAX_TOP: usize = 3;
 
 pub fn summarize(item: &LibraryItem, source_name: &str, snapshot: &str) -> ItemSummary {
     ItemSummary {
@@ -542,6 +552,143 @@ fn incidental_match(found: ApplicabilityResult, rule: Option<&Condition>) -> App
     }
 }
 
+/// The outcome for a skill that names technologies without being about them:
+/// unmatched, with the reason saying so.
+fn aside(found: ApplicabilityResult, tags: &[&str], narrower: bool) -> ApplicabilityResult {
+    let labels: Vec<String> = tags
+        .iter()
+        .map(|t| crate::inspect::tags::label(t))
+        .collect();
+    let named = match labels.as_slice() {
+        [] => "a technology".to_string(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    };
+    let said = if narrower {
+        format!("Named for {named}, but about something narrower that Habi cannot check here")
+    } else {
+        format!("Its description mentions {named} only in passing")
+    };
+    ApplicabilityResult {
+        reason: format!(
+            "{said}, so it is not matched. The author declares no rules; it remains available to use manually."
+        ),
+        ..found
+    }
+}
+
+/// The rule an evaluation held: the first module's, where every module has the same.
+pub(crate) fn rule_of(a: &ApplicabilityResult) -> Option<&Condition> {
+    a.modules
+        .iter()
+        .find_map(|m| m.applies.as_ref())
+        .map(|n| &n.condition)
+}
+
+/// Whether every tag a rule names is about building and shipping the project
+/// rather than what it is built on.
+pub(crate) fn is_tooling(rule: &Condition) -> bool {
+    fn walk(c: &Condition, tooling: &mut bool, other: &mut bool) {
+        match c {
+            Condition::All { items } | Condition::Any { items } => {
+                for i in items {
+                    walk(i, tooling, other);
+                }
+            }
+            Condition::Not { .. } => {}
+            Condition::Tag { tag } if described::TOOLING.iter().any(|p| tag.starts_with(p)) => {
+                *tooling = true
+            }
+            _ => *other = true,
+        }
+    }
+    let (mut tooling, mut other) = (false, false);
+    walk(rule, &mut tooling, &mut other);
+    tooling && !other
+}
+
+/// How many alternatives a rule accepts: one for a single fact, the sum for
+/// "any of", the narrowest for "all of".
+pub(crate) fn breadth(rule: &Condition) -> usize {
+    match rule {
+        Condition::Any { items } => items.iter().map(breadth).sum(),
+        Condition::All { items } => items.iter().map(breadth).min().unwrap_or(1),
+        _ => 1,
+    }
+}
+
+/// Whether every condition that held names a language only (`lang:python`):
+/// true of many projects, so a weaker reason than a framework or a file.
+pub(crate) fn names_only_languages(a: &ApplicabilityResult) -> bool {
+    fn walk(c: &Condition, langs: &mut bool, other: &mut bool) {
+        match c {
+            Condition::All { items } | Condition::Any { items } => {
+                for i in items {
+                    walk(i, langs, other);
+                }
+            }
+            Condition::Not { .. } => {}
+            Condition::Tag { tag } if tag.starts_with("lang:") => *langs = true,
+            _ => *other = true,
+        }
+    }
+    let (mut langs, mut other) = (false, false);
+    for m in &a.modules {
+        if let Some(node) = &m.applies {
+            walk(&node.condition, &mut langs, &mut other);
+        }
+    }
+    langs && !other
+}
+
+/// Whose rule it is, from strongest to weakest: the author's, Habi's pick,
+/// Habi's other rules, the skill's own words.
+fn whose_rank(r: &Recommendation) -> u8 {
+    match (r.basis, &r.pick) {
+        (Basis::Declared, _) => 0,
+        (_, Some(_)) => 1,
+        (Basis::CatalogHint, None) => 2,
+        (Basis::Described, None) => 3,
+    }
+}
+
+/// Marks where to start: walking the list in its order, skills that bring a
+/// technology the ones before did not, then, if places are left, the next best.
+/// Only what could be added, and never on a language its own words name alone.
+fn mark_top(list: &mut [Recommendation]) {
+    let eligible = |r: &Recommendation| {
+        r.group == Group::Relevant
+            && r.install_state == InstallState::NotInstalled
+            && r.unmanaged_copies.is_empty()
+            && r.item.installable
+            && !(r.basis == Basis::Described && names_only_languages(&r.applicability))
+    };
+    let mut held: Vec<String> = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+    let mut titles: Vec<String> = Vec::new();
+    let mut marked = 0;
+    for new_only in [true, false] {
+        for r in list.iter_mut() {
+            if marked == MAX_TOP {
+                return;
+            }
+            let (name, title) = (r.item.name.to_lowercase(), r.item.title.to_lowercase());
+            if r.top || !eligible(r) || names.contains(&name) || titles.contains(&title) {
+                continue;
+            }
+            let conditions = held_conditions(&r.applicability);
+            if new_only && conditions.iter().all(|c| held.contains(c)) {
+                continue;
+            }
+            held.extend(conditions);
+            names.push(name);
+            titles.push(title);
+            r.top = true;
+            marked += 1;
+        }
+    }
+}
+
 /// Everything needed to rank one item.
 pub struct Candidate<'a> {
     pub item: &'a LibraryItem,
@@ -574,17 +721,24 @@ pub fn recommend(
             let undeclared = item.metadata_status == MetadataStatus::Undeclared;
             // With no rule from the author or the catalog, what the skill says it is for.
             // A pick without a rule fits any codebase by Habi's word; its text is not read.
-            let described = (item.applies_when.is_none()
+            let read = if item.applies_when.is_none()
                 && c.hint.is_none()
                 && c.pick.is_none()
                 && undeclared
-                && item.kind != ItemKind::Instructions)
-                .then(|| described_rule(&item.name, &item.description))
-                .flatten();
+                && item.kind != ItemKind::Instructions
+            {
+                described::reading(&item.name, &item.description)
+            } else {
+                Reading::Silent
+            };
+            let described = match &read {
+                Reading::About(rule) => Some(rule),
+                Reading::Aside { .. } | Reading::Silent => None,
+            };
             let (applies_when, basis) = match (item.applies_when.as_ref(), c.hint) {
                 (Some(own), _) => (Some(own), Basis::Declared),
                 (None, Some(hint)) if undeclared => (Some(hint), Basis::CatalogHint),
-                (None, _) => match described.as_ref() {
+                (None, _) => match described {
                     Some(rule) => (Some(rule), Basis::Described),
                     None => (None, Basis::Declared),
                 },
@@ -606,8 +760,12 @@ pub fn recommend(
                 (Basis::Described, Applicability::Applies) => applicability,
                 (Basis::Described, _) => unmatched_by_description(
                     applicability,
-                    &described.as_ref().map(described::names).unwrap_or_default(),
+                    &described.map(described::names).unwrap_or_default(),
                 ),
+                (_, Applicability::Undeclared) => match &read {
+                    Reading::Aside { tags, narrower } => aside(applicability, tags, *narrower),
+                    Reading::About(_) | Reading::Silent => applicability,
+                },
                 _ => applicability,
             };
             let modules: Vec<String> = applicability
@@ -699,6 +857,7 @@ pub fn recommend(
                     gist: p.gist.clone(),
                     anywhere: p.applies_when.is_none(),
                 }),
+                top: false,
             }
         })
         .collect();
@@ -707,18 +866,41 @@ pub fn recommend(
         ReadinessState::Unknown => 1,
         ReadinessState::Missing => 2,
     };
-    // A rule read from the skill's own words is the weakest claim.
-    let basis_rank = |b: Basis| u8::from(b == Basis::Described);
+    // One technology before a few before many; a rule that holds on what the
+    // project is built on before how it is shipped; a language after a framework.
+    let focus = |r: &Recommendation| {
+        let rule = rule_of(&r.applicability);
+        let alternatives = rule.map_or(0, breadth);
+        (
+            match alternatives {
+                0 | 1 => 0,
+                2 | 3 => 1,
+                _ => 2,
+            },
+            rule.is_some_and(is_tooling),
+            names_only_languages(&r.applicability),
+            alternatives,
+        )
+    };
+    let reach = |r: &Recommendation| {
+        r.applicability
+            .modules
+            .iter()
+            .filter(|m| m.applicability == Applicability::Applies)
+            .count()
+    };
     out.sort_by(|a, b| {
         a.group
             .cmp(&b.group)
             .then(b.item.priority.cmp(&a.item.priority))
-            .then(basis_rank(a.basis).cmp(&basis_rank(b.basis)))
+            .then(whose_rank(a).cmp(&whose_rank(b)))
+            .then(focus(a).cmp(&focus(b)))
             .then(
                 b.applicability
                     .specificity
                     .cmp(&a.applicability.specificity),
             )
+            .then(reach(b).cmp(&reach(a)))
             .then(readiness_rank(a.readiness.state).cmp(&readiness_rank(b.readiness.state)))
             .then(b.item.installable.cmp(&a.item.installable))
             .then(
@@ -728,5 +910,8 @@ pub fn recommend(
                     .cmp(&b.item.title.to_lowercase()),
             )
     });
+    mark_top(&mut out);
+    // Where to start comes first in its group.
+    out.sort_by_key(|r| (r.group, !r.top));
     out
 }

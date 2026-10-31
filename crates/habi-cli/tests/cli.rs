@@ -301,6 +301,21 @@ fn subfolder_uses_the_project_root() {
 }
 
 #[test]
+fn the_list_of_fits_says_where_to_start() {
+    let env = Env::new();
+    let project = env.project("platform-monorepo");
+    env.connect_library();
+    let text = stdout(&env.ok(&project, &["recommend"]));
+    let start = text.find("Start with these").expect(&text);
+    let fits = text.find("Fits this project").expect(&text);
+    assert!(fits < start, "{text}");
+    // No line of what `inspect` prints stops at its label.
+    let text = stdout(&env.ok(&project, &["inspect"]));
+    assert!(text.lines().any(|l| l.starts_with("monorepo: ")), "{text}");
+    assert!(!text.lines().any(|l| l.trim() == "monorepo:"), "{text}");
+}
+
+#[test]
 fn read_only_commands_do_not_register_projects() {
     let env = Env::new();
     let project = env.project("billing-service");
