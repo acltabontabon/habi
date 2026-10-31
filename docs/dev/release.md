@@ -83,10 +83,11 @@ Anyone can check an artifact's provenance with
 ## The release page
 
 The text of a GitHub release is not written by hand. `scripts/release-notes.mjs` builds it from
-this version's section of `CHANGELOG.md` and the installers the build produced: a download table
-(macOS and Windows, with sizes), the first-launch and upgrade notes, *What's new*, and how to
-verify a download. It is text only. The pictures and the film belong to the README and the site,
-so someone looking for this version's installer or notes finds them at once.
+this version's section of `CHANGELOG.md` and the installers the build produced: the entry's opening
+line, a download table (macOS and Windows, with sizes), the upgrade and first-launch notes, *What's
+new*, and how to verify a download, folded. More than six fixes fold too, so a long list doesn't
+bury Security. It is text only. The pictures and the film belong to the README and the site, so
+someone looking for this version's installer or notes finds them at once.
 
 - **Preview it** before tagging: `node scripts/release-notes.mjs --sample vX.Y.Z` prints the page
   with typical file names. Pasting that into a draft release shows exactly what GitHub makes of

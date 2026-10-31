@@ -40,6 +40,30 @@ test("only a release with a predecessor links the comparison", () => {
   assert.match(first, /The first release of Habi/);
 });
 
+test("the changelog's opening line leads the page, in place of a line under What's new", () => {
+  const notes = `The one line.\n\n${input.notes}`;
+  const body = buildReleaseNotes({ ...input, notes });
+  assert.ok(body.startsWith("**The one line.**\n\n## Download"));
+  assert.ok(body.includes("## What's new in 0.2.0\n\n### Added"));
+});
+
+test("a long list of fixes folds away, and a short one or another section stays open", () => {
+  const bullets = (n) => Array.from({ length: n }, (_, i) => `- **Fix ${i}.** Done.`).join("\n");
+  const notes = (n) => `### Added\n\n${bullets(9)}\n\n### Fixed\n\n${bullets(n)}\n\n### Security\n\n- **Safe.** Yes.`;
+  const long = buildReleaseNotes({ ...input, notes: notes(7) });
+  assert.match(long, /### Fixed\n\n<details>\n<summary>Show all 7 fixes<\/summary>\n\n- \*\*Fix 0/);
+  assert.match(long, /- \*\*Fix 6\.\*\* Done\.\n\n<\/details>\n\n### Security\n\n- \*\*Safe/);
+  assert.equal(long.match(/<details>/g).length, 2, "the fixes and the verify section, not Added");
+  assert.doesNotMatch(buildReleaseNotes({ ...input, notes: notes(6) }), /Show all/);
+  const last = buildReleaseNotes({ ...input, notes: `### Fixed\n\n${bullets(7)}` });
+  assert.match(last, /- \*\*Fix 6\.\*\* Done\.\n\n<\/details>\n\n---/);
+});
+
+test("how to verify a download is folded, with its command intact", () => {
+  const body = buildReleaseNotes(input);
+  assert.match(body, /<summary><strong>Verify your download<\/strong><\/summary>\n\nEvery file[^\n]*\n\n```sh\ngh attestation verify <file> --repo acltabontabon\/habi\n```\n/);
+});
+
 test("a missing installer is left out instead of leaving a broken row", () => {
   const { "Habi_0.2.0_x64_en-US.msi": _msi, ...files } = input.files;
   const body = buildReleaseNotes({ ...input, files });

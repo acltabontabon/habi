@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Writes the text of a GitHub release: a table of downloads, the changelog entry, and how to verify
- * a download. The release workflow runs it, so every release page has the same layout; the words
- * that change are the changelog's.
+ * Writes the text of a GitHub release: the release's one line, a table of downloads, the changelog
+ * entry, and how to verify a download. The release workflow runs it, so every release page has the
+ * same layout; the words that change are the changelog's.
  *
  * Usage: node scripts/release-notes.mjs <tag> <folder> [owner/repo] > body.md
  *        node scripts/release-notes.mjs --sample [tag]   a preview with typical file names
@@ -23,10 +23,16 @@ export function size(bytes) {
 
 /** The installers people choose between, in the order they are listed. */
 const INSTALLERS = [
-  { match: /\.dmg$/, system: "macOS 11 or later, Apple Silicon and Intel" },
-  { match: /-setup\.exe$/, system: "Windows, 64-bit" },
-  { match: /\.msi$/, system: "Windows, 64-bit, MSI for managed installs" },
+  { match: /\.dmg$/, system: "**macOS** 11 or later, Apple Silicon and Intel" },
+  { match: /-setup\.exe$/, system: "**Windows** 64-bit" },
+  { match: /\.msi$/, system: "**Windows** 64-bit, MSI for managed installs" },
 ];
+
+/** More fixes than this fold away, so a long list doesn't bury what follows it. */
+const FIXES_SHOWN = 6;
+
+const ABOUT = "a local desktop app for the skills and instructions you give AI coding agents";
+const PROMISE = "No account, no telemetry, no model calls. Your repository is inspected without executing its code.";
 
 /**
  * The changelog is wrapped by hand for the editor; a release page turns every line break into a
@@ -45,6 +51,22 @@ export function reflow(markdown) {
   return out.join("\n");
 }
 
+/** Splits a changelog entry into its opening line, which leads the page, and its sections. */
+export function splitEntry(markdown) {
+  const start = markdown.search(/^### /m);
+  if (start < 0) return { opening: "", sections: markdown };
+  return { opening: markdown.slice(0, start).trim().replace(/\s*\n\s*/g, " "), sections: markdown.slice(start) };
+}
+
+/** Folds a long Fixed section. The other sections stay open: they are what a reader came for. */
+export function foldFixes(markdown) {
+  return markdown.replace(/^### Fixed\n+([\s\S]*?)(?=\n+### |\s*$(?![\s\S]))/m, (section, list) => {
+    const count = list.match(/^- /gm)?.length ?? 0;
+    if (count <= FIXES_SHOWN) return section;
+    return `### Fixed\n\n<details>\n<summary>Show all ${count} fixes</summary>\n\n${list.trim()}\n\n</details>`;
+  });
+}
+
 /**
  * @param {{ version: string, repo: string, notes: string, files: Record<string, number>, previous?: string }} input
  *   `files` maps each installer's name to its size in bytes.
@@ -59,9 +81,10 @@ export function buildReleaseNotes({ version, repo, notes, files, previous }) {
     return name ? [`| ${system} | [\`${name}\`](${download(name)}) | ${size(files[name])} |`] : [];
   });
 
-  const lede = previous
-    ? "Habi is a local desktop app for the skills and instructions you give AI coding agents."
-    : "The first release of Habi, a local desktop app for the skills and instructions you give AI coding agents.";
+  const { opening, sections } = splitEntry(notes);
+  const lead = previous
+    ? [opening && `**${opening}**`]
+    : [`**The first release of Habi, ${ABOUT}.**`, PROMISE];
 
   const checksums = names.some((n) => /^SHA256SUMS/.test(n));
   const more = names.some((n) => !INSTALLERS.some((i) => i.match.test(n)));
@@ -71,23 +94,26 @@ export function buildReleaseNotes({ version, repo, notes, files, previous }) {
     "a build provenance attestation that ties it to this repository's release workflow:",
   ].join(" ");
 
-  return `${lede} No account, no telemetry, no model calls. Your repository is inspected without executing its code.
-
-## Download
+  return `${lead.filter(Boolean).map((p) => `${p}\n\n`).join("")}## Download
 
 | System | Installer | Size |
-|---|---|---|
+|:---|:---|---:|
 ${rows.join("\n")}
-
-**First launch:** the installers are not signed by Apple or Microsoft, so your system asks you to confirm once ([how](${SITE}docs/getting-started/#installing)). Updates after that are signed with Habi's own key.
 ${previous ? `
-**Upgrading from ${previous}?** Back up your original drafts and contributions before installing ([how](https://github.com/${repo}/blob/${tag}/docs/guide/recovery.md#back-up-and-restore-all-local-data)).
+> [!IMPORTANT]
+> **Upgrading from ${previous}?** Back up your original drafts and contributions before installing ([how](https://github.com/${repo}/blob/${tag}/docs/guide/recovery.md#back-up-and-restore-all-local-data)).
 ` : ""}
+> [!NOTE]
+> **First launch:** the installers are not signed by Apple or Microsoft, so your system asks you to confirm once ([how](${SITE}docs/getting-started/#installing)). Updates after that are signed with Habi's own key.
+
 ## What's new in ${version}
 
-${reflow(notes)}
+${foldFixes(reflow(sections))}
 
-## Verify your download
+---
+
+<details>
+<summary><strong>Verify your download</strong></summary>
 
 ${verify}
 
@@ -95,9 +121,9 @@ ${verify}
 gh attestation verify <file> --repo ${repo}
 \`\`\`
 ${more ? "\nThe other attachments are the checksums, and the update packages that a copy of Habi already running downloads when you press Update.\n" : ""}
----
+</details>
 
-${[
+${previous ? `**Habi** is ${ABOUT}. ${PROMISE}\n\n` : ""}${[
     `[Documentation](${SITE}docs/)`,
     `[Security model](${SITE}docs/security-model/)`,
     `[Changelog](https://github.com/${repo}/blob/${tag}/CHANGELOG.md)`,
