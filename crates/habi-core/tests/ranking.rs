@@ -181,6 +181,32 @@ fn modules_that_share_a_name_are_told_apart() {
 }
 
 #[test]
+fn folders_that_share_a_name_are_told_apart_by_their_path() {
+    let fixture = app_fixture();
+    let repo = tempfile::tempdir().unwrap();
+    for at in ["a/web", "b/web"] {
+        write(
+            repo.path(),
+            &format!("{at}/go.mod"),
+            "module example.invalid/web\n",
+        );
+    }
+    let overview = overview(&fixture.habi, repo.path());
+    let names: Vec<&str> = overview
+        .inspection
+        .modules
+        .iter()
+        .map(|m| m.name.as_str())
+        .collect();
+    assert_eq!(
+        names.iter().filter(|n| **n == "web").count(),
+        1,
+        "{names:?}"
+    );
+    assert!(names.contains(&"b/web"), "{names:?}");
+}
+
+#[test]
 fn a_reason_is_true_of_the_modules_it_is_given_for() {
     let fixture = app_fixture();
     let repo = app_repo();
