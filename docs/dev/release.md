@@ -83,20 +83,15 @@ Anyone can check an artifact's provenance with
 ## The release page
 
 The text of a GitHub release is not written by hand. `scripts/release-notes.mjs` builds it from
-this version's section of `CHANGELOG.md` and the installers the build produced: a banner, the
-film, a download table (macOS and Windows, with sizes), *What's new*, a look inside the app,
-and the first-launch and verification notes. Its pictures are read from `docs/media/` at the
-tag, so a published page never changes under a release.
+this version's section of `CHANGELOG.md` and the installers the build produced: a download table
+(macOS and Windows, with sizes), the first-launch and upgrade notes, *What's new*, and how to
+verify a download. It is text only. The pictures and the film belong to the README and the site,
+so someone looking for this version's installer or notes finds them at once.
 
-- **Preview it** before tagging: `node scripts/release-notes.mjs --sample vX.Y.Z --ref main`
-  prints the page with typical file names. Pasting that into a draft release shows exactly what
-  GitHub makes of it. Release pages turn every line break into a hard one, which is why the
-  generator joins the changelog's wrapped lines.
-- **The banner** (`docs/media/release-banner.jpg`) is rendered from the app's own screenshots
-  by `node scripts/release-banner.mjs` (headless Chrome; `pnpm install` in `website/` first). It
-  carries no version, so retake it only when the app's look changes.
-- **The film** shown on the page is `docs/media/demo.gif`; GitHub does not play an attached
-  MP4 inline, so the GIF links to the full film on the site.
+- **Preview it** before tagging: `node scripts/release-notes.mjs --sample vX.Y.Z` prints the page
+  with typical file names. Pasting that into a draft release shows exactly what GitHub makes of
+  it. Release pages turn every line break into a hard one, which is why the generator joins the
+  changelog's wrapped lines.
 - **The site's Download buttons** (`website/src/scripts/download.ts`) ask GitHub for the latest
   published release and link the installer for the visitor's system, so they start working when
   a release is published, with no site change.
