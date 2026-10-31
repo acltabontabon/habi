@@ -95,24 +95,16 @@ limitations are in the [security model](docs/project/security-model.md#known-lim
 </tr>
 </table>
 
-## Documentation
+<br>
 
-Start with [Getting started](docs/guide/getting-started.md), then browse
-[all the docs](https://acltabontabon.com/habi/docs/) on the site, or the same pages in
-[`docs/`](docs/README.md).
+<div align="center">
 
-## Contributing
+<a href="docs/guide/getting-started.md"><b>Getting started</b></a> &nbsp;·&nbsp; <a href="docs/README.md">Documentation</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contributing</a> &nbsp;·&nbsp; <a href="SUPPORT.md">Support</a> &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
 
-Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md);
-questions go to [SUPPORT.md](SUPPORT.md). Report security problems privately as described in
-[SECURITY.md](SECURITY.md).
+<a href="https://ko-fi.com/aclt_attic"><img alt="Buy me a coffee" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-d9913f?style=flat-square&labelColor=1f1c19"></a>
 
-Habi is maintained by one developer, Alvin Cris Tabontabon, in their own time. Issues and pull
-requests are read, but responses are best effort, and security reports come first.
+<sub>Maintained by Alvin Cris Tabontabon in their own time. Issues and pull requests are read, responses are best effort, and security reports come first.</sub>
 
-If Habi saves you time, [buy me a coffee](https://ko-fi.com/aclt_attic).
+<sub><a href="LICENSE">Apache License 2.0</a>. Bundles third-party software and fonts under their own licenses; see <a href="THIRD_PARTY_NOTICES.md">the notices</a>.</sub>
 
-## License
-
-[Apache License 2.0](LICENSE). Habi bundles third-party software and fonts under their own
-licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+</div>
