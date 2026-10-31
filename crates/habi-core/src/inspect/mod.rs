@@ -1075,7 +1075,7 @@ fn inspect_within(
         }
         let folder = m.id.rsplit('/').next().unwrap_or(&m.id);
         let longer = format!("{}/{folder}", m.name);
-        m.name = if names_seen.contains(&longer) {
+        m.name = if folder == m.name || names_seen.contains(&longer) {
             m.id.clone()
         } else {
             longer

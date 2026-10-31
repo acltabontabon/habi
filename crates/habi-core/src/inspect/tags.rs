@@ -848,7 +848,21 @@ pub const TAG_RULES: &[TagRule] = &[
         basis: TagBasis::Manifest,
         dependencies: &[
             "@azure/*",
-            "azure-*",
+            // Not all of `azure-*`: `azure-pipelines-task-lib` is Azure DevOps.
+            "azure-ai-*",
+            "azure-core",
+            "azure-cosmos",
+            "azure-data-*",
+            "azure-eventgrid",
+            "azure-eventhub*",
+            "azure-functions",
+            "azure-identity",
+            "azure-keyvault*",
+            "azure-mgmt-*",
+            "azure-monitor-*",
+            "azure-search-*",
+            "azure-servicebus",
+            "azure-storage-*",
             "azure_*",
             "com.azure:*",
             "com.microsoft.azure:*",
@@ -896,7 +910,18 @@ pub const TAG_RULES: &[TagRule] = &[
         tag: "cloud:vercel",
         label: "Vercel",
         basis: TagBasis::Both,
-        dependencies: &["vercel", "@vercel/*"],
+        // Not all of `@vercel/*`: `@vercel/ncc` bundles GitHub Actions anywhere.
+        dependencies: &[
+            "vercel",
+            "@vercel/analytics",
+            "@vercel/blob",
+            "@vercel/edge",
+            "@vercel/functions",
+            "@vercel/kv",
+            "@vercel/node",
+            "@vercel/postgres",
+            "@vercel/speed-insights",
+        ],
         files: &["cloud:vercel-config"],
     },
     TagRule {
@@ -1289,6 +1314,40 @@ mod tests {
         assert!(!incidental(&of(1), 41, 40, true));
         // A manifest does not make build scripts the project's language.
         assert!(incidental(&of(0), 41, 40, true));
+    }
+
+    #[test]
+    fn product_dependencies_mean_the_product() {
+        let tagged = |tag: &str, dependency: &str| {
+            rule(tag).is_some_and(|r| r.dependencies.iter().any(|p| wildcard_match(p, dependency)))
+        };
+        assert!(tagged("cloud:vercel", "@vercel/analytics"));
+        assert!(!tagged("cloud:vercel", "@vercel/ncc"));
+        assert!(tagged("cloud:azure", "azure-storage-blob"));
+        assert!(tagged("cloud:azure", "azure_core"));
+        assert!(!tagged("cloud:azure", "azure-pipelines-task-lib"));
+        assert!(!tagged("cloud:azure", "azure-devops-node-api"));
+    }
+
+    /// The window keeps its own names for tags, so it never shows a raw one.
+    #[test]
+    fn the_desktop_app_has_a_name_for_every_tag() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../apps/desktop/src/lib/tags.ts"
+        );
+        let labels = std::fs::read_to_string(path).unwrap();
+        for tag in TAG_RULES
+            .iter()
+            .map(|r| r.tag)
+            .chain(LANGUAGE_TAGS.iter().map(|(t, _)| *t))
+            .filter(|t| !t.starts_with("agents:"))
+        {
+            assert!(
+                labels.contains(&format!("\"{tag}\":")),
+                "{tag} has no name in tags.ts"
+            );
+        }
     }
 
     #[test]
