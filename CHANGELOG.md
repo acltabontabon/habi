@@ -9,88 +9,86 @@ All notable changes to Habi are listed here. The format follows
 
 ### Added
 
-- **Infrastructure, data and script projects are seen.** Habi now recognizes Terraform, Terragrunt,
-  Helm, Kubernetes, Kustomize, Ansible, Pulumi, Databricks, Delta Lake, MLflow, Jupyter, GraalVM,
-  Spring Security, Spring Batch, Spring Cloud and plain Spring, plus Scala, shell and HCL code, and
-  matches skills that name them. The catalog suggests skills for Helm, Kubernetes, shell scripts and GraalVM.
-- **Test projects are seen.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito, REST
-  Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact, WireMock and
-  Postman collections are recognized from manifests or their own files.
-- **OpenAPI tools count.** `openapi-generator`, `@nestjs/swagger` and similar tools establish that a project has
-  an OpenAPI specification, as a specification file already did.
+- **More kinds of project are recognized.** Infrastructure (Terraform, Terragrunt, Helm, Kubernetes,
+  Kustomize, Ansible, Pulumi, HCL), data and notebooks (Databricks, Delta Lake, MLflow, Jupyter), Spring
+  Security, Batch, Cloud and plain Spring, GraalVM, Scala and shell scripts. Skills that name them match,
+  and the catalog suggests skills for Helm, Kubernetes, shell scripts and GraalVM.
+- **More test tools are recognized.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito,
+  REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact,
+  WireMock and Postman collections, from manifests or their own files.
+- **OpenAPI tools count.** `openapi-generator`, `@nestjs/swagger` and similar show that a project has an
+  OpenAPI specification, as a specification file already did.
 
 ### Changed
 
-- **Home is a front page.** Once you have projects, the one that needs you most leads: what it is missing, why,
-  and one button to review it. Other projects with skills waiting queue down the side.
+- **Home is a front page.** Once you have projects, the one that needs you most leads, showing what it is
+  missing, why, and one button to review it. Other projects with skills waiting queue down the side.
 - **Install everything your team requires at once.** The *Team requirements* group has **Install all…**,
-  through the usual review.
-- **How a skill reaches your agent, said plainly.** Each skill's page says where its files go and when the
-  agent reads them.
-- **The Skill Studio says where a skill would be suggested as you write it.** One line under the bar names the
-  projects, and **Use** is now **Add to a project…**. The purpose line asks for a trigger, and broken links
-  always count in *to improve*.
-- **One kind of thing: skills.** "Workflow" is gone from filters and labels. A skill that declares steps says
+  which still goes through the usual review.
+- **Clearer skill delivery.** Each skill's page says where its files go and when the agent reads them.
+- **The Skill Studio shows where a skill will be suggested.** A line under the bar names the projects.
+  **Use** is now **Add to a project…**, the purpose line asks for a trigger, and broken links always count
+  toward *to improve*.
+- **Skills are the only kind of thing.** "Workflow" is gone from filters and labels. A skill with steps says
   *has steps* and keeps its **Steps** panel. `kind: workflow` still loads.
-- **The install review lists the agents on this machine.** The others are behind **Other agents**.
-- **A tidier library header.** **Check for updates** sits beside **Disconnect** with when it last
-  looked, not on a row of its own, and only one remains now that the Source panel no longer has a
-  second. The row below the header appears only when there is an update to take or a change to read.
+- **The install review lists the agents on this machine.** Others are under **Other agents**.
+- **A tidier library header.** There is now one **Check for updates** button, beside **Disconnect**, showing
+  when the library was last checked. The row below the header appears only when there is an update to
+  take or a change to read.
+- **Use counts show before a library fits.** A skill already in a project says whether it gets used, even
+  when nothing from your libraries fits yet.
 - **`habi source add` connects a community library unless you say otherwise.** An unknown repository can no
-  longer require skills just by being added. Pass `--team` for your team's own library; update any script
-  that adds one without it. Libraries already connected keep their role, and `--community` still works.
-- **One stray script no longer suggests a language's skills.** A language with no manifest, beside
-  more real code in another one, and living in `scripts/` or similar, is noted as incidental. Rules a
-  skill's author wrote still see it; Habi's own suggestions do not.
-- **Inspection reads further.** A tree of data past the 50,000 file limit no longer hides the project's
-  manifests, tool caches such as `.angular` and `.databricks` are skipped, and Helm templates no longer use
-  up the content checks, of which there are now 5,000.
+  longer require skills just by being added. Pass `--team` for your team's own library, and update any
+  script that adds one without it. Libraries already connected keep their role, and `--community` still works.
+- **Inspection reads further.** Data trees past the 50,000-file limit no longer hide the project's manifests,
+  tool caches such as `.angular` and `.databricks` are skipped, and Helm templates no longer use up the
+  5,000 content checks.
 
 ### Security
 
-- **Hooks and auto-run config are detected.** Hooks in a skill's frontmatter, `hooks.json`, plugin definitions,
-  Git hooks, agent settings with hooks and package install scripts now count as a caution. `allowed-tools` is noticed,
-  and unbounded shell is a caution. Commands in JSON, YAML and TOML are read like scripts, and every skill that
+- **Hooks and auto-run config count as cautions.** Hooks in a skill's frontmatter, `hooks.json`, plugin
+  definitions, Git hooks, agent settings and package install scripts are flagged, and so is unbounded shell.
+  `allowed-tools` is noticed. Commands in JSON, YAML and TOML are read like scripts, and every skill that
   ships code says so.
-- **Cautions are a gate, not a footnote.** An install or update preview now shows where each skill comes from
-  and what its scan found, and shows a new script's contents in the CLI. Anything flagged as a caution must be accepted
-  before it is applied: `--yes` alone refuses it (`--accept-cautions`), and the desktop review asks for a tick. The
-  check is in the core, so no front end can skip it.
-- **Updates say what is new.** A caution is only asked about again if the installed copy did not have it, so a hook slipped
-  into an update stands out instead of getting the same single click.
+- **Cautions must be accepted before anything is installed.** The install or update preview shows where each
+  skill comes from and what its scan found, and shows a new script's contents in the CLI. `--yes` alone
+  refuses a caution; pass `--accept-cautions` to accept it. The desktop review asks for a tick. The check
+  lives in the core, so no front end can skip it.
+- **Updates raise only new cautions.** A caution is asked about again only if the installed copy did not
+  have it, so a hook added in an update stands out instead of getting the same single click.
 - **A malformed `SKILL.md` is not installed.** Invalid frontmatter, or a missing name or description, is refused.
-- **Duplicates are noticed.** The same content under another name, a folder installing under a different name, and adding to a
-  folder Habi did not install are all said in the preview.
-- **Tampering is noticed.** Files dropped into an installed skill, a changed executable bit, and a lock file that disagrees
-  with its library at the same revision all show in `habi status`.
-- **Provenance and curation are recorded.** Each install records who stands behind a skill in the lock file: your team, you, a
-  publisher whose ownership the catalog verified, a catalog listing, or nobody but whoever connected it, along with whether it is a
-  Habi pick, whether Habi inspected it, its stated licence, and what its author says it is based on, named as a claim.
-  Stars and popularity play no part in any of it.
-- **More secrets are left out, and what is kept is redacted.** Terraform state and plans,
-  `.databrickscfg`, `.terraformrc`, `.pypirc`, Vault tokens, `secrets.yaml` and similar files are never
-  listed or read, and credential stores such as `.aws` and `.kube` are skipped. A token in a
-  dependency URL, or in a README's first paragraph, is removed before it reaches anything Habi keeps or
-  shows. A Gradle dependency given as a URL could put its password in the version; it is no longer read.
+- **Duplicates and tampering are reported.** The preview says when the same content sits under another name,
+  when a folder installs under a different name, and when a folder Habi did not install is added to. `habi status`
+  shows files dropped into an installed skill, a changed executable bit, and a lock file that disagrees with
+  its library at the same revision.
+- **Provenance and curation are recorded.** Each install's lock file records who stands behind the skill:
+  your team, you, a publisher whose ownership the catalog verified, a catalog listing, or only whoever
+  connected it. It also records whether Habi picked it, whether Habi inspected it, its stated licence, and
+  what its author says it is based on, named as a claim. Stars and popularity play no part.
+- **More secrets are left out, and what is kept is redacted.** Terraform state and plans, `.databrickscfg`,
+  `.terraformrc`, `.pypirc`, Vault tokens, `secrets.yaml` and similar files are never listed or read, and
+  credential stores such as `.aws` and `.kube` are skipped. A token in a dependency URL, or in a README's
+  first paragraph, is removed before anything Habi keeps or shows. A Gradle dependency given as a URL could
+  put its password in the version, so it is no longer read.
 
 ### Fixed
 
-- **Gradle builds in a subfolder.** `backend/` beside `frontend/` now uses its own version catalog, settings
-  and conventions, and a nested `buildSrc` is no longer a module.
-- **Gradle and Maven details.** `kotlin("test")` and `projects.x` no longer make coverage partial, `apply false`
-  no longer tags the project, and imported BOMs count on both, while managed versions alone do not.
-- **Sample projects in tests are not modules.** A `pom.xml` in `src/test/resources`, `testdata` or `fixtures` no
-  longer adds its dependencies to the project.
+- **Gradle builds in a subfolder.** `backend/` beside `frontend/` uses its own version catalog, settings
+  and conventions, and a nested `buildSrc` is no longer treated as a module.
+- **Gradle and Maven details.** `kotlin("test")` and `projects.x` no longer make coverage partial, and
+  `apply false` no longer tags the project. Imported BOMs count on both, while managed versions alone do not.
+- **Sample projects in tests are not modules.** A `pom.xml` in `src/test/resources`, `testdata` or `fixtures`
+  no longer adds its dependencies to the project.
 - **`requirements/` folders and `dev-requirements.txt` are read.**
-
-- **Only your team can require a skill.** A skill a community library marks `required` no longer
-  appears under *Team requirements* in All skills or `habi recommend`, or as required on the
-  library's page. It is listed by how well it fits, like any other skill.
-- **Skills in an ignored `.claude` folder are seen.** All skills lists them and says whether they get
-  used, as it does for any other skill. Only `.claude/skills` is looked at: everything else your
-  repository ignores stays unread, and `.habiignore`, `.ignore` and a project's exclusions still hold.
-- **Use counts before a library fits.** A skill already in a project says whether it gets used even
-  when nothing from your libraries fits yet.
+- **One stray script no longer suggests a language's skills.** A script in `scripts/` or similar, beside more
+  real code in another language and with no manifest of its own, is treated as incidental. A skill author's
+  rules still see it; Habi's own suggestions do not.
+- **Only your team can require a skill.** A skill a community library marks `required` no longer appears
+  under *Team requirements* in All skills or `habi recommend`, or as required on the library's page. It is
+  listed by how well it fits, like any other skill.
+- **Skills in an ignored `.claude` folder are seen.** All skills lists them and says whether they get used,
+  as for any other skill. Only `.claude/skills` is read. Everything else your repository ignores stays
+  unread, and `.habiignore`, `.ignore` and a project's exclusions still apply.
 
 ## 0.5.0 - 2026-10-30
 
