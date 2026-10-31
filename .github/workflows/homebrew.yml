@@ -67,6 +67,8 @@ jobs:
           git -C tap-staging add -A
           git -C tap-staging -c user.name=ci -c user.email=ci@example.invalid commit -q -m check
           brew tap local/habi-check "$PWD/tap-staging"
+          # Homebrew refuses to load a cask from a tap nobody has trusted; this one was made just above.
+          brew trust local/habi-check
           brew style local/habi-check/habi
           brew audit --cask local/habi-check/habi
           brew untap local/habi-check
