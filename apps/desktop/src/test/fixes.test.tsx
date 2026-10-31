@@ -275,18 +275,18 @@ describe("checks", () => {
   });
 });
 
-describe("tooltips", () => {
-  function Tick({ tip }: { tip?: string }) {
-    return (
-      <>
-        <button type="button" title={tip}>
-          Tick
-        </button>
-        <Tooltips />
-      </>
-    );
-  }
+function Tick({ tip }: { tip?: string }) {
+  return (
+    <>
+      <button type="button" title={tip}>
+        Tick
+      </button>
+      <Tooltips />
+    </>
+  );
+}
 
+describe("tooltips", () => {
   it("follows a title its owner changes or drops, and says nothing stale", async () => {
     const view = render(<Tick tip="At least one agent" />);
     const button = screen.getByRole("button", { name: "Tick" });

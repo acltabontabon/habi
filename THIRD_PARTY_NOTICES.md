@@ -629,8 +629,8 @@ Notes:
 | @radix-ui/react-use-size | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/react-visually-hidden | 1.2.13 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
 | @radix-ui/rect | 1.1.3 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @tanstack/query-core | 5.104.5 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
-| @tanstack/react-query | 5.104.5 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
+| @tanstack/query-core | 5.105.0 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
+| @tanstack/react-query | 5.105.0 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
 | @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri.git | [T92](#t92) [T233](#t233) [T286](#t286) |
 | @types/debug | 4.1.13 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
 | @types/estree | 1.0.9 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |

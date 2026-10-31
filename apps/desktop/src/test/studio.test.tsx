@@ -128,6 +128,18 @@ const billing = {
 const formOf = (calls: unknown[][]) =>
   (calls[calls.length - 1]?.[0] as { form: Record<string, unknown> } | undefined)?.form;
 
+function Leave() {
+  const { navigate, route } = useNav();
+  return (
+    <>
+      <p>on {route.name}</p>
+      <button type="button" onClick={() => navigate({ name: "settings" })}>
+        Go to settings
+      </button>
+    </>
+  );
+}
+
 describe("the Skill Studio", () => {
   it("lands inside the knowledge, with one action and nothing to fill in first", async () => {
     handlers.get_skill = () => skill();
@@ -375,17 +387,6 @@ describe("the Skill Studio", () => {
     const saved = vi.fn(() => ({ ...skill(), documentDigest: "doc2" }));
     handlers.save_skill_document = saved;
     handlers.save_skill_applicability = () => ({ ...skill(), metadataDigest: "m2" });
-    function Leave() {
-      const { navigate, route } = useNav();
-      return (
-        <>
-          <p>on {route.name}</p>
-          <button type="button" onClick={() => navigate({ name: "settings" })}>
-            Go to settings
-          </button>
-        </>
-      );
-    }
     wrap(
       <>
         <Leave />
@@ -662,6 +663,21 @@ describe("the Skill Studio", () => {
   });
 });
 
+function Around() {
+  const { navigate, route } = useNav();
+  const skills = useSkills();
+  useSkillsOverview();
+  return (
+    <>
+      <p>listed: {skills.data?.map((s) => s.title).join(", ")}</p>
+      {route.name === "skills" ? <SkillStudio id="k" /> : <p>on settings</p>}
+      <button type="button" onClick={() => navigate({ name: "settings" })}>
+        Go to settings
+      </button>
+    </>
+  );
+}
+
 describe("the Skill Studio, saving", () => {
   /** A skill whose rules are kept as written, so YAML is one click away. */
   const asWritten = (): LocalSkill => ({
@@ -805,20 +821,6 @@ describe("the Skill Studio, saving", () => {
       summary: { ...named.summary, title: String((args.form as { title: string }).title) },
       metadataDigest: "m2",
     });
-    function Around() {
-      const { navigate, route } = useNav();
-      const skills = useSkills();
-      useSkillsOverview();
-      return (
-        <>
-          <p>listed: {skills.data?.map((s) => s.title).join(", ")}</p>
-          {route.name === "skills" ? <SkillStudio id="k" /> : <p>on settings</p>}
-          <button type="button" onClick={() => navigate({ name: "settings" })}>
-            Go to settings
-          </button>
-        </>
-      );
-    }
     wrap(<Around />);
     await screen.findByLabelText("Skill title");
     await waitFor(() => expect(count("skills_overview")).toBeGreaterThan(0));
