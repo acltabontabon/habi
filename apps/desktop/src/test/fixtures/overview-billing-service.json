@@ -4,14 +4,14 @@
     "name": "billing-service",
     "path": "~/work/billing-service",
     "exists": true,
-    "lastOpenedAt": "2026-10-31T10:54:29Z",
+    "lastOpenedAt": "2026-10-31T16:43:40Z",
     "exclusions": [],
     "summary": {
       "fits": 5,
       "described": 0,
       "needsInformation": 0,
       "sources": [
-        "75ed7ed9fc4a"
+        "58d98d15525b"
       ],
       "installed": 0,
       "languages": [
@@ -19,7 +19,7 @@
       ],
       "tally": [
         {
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "fits": 5,
           "described": 0,
           "installed": []
@@ -31,7 +31,7 @@
         "mattpocock",
         "superpowers"
       ],
-      "at": "2026-10-31T10:54:29Z"
+      "at": "2026-10-31T16:43:40Z"
     }
   },
   "inspection": {
@@ -40,7 +40,7 @@
     "description": "Invoices and payments. Spring Boot 3, PostgreSQL, Liquibase migrations.",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "main",
+      "branch": "feat/scan-trust-and-screens",
       "repositoryRoot": "~/Workspace/habi",
       "isMonorepo": false,
       "workspaceSignals": []
@@ -662,14 +662,14 @@
       "elapsedMs": 3
     },
     "fingerprint": "sha256:5b6b38602355f616c9d3106d3b17e61e898d5591848c94270aa947b4d0b5657b",
-    "inspectedAt": "2026-10-31T10:54:29Z"
+    "inspectedAt": "2026-10-31T16:43:40Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "75ed7ed9fc4a/java-service-conventions",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/java-service-conventions",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -679,7 +679,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -833,8 +833,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/service-observability",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/service-observability",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -844,7 +844,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -953,8 +953,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/liquibase-migration-review",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/liquibase-migration-review",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -964,7 +964,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1199,8 +1199,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/jpa-entity-review",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/jpa-entity-review",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -1210,7 +1210,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1330,8 +1330,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/github-pr-summary",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/github-pr-summary",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -1341,7 +1341,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1584,8 +1584,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/incident-notes",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/incident-notes",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -1595,7 +1595,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -1676,8 +1676,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/api-contract-review",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/api-contract-review",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -1687,7 +1687,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1799,8 +1799,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/react-component-review",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/react-component-review",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1810,7 +1810,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1906,8 +1906,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/jooq-query-review",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/jooq-query-review",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1917,7 +1917,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2021,8 +2021,8 @@
     },
     {
       "item": {
-        "key": "75ed7ed9fc4a/frontend-test-practices",
-        "sourceId": "75ed7ed9fc4a",
+        "key": "58d98d15525b/frontend-test-practices",
+        "sourceId": "58d98d15525b",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -2032,7 +2032,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
+        "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2222,7 +2222,7 @@
   ],
   "sources": [
     {
-      "id": "75ed7ed9fc4a",
+      "id": "58d98d15525b",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -2232,11 +2232,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-31T10:54:28Z",
-      "snapshot": "d9a1f8132edc69f7c5107fb62a0ffa7441a384bd",
-      "snapshotAt": "2026-10-31T10:54:28Z",
-      "commitSummary": "Example library — Example, 2026-10-31",
-      "lastAttemptAt": "2026-10-31T10:54:28Z",
+      "createdAt": "2026-10-31T16:43:39Z",
+      "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
+      "snapshotAt": "2026-10-31T16:43:39Z",
+      "commitSummary": "Example library — Example, 2026-11-01",
+      "lastAttemptAt": "2026-10-31T16:43:39Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",
@@ -2252,7 +2252,7 @@
   "kit": {
     "suggestions": [
       {
-        "key": "75ed7ed9fc4a/service-observability",
+        "key": "58d98d15525b/service-observability",
         "group": "required",
         "title": "Service observability",
         "name": "service-observability",
@@ -2260,13 +2260,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "itemId": "service-observability"
         },
         "installed": false,
@@ -2314,7 +2314,7 @@
         "chosen": true
       },
       {
-        "key": "75ed7ed9fc4a/java-service-conventions",
+        "key": "58d98d15525b/java-service-conventions",
         "group": "required",
         "title": "Java service conventions",
         "name": "java-service-conventions",
@@ -2322,13 +2322,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "itemId": "java-service-conventions"
         },
         "installed": false,
@@ -2421,7 +2421,7 @@
         "chosen": true
       },
       {
-        "key": "75ed7ed9fc4a/liquibase-migration-review",
+        "key": "58d98d15525b/liquibase-migration-review",
         "group": "stack",
         "title": "Liquibase migration review",
         "name": "liquibase-migration-review",
@@ -2429,13 +2429,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "itemId": "liquibase-migration-review"
         },
         "installed": false,
@@ -2581,7 +2581,7 @@
         "chosen": true
       },
       {
-        "key": "75ed7ed9fc4a/jpa-entity-review",
+        "key": "58d98d15525b/jpa-entity-review",
         "group": "stack",
         "title": "JPA entity review",
         "name": "jpa-entity-review",
@@ -2589,13 +2589,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "itemId": "jpa-entity-review"
         },
         "installed": false,
@@ -2654,7 +2654,7 @@
         "chosen": true
       },
       {
-        "key": "75ed7ed9fc4a/github-pr-summary",
+        "key": "58d98d15525b/github-pr-summary",
         "group": "stack",
         "title": "GitHub PR summary",
         "name": "github-pr-summary",
@@ -2662,13 +2662,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "75ed7ed9fc4a",
+          "sourceId": "58d98d15525b",
           "itemId": "github-pr-summary"
         },
         "installed": false,

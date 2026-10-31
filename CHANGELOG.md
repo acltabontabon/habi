@@ -12,7 +12,7 @@ All notable changes to Habi are listed here. The format follows
 - **Infrastructure, data and script projects are seen.** Habi now recognizes Terraform, Terragrunt,
   Helm, Kubernetes, Kustomize, Ansible, Pulumi, Databricks, Delta Lake, MLflow, Jupyter, GraalVM,
   Spring Security, Spring Batch, Spring Cloud and plain Spring, plus Scala, shell and HCL code, and
-  matches skills that name them. The catalog suggests skills for the common ones.
+  matches skills that name them. The catalog suggests skills for Helm, Kubernetes, shell scripts and GraalVM.
 - **Test projects are seen.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito, REST
   Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact, WireMock and
   Postman collections are recognized from manifests or their own files.

@@ -514,7 +514,7 @@
       {
         "skill": "skills/java-add-graalvm-native-image-support",
         "title": "GraalVM native images",
-        "gist": "Add native image support to a Java build and iterate until it compiles.",
+        "gist": "Add native image support to a Spring Boot, Micronaut or plain Java build, and iterate until it runs.",
         "why": "GraalVM native images",
         "anywhere": false
       },
@@ -1011,7 +1011,8 @@
     "repo": "wshobson/agents",
     "summary": "A large plugin collection across languages, frameworks and platforms.",
     "notes": [
-      "Broad and uneven; read a skill before adopting it."
+      "Broad and uneven; read a skill before adopting it.",
+      "The Helm skill's validator does a dry-run install, which contacts your current Kubernetes context."
     ],
     "publisher": {
       "name": "wshobson",
@@ -1057,10 +1058,6 @@
       },
       {
         "kind": "tag",
-        "text": "uses Terraform"
-      },
-      {
-        "kind": "tag",
         "text": "uses Helm"
       },
       {
@@ -1100,37 +1097,23 @@
         "anywhere": false
       },
       {
-        "skill": "plugins/cloud-infrastructure/skills/terraform-module-library",
-        "title": "Terraform modules",
-        "gist": "Build reusable Terraform modules for AWS, Azure, GCP and OCI.",
-        "why": "Terraform projects",
-        "anywhere": false
-      },
-      {
         "skill": "plugins/kubernetes-operations/skills/helm-chart-scaffolding",
         "title": "Helm charts",
-        "gist": "Organize Helm charts so templates and values stay reusable.",
+        "gist": "Organize Helm charts so templates and values stay reusable. Replace its sample password.",
         "why": "Helm charts",
         "anywhere": false
       },
       {
         "skill": "plugins/kubernetes-operations/skills/k8s-manifest-generator",
         "title": "Kubernetes manifests",
-        "gist": "Write production-ready Deployments, Services and ConfigMaps.",
+        "gist": "Write Deployments, Services and ConfigMaps with probes, resource limits and security contexts.",
         "why": "Kubernetes manifests",
         "anywhere": false
       },
       {
         "skill": "plugins/shell-scripting/skills/bash-defensive-patterns",
         "title": "Defensive Bash",
-        "gist": "Write Bash scripts, pipelines and utilities that tolerate faults safely.",
-        "why": "Shell scripts",
-        "anywhere": false
-      },
-      {
-        "skill": "plugins/shell-scripting/skills/shellcheck-configuration",
-        "title": "ShellCheck setup",
-        "gist": "Configure ShellCheck for script quality and portability.",
+        "gist": "Write Bash 4+ scripts with strict mode, traps, safe temp files and input checks.",
         "why": "Shell scripts",
         "anywhere": false
       },

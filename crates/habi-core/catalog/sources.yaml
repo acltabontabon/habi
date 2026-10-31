@@ -293,7 +293,7 @@ sources:
     picks:
       - skill: skills/java-add-graalvm-native-image-support
         title: GraalVM native images
-        gist: "Add native image support to a Java build and iterate until it compiles."
+        gist: "Add native image support to a Spring Boot, Micronaut or plain Java build, and iterate until it runs."
         why: "GraalVM native images"
         tokens: 93
         applies_when: { tag: "runtime:graalvm" }
@@ -551,6 +551,7 @@ sources:
       group: 1
     notes:
       - "Broad and uneven; read a skill before adopting it."
+      - "The Helm skill's validator does a dry-run install, which contacts your current Kubernetes context."
     # Picks checked at 0874a27b17a22e2b7c2e2bcd725768e0803cad06 on 2026-10-30.
     picks:
       - skill: plugins/javascript-typescript/skills/nodejs-backend-patterns
@@ -573,37 +574,25 @@ sources:
           all:
             - tag: "lang:csharp"
             - file: "**/appsettings.json"
-      # The next five checked at 7e2fb559cf4b824b27f1fec49fe88f7511066d26 on 2026-10-31.
-      - skill: plugins/cloud-infrastructure/skills/terraform-module-library
-        title: Terraform modules
-        gist: "Build reusable Terraform modules for AWS, Azure, GCP and OCI."
-        why: "Terraform projects"
-        tokens: 67
-        applies_when: { tag: "infra:terraform" }
+      # The next three checked at 7e2fb559cf4b824b27f1fec49fe88f7511066d26 on 2026-10-31 and read in full on 2026-11-01.
       - skill: plugins/kubernetes-operations/skills/helm-chart-scaffolding
         title: Helm charts
-        gist: "Organize Helm charts so templates and values stay reusable."
+        gist: "Organize Helm charts so templates and values stay reusable. Replace its sample password."
         why: "Helm charts"
         tokens: 63
         scripts: true
         applies_when: { tag: "infra:helm" }
       - skill: plugins/kubernetes-operations/skills/k8s-manifest-generator
         title: Kubernetes manifests
-        gist: "Write production-ready Deployments, Services and ConfigMaps."
+        gist: "Write Deployments, Services and ConfigMaps with probes, resource limits and security contexts."
         why: "Kubernetes manifests"
         tokens: 75
         applies_when: { tag: "infra:kubernetes" }
       - skill: plugins/shell-scripting/skills/bash-defensive-patterns
         title: Defensive Bash
-        gist: "Write Bash scripts, pipelines and utilities that tolerate faults safely."
+        gist: "Write Bash 4+ scripts with strict mode, traps, safe temp files and input checks."
         why: "Shell scripts"
         tokens: 53
-        applies_when: { tag: "lang:shell" }
-      - skill: plugins/shell-scripting/skills/shellcheck-configuration
-        title: ShellCheck setup
-        gist: "Configure ShellCheck for script quality and portability."
-        why: "Shell scripts"
-        tokens: 51
         applies_when: { tag: "lang:shell" }
       - skill: plugins/systems-programming/skills/go-concurrency-patterns
         title: Go concurrency

@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
-import { NavProvider } from "../lib/nav";
+import { NavProvider, useNav } from "../lib/nav";
 import { Welcome } from "../views/Welcome";
 
 const invoke = vi.fn();
@@ -172,6 +173,55 @@ describe("home", () => {
     );
     const rows = await screen.findAllByRole("button", { name: /Your team requires it|Uses Spring Boot/ });
     expect(rows.map((r) => r.textContent)).toEqual(["must Your team requires it", "fits Uses Spring Boot"]);
+  });
+
+  it("takes you to the project to review, and to one skill from its row", async () => {
+    const user = userEvent.setup();
+    const rec = {
+      group: "relevant",
+      installState: "notInstalled",
+      applicability: { applicability: "applies", reason: "Uses Spring Boot" },
+      item: { key: "team/one", title: "One skill" },
+    };
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "app_info") return { gitAvailable: true };
+      if (cmd === "recent_projects") return [project()];
+      if (cmd === "project_overview") return { recommendations: [rec] };
+      return [];
+    });
+    function Where() {
+      const { route, navigate } = useNav();
+      return (
+        <>
+          <output>{JSON.stringify(route)}</output>
+          <button type="button" onClick={() => navigate({ name: "welcome" })}>
+            Home again
+          </button>
+        </>
+      );
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <NavProvider initial={{ name: "welcome" }}>
+            <ActionsContext.Provider value={actions}>
+              <Welcome />
+              <Where />
+            </ActionsContext.Provider>
+          </NavProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    const where = () => JSON.parse(screen.getByRole("status").textContent ?? "{}");
+    await user.click(await screen.findByRole("button", { name: "Review 2 skills…" }));
+    expect(where()).toEqual({ name: "project", projectId: "p1", tab: "recommendations" });
+    // Reviewing installs nothing by itself.
+    expect(invoke.mock.calls.some(([cmd]) => String(cmd).startsWith("plan_") || cmd === "apply_plan")).toBe(
+      false,
+    );
+    await user.click(await screen.findByRole("button", { name: /One skill/ }));
+    expect(where()).toEqual({ name: "project", projectId: "p1", tab: "workbench", itemKey: "team/one" });
   });
 
   it("says when nothing is waiting anywhere", async () => {
