@@ -45,14 +45,3 @@ Habi finds skills that fit your repo, installs them for your agent tools, and ca
 | [Reuse assessment](dev/reuse-assessment.md) | See which dependencies Habi uses, and why some logic is its own |
 | [The website](dev/website.md) | Build the site, and see how these pages are published on it |
 | [Decisions](dev/decisions/) | Read why Habi supports [seven agent tools](dev/decisions/0001-seven-agent-tools.md) and [installs on this machine](dev/decisions/0002-install-on-this-machine.md) the way it does |
-
-## Documentation map
-
-| Path | For |
-|------|-----|
-| `README.md` (root) | What Habi is & how to build it |
-| `docs/guide/` | Using Habi—tasks, step-by-step |
-| `docs/library-authors/` | Writing & curating skill libraries |
-| `docs/project/` | Product promises, security model |
-| `docs/dev/` | Habi development (why, not what) |
-| `website/` | Published docs at [acltabontabon.com/habi/docs](https://acltabontabon.com/habi/docs) |

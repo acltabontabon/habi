@@ -13,6 +13,8 @@ You can change the selection in the review.
 
 **Detection signals:**
 
+| Tool | Signs of it |
+|------|-------------|
 | Claude Code | `.claude/`, `CLAUDE.md` |
 | Cursor | `.cursor/`, `.cursorrules` |
 | Codex | `.codex/` |
