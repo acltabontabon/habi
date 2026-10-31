@@ -175,7 +175,7 @@ Notes:
 | glib-macros | 0.18.5 | MIT | https://github.com/gtk-rs/gtk-rs-core | [T18](#t18) [T19](#t19) |
 | glib-sys | 0.18.1 | MIT | https://github.com/gtk-rs/gtk-rs-core | [T19](#t19) |
 | glob | 0.3.4 | MIT OR Apache-2.0 | https://github.com/rust-lang/glob | [T4](#t4) [T25](#t25) |
-| globset | 0.4.20 | Unlicense OR MIT | https://github.com/BurntSushi/ripgrep/tree/master/crates/globset | [T6](#t6) [T7](#t7) [T8](#t8) |
+| globset | 0.4.21 | Unlicense OR MIT | https://github.com/BurntSushi/ripgrep/tree/master/crates/globset | [T6](#t6) [T7](#t7) [T8](#t8) |
 | gobject-sys | 0.18.0 | MIT | https://github.com/gtk-rs/gtk-rs-core | [T19](#t19) |
 | granit-parser | 2.0.0 | MIT OR Apache-2.0 | https://github.com/bourumir-wyngs/granit-parser | [T108](#t108) |
 | gtk | 0.18.2 | MIT | https://github.com/gtk-rs/gtk3-rs | [T18](#t18) [T19](#t19) |
@@ -211,7 +211,7 @@ Notes:
 | ident_case | 1.0.1 | MIT/Apache-2.0 | https://github.com/TedDriggs/ident_case | [T126](#t126) |
 | idna | 1.1.0 | MIT OR Apache-2.0 | https://github.com/servo/rust-url/ | [T4](#t4) [T127](#t127) |
 | idna_adapter | 1.2.2 | Apache-2.0 OR MIT | https://github.com/hsivonen/idna_adapter | [T4](#t4) [T128](#t128) |
-| ignore | 0.4.33 | Unlicense OR MIT | https://github.com/BurntSushi/ripgrep/tree/master/crates/ignore | [T6](#t6) [T7](#t7) [T8](#t8) |
+| ignore | 0.4.34 | Unlicense OR MIT | https://github.com/BurntSushi/ripgrep/tree/master/crates/ignore | [T6](#t6) [T7](#t7) [T8](#t8) |
 | indexmap | 1.9.3 | Apache-2.0 OR MIT | https://github.com/bluss/indexmap | [T4](#t4) [T129](#t129) |
 | indexmap | 2.14.2 | Apache-2.0 OR MIT | https://github.com/indexmap-rs/indexmap | [T4](#t4) [T129](#t129) |
 | infer | 0.22.0 | MIT | https://github.com/bojand/infer | [T130](#t130) |
