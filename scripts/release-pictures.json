@@ -1,0 +1,82 @@
+{
+  "0.5.0": [
+    {
+      "file": "docs/media/suggested.jpg",
+      "caption": "Suggested, for every project",
+      "alt": "A project's Suggested tab: ten skills grouped by team requirements and stack, each with the reason it fits and about how many tokens it costs."
+    },
+    {
+      "file": "docs/media/pr-suggested/calls-by-name.jpg",
+      "caption": "Skills that call each other",
+      "alt": "The install review listing three skills that Writing plans calls by name, with a button that adds them too."
+    },
+    {
+      "file": "docs/media/pr-suggested/also-in.jpg",
+      "caption": "Projects learn from each other",
+      "alt": "A suggested skill in django-shop marked Also in nextshop, under the heading For how you work."
+    },
+    {
+      "file": "docs/media/pr-suggested/library-picks.jpg",
+      "caption": "Habi's picks",
+      "alt": "A catalog library's page listing Habi's picks, each saying when it fits, suggested for the project nextshop."
+    }
+  ],
+  "0.4.0": [
+    {
+      "file": "docs/media/explore.jpg",
+      "caption": "Explore the catalog on a page of its own",
+      "alt": "The Explore page: fifteen public libraries as cards, filtered by builders and community."
+    },
+    {
+      "file": "docs/media/my-skills.jpg",
+      "caption": "Skills have their own place in the sidebar",
+      "alt": "My skills before the first skill, opened from a Skills heading in the sidebar, with starter ideas as simple rows."
+    }
+  ],
+  "0.3.0": [
+    {
+      "file": "docs/media/my-skills-refresh/after-skills.jpg",
+      "caption": "See skills already installed on this machine",
+      "alt": "My skills on the On this machine tab: three skills, with the agents chosen for each and a global skill search."
+    },
+    {
+      "file": "docs/media/pr-library-status/after.jpg",
+      "caption": "Check a library for updates whenever you need to",
+      "alt": "A library's page with a Check for updates button, when it last checked, and a notice of new commits with an Update button."
+    }
+  ],
+  "0.2.0": [
+    {
+      "file": "docs/media/workbench-filters.jpg",
+      "caption": "Focus recommendations on your work",
+      "alt": "A monorepo's recommendations filtered by module, library, compatible agent and what needs attention."
+    },
+    {
+      "file": "docs/media/machine-history.jpg",
+      "caption": "Restore changes on this machine",
+      "alt": "The History on this machine dialog: an install for Claude Code with a Restore action, and a check for interrupted operations."
+    }
+  ],
+  "0.1.0": [
+    {
+      "file": "docs/media/project.jpg",
+      "caption": "See what fits your project, and why",
+      "alt": "A project's skills grouped as installed, team requirements and fits, with the files and lines behind each one."
+    },
+    {
+      "file": "docs/media/install-review.jpg",
+      "caption": "Install for the agents you use, with a preview",
+      "alt": "The install dialog: seven agent tools to choose from and the three files that will change."
+    },
+    {
+      "file": "docs/media/skill-studio.jpg",
+      "caption": "Write and improve skills in the Skill Studio",
+      "alt": "The Skill Studio: a skill written as one document, with its purpose, when to use it and its instructions."
+    },
+    {
+      "file": "docs/media/share-review.jpg",
+      "caption": "Share what you learn",
+      "alt": "Sharing a skill: the files that leave your machine, as a diff, and the checks that ran."
+    }
+  ]
+}

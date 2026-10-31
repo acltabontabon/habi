@@ -84,10 +84,15 @@ Anyone can check an artifact's provenance with
 
 The text of a GitHub release is not written by hand. `scripts/release-notes.mjs` builds it from
 this version's section of `CHANGELOG.md` and the installers the build produced: the entry's opening
-line, a download table (macOS and Windows, with sizes), the upgrade and first-launch notes, *What's
-new*, and how to verify a download, folded. More than six fixes fold too, so a long list doesn't
-bury Security. It is text only. The pictures and the film belong to the README and the site, so
-someone looking for this version's installer or notes finds them at once.
+line, a download table (macOS and Windows, with sizes), the first-launch note, *What's new*, and
+how to verify a download, folded. More than six fixes fold too, so a long list doesn't
+bury Security. The film belongs to the README and the site.
+
+- **Pictures** of the release's key features open *What's new*, two to a row. `scripts/release-pictures.json`
+  names them for each version, with a caption in the changelog's words: two or four, since the
+  changelog can't hold them (the app renders it too). They load from the release's own tag, so a
+  page keeps showing that version, and a version with no entry simply has none. The build stops if
+  a listed file is missing from the tag.
 
 - **Preview it** before tagging: `node scripts/release-notes.mjs --sample vX.Y.Z` prints the page
   with typical file names. Pasting that into a draft release shows exactly what GitHub makes of

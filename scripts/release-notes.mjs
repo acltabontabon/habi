@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 /**
- * Writes the text of a GitHub release: the release's one line, a table of downloads, the changelog
- * entry, and how to verify a download. The release workflow runs it, so every release page has the
- * same layout; the words that change are the changelog's.
+ * Writes the text of a GitHub release: the release's one line, a table of downloads, pictures of its
+ * key features, the changelog entry, and how to verify a download. The release workflow runs it, so
+ * every release page has the same layout; the words that change are the changelog's.
  *
  * Usage: node scripts/release-notes.mjs <tag> <folder> [owner/repo] > body.md
  *        node scripts/release-notes.mjs --sample [tag]   a preview with typical file names
  *
  * `folder` holds the installers the build jobs collected (only their names and sizes are read).
+ * scripts/release-pictures.json names each version's pictures: the changelog can't hold them, since
+ * the app renders it too.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseChangelog } from "./changelog.mjs";
@@ -67,11 +69,30 @@ export function foldFixes(markdown) {
   });
 }
 
+const escapeHtml = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 /**
- * @param {{ version: string, repo: string, notes: string, files: Record<string, number>, previous?: string }} input
+ * A gallery two pictures wide, laid out like the README's. Each picture comes from the release's own
+ * tag, so a page keeps showing the app as it was in that version.
+ * @param {{ file: string, caption: string, alt: string }[]} pictures
+ */
+export function gallery(pictures, repo, tag) {
+  const cell = ({ file, caption, alt }, width) =>
+    `<td ${width} valign="top"><strong>${escapeHtml(caption)}</strong><br><img src="https://raw.githubusercontent.com/${repo}/${tag}/${file}" alt="${escapeHtml(alt)}" width="100%"></td>`;
+  const rows = [];
+  for (let i = 0; i < pictures.length; i += 2) {
+    const pair = pictures.slice(i, i + 2);
+    const width = pair.length === 2 ? 'width="50%"' : 'colspan="2"';
+    rows.push("<tr>", ...pair.map((p) => cell(p, width)), "</tr>");
+  }
+  return ["<table>", ...rows, "</table>"].join("\n");
+}
+
+/**
+ * @param {{ version: string, repo: string, notes: string, files: Record<string, number>, previous?: string, pictures?: { file: string, caption: string, alt: string }[] }} input
  *   `files` maps each installer's name to its size in bytes.
  */
-export function buildReleaseNotes({ version, repo, notes, files, previous }) {
+export function buildReleaseNotes({ version, repo, notes, files, previous, pictures = [] }) {
   const tag = `v${version}`;
   const download = (name) => `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(name)}`;
   const names = Object.keys(files);
@@ -99,16 +120,13 @@ export function buildReleaseNotes({ version, repo, notes, files, previous }) {
 | System | Installer | Size |
 |:---|:---|---:|
 ${rows.join("\n")}
-${previous ? `
-> [!IMPORTANT]
-> **Upgrading from ${previous}?** Back up your original drafts and contributions before installing ([how](https://github.com/${repo}/blob/${tag}/docs/guide/recovery.md#back-up-and-restore-all-local-data)).
-` : ""}
+
 > [!NOTE]
 > **First launch:** the installers are not signed by Apple or Microsoft, so your system asks you to confirm once ([how](${SITE}docs/getting-started/#installing)). Updates after that are signed with Habi's own key.
 
 ## What's new in ${version}
 
-${foldFixes(reflow(sections))}
+${pictures.length ? `${gallery(pictures, repo, tag)}\n\n` : ""}${foldFixes(reflow(sections))}
 
 ---
 
@@ -160,7 +178,12 @@ function main(argv) {
       }
     : Object.fromEntries(readdirSync(folder).map((n) => [n, statSync(path.join(folder, n)).size]));
 
-  process.stdout.write(buildReleaseNotes({ version, repo, notes: release.markdown, files, previous }));
+  const pictures = JSON.parse(readFileSync(path.join(root, "scripts/release-pictures.json"), "utf8"))[version] ?? [];
+  // A preview may be of an older version; the real page must not publish a broken picture.
+  const missing = sample ? [] : pictures.filter((p) => !existsSync(path.join(root, p.file)));
+  if (missing.length) throw new Error(`release-pictures.json: no such file: ${missing.map((p) => p.file).join(", ")}`);
+
+  process.stdout.write(buildReleaseNotes({ version, repo, notes: release.markdown, files, previous, pictures }));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

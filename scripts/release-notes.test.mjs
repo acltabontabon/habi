@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { buildReleaseNotes, size } from "./release-notes.mjs";
 
@@ -28,9 +29,34 @@ test("the changelog entry is the page's notes", () => {
   assert.ok(body.includes("## What's new in 0.2.0\n\n### Added\n\n- **Something.** It does a thing."));
 });
 
-test("the page is plain text: no pictures, badges or layout tables", () => {
+test("a version with no pictures has no gallery, and no page has badges", () => {
   const body = buildReleaseNotes(input);
   assert.doesNotMatch(body, /<img|<table|<div|!\[|shields\.io/);
+});
+
+test("pictures sit under What's new, come from the release's tag and say what they show", () => {
+  const pictures = [
+    { file: "docs/media/a.jpg", caption: "Habi's picks", alt: 'The "picks" list' },
+    { file: "docs/media/b.jpg", caption: "Two", alt: "Second" },
+    { file: "docs/media/c.jpg", caption: "Three", alt: "Third" },
+  ];
+  const body = buildReleaseNotes({ ...input, pictures });
+  assert.match(body, /## What's new in 0\.2\.0\n\n<table>\n<tr>\n<td width="50%" valign="top"><strong>Habi's picks<\/strong><br><img src="https:\/\/raw\.githubusercontent\.com\/acltabontabon\/habi\/v0\.2\.0\/docs\/media\/a\.jpg"/);
+  assert.match(body, /alt="The &quot;picks&quot; list"/);
+  assert.match(body, /<\/table>\n\n### Added/);
+  assert.equal(body.match(/<tr>/g).length, 2);
+  assert.match(body, /<td colspan="2" valign="top"><strong>Three/, "a lone picture takes the whole row");
+});
+
+test("every listed picture says what it shows, and lives in docs/media", () => {
+  const listed = JSON.parse(readFileSync(new URL("./release-pictures.json", import.meta.url), "utf8"));
+  for (const [version, pictures] of Object.entries(listed)) {
+    assert.match(version, /^\d+\.\d+\.\d+/);
+    for (const { file, caption, alt } of pictures) {
+      assert.match(file, /^docs\/media\/[\w/-]+\.(jpg|png)$/);
+      assert.ok(caption && alt, `${version}: ${file} needs a caption and alt text`);
+    }
+  }
 });
 
 test("only a release with a predecessor links the comparison", () => {
@@ -90,9 +116,8 @@ test("the links at the foot are one line, which a release page would otherwise b
   assert.match(foot, /\[Report an issue\]\(.*\) · .*All changes since 0\.1\.0/);
 });
 
-test("upgrade guidance uses this release's tag", () => {
+test("the only callout under the downloads is the first-launch note", () => {
   const body = buildReleaseNotes(input);
-  assert.match(body, /Upgrading from 0\.1\.0/);
-  assert.match(body, /blob\/v0\.2\.0\/docs\/guide\/recovery\.md#back-up-and-restore-all-local-data/);
-  assert.doesNotMatch(buildReleaseNotes({ ...input, previous: undefined }), /Upgrading from/);
+  assert.match(body, /\n\n> \[!NOTE\]\n> \*\*First launch:\*\*/);
+  assert.equal(body.match(/\[!\w+\]/g).length, 1);
 });
