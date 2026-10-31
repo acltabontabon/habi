@@ -78,10 +78,7 @@ you say so.
 3. **All skills** lists everything your connected libraries hold for the project, grouped by how
    well it fits, with the full reasoning down to the file and line. Missing info (e.g.,
    dependencies inherited from outside the repo) can be answered by you. Connect more from
-   **Libraries**: a Git repository, a folder, or a public library from the catalog. If you use
-   Claude Code here, an installed skill also says whether it gets used (*Used 12× in Claude Code
-   here in 30 days*, *Not used in Claude Code here in 30 days*), so you can remove what you no longer
-   need: [what Habi reads for that](../project/security-model.md#claude-code-session-history).
+   **Libraries**: a Git repository, a folder, or a public library from the catalog.
 
 4. **Install:** Review preselected agent tools, check the files that will change, and confirm.
    You see every file before anything is written.
@@ -134,16 +131,13 @@ the server, and it does not read user-level MCP settings.
 
 ## Checks and corrections
 
-A skill can declare **checks**: commands that confirm it works in your project. They are on
-the skill's **Checks** tab. Habi shows the exact program, arguments, folder and time limit
-first, and lists anything in the command that stands out. The command runs only when you
-press **Run this command**. It runs your repository's code on your machine and is not
-sandboxed.
+A skill can declare **checks**: commands that confirm it works in your project. They are listed
+on the skill's **Checks** tab. Habi does not run them, because a check runs your repository's
+code with no sandbox. Results from earlier versions of Habi stay visible there.
 
-The evidence summary counts the latest completed result for each declared check in each
+The evidence summary counts the latest recorded result for each declared check in each
 applicable module. **Partially checked** means some pairs are still unchecked, or inspection
-was incomplete. A failure remains visible even if a different check passed later; cancelling
-a run preserves the previous completed result. An old failure, like an old pass, is marked
+was incomplete. A failure remains visible even if a different check passed later. An old failure, like an old pass, is marked
 out of date when the item or inspected project state changes.
 
 Habi notices ordinary source and script edits through file sizes and modification times,

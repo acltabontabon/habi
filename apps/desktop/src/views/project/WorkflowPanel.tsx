@@ -8,11 +8,9 @@ import { FileReader } from "../reader/SkillReader";
 
 export function WorkflowPanel({
   recommendation: r,
-  onRunCheck,
   onInstall,
 }: {
   recommendation: Recommendation;
-  onRunCheck: () => void;
   /** Opens the install review; absent when the item is already installed. */
   onInstall?: () => void;
 }) {
@@ -107,17 +105,6 @@ export function WorkflowPanel({
             </p>
           )}
         </div>
-        {r.item.hasChecks ? (
-          <div className="workflow-action">
-            <h4>Run a check</h4>
-            <p className="muted">
-              Runs a declared command against this project after you review it. It executes repository code.
-            </p>
-            <Button size="sm" icon="terminal" onClick={onRunCheck}>
-              Go to checks
-            </Button>
-          </div>
-        ) : null}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import type { SignalCounts } from "./SignalCounts";
 
 export type LibrarySummary = { 
 /**
- * Skills, workflows and instructions.
+ * Skills and instructions.
  */
 items: number, 
 /**

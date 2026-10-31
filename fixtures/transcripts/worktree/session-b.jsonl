@@ -1,1 +1,0 @@
-{"parentUuid":null,"isSidechain":false,"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b1","name":"Skill","input":{"skill":"release-notes"}}]},"type":"assistant","uuid":"b-01","timestamp":"{{days_ago:1}}","cwd":"{{project}}/.claude/worktrees/feature","sessionId":"session-b"}

@@ -9,7 +9,6 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo } from "../bindings/AppInfo";
 import type { CatalogEntry } from "../bindings/CatalogEntry";
 import type { CatalogFit } from "../bindings/CatalogFit";
-import type { CheckPreview } from "../bindings/CheckPreview";
 import type { CheckRun } from "../bindings/CheckRun";
 import type { ClientId } from "../bindings/ClientId";
 import type { ConditionSuggestion } from "../bindings/ConditionSuggestion";
@@ -59,7 +58,6 @@ import type { SkillDocument } from "../bindings/SkillDocument";
 import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
 import type { SkillStanding } from "../bindings/SkillStanding";
-import type { SkillUsageReport } from "../bindings/SkillUsageReport";
 import type { Source } from "../bindings/Source";
 import type { SourceRole } from "../bindings/SourceRole";
 import type { SourceUpdate } from "../bindings/SourceUpdate";
@@ -211,15 +209,6 @@ export const api = {
   history: (projectId: string) => call<OperationSummary[]>("history", { projectId }),
   recover: (projectId: string) => call<OperationSummary[]>("recover", { projectId }),
 
-  prepareCheck: (
-    projectId: string,
-    itemKey: string,
-    checkId: string,
-    module: string,
-    bindings: Record<string, string>,
-  ) => call<CheckPreview>("prepare_check", { projectId, itemKey, checkId, module, bindings }),
-  runCheck: (projectId: string, previewId: string, jobId: string) =>
-    call<CheckRun>("run_check", { projectId, previewId, jobId }),
   checkRuns: (projectId: string, itemKey: string) => call<CheckRun[]>("check_runs", { projectId, itemKey }),
 
   startContribution: (sourceId: string, origin: ContributionOrigin) =>
@@ -282,8 +271,6 @@ export const api = {
   suggestConditions: (projectId: string) => call<ConditionSuggestion[]>("suggest_conditions", { projectId }),
   discoverProject: (projectId: string, jobId?: string) =>
     call<ProjectKnowledge>("discover_project", { projectId, jobId: jobId ?? null }),
-  skillUsage: (projectId: string, jobId: string) =>
-    call<SkillUsageReport>("skill_usage", { projectId, jobId }),
   readInstructions: (projectId: string, path: string) =>
     call<InstructionDocument>("read_instructions", { projectId, path }),
   createSkillFromInstructions: (

@@ -1,7 +1,6 @@
 //! Human-readable terminal output. Every enum is shown in plain words (the
 //! same words the desktop app uses); JSON output keeps the stable values.
 
-use habi_core::checks::{CheckPreview, CheckRun, CheckStatus};
 use habi_core::contribute::{Contribution, ContributionState, DraftFileStatus};
 use habi_core::fsutil::short;
 use habi_core::inspect::model::{
@@ -205,16 +204,6 @@ fn repository_kind(k: RepositoryKind) -> &'static str {
         RepositoryKind::Worktree => "Git worktree",
         RepositoryKind::GitSubdirectory => "folder inside a Git repository",
         RepositoryKind::Plain => "plain folder (no Git)",
-    }
-}
-
-fn check_status(s: CheckStatus) -> &'static str {
-    match s {
-        CheckStatus::Passed => "Passed",
-        CheckStatus::Failed => "Failed",
-        CheckStatus::TimedOut => "Timed out",
-        CheckStatus::Cancelled => "Cancelled",
-        CheckStatus::Error => "Could not run",
     }
 }
 
@@ -754,10 +743,7 @@ pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
     if let Some(item) = item
         && !item.checks.is_empty()
     {
-        println!(
-            "\nChecks (preview with `habi check {} <check>`):",
-            r.item.id
-        );
+        println!("\nChecks:");
         for c in &item.checks {
             println!("  {:<28} {}", c.id, c.title);
         }
@@ -1050,57 +1036,6 @@ pub fn declarations(list: &[Declaration], c_flag: &str) {
         );
     }
     println!("\nRemove one with: habi undeclare <id>{c_flag}");
-}
-
-// ----- checks ----------------------------------------------------------------------
-
-pub fn check_preview(p: &CheckPreview) {
-    println!("{} — {}", p.item_title, p.title);
-    if let Some(d) = &p.description {
-        println!("{d}");
-    }
-    println!(
-        "\n  program:   {} ({})",
-        p.program,
-        p.resolved_program.as_deref().unwrap_or("not found")
-    );
-    println!("  arguments: {}", p.args.join(" "));
-    println!("  directory: {}", p.cwd);
-    println!("  environment: {}", p.environment);
-    println!("  timeout:   {}s", p.timeout_seconds);
-    for b in &p.bindings {
-        println!(
-            "  binding {}: {} (candidates: {})",
-            b.name,
-            b.selected.as_deref().unwrap_or("<choose with --bind>"),
-            b.candidates.join(", ")
-        );
-    }
-    for w in &p.warnings {
-        println!("  ⚠ {}", check_wording(w));
-    }
-}
-
-/// Check problems name desktop controls; say what to type instead.
-pub fn check_wording(text: &str) -> String {
-    text.replace(
-        "choose values for every binding",
-        "pass --bind <name>=<value> for every binding",
-    )
-}
-
-pub fn check_run(r: &CheckRun) {
-    println!(
-        "\n{} (exit {})",
-        check_status(r.status),
-        r.exit_code
-            .map(|c| c.to_string())
-            .unwrap_or_else(|| "none".into())
-    );
-    let tail: Vec<&str> = r.output_tail.lines().rev().take(30).collect();
-    for line in tail.into_iter().rev() {
-        println!("  {line}");
-    }
 }
 
 // ----- contributions -------------------------------------------------------------

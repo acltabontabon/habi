@@ -77,12 +77,11 @@
   revisions. Origins: a project skill folder, a library item, or a local skill.
 - **`review`**: pull and merge requests through the user's `gh` and `glab`: opening one,
   reading its state and comments as untrusted text.
-- **`checks`**: previewed, user-run verification commands; recorded results.
+- **`checks`**: verification commands and their recorded results. Nothing in the app or the CLI calls
+  its preview and run, so no check can be started.
 - **`browse`**: the project chooser's read-only look at likely repository folders.
 - **`sample`**: removes what is left of the sample workspace earlier versions could create.
 - **`maintenance`**: pruning old journals, snapshots and unreferenced blobs (`habi gc`).
-- **`usage`**: whether a project's skills get used, from Claude Code's session transcripts, read
-  on demand and bounded; the estimate of what a skill costs every session.
 - **`service`**: the facade; projects, declarations, plans by id, overview.
 
 ## Install scopes

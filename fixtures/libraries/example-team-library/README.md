@@ -6,5 +6,5 @@ information.
 
 - `skills/*/SKILL.md` — standard Agent Skills, usable without Habi.
 - `skills/*/habi.yaml` — optional Habi metadata: where a skill applies,
-  prerequisites, workflow steps, checks and declared evidence.
+  prerequisites, steps, checks and declared evidence.
 - `habi-library.yaml` — library description and portable project instructions.

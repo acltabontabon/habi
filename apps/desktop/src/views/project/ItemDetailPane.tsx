@@ -1,4 +1,4 @@
-/** Detail of one recommendation: why it fits, the workflow, its content, checks. */
+/** Detail of one recommendation: why it fits, its steps, its content, checks. */
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ClientId } from "../../bindings/ClientId";
@@ -606,7 +606,7 @@ export function ItemDetailPane({
               ) : null}
               {(r.evidence.coverage?.stale ?? 0) > 0 ? (
                 <p className="muted">
-                  Some check results no longer count because the item or project changed. Rerun those checks.
+                  Some check results no longer count because the item or project changed.
                 </p>
               ) : null}
               {r.evidence.declared.length === 0 && !r.evidence.latestRun ? (
@@ -687,7 +687,6 @@ export function ItemDetailPane({
         {panel === "workflow" && (
           <WorkflowPanel
             recommendation={r}
-            onRunCheck={() => setPanel("checks")}
             onInstall={
               r.installState === "notInstalled"
                 ? () =>

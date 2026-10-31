@@ -259,7 +259,7 @@ impl SkillTemplate {
             (SkillTemplate::Blank, "Blank", "Start from an empty page."),
             (
                 SkillTemplate::Workflow,
-                "Workflow",
+                "Step by step",
                 "A procedure the agent follows step by step, with a clear finish.",
             ),
             (

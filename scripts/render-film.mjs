@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Renders the film (docs/media/demo.mp4, with a poster, a GIF and the chapter times) from
-// scripts/film/: the scenes in film.js are a function of time, so this steps through them frame by
+// Renders the film (website/public/media/demo.mp4, with a poster, a GIF and the chapter times in
+// docs/media/) from scripts/film/: the scenes in film.js are a function of time, so this steps through them frame by
 // frame in headless Chrome and encodes what it sees. The screens it films are the app's own,
 // photographed by scripts/docs-screenshots.mjs into scripts/film/shots/dark/ (run that first); the
 // sound is scripts/film/score.mjs.
@@ -23,6 +23,7 @@ import { openBrowser } from "./lib/cdp.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const film = join(root, "scripts/film");
 const out = join(root, "docs/media");
+const site = join(root, "website/public/media");
 const args = process.argv.slice(2);
 const posterOnly = args.includes("--poster");
 const stills = args.includes("--stills") ? args[args.indexOf("--stills") + 1].split(",").map(Number) : null;
@@ -86,6 +87,7 @@ try {
       if (n % 60 === 0) console.log(`frame ${n}/${total}`);
     }
     mkdirSync(out, { recursive: true });
+    mkdirSync(site, { recursive: true });
     const ff = (...a) => execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...a], { stdio: "inherit" });
     const frames = ["-framerate", String(fps), "-i", join(dir, "f%05d.jpg")];
 
@@ -93,12 +95,12 @@ try {
     const score = join(film, "score.wav");
     const sound = existsSync(score) ? ["-i", score, "-c:a", "aac", "-b:a", "160k", "-shortest"] : ["-an"];
     // Flat colour and hard edges: x264's animation tuning, at full size and a high quality.
-    ff(...frames, ...sound, "-c:v", "libx264", "-preset", "slower", "-tune", "animation", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", join(out, "demo.mp4"));
-    console.log("docs/media/demo.mp4");
+    ff(...frames, ...sound, "-c:v", "libx264", "-preset", "slower", "-tune", "animation", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", join(site, "demo.mp4"));
+    console.log("website/public/media/demo.mp4");
 
 // A GIF for places that cannot play video (the README): a teaser, the opening seconds, silent.
     const [g0, g1] = timeline.gif ?? [0, 10];
-    ff("-ss", String(g0), "-t", String(g1 - g0), ...frames, "-vf", "fps=12,scale=800:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle", "-loop", "0", join(out, "demo.gif"));
+    ff("-ss", String(g0), "-t", String(g1 - g0), ...frames, "-vf", "fps=8,scale=720:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=64:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle", "-loop", "0", join(out, "demo.gif"));
     console.log("docs/media/demo.gif");
 
     // The poster: the hero frame of the film (timeline.json says when).

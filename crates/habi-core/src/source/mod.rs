@@ -184,7 +184,7 @@ pub struct Source {
     /// Integrity warnings such as a moved tag or rewritten history.
     pub warning: Option<String>,
     pub freshness: Freshness,
-    /// Items (skills, workflows, instructions) in the cached snapshot; 0
+    /// Items (skills, instructions) in the cached snapshot; 0
     /// before the first fetch.
     pub skill_count: u32,
     /// Fetched so it can be inspected, but not connected: previews are kept

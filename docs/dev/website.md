@@ -23,7 +23,7 @@ cd website
 pnpm dev          # the site on http://localhost:4321/habi/, reloading as you edit
 pnpm build        # the static site in website/dist/, as Pages serves it
 pnpm preview      # that build, served locally
-pnpm media        # public/media/: the tour's screenshots (dark; the site has no light theme), and the film
+pnpm media        # public/media/: the tour's screenshots (dark; the site has no light theme), and the film's poster and chapters
 pnpm og           # public/og-v2.png, from the /og/ page with headless Chrome (pnpm dev first)
 ```
 
@@ -32,7 +32,7 @@ seeded workspace, and the film is cut from the same screenshots (below).
 
 ## The film
 
-The landing page shows a film (`docs/media/demo.mp4`): an ad cut from the app's own dark
+The landing page shows a film (`website/public/media/demo.mp4`): an ad cut from the app's own dark
 screenshots, set to a synthesized score. It is the hero's backdrop, the way a streaming service
 opens: the still (`demo-poster.jpg`) first, then, a couple of seconds after load, the film eases in
 behind the words, muted, from its very beginning, and plays once; it pauses when
@@ -47,8 +47,8 @@ remade by a script, so changing the app does not mean redrawing it.
 | `scripts/film/seed.sh <dir>` | builds a workspace that reads like a real team's: two libraries, seven projects, a few skills installed, an update waiting |
 | `node scripts/docs-screenshots.mjs` (light, then `HABI_SHOTS_SCHEME=dark`) | photographs the app on it; the dark pictures go to `scripts/film/shots/dark/`, which Git ignores |
 | `node scripts/film/score.mjs` | synthesizes the music (`score.wav`), cut to `scripts/film/timeline.json` at its tempo |
-| `node scripts/render-film.mjs` | steps the film, one frame at a time, through headless Chrome, and encodes `demo.mp4`, a teaser `demo.gif` for the README, the poster and the chapter times |
-| `pnpm media` (in `website/`) | shrinks the pictures and copies the film for the page |
+| `node scripts/render-film.mjs` | steps the film, one frame at a time, through headless Chrome, and encodes `demo.mp4` for the page, a teaser `demo.gif` for the README, the poster and the chapter times |
+| `pnpm media` (in `website/`) | shrinks the pictures and copies the poster and chapter times for the page |
 
 The film is a function of time: `ad.js` stages the screenshots in 3D (windows that turn and
 rise, crops of the UI lifted off them, the type over them), `film.css` styles them, and

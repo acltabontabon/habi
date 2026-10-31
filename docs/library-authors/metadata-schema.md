@@ -1,7 +1,7 @@
 # Habi metadata
 
 Habi reads `SKILL.md` as-is. Optional metadata files layer on **where it applies, what it needs,
-workflows, and evidence**—in standard YAML, easy to version in Git.
+its steps, and evidence**—in standard YAML, easy to version in Git.
 
 **Two files:**
 - `habi.yaml` — sidecar next to `SKILL.md`
@@ -68,7 +68,7 @@ See [example library](../../fixtures/libraries/example-team-library) (uses all f
 | `requires.mcp` | MCP server: `{name, purpose?, server?}` where server is config (`{command, args[], env}` or `{url, bearer_token_env}`). No literal secrets. |
 | `requires.clients` | Agent tools this works with: `claude-code`, `cursor`, `codex`, `gemini-cli`, `copilot`, `opencode`, `junie`. Omit if unrestricted. |
 | `workflow.steps[]` | Guidance: `{title, detail?, references[]?, expected?}` (shown in order, not enforced). |
-| `workflow.artifacts[]` | What the workflow produces. |
+| `workflow.artifacts[]` | What the skill produces. |
 | `bindings[]` | User inputs: `{name, kind: file|module, glob?}` (Habi offers candidates). |
 | `checks[]` | QA checks: `{id, title, description?, run[], cwd: module|repository, timeout_seconds}` (arg arrays, no shell strings). |
 | `evidence[]` | Author records: `{date, result, environment?, summary?, by?}` (shown as-is, not verified). |

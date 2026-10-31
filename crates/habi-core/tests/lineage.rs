@@ -325,7 +325,7 @@ fn every_starter_makes_a_skill_that_only_lacks_a_description() {
         offered.iter().map(|t| t.label.as_str()).collect::<Vec<_>>(),
         [
             "Blank",
-            "Workflow",
+            "Step by step",
             "Troubleshooting",
             "Code review",
             "Tool-assisted"

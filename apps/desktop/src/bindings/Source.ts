@@ -19,7 +19,7 @@ snapshot: string | null, snapshotAt: string | null, commitSummary: string | null
  */
 warning: string | null, freshness: Freshness, 
 /**
- * Items (skills, workflows, instructions) in the cached snapshot; 0
+ * Items (skills, instructions) in the cached snapshot; 0
  * before the first fetch.
  */
 skillCount: number, 

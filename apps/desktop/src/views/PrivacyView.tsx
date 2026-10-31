@@ -15,10 +15,6 @@ const STAYS: Fact[] = [
   ["Your project files", "Read here, matched here"],
   ["Library contents", "Kept on disk, read here"],
   ["Inspection and matching", "Nothing is sent away to be analyzed"],
-  [
-    "Your Claude Code sessions",
-    "~/.claude/projects, last 30 days, read when a project’s All skills list opens, as it does on opening a project with something installed. Only skill names and times are used, and nothing is kept. Sessions of projects with a similar path are opened only to tell them apart",
-  ],
   ["Logs and reports", "Redacted. A report is written only when you save it"],
 ];
 
@@ -59,10 +55,7 @@ const NEVER: Fact[] = [
     "Code from libraries or projects",
     "Matching, previewing and refreshing never run their scripts, hooks or commands.",
   ],
-  [
-    "Checks",
-    "Run only after you have seen the exact command, and the preview says plainly it is not sandboxed.",
-  ],
+  ["Checks", "Listed, never run. Habi has no way to start one."],
   ["MCP servers", "Never started or contacted. “Configured” means an entry exists."],
   ["Git hooks and filters", "Switched off. Libraries are read as bare repositories, never checked out."],
 ];

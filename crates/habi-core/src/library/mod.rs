@@ -774,7 +774,7 @@ pub fn build_index(
             .collect();
         item_files.sort_by(|a, b| a.path.cmp(&b.path));
 
-        // References in workflow steps must exist.
+        // References in steps must exist.
         if let Some(wf) = &metadata.workflow {
             for step in &wf.steps {
                 for r in &step.references {
@@ -783,7 +783,7 @@ pub fn build_index(
                     {
                         diags.push(Diagnostic::warning(
                             format!(
-                                "workflow step `{}` references `{r}`, which is not in the skill",
+                                "step `{}` references `{r}`, which is not in the skill",
                                 step.title
                             ),
                             sidecar.as_deref(),

@@ -27,7 +27,6 @@ export const keys = {
   machineHistory: ["machineHistory"] as const,
   skillTemplates: ["skillTemplates"] as const,
   knowledge: (projectId: string) => ["knowledge", projectId] as const,
-  skillUsage: (projectId: string) => ["skillUsage", projectId] as const,
 };
 
 export function useAppInfo() {
@@ -264,27 +263,6 @@ export function useKnowledge(projectId: string | undefined, enabled = true) {
     queryFn: () => api.discoverProject(projectId ?? ""),
     enabled: Boolean(projectId) && enabled,
     staleTime: 30_000,
-  });
-}
-
-/**
- * Whether a project's skills get used, from agent session transcripts on this machine. They are
- * read when the list that shows this opens, never in the background; leaving stops the read.
- */
-export function useSkillUsage(projectId: string) {
-  return useQuery({
-    queryKey: keys.skillUsage(projectId),
-    queryFn: ({ signal }) => {
-      const job = newJobId();
-      signal.addEventListener("abort", () => void api.cancelJob(job));
-      return api.skillUsage(projectId, job);
-    },
-    // Held for a minute after the list closes, and read again only when it opens.
-    staleTime: 60_000,
-    gcTime: 60_000,
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
   });
 }
 

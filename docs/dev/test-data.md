@@ -7,7 +7,7 @@ seed script and the UI design preview.
 
 | Fixture | Purpose |
 |---|---|
-| `libraries/example-team-library` | Main library: workflows and skills with applicability, exclusions, tool and MCP prerequisites, checks, declared evidence, an undeclared skill, a required item and team instructions. |
+| `libraries/example-team-library` | Main library: skills, some with steps, with applicability, exclusions, tool and MCP prerequisites, checks, declared evidence, an undeclared skill, a required item and team instructions. |
 | `libraries/security-guild-library` | Second source: a skill whose name collides with the main library (`api-contract-review`), **invalid** metadata (`secrets-hygiene`), an undeclared skill, an executable script, and required instructions. |
 
 ## Repositories
@@ -24,12 +24,6 @@ seed script and the UI design preview.
 
 Automated expectations for these live in `crates/habi-core/tests/matching_fixtures.rs` and
 `fixture_scenarios.rs`.
-
-## Session transcripts
-
-`transcripts/` holds synthetic Claude Code transcripts, written by hand and never copied from a
-real session: uses, and everything that only looks like one. `crates/habi-core/tests/skill_usage.rs`
-copies them under a temporary home folder ([details](../../fixtures/transcripts/README.md)).
 
 ## Ways to use it
 

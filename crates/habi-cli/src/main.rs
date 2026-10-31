@@ -176,28 +176,6 @@ Examples:
         #[command(flatten)]
         project: ProjectArg,
     },
-    /// Preview or run an item's verification check (running executes repository code).
-    Check {
-        /// Item id (see `habi recommend`), or `<library>/<id>`.
-        item: String,
-        /// Check id (listed by `habi explain <item>`).
-        check: String,
-        /// Module to run the check in: `.` = the repository root module
-        /// (default), or a module id from `habi inspect`.
-        #[arg(long, default_value = ".")]
-        module: String,
-        /// Binding values, `name=value` (must be one of the listed candidates).
-        #[arg(long = "bind")]
-        bindings: Vec<String>,
-        /// Run after showing the preview (asks for confirmation unless --yes).
-        #[arg(long)]
-        run: bool,
-        /// Run without asking for confirmation.
-        #[arg(long)]
-        yes: bool,
-        #[command(flatten)]
-        project: ProjectArg,
-    },
     /// Share what you improved back to a library, as a reviewed branch or request.
     #[command(subcommand)]
     Contribute(ContributeCmd),
@@ -1302,80 +1280,6 @@ fn run(ctx: &Ctx, command: Command) -> Result<Value> {
                     if d.present { "present" } else { "absent" },
                     output::module(&d.module)
                 )
-            })
-        }
-        Command::Check {
-            item,
-            check,
-            module,
-            bindings,
-            run,
-            yes,
-            project: p,
-        } => {
-            if run {
-                require_yes(ctx, yes, false, "run the check")?;
-            }
-            let (r, library_item) = resolve_item(habi, &item)?;
-            if !library_item.checks.iter().any(|c| c.id == check) {
-                let ids: Vec<&str> = library_item.checks.iter().map(|c| c.id.as_str()).collect();
-                return Err(fail(
-                    "notFound",
-                    if ids.is_empty() {
-                        format!("`{}` has no checks.", library_item.title)
-                    } else {
-                        format!(
-                            "`{}` has no check `{check}`. Available checks: {}",
-                            library_item.title,
-                            ids.join(", ")
-                        )
-                    },
-                ));
-            }
-            let mut values = HashMap::new();
-            for b in bindings {
-                let (k, v) = b.split_once('=').ok_or_else(|| {
-                    fail(
-                        "invalidInput",
-                        format!("`--bind {b}`: bindings look like name=value"),
-                    )
-                })?;
-                values.insert(k.to_string(), v.to_string());
-            }
-            let project = project(ctx, &p, run)?;
-            let key = format!("{}/{}", r.source_id, r.item_id);
-            let preview = habi.prepare_check(&project.id, &key, &check, &module, &values)?;
-            if !ctx.json {
-                output::check_preview(&preview);
-            }
-            if !run {
-                return emit(ctx, &json!({ "preview": preview, "run": null }), || {
-                    let module_flag = if module == "." {
-                        String::new()
-                    } else {
-                        format!(" --module {module}")
-                    };
-                    println!(
-                        "\nRun it with: habi check {item} {check}{module_flag} --run{}",
-                        project.flag()
-                    )
-                });
-            }
-            if !preview.ready {
-                return Err(fail_with(
-                    "notReady",
-                    "the check is not ready to run: pass --bind <name>=<value> for every binding and make sure the program is installed",
-                    "preview",
-                    serde_json::to_value(&preview)?,
-                ));
-            }
-            if !yes && !confirm("Run this command?", "run the check")? {
-                note("Nothing was run.");
-                return Ok(Value::Null);
-            }
-            let result = habi.run_check(&project.id, &preview.preview_id, &ctx.cancel)?;
-            emit(ctx, &json!({ "preview": preview, "run": result }), || {
-                output::check_run(&result)
             })
         }
         Command::Contribute(cmd) => contribute(ctx, cmd),

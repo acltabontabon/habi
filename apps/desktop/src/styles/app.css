@@ -2424,12 +2424,6 @@ button.chip:hover {
   font-weight: 600;
 }
 
-.check-preview,
-.check-result {
-  display: grid;
-  gap: var(--s2);
-}
-
 .check-history ul {
   list-style: none;
   margin: 0;

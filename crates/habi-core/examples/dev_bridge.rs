@@ -245,14 +245,6 @@ impl Bridge {
             "history" => out(h.history(&s("projectId")?)?),
             "recover" => out(h.recover(&s("projectId")?)?),
 
-            "prepare_check" => out(h.prepare_check(
-                &s("projectId")?,
-                &s("itemKey")?,
-                &s("checkId")?,
-                &s("module")?,
-                &arg(a, "bindings")?,
-            )?),
-            "run_check" => out(h.run_check(&s("projectId")?, &s("previewId")?, cancel)?),
             "check_runs" => out(h.check_runs(&s("projectId")?, &s("itemKey")?)?),
 
             "start_contribution" => out(h.start_contribution(&s("sourceId")?, arg(a, "origin")?)?),
@@ -363,7 +355,6 @@ impl Bridge {
             "preview_skill" => out(h.preview_skill(&arg(a, "request")?, cancel)?),
             "suggest_conditions" => out(h.suggest_conditions(&s("projectId")?)?),
             "discover_project" => out(h.discover(&s("projectId")?, cancel)?),
-            "skill_usage" => out(h.skill_usage(&s("projectId")?, cancel)?),
             "read_instructions" => out(h.read_instructions(&s("projectId")?, &s("path")?)?),
             "create_skill_from_instructions" => out(h.create_skill_from_instructions(
                 &s("projectId")?,

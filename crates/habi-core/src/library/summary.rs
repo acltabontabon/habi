@@ -31,7 +31,7 @@ pub struct LibraryLicense {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct LibrarySummary {
-    /// Skills, workflows and instructions.
+    /// Skills and instructions.
     pub items: u32,
     /// Skills with at least one script.
     pub with_scripts: u32,

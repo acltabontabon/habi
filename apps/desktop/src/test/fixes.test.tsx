@@ -1,9 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CheckPreview } from "../bindings/CheckPreview";
 import type { CheckRun } from "../bindings/CheckRun";
 import type { Contribution } from "../bindings/Contribution";
 import type { LocalSkill } from "../bindings/LocalSkill";
@@ -136,37 +135,18 @@ describe("Button", () => {
 });
 
 describe("checks", () => {
-  it("keeps showing a run's result after preparing the next preview", async () => {
+  it("lists a skill's checks and earlier results, with no way to run one", async () => {
     const overview = billing as unknown as ProjectOverview;
     const recommendation = overview.recommendations.find((r) => r.item.id === "liquibase-migration-review");
     if (!recommendation) throw new Error("fixture changed");
-    const detail = (details as Record<string, { item: { contentDigest: string } }>)[
-      "liquibase-migration-review"
-    ];
-    let previews = 0;
-    const preview = (): CheckPreview => ({
-      previewId: `p${++previews}`,
-      itemKey: recommendation.item.key,
-      itemTitle: recommendation.item.title,
-      itemDigest: detail?.item.contentDigest ?? "",
-      checkId: "changelog-is-wellformed",
-      title: "Changelog is well formed",
-      description: null,
-      module: ".",
-      program: "mvn",
-      resolvedProgram: "/usr/bin/mvn",
-      args: ["validate"],
-      cwd: ".",
-      environment: "Your environment",
-      timeoutSeconds: 60,
-      warnings: [],
-      bindings: [],
-      ready: true,
-    });
+    const detail = (
+      details as unknown as Record<string, { item: { contentDigest: string; checks: { title: string }[] } }>
+    )["liquibase-migration-review"];
+    if (!detail?.item.checks[0]) throw new Error("fixture changed");
     const run: CheckRun = {
       id: "r1",
       itemKey: recommendation.item.key,
-      itemDigest: detail?.item.contentDigest ?? "",
+      itemDigest: detail.item.contentDigest,
       checkId: "changelog-is-wellformed",
       module: ".",
       argv: ["mvn", "validate"],
@@ -175,103 +155,14 @@ describe("checks", () => {
       startedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString(),
       exitCode: 0,
-      status: "timedOut",
-      outputTail: "BUILD OUTPUT TAIL",
+      status: "passed",
+      outputTail: "",
     };
-    handlers = {
-      item_detail: () => detail,
-      check_runs: () => [],
-      prepare_check: () => preview(),
-      run_check: () => run,
-    };
-    const user = userEvent.setup();
+    handlers = { item_detail: () => detail, check_runs: () => [run] };
     wrap(<ChecksPanel overview={overview} recommendation={recommendation} />);
-    await user.click(await screen.findByRole("button", { name: "Preview the command" }));
-    await user.click(await screen.findByRole("button", { name: "Run this command" }));
-    await waitFor(() => expect(previews).toBe(2));
-    // Plain words, not the raw status value, and the output stays visible.
-    expect(await screen.findByText("Timed out")).toBeInTheDocument();
-    expect(screen.getByText("BUILD OUTPUT TAIL")).toBeInTheDocument();
-    expect(screen.queryByText("timedOut")).toBeNull();
-  });
-
-  function checkFixture() {
-    const overview = billing as unknown as ProjectOverview;
-    const recommendation = overview.recommendations.find((r) => r.item.id === "liquibase-migration-review");
-    if (!recommendation) throw new Error("fixture changed");
-    const detail = (details as Record<string, { item: { contentDigest: string } }>)[
-      "liquibase-migration-review"
-    ];
-    const preview = (goal: string | null): CheckPreview => ({
-      previewId: `p-${goal}`,
-      itemKey: recommendation.item.key,
-      itemTitle: recommendation.item.title,
-      itemDigest: detail?.item.contentDigest ?? "",
-      checkId: "changelog-is-wellformed",
-      title: "Changelog is well formed",
-      description: null,
-      module: ".",
-      program: "mvn",
-      resolvedProgram: "/usr/bin/mvn",
-      args: [goal ? `goal-${goal}` : "no-goal"],
-      cwd: ".",
-      environment: "Your environment",
-      timeoutSeconds: 60,
-      warnings: [],
-      bindings: [
-        { name: "goal", kind: "module", description: "Goal", candidates: ["slow", "fast"], selected: goal },
-      ],
-      ready: true,
-    });
-    return { overview, recommendation, detail, preview };
-  }
-
-  it("shows the preview for the latest choice, even when an earlier one answers last", async () => {
-    const { overview, recommendation, detail, preview } = checkFixture();
-    let answerSlow: () => void = () => {};
-    handlers = {
-      item_detail: () => detail,
-      check_runs: () => [],
-      prepare_check: ({ bindings }) => {
-        const goal = (bindings as Record<string, string>).goal ?? null;
-        if (goal !== "slow") return preview(goal);
-        return new Promise((resolve) => {
-          answerSlow = () => resolve(preview("slow"));
-        });
-      },
-    };
-    const user = userEvent.setup();
-    wrap(<ChecksPanel overview={overview} recommendation={recommendation} />);
-    await user.click(await screen.findByRole("button", { name: "Preview the command" }));
-    const goal = await screen.findByRole("combobox", { name: "Goal" });
-    await user.selectOptions(goal, "slow");
-    await user.selectOptions(goal, "fast");
-    expect(await screen.findByText("goal-fast")).toBeInTheDocument();
-    await act(async () => {
-      answerSlow();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    expect(screen.getByText("goal-fast")).toBeInTheDocument();
-    expect(screen.queryByText("goal-slow")).toBeNull();
-  });
-
-  it("stops a running check when its card goes away, instead of leaving it running unseen", async () => {
-    const { overview, recommendation, detail, preview } = checkFixture();
-    handlers = {
-      item_detail: () => detail,
-      check_runs: () => [],
-      prepare_check: () => preview("fast"),
-      run_check: () => new Promise(() => {}),
-      cancel_job: vi.fn(() => true),
-    };
-    const user = userEvent.setup();
-    const view = wrap(<ChecksPanel overview={overview} recommendation={recommendation} />);
-    await user.click(await screen.findByRole("button", { name: "Preview the command" }));
-    await user.click(await screen.findByRole("button", { name: "Run this command" }));
-    expect(await screen.findByText(/Running mvn/)).toBeInTheDocument();
-    const job = invoke.mock.calls.find(([cmd]) => cmd === "run_check")?.[1] as { jobId: string };
-    view.unmount();
-    expect(handlers.cancel_job).toHaveBeenCalledWith({ jobId: job.jobId });
+    expect(await screen.findByText("mvn validate")).toBeInTheDocument();
+    expect(screen.getByText(detail.item.checks[0].title)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });
 

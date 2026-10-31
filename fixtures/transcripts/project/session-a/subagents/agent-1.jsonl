@@ -1,2 +1,0 @@
-{"parentUuid":"s-00","isSidechain":true,"agentId":"a1","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_s1","name":"Skill","input":{"skill":"migration-review"}}]},"type":"assistant","uuid":"s-01","timestamp":"{{days_ago:1}}","cwd":"{{project}}","sessionId":"session-a"}
-{"parentUuid":"s-01","isSidechain":true,"agentId":"a1","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_s1","content":"Launching skill: migration-review"}]},"type":"user","uuid":"s-02","timestamp":"{{days_ago:1}}","cwd":"{{project}}","sessionId":"session-a"}

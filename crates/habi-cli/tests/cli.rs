@@ -161,13 +161,6 @@ fn json_mode_prints_exactly_one_document() {
         vec!["declarations", "-C", p],
         vec!["contribute", "list"],
         vec!["diagnostics"],
-        vec![
-            "check",
-            "liquibase-migration-review",
-            "changelog-is-wellformed",
-            "-C",
-            p,
-        ],
     ] {
         let (out, _) = env.json(env.work.path(), &args);
         assert!(out.status.success(), "{args:?}: {}", stderr(&out));
@@ -407,10 +400,6 @@ fn messages_say_what_to_do_next() {
     env.ok(env.work.path(), &["source", "refresh", "Fresh"]);
 
     let project = env.project("billing-service");
-    let out = env.run(&project, &["check", "liquibase-migration-review", "nope"]);
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("Available checks: changelog-is-wellformed"));
-
     let out = env.run(&project, &["restore", "", "--yes"]);
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("at least the first 4 characters"));

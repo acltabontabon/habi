@@ -39,7 +39,7 @@ const templates = [
   { template: "blank", label: "Blank", summary: "Start from an empty page.", body: "" },
   {
     template: "workflow",
-    label: "Workflow",
+    label: "Step by step",
     summary: "A procedure the agent follows step by step.",
     body: "## Steps\n\n1. Read the code first.\n",
   },
@@ -170,7 +170,7 @@ describe("the Skill Studio", () => {
     }));
     handlers.save_skill_document = saved;
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: "Workflow" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Step by step" }));
     await waitFor(() => expect(saved).toHaveBeenCalled(), { timeout: 2000 });
     expect((saved.mock.calls[0]?.[0].document as { body: string } | undefined)?.body).toBe(
       templates[1]?.body,

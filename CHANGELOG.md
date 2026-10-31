@@ -44,6 +44,14 @@ All notable changes to Habi are listed here. The format follows
   tool caches such as `.angular` and `.databricks` are skipped, and Helm templates no longer use up the
   5,000 content checks.
 
+### Removed
+
+- **Habi no longer runs checks.** A skill's checks are still listed on its Checks tab, with any results
+  already recorded, but neither the app nor the CLI can start one, and `habi check` is gone. A check runs
+  repository code with no sandbox.
+- **Use counts are gone.** Installed skills no longer say *Used 12× in Claude Code here*, and Habi no longer
+  reads Claude Code's session history. It covered one agent, through a format that agent doesn't document.
+
 ### Security
 
 - **Hooks and auto-run config count as cautions.** Hooks in a skill's frontmatter, `hooks.json`, plugin

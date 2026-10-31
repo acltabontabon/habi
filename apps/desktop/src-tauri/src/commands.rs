@@ -8,7 +8,7 @@ use habi_core::browse::{self, FolderEntry, FolderKind, FolderListing, ProjectPla
 use habi_core::cancel::CancelToken;
 use habi_core::catalog::github::RepoFacts;
 use habi_core::catalog::{CatalogEntry, CatalogFit};
-use habi_core::checks::{CheckPreview, CheckRun};
+use habi_core::checks::CheckRun;
 use habi_core::clients::ClientId;
 use habi_core::contribute::{Contribution, ContributionOrigin, PublishOutcome, ShareForm};
 use habi_core::diagnostics::DiagnosticBundle;
@@ -29,13 +29,11 @@ use habi_core::skills::{LocalSkill, LocalSkillSummary, NewSkill, SkillDocument, 
 use habi_core::source::{
     NewSource, RefreshOutcome, Source, SourceRole, SourceUpdate, UpdateReport,
 };
-use habi_core::usage::SkillUsageReport;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, PoisonError};
 use tauri::{AppHandle, State};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use ts_rs::TS;
 
@@ -918,69 +916,6 @@ pub async fn recover(
 // ----- checks --------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn prepare_check(
-    state: State<'_, AppState>,
-    project_id: String,
-    item_key: String,
-    check_id: String,
-    module: String,
-    bindings: HashMap<String, String>,
-) -> CmdResult<CheckPreview> {
-    let habi = state.habi()?;
-    blocking(habi, move |h| {
-        h.prepare_check(&project_id, &item_key, &check_id, &module, &bindings)
-    })
-    .await
-}
-
-/// Runs a previously previewed check by its single-use preview id.
-#[tauri::command]
-pub async fn run_check(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    project_id: String,
-    preview_id: String,
-    job_id: Option<String>,
-) -> CmdResult<CheckRun> {
-    let habi = state.habi()?;
-    let preview = habi.check_preview(&preview_id).ok_or_else(|| {
-        HabiError::NotFound("that check preview (it expired); preview the command again".into())
-            .to_info()
-    })?;
-    // The one step here the webview cannot answer for itself: this runs code, and a preview and a
-    // click are both things a compromised page could produce.
-    let command = std::iter::once(preview.program.as_str())
-        .chain(preview.args.iter().map(String::as_str))
-        .collect::<Vec<_>>()
-        .join(" ");
-    let message = format!(
-        "{command}\n\nIn {}. It runs with your permissions and is not sandboxed.",
-        preview.cwd
-    );
-    let confirmed = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
-            .message(message)
-            .title("Run this command?")
-            .kind(MessageDialogKind::Warning)
-            .buttons(MessageDialogButtons::OkCancelCustom(
-                "Run".into(),
-                "Cancel".into(),
-            ))
-            .blocking_show()
-    })
-    .await
-    .map_err(|e| internal(e.to_string()))?;
-    if !confirmed {
-        return Err(HabiError::Cancelled.to_info());
-    }
-    let (cancel, _guard) = state.job(job_id);
-    blocking(habi, move |h| {
-        h.run_check(&project_id, &preview_id, &cancel)
-    })
-    .await
-}
-
-#[tauri::command]
 pub async fn check_runs(
     state: State<'_, AppState>,
     project_id: String,
@@ -1548,17 +1483,6 @@ pub async fn discover_project(
     let habi = state.habi()?;
     let (cancel, _guard) = state.job(job_id);
     blocking(habi, move |h| h.discover(&project_id, &cancel)).await
-}
-
-#[tauri::command]
-pub async fn skill_usage(
-    state: State<'_, AppState>,
-    project_id: String,
-    job_id: Option<String>,
-) -> CmdResult<SkillUsageReport> {
-    let habi = state.habi()?;
-    let (cancel, _guard) = state.job(job_id);
-    blocking(habi, move |h| h.skill_usage(&project_id, &cancel)).await
 }
 
 #[tauri::command]

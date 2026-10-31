@@ -110,16 +110,6 @@ A declaration applies to every module unless you pass `--module`: `.` is the rep
 and `habi inspect` lists the other module ids. It is labeled as yours wherever it is used, and
 can be removed.
 
-## Running an item's checks
-
-```sh
-habi check liquibase-migration-review changelog-is-wellformed           # preview only
-habi check liquibase-migration-review changelog-is-wellformed --run     # asks, then runs
-```
-
-A check runs a program from the library with your privileges, without a sandbox. `--bind
-name=value` chooses a binding from the listed candidates, and `--module` picks where it runs.
-
 ## Contributing
 
 ```sh

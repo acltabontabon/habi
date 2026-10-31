@@ -5,7 +5,7 @@
 Developers who work with AI coding agents keep learning useful things: a skill that needed one
 more instruction, a script that makes a migration safe, a convention a repository depends on.
 That knowledge fragments. One developer improves a skill and nobody else sees it. A better
-workflow stays on one machine. Community skills are easy to find and install; what happens
+way of working stays on one machine. Community skills are easy to find and install; what happens
 afterwards is the hard part — keeping knowledge useful, improving it, and letting the next
 developer benefit.
 
@@ -67,11 +67,6 @@ Habi is not a marketplace, agent launcher, chat application or configuration das
 
 They are never collapsed into a single "green" status.
 
-**Use** sits beside them and feeds none of them: *Used 12× in Claude Code here in 30 days* or *Not
-used in Claude Code here in 30 days* on an installed skill, counted from Claude Code's history on
-this machine when a project's All skills list opens. It helps a person prune what they no longer
-need; it does not rank or recommend anything, and says nothing when there is nothing to go on.
-
 Readiness is reported per compatible agent and installation previews assess the selected
 agents. A project MCP entry establishes configuration only, not startup or authentication.
 Evidence summarizes the latest completed results across declared checks and applicable
@@ -81,7 +76,7 @@ produce a fully checked summary.
 ## Validation target
 
 A developer opens an unfamiliar repository and identifies an appropriate, maintained team
-workflow faster, and with less guesswork, than by asking around or browsing a shared skills
+skill faster, and with less guesswork, than by asking around or browsing a shared skills
 folder. The defining demonstration — one library, three structurally different repositories,
 meaningfully different and explainable recommendations — is automated in
 `crates/habi-core/tests/matching_fixtures.rs` and `acceptance.rs`.
@@ -91,15 +86,9 @@ Known gaps are listed in one place:
 
 ## Out of scope by design
 
-A workflow execution engine, model routing or proxies, a marketplace, conversation
+An engine that executes skills, model routing or proxies, a marketplace, conversation
 monitoring, autonomous agents, LLM-generated applicability presented as fact, and
 effectiveness scores without evidence.
-
-Counting skill use is not conversation monitoring, and it stays that way: it runs when a project's
-All skills list opens (as it does on opening a project with something installed), never in the
-background, takes only skill names and times from an agent's local history, and keeps nothing
-([exactly what is read](security-model.md#claude-code-session-history)). A count is not an
-effectiveness score, and is not presented as one.
 
 ## Future direction
 
@@ -116,7 +105,9 @@ reworking the core:
   among the projects you opened.
 - **Centralized evaluations and adoption reporting** — only with explicit, opt-in team
   infrastructure; never background collection from developers' machines.
-- **More detectors** (.NET, Terraform) using the same coverage discipline.
+- **More detectors** (.NET) using the same coverage discipline.
+- **Running checks.** Declared checks are listed, not run, because running one executes repository
+  code with no sandbox. The code stays in `checks`, ready if someone asks for it.
 - **Instructions and MCP servers on this machine.** Installing on this machine covers skills
   only.
 - **Cursor `.mdc` rules** for glob-scoped instructions where AGENTS.md is too coarse.
