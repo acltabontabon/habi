@@ -416,6 +416,25 @@ impl PropertySource for Properties<'_, '_> {
     }
 }
 
+/// A property by a name like this holds a credential, whatever is asked of it. Its
+/// value would read as a version, past what any redaction can recognise.
+fn names_a_secret(property: &str) -> bool {
+    let lower = property.to_ascii_lowercase();
+    [
+        "password",
+        "passwd",
+        "secret",
+        "token",
+        "credential",
+        "apikey",
+        "api.key",
+        "api-key",
+        "private",
+    ]
+    .iter()
+    .any(|word| lower.contains(word))
+}
+
 /// Expands `${name}` references. Returns the unresolved property name on failure.
 #[allow(
     clippy::string_slice,
@@ -431,6 +450,9 @@ pub fn interpolate(value: &str, props: &impl PropertySource) -> Result<String, S
             return Err(current[start..].to_string());
         };
         let name = &current[start + 2..start + len];
+        if names_a_secret(name) {
+            return Err(name.to_string());
+        }
         match props.property(name) {
             Some(v) => {
                 current = format!("{}{}{}", &current[..start], v, &current[start + len + 1..]);
@@ -664,6 +686,28 @@ pub fn collect(poms: &[Pom], out: &mut Collector) {
                         file: source.path.clone(),
                         line: Some(decl.line),
                         excerpt: Some(format!("plugin {}", decl.coordinate())),
+                    },
+                );
+            }
+            // An imported BOM is a choice of platform, as `platform()` is in
+            // Gradle. A managed version alone says nothing is used.
+            for decl in source
+                .managed
+                .iter()
+                .filter(|m| m.scope.as_deref() == Some("import"))
+            {
+                out.dependency(
+                    &pom.module,
+                    Ecosystem::Maven,
+                    &decl.coordinate(),
+                    Some("import".into()),
+                    version_info(decl, &props, &|_| None, managed_externally.as_deref()),
+                    origin,
+                    DETECTOR,
+                    Evidence {
+                        file: source.path.clone(),
+                        line: Some(decl.line),
+                        excerpt: Some(format!("imported BOM {}", decl.coordinate())),
                     },
                 );
             }

@@ -5,8 +5,9 @@
 //! "tag not found" means false (the relevant evidence is complete) or unknown.
 
 use super::Collector;
-use super::model::FactSubject;
+use super::model::{Ecosystem, FactSubject};
 use serde::Serialize;
+use std::collections::{BTreeMap, BTreeSet};
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
@@ -38,6 +39,51 @@ pub const TAG_RULES: &[TagRule] = &[
         basis: TagBasis::Manifest,
         dependencies: &["org.springframework.boot:*", "org.springframework.boot"],
         files: &[],
+    },
+    TagRule {
+        tag: "framework:spring",
+        label: "Spring Framework",
+        basis: TagBasis::Manifest,
+        dependencies: &[
+            "org.springframework:*",
+            "org.springframework.boot:*",
+            "org.springframework.boot",
+        ],
+        files: &[],
+    },
+    TagRule {
+        tag: "framework:spring-security",
+        label: "Spring Security",
+        basis: TagBasis::Manifest,
+        dependencies: &[
+            "org.springframework.security:*",
+            "org.springframework.boot:spring-boot-starter-security",
+        ],
+        files: &[],
+    },
+    TagRule {
+        tag: "framework:spring-batch",
+        label: "Spring Batch",
+        basis: TagBasis::Manifest,
+        dependencies: &[
+            "org.springframework.batch:*",
+            "org.springframework.boot:spring-boot-starter-batch",
+        ],
+        files: &[],
+    },
+    TagRule {
+        tag: "framework:spring-cloud",
+        label: "Spring Cloud",
+        basis: TagBasis::Manifest,
+        dependencies: &["org.springframework.cloud:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "runtime:graalvm",
+        label: "GraalVM",
+        basis: TagBasis::Both,
+        dependencies: &["org.graalvm.*", "com.oracle.substratevm:*"],
+        files: &["graalvm-config"],
     },
     TagRule {
         tag: "framework:quarkus",
@@ -202,8 +248,30 @@ pub const TAG_RULES: &[TagRule] = &[
     TagRule {
         tag: "api:openapi",
         label: "OpenAPI specification",
+        // No specification file settles it: a build Habi could only partly read
+        // does not make its absence unknown.
         basis: TagBasis::Files,
-        dependencies: &[],
+        // Tools that generate from a specification or publish one.
+        dependencies: &[
+            "org.openapitools:*",
+            "org.openapi.generator",
+            "io.swagger.core.v3:*",
+            "io.swagger:*",
+            "io.swagger.parser.v3:*",
+            "@openapitools/*",
+            "@nestjs/swagger",
+            "swagger-ui-express",
+            "swagger-jsdoc",
+            "openapi-typescript",
+            "orval",
+            "drf-spectacular",
+            "drf-yasg",
+            "apispec",
+            "openapi-generator-cli",
+            "github.com/getkin/kin-openapi",
+            "github.com/swaggo/swag",
+            "utoipa",
+        ],
         files: &["openapi"],
     },
     TagRule {
@@ -432,7 +500,13 @@ pub const TAG_RULES: &[TagRule] = &[
         tag: "data:spark",
         label: "Spark",
         basis: TagBasis::Manifest,
-        dependencies: &["pyspark", "org.apache.spark:*"],
+        dependencies: &[
+            "pyspark",
+            "org.apache.spark:*",
+            "databricks-connect",
+            "delta-spark",
+            "io.delta:delta-spark*",
+        ],
         files: &[],
     },
     TagRule {
@@ -485,6 +559,272 @@ pub const TAG_RULES: &[TagRule] = &[
         files: &[],
     },
     TagRule {
+        tag: "data:databricks",
+        label: "Databricks",
+        basis: TagBasis::Both,
+        dependencies: &["databricks-*", "dbt-databricks", "com.databricks:*"],
+        files: &["data:databricks-bundle", "data:databricks-notebook"],
+    },
+    TagRule {
+        tag: "data:delta",
+        label: "Delta Lake",
+        basis: TagBasis::Manifest,
+        dependencies: &["delta-spark", "deltalake", "io.delta:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "data:mlflow",
+        label: "MLflow",
+        basis: TagBasis::Manifest,
+        dependencies: &["mlflow", "mlflow-*", "org.mlflow:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "data:jupyter",
+        label: "Jupyter notebooks",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &["data:notebook"],
+    },
+    // Test automation.
+    TagRule {
+        tag: "test:gauge",
+        label: "Gauge",
+        basis: TagBasis::Both,
+        dependencies: &[
+            "com.thoughtworks.gauge:*",
+            "getgauge",
+            "gauge-ts",
+            "gauge-js",
+            "@getgauge/*",
+        ],
+        files: &["test-config:gauge"],
+    },
+    TagRule {
+        tag: "test:robot-framework",
+        label: "Robot Framework",
+        basis: TagBasis::Both,
+        dependencies: &["robotframework", "robotframework-*", "org.robotframework:*"],
+        files: &["test-config:robot"],
+    },
+    TagRule {
+        tag: "test:cucumber",
+        label: "Cucumber",
+        basis: TagBasis::Both,
+        dependencies: &[
+            "io.cucumber:*",
+            "info.cukes:*",
+            "@cucumber/*",
+            "cucumber",
+            "behave",
+            "pytest-bdd",
+            "github.com/cucumber/godog",
+        ],
+        files: &["test-config:gherkin"],
+    },
+    TagRule {
+        tag: "test:selenium",
+        label: "Selenium",
+        basis: TagBasis::Manifest,
+        dependencies: &[
+            "org.seleniumhq.selenium:*",
+            "selenium",
+            "selenium-webdriver",
+            "com.codeborne:selenide",
+        ],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:testng",
+        label: "TestNG",
+        basis: TagBasis::Both,
+        dependencies: &["org.testng:*"],
+        files: &["test-config:testng"],
+    },
+    TagRule {
+        tag: "test:spock",
+        label: "Spock",
+        basis: TagBasis::Manifest,
+        dependencies: &["org.spockframework:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:mockito",
+        label: "Mockito",
+        basis: TagBasis::Manifest,
+        dependencies: &["org.mockito:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:rest-assured",
+        label: "REST Assured",
+        basis: TagBasis::Manifest,
+        dependencies: &["io.rest-assured:*", "com.jayway.restassured:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:karate",
+        label: "Karate",
+        basis: TagBasis::Manifest,
+        dependencies: &["com.intuit.karate:*", "io.karatelabs:*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:gatling",
+        label: "Gatling",
+        basis: TagBasis::Manifest,
+        dependencies: &[
+            "io.gatling:*",
+            "io.gatling.highcharts:*",
+            "io.gatling.gatling",
+            "gatling-*",
+        ],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:jmeter",
+        label: "JMeter",
+        basis: TagBasis::Both,
+        dependencies: &["org.apache.jmeter:*", "com.lazerycode.jmeter:*"],
+        files: &["test-config:jmeter"],
+    },
+    TagRule {
+        tag: "test:k6",
+        label: "k6",
+        basis: TagBasis::Manifest,
+        dependencies: &["k6", "@types/k6"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:locust",
+        label: "Locust",
+        basis: TagBasis::Manifest,
+        dependencies: &["locust"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:karma",
+        label: "Karma",
+        basis: TagBasis::Both,
+        dependencies: &["karma"],
+        files: &["test-config:karma"],
+    },
+    TagRule {
+        tag: "test:jasmine",
+        label: "Jasmine",
+        basis: TagBasis::Manifest,
+        dependencies: &["jasmine", "jasmine-core"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:mocha",
+        label: "Mocha",
+        basis: TagBasis::Manifest,
+        dependencies: &["mocha"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:webdriverio",
+        label: "WebdriverIO",
+        basis: TagBasis::Manifest,
+        dependencies: &["webdriverio", "@wdio/*"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:appium",
+        label: "Appium",
+        basis: TagBasis::Manifest,
+        dependencies: &["io.appium:*", "appium", "Appium-Python-Client"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:pact",
+        label: "Pact",
+        basis: TagBasis::Manifest,
+        dependencies: &["au.com.dius.pact*", "@pact-foundation/*", "pact-python"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:wiremock",
+        label: "WireMock",
+        basis: TagBasis::Manifest,
+        dependencies: &["org.wiremock:*", "com.github.tomakehurst:*", "wiremock"],
+        files: &[],
+    },
+    TagRule {
+        tag: "test:postman",
+        label: "Postman collections",
+        basis: TagBasis::Both,
+        dependencies: &["newman"],
+        files: &["test-config:postman"],
+    },
+    // Infrastructure: how the project is provisioned and deployed.
+    TagRule {
+        tag: "infra:terraform",
+        label: "Terraform",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &["infra:terraform-config"],
+    },
+    TagRule {
+        tag: "infra:terragrunt",
+        label: "Terragrunt",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &["infra:terragrunt-config"],
+    },
+    TagRule {
+        tag: "infra:helm",
+        label: "Helm",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &["infra:helm-chart"],
+    },
+    TagRule {
+        tag: "infra:kubernetes",
+        label: "Kubernetes",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &[
+            "infra:helm-chart",
+            "infra:kustomization",
+            "kubernetes-manifest",
+        ],
+    },
+    TagRule {
+        tag: "infra:kustomize",
+        label: "Kustomize",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &["infra:kustomization"],
+    },
+    TagRule {
+        tag: "infra:ansible",
+        label: "Ansible",
+        basis: TagBasis::Both,
+        dependencies: &["ansible", "ansible-core"],
+        files: &["infra:ansible-config"],
+    },
+    TagRule {
+        tag: "infra:pulumi",
+        label: "Pulumi",
+        basis: TagBasis::Both,
+        dependencies: &[
+            "pulumi",
+            "pulumi-*",
+            "@pulumi/*",
+            "github.com/pulumi/pulumi/*",
+        ],
+        files: &["infra:pulumi-project"],
+    },
+    TagRule {
+        tag: "test:bats",
+        label: "Bats",
+        basis: TagBasis::Files,
+        dependencies: &[],
+        files: &["test-config:bats"],
+    },
+    TagRule {
         tag: "agents:skills",
         label: "Agent skills in the project",
         basis: TagBasis::Files,
@@ -512,6 +852,9 @@ pub const LANGUAGE_TAGS: &[(&str, &str)] = &[
     ("lang:rust", "Rust"),
     ("lang:csharp", "C#"),
     ("lang:php", "PHP"),
+    ("lang:scala", "Scala"),
+    ("lang:shell", "Shell"),
+    ("lang:hcl", "HCL"),
 ];
 
 pub fn rule(tag: &str) -> Option<&'static TagRule> {
@@ -550,7 +893,9 @@ pub fn label(tag: &str) -> String {
 /// Natural phrase for a condition on a tag: "uses Spring Boot", "contains Java code".
 pub fn phrase(tag: &str) -> String {
     let label = label(tag);
-    if tag.starts_with("lang:") {
+    if tag == "lang:shell" {
+        "contains shell scripts".into()
+    } else if tag.starts_with("lang:") {
         format!("contains {label} code")
     } else if tag == "api:openapi" {
         "has an OpenAPI specification".into()
@@ -582,8 +927,88 @@ pub fn wildcard_match(pattern: &str, value: &str) -> bool {
     rest.ends_with(parts)
 }
 
+/// Directories whose code serves the project rather than being it.
+const CHORE_DIRS: &[&str] = &[
+    "scripts",
+    "script",
+    "tools",
+    "tool",
+    "hack",
+    "bin",
+    "ci",
+    ".ci",
+    ".github",
+    ".gitlab",
+    "docs",
+    "doc",
+    "misc",
+    "third_party",
+    "thirdparty",
+    "static",
+    "public",
+    "assets",
+    "resources",
+    "webapp",
+    "buildSrc",
+    "build-logic",
+    "fixtures",
+    "__fixtures__",
+    "testdata",
+];
+
+/// Files of a tool's own configuration or a copied library, written in a language
+/// the project need not be: `karma.conf.js`, `vite.config.ts`, `jquery.min.js`.
+fn is_chore_file(name: &str) -> bool {
+    name.starts_with('.')
+        || name.ends_with(".min.js")
+        || name.ends_with(".conf.js")
+        || name.starts_with("webpack.")
+        || name.eq_ignore_ascii_case("gulpfile.js")
+        || name.eq_ignore_ascii_case("gruntfile.js")
+        || name.contains(".config.")
+}
+
+fn is_chore(path: &str) -> bool {
+    let (dirs, name) = path.rsplit_once('/').unwrap_or(("", path));
+    is_chore_file(name) || dirs.split('/').any(|d| CHORE_DIRS.contains(&d))
+}
+
+/// Whether a module's manifest says it is written in `lang`.
+fn owned_by(ecosystem: Ecosystem, lang: &str) -> bool {
+    match ecosystem {
+        Ecosystem::Maven | Ecosystem::Gradle => {
+            matches!(lang, "lang:java" | "lang:kotlin" | "lang:scala")
+        }
+        Ecosystem::Npm => matches!(lang, "lang:javascript" | "lang:typescript"),
+        other => other.language() == lang,
+    }
+}
+
+/// How much of a language a module holds, its example first.
+struct LanguageCount {
+    example: String,
+    count: u32,
+    /// Files outside the chore directories.
+    core: u32,
+}
+
+/// Whether a language is true of a module without saying what it is for: no
+/// manifest of its own, another language has more real code here, and this one
+/// lives in chores or is under a tenth of the module. A rule that a skill's
+/// author wrote still sees it; Habi does not suggest a skill on its strength.
+fn incidental(this: &LanguageCount, total: u32, others: u32, owned: bool) -> bool {
+    !(owned && this.core > 0)
+        && others > this.core
+        && (this.core == 0 || this.core.saturating_mul(10) < total)
+}
+
 /// Adds derived tag facts based on dependency and file facts.
-pub fn derive(out: &mut Collector, files: &[(String, u64)], module_of: &dyn Fn(&str) -> String) {
+pub fn derive(
+    out: &mut Collector,
+    files: &[(String, u64)],
+    module_of: &dyn Fn(&str) -> String,
+    ecosystems: &BTreeMap<String, BTreeSet<Ecosystem>>,
+) {
     let mut hits: Vec<(String, &'static str, String)> = Vec::new();
     for fact in &out.facts {
         for rule in TAG_RULES {
@@ -604,28 +1029,93 @@ pub fn derive(out: &mut Collector, files: &[(String, u64)], module_of: &dyn Fn(&
     }
 
     // Languages: count source files per module.
-    let mut first: std::collections::BTreeMap<(String, &'static str), (String, u32)> =
-        Default::default();
+    let mut first: BTreeMap<(String, &'static str), LanguageCount> = Default::default();
     // A skill's scripts are not the project's code.
     for (path, _) in files
         .iter()
-        .filter(|(p, _)| !super::files::inside_skill_package(p))
+        .filter(|(p, _)| !super::files::inside_skill_package(p) && !super::files::in_fixture(p))
     {
         if let Some(lang) = super::files::language_of(path) {
             let entry = first
                 .entry((module_of(path), lang))
-                .or_insert_with(|| (path.clone(), 0));
-            entry.1 += 1;
+                .or_insert_with(|| LanguageCount {
+                    example: path.clone(),
+                    count: 0,
+                    core: 0,
+                });
+            entry.count += 1;
+            if !is_chore(path) {
+                entry.core += 1;
+            }
         }
     }
-    for ((module, lang), (example, count)) in first {
-        out.language(&module, lang, &example, count);
+    for ((module, lang), this) in &first {
+        let peers = || {
+            first
+                .range((module.clone(), "")..)
+                .take_while(|((m, _), _)| m == module)
+        };
+        let total = peers().map(|(_, c)| c.count).sum();
+        let others = peers()
+            .filter(|((_, l), _)| l != lang)
+            .map(|(_, c)| c.core)
+            .max()
+            .unwrap_or(0);
+        let owned = ecosystems
+            .get(module)
+            .is_some_and(|set| set.iter().any(|e| owned_by(*e, lang)));
+        out.language(
+            module,
+            lang,
+            &this.example,
+            this.count,
+            incidental(this, total, others, owned),
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn chores_are_told_from_code() {
+        for path in [
+            "scripts/seed.py",
+            "tools/dash/main.go",
+            "src/main/resources/static/js/app.js",
+            "karma.conf.js",
+            "web/vite.config.ts",
+            ".eslintrc.js",
+            "buildSrc/src/main/kotlin/A.kt",
+            "docs/theme/custom.js",
+        ] {
+            assert!(is_chore(path), "{path}");
+        }
+        for path in ["src/main.ts", "app/models.py", "api/handler.go", "build.py"] {
+            assert!(!is_chore(path), "{path}");
+        }
+    }
+
+    #[test]
+    fn a_language_is_incidental_only_beside_more_real_code() {
+        let of = |core| LanguageCount {
+            example: String::new(),
+            count: core,
+            core,
+        };
+        // One Python script among forty Java files.
+        assert!(incidental(&of(0), 41, 40, false));
+        assert!(incidental(&of(1), 41, 40, false));
+        // The only language there is, however it is laid out.
+        assert!(!incidental(&of(0), 3, 0, false));
+        // A real share of the module.
+        assert!(!incidental(&of(10), 50, 40, false));
+        // Its own manifest says it belongs here.
+        assert!(!incidental(&of(1), 41, 40, true));
+        // A manifest does not make build scripts the project's language.
+        assert!(incidental(&of(0), 41, 40, true));
+    }
 
     #[test]
     fn wildcards() {

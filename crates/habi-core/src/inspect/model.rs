@@ -187,6 +187,11 @@ pub struct Fact {
     /// Facts this one was derived from.
     pub derived_from: Vec<String>,
     pub note: Option<String>,
+    /// A language this module holds without being written in it: one script
+    /// beside a Java service. True of the module, and no reason to suggest a skill.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    #[ts(optional, as = "Option<bool>")]
+    pub incidental: bool,
 }
 
 impl Fact {

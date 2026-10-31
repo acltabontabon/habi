@@ -883,9 +883,18 @@ pub async fn machine_recover(state: State<'_, AppState>) -> CmdResult<Vec<Operat
 pub async fn apply_plan(
     state: State<'_, AppState>,
     plan_id: String,
+    // Only the review screen sets this, once the person has ticked that they accept.
+    accept_cautions: Option<bool>,
 ) -> CmdResult<OperationSummary> {
     let habi = state.habi()?;
-    blocking(habi, move |h| h.apply(&plan_id)).await
+    blocking(habi, move |h| {
+        if accept_cautions == Some(true) {
+            h.apply_accepting_cautions(&plan_id)
+        } else {
+            h.apply(&plan_id)
+        }
+    })
+    .await
 }
 
 #[tauri::command]

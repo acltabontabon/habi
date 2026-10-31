@@ -104,7 +104,7 @@ impl Env {
         let lib = library_fixture();
         self.ok(
             self.work.path(),
-            &["source", "add", "Team", lib.to_str().unwrap()],
+            &["source", "add", "Team", lib.to_str().unwrap(), "--team"],
         );
         self.ok(self.work.path(), &["source", "refresh"]);
     }
@@ -142,7 +142,7 @@ fn json_mode_prints_exactly_one_document() {
     let lib = library_fixture();
     let (out, v) = env.json(
         env.work.path(),
-        &["source", "add", "Team", lib.to_str().unwrap()],
+        &["source", "add", "Team", lib.to_str().unwrap(), "--team"],
     );
     assert!(out.status.success());
     assert_eq!(v["name"], "Team");
@@ -446,7 +446,7 @@ fn contribution_describe_keeps_what_is_not_given() {
     git(&lib, &["init", "-q", "-b", "main"]);
     git(&lib, &["add", "-A"]);
     git(&lib, &["commit", "-q", "-m", "init"]);
-    env.ok(env.work.path(), &["source", "add", "Team", "lib"]);
+    env.ok(env.work.path(), &["source", "add", "Team", "lib", "--team"]);
     env.ok(env.work.path(), &["source", "refresh"]);
 
     let (out, c) = env.json(
@@ -606,10 +606,9 @@ fn the_catalog_lists_every_library_without_touching_the_network() {
 fn a_community_library_is_not_listed_as_a_team_requirement() {
     let env = Env::new();
     copy_dir(&library_fixture(), &env.work.path().join("lib"));
-    env.ok(
-        env.work.path(),
-        &["source", "add", "Theirs", "lib", "--community"],
-    );
+    let (out, v) = env.json(env.work.path(), &["source", "add", "Theirs", "lib"]);
+    assert!(out.status.success());
+    assert_eq!(v["role"], "community");
     env.ok(env.work.path(), &["source", "refresh"]);
 
     let project = env.project("billing-service");
@@ -621,6 +620,48 @@ fn a_community_library_is_not_listed_as_a_team_requirement() {
     env.ok(env.work.path(), &["source", "role", "Theirs", "team"]);
     let text = stdout(&env.ok(&project, &["recommend", "--all"]));
     assert!(text.contains("Team requirements"), "{text}");
+}
+
+#[test]
+fn only_an_explicit_choice_makes_a_library_the_teams() {
+    let env = Env::new();
+    for folder in ["plain", "ours", "ours-json", "old"] {
+        copy_dir(&library_fixture(), &env.work.path().join(folder));
+    }
+
+    let text = stdout(&env.ok(env.work.path(), &["source", "add", "Plain", "plain"]));
+    assert!(text.contains("habi source role Plain team"), "{text}");
+
+    let text = stdout(&env.ok(
+        env.work.path(),
+        &["source", "add", "Ours", "ours", "--team"],
+    ));
+    assert!(!text.contains("community"), "{text}");
+    let (out, v) = env.json(
+        env.work.path(),
+        &["source", "add", "OursJson", "ours-json", "--team"],
+    );
+    assert!(out.status.success());
+    assert_eq!(v["role"], "team");
+
+    // The old spelling keeps working for scripts that already use it.
+    let (out, v) = env.json(
+        env.work.path(),
+        &["source", "add", "Old", "old", "--community"],
+    );
+    assert!(out.status.success());
+    assert_eq!(v["role"], "community");
+
+    let out = env.run(
+        env.work.path(),
+        &["source", "add", "Both", "plain", "--team", "--community"],
+    );
+    assert!(!out.status.success());
+    assert!(
+        stderr(&out).contains("cannot be used with"),
+        "{}",
+        stderr(&out)
+    );
 }
 
 #[test]
@@ -636,7 +677,7 @@ fn recommend_and_explain_say_whose_rule_a_fit_rests_on() {
         "---\nname: spring-config-review\ndescription: Review Spring Boot configuration for safe defaults.\n---\n\n# Spring config review\n\nSteps.\n",
     )
     .unwrap();
-    env.ok(env.work.path(), &["source", "add", "Team", "lib"]);
+    env.ok(env.work.path(), &["source", "add", "Team", "lib", "--team"]);
     env.ok(env.work.path(), &["source", "refresh"]);
 
     let project = env.project("billing-service");

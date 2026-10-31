@@ -107,7 +107,7 @@ async function run() {
   await click("Cancel", "[role=dialog] button");
   await until(`!document.querySelector("[role=dialog]")`, "the review to close");
 
-  // Home: every project woven with the libraries that fit it.
+  // Home: what needs you most, and every other project.
   for (const name of ["storefront-web", "platform-monorepo", "orders-api"]) {
     await click(name, ".sidebar-item");
     // A project with nothing installed opens on Suggested, the others on All skills.
@@ -119,7 +119,7 @@ async function run() {
     }
   }
   await page(`document.querySelector(".sidebar-brand").click()`);
-  await until(`document.querySelectorAll(".loom-row-label").length >= 7 && document.querySelector(".loom-float")`, "the loom");
+  await until(`document.querySelector(".front-rail li") && document.querySelector(".front-skills li")`, "the front page");
   await shot("home.jpg");
 
   // Where all libraries come from: the catalog.

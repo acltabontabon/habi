@@ -9,4 +9,9 @@ path: string, digest: string,
 /**
  * Clients this copy serves.
  */
-clients: Array<ClientId>, };
+clients: Array<ClientId>, 
+/**
+ * Whether it was installed executable. Absent in older lock files, where
+ * a change of mode cannot be told.
+ */
+executable?: boolean, };

@@ -19,7 +19,7 @@
 //!   count (`django`, `playwright`; not `go`, `next`, `spring` or `express`).
 //! - A term stands for a tag only when every project with the tag is one the
 //!   skill is about. Technologies Habi has no tag for (React Native, Nuxt,
-//!   ASP.NET, Spring Security, Cloudflare Workers) name nothing; they do not
+//!   ASP.NET, Cloudflare Workers) name nothing; they do not
 //!   stand in for a broader framework or language.
 //! - A framework is the more specific claim: once one is named, languages are
 //!   dropped. A skill naming more than five technologies is about none of them.
@@ -213,9 +213,12 @@ static DESCRIPTION_TERMS: &[Term] = &[
     // JVM
     term("framework:spring-boot", "Spring Boot"),
     term("framework:spring-boot", "SpringBoot"),
-    // Every Spring Boot project is a Spring Framework project; Spring
-    // Security, Data or Cloud are separate choices Habi cannot see.
-    cased("framework:spring-boot", "Spring Framework"),
+    // Every Spring Boot project is a Spring Framework project.
+    cased("framework:spring", "Spring Framework"),
+    cased("framework:spring-security", "Spring Security"),
+    cased("framework:spring-batch", "Spring Batch"),
+    cased("framework:spring-cloud", "Spring Cloud"),
+    term("runtime:graalvm", "GraalVM"),
     term("framework:quarkus", "Quarkus"),
     term("framework:micronaut", "Micronaut"),
     term("test:junit", "JUnit"),
@@ -311,6 +314,24 @@ static DESCRIPTION_TERMS: &[Term] = &[
     term("data:pandas", "pandas"),
     term("data:polars", "Polars"),
     term("data:duckdb", "DuckDB"),
+    term("data:databricks", "Databricks"),
+    cased("data:delta", "Delta Lake"),
+    term("data:mlflow", "MLflow"),
+    term("data:jupyter", "Jupyter"),
+    // Infrastructure
+    term("infra:terraform", "Terraform"),
+    term("infra:terraform", "OpenTofu"),
+    term("infra:terragrunt", "Terragrunt"),
+    cased("infra:helm", "Helm"),
+    term("infra:helm", "helm chart"),
+    term("infra:helm", "helm charts"),
+    // Azure Kubernetes Service and Google Kubernetes Engine are clouds of their own.
+    term("infra:kubernetes", "Kubernetes").not_then(&["service", "engine"]),
+    term("infra:kubernetes", "K8s"),
+    term("infra:kubernetes", "kubectl"),
+    term("infra:kustomize", "Kustomize"),
+    term("infra:ansible", "Ansible"),
+    term("infra:pulumi", "Pulumi"),
     // Delivery
     term("api:openapi", "OpenAPI"),
     term("api:openapi", "Swagger"),
@@ -341,6 +362,57 @@ static DESCRIPTION_TERMS: &[Term] = &[
     cased("lang:csharp", ".NET"),
     term("lang:csharp", "dotnet"),
     term("lang:php", "PHP"),
+    cased("lang:scala", "Scala"),
+    cased("lang:hcl", "HCL"),
+    cased("lang:shell", "Bash"),
+    term("lang:shell", "ShellCheck"),
+    term("lang:shell", "shell script"),
+    term("lang:shell", "shell scripts"),
+    term("lang:shell", "shell scripting"),
+    cased("test:bats", "Bats"),
+    // Test automation. Gauge is also a metric; Karate, Pact and Karma are also words.
+    cased("test:gauge", "Gauge").then(&[
+        "test",
+        "tests",
+        "spec",
+        "specs",
+        "framework",
+        "testing",
+        "automation",
+    ]),
+    term("test:gauge", "getgauge"),
+    term("test:gauge", "gauge-java"),
+    term("test:robot-framework", "Robot Framework"),
+    term("test:robot-framework", "RobotFramework"),
+    cased("test:cucumber", "Cucumber"),
+    cased("test:cucumber", "Gherkin"),
+    cased("test:selenium", "Selenium"),
+    term("test:testng", "TestNG"),
+    cased("test:spock", "Spock").then(&["test", "tests", "spec", "specs", "framework", "testing"]),
+    term("test:mockito", "Mockito"),
+    term("test:rest-assured", "REST Assured"),
+    term("test:rest-assured", "RestAssured"),
+    cased("test:karate", "Karate").then(&["dsl", "test", "tests", "framework", "testing"]),
+    cased("test:gatling", "Gatling"),
+    term("test:jmeter", "JMeter"),
+    term("test:k6", "k6"),
+    cased("test:locust", "Locust"),
+    cased("test:karma", "Karma").then(&["test", "tests", "runner", "config", "testing"]),
+    cased("test:jasmine", "Jasmine"),
+    cased("test:mocha", "Mocha"),
+    term("test:webdriverio", "WebdriverIO"),
+    cased("test:appium", "Appium"),
+    cased("test:pact", "Pact").then(&[
+        "contract",
+        "contracts",
+        "test",
+        "tests",
+        "testing",
+        "broker",
+    ]),
+    term("test:wiremock", "WireMock"),
+    cased("test:postman", "Postman"),
+    term("test:postman", "newman"),
 ];
 
 /// How skill names (lowercase tokens, space-separated here) name a tag. Only
@@ -348,7 +420,11 @@ static DESCRIPTION_TERMS: &[Term] = &[
 static NAME_TERMS: &[Term] = &[
     term("framework:spring-boot", "spring boot"),
     term("framework:spring-boot", "springboot"),
-    term("framework:spring-boot", "spring framework"),
+    term("framework:spring", "spring framework"),
+    term("framework:spring-security", "spring security"),
+    term("framework:spring-batch", "spring batch"),
+    term("framework:spring-cloud", "spring cloud"),
+    term("runtime:graalvm", "graalvm"),
     term("framework:quarkus", "quarkus"),
     term("framework:micronaut", "micronaut"),
     term("test:junit", "junit"),
@@ -433,6 +509,46 @@ static NAME_TERMS: &[Term] = &[
     term("lang:csharp", "csharp"),
     term("lang:csharp", "dotnet"),
     term("lang:php", "php"),
+    term("lang:scala", "scala"),
+    term("lang:shell", "bash"),
+    term("lang:shell", "shell script"),
+    term("lang:shell", "shell scripts"),
+    term("lang:shell", "shell scripting"),
+    term("lang:shell", "shellcheck"),
+    term("test:bats", "bats"),
+    term("test:gauge", "getgauge"),
+    term("test:gauge", "gauge test"),
+    term("test:gauge", "gauge tests"),
+    term("test:robot-framework", "robot framework"),
+    term("test:robot-framework", "robotframework"),
+    term("test:cucumber", "cucumber"),
+    term("test:cucumber", "gherkin"),
+    term("test:selenium", "selenium"),
+    term("test:testng", "testng"),
+    term("test:mockito", "mockito"),
+    term("test:rest-assured", "rest assured"),
+    term("test:rest-assured", "restassured"),
+    term("test:gatling", "gatling"),
+    term("test:jmeter", "jmeter"),
+    term("test:k6", "k6"),
+    term("test:locust", "locust"),
+    term("test:webdriverio", "webdriverio"),
+    term("test:appium", "appium"),
+    term("test:wiremock", "wiremock"),
+    term("test:postman", "postman"),
+    term("data:databricks", "databricks"),
+    term("data:delta", "delta lake"),
+    term("data:mlflow", "mlflow"),
+    term("data:jupyter", "jupyter"),
+    term("infra:terraform", "terraform"),
+    term("infra:terraform", "opentofu"),
+    term("infra:terragrunt", "terragrunt"),
+    term("infra:helm", "helm"),
+    term("infra:kubernetes", "kubernetes"),
+    term("infra:kubernetes", "k8s"),
+    term("infra:kustomize", "kustomize"),
+    term("infra:ansible", "ansible"),
+    term("infra:pulumi", "pulumi"),
 ];
 
 /// Description terms compiled once; a term that does not compile is skipped
@@ -589,7 +705,7 @@ static AGNOSTIC: LazyLock<Option<Regex>> = LazyLock::new(|| {
 });
 
 /// Tags about how a project is built and shipped, not what it is built on.
-const TOOLING: &[&str] = &["ci:", "container:", "build:"];
+const TOOLING: &[&str] = &["ci:", "container:", "build:", "infra:"];
 
 /// The rule's tags, from strongest claim to weakest: the frameworks, data
 /// stores, test tools and APIs the skill names; else a language its name
@@ -1362,6 +1478,92 @@ mod tests {
     }
 
     #[test]
+    fn infrastructure_and_script_skills_read_as_what_they_are() {
+        for (name, description, want) in [
+            (
+                "terraform-module-library",
+                "Build reusable Terraform modules for AWS, Azure and GCP.",
+                "infra:terraform",
+            ),
+            (
+                "helm-chart-scaffolding",
+                "Design and manage Helm charts for packaging Kubernetes applications.",
+                "infra:helm",
+            ),
+            (
+                "k8s-manifest-generator",
+                "Create production-ready Kubernetes manifests.",
+                "infra:kubernetes",
+            ),
+            (
+                "bash-defensive-patterns",
+                "Master defensive Bash programming for production-grade scripts.",
+                "lang:shell",
+            ),
+            (
+                "shellcheck-configuration",
+                "Master ShellCheck static analysis for shell script quality.",
+                "lang:shell",
+            ),
+            (
+                "java-add-graalvm-native-image-support",
+                "GraalVM Native Image for Spring Boot, Micronaut and plain Java.",
+                "runtime:graalvm",
+            ),
+            (
+                "delta-tables",
+                "Delta Lake table design and MERGE on Databricks.",
+                "data:delta",
+            ),
+        ] {
+            let found = rule_tags(name, description);
+            assert!(found.iter().any(|t| t == want), "{name}: {found:?}");
+        }
+        // A cloud of its own is not any Kubernetes project.
+        assert!(rule_tags("x", "Troubleshoot Azure Kubernetes Service clusters.").is_empty());
+        assert!(rule_tags("x", "At the helm of a team.").is_empty());
+        assert!(rule_tags("react-native-image", "Images in React Native.").is_empty());
+        // A language in passing still names no language.
+        assert!(rule_tags("deploy-notes", "Run a Bash command to deploy.").is_empty());
+    }
+
+    #[test]
+    fn test_automation_skills_read_as_what_they_are() {
+        for (name, description, want) in [
+            (
+                "gauge-specs",
+                "Write Gauge specs for acceptance tests.",
+                "test:gauge",
+            ),
+            (
+                "robot-framework-keywords",
+                "Robot Framework keywords.",
+                "test:robot-framework",
+            ),
+            (
+                "bdd",
+                "Write Cucumber scenarios in Gherkin.",
+                "test:cucumber",
+            ),
+            ("selenium-grid", "Selenium grid setups.", "test:selenium"),
+            ("rest-assured-api-tests", "API tests.", "test:rest-assured"),
+            ("load", "Load tests with k6.", "test:k6"),
+            ("jmeter-plans", "Performance plans.", "test:jmeter"),
+        ] {
+            let found = rule_tags(name, description);
+            assert!(found.iter().any(|t| t == want), "{name}: {found:?}");
+        }
+        for (name, description) in [
+            ("metrics", "Expose a Gauge metric and a counter."),
+            ("gauge-metrics", "How to gauge progress."),
+            ("x", "Good Karma for the team."),
+            ("x", "A Pact between teams."),
+        ] {
+            assert!(rule_tags(name, description).is_empty(), "{description}");
+        }
+    }
+
+    #[test]
     fn a_skill_for_every_language_is_for_none() {
         let name = "code-review-any-language";
         let description = "Review code in Python, JavaScript, TypeScript, Java, Go, Rust, C# or \
@@ -1428,7 +1630,6 @@ mod tests {
             "ASP.NET Core minimal APIs.",
             "Nuxt and SvelteKit routing.",
             "Node.js scripts and Deno tasks.",
-            "Spring Security and Spring Cloud configuration.",
             "VB.NET forms.",
         ];
         for text in prose {
@@ -1535,9 +1736,10 @@ mod tests {
         assert_eq!(tags("x", "The Echo framework."), ["framework:echo"]);
         assert_eq!(tags("x", "A Fiber framework app."), ["framework:fiber"]);
         assert_eq!(tags("x", "React Fiber internals."), ["framework:react"]);
+        assert_eq!(tags("x", "Spring Framework beans."), ["framework:spring"]);
         assert_eq!(
-            tags("x", "Spring Framework beans."),
-            ["framework:spring-boot"]
+            tags("x", "Spring Security filter chains."),
+            ["framework:spring-security"]
         );
         assert_eq!(
             tags("x", "spring boot starters."),

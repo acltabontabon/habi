@@ -498,6 +498,31 @@ struct StoredCheck {
     preview: CheckPreview,
 }
 
+/// Who stands behind an item, from what was checked: the role the person gave
+/// its library, and what Habi's catalog verified. Never how popular it is.
+fn provenance_of(source: &Source, item: &LibraryItem) -> crate::install::lock::Provenance {
+    use crate::install::lock::{Curation, Provenance};
+    let entry = crate::catalog::entry_for_source(source);
+    let curation = match (source.role, entry) {
+        // By id: a library can be called anything, and "My skills" is no credential.
+        _ if source.id == LOCAL_SOURCE_ID => Curation::Personal,
+        (crate::source::SourceRole::Team, _) => Curation::Team,
+        (_, Some(e)) if e.ownership.is_some() => Curation::VerifiedPublisher,
+        (_, Some(_)) => Curation::ListedCommunity,
+        (_, None) => Curation::Unlisted,
+    };
+    Provenance {
+        curation,
+        publisher: entry.map(|e| e.publisher.name.clone()),
+        reviewed_at: entry
+            .and_then(|e| e.review.as_ref())
+            .map(|r| r.revision.clone()),
+        picked: entry.is_some_and(|e| e.picks.iter().any(|p| p.skill == item.path)),
+        license: item.license.clone(),
+        claimed_origin: item.based_on.clone(),
+    }
+}
+
 impl Habi {
     pub fn open(paths: AppPaths) -> Result<Habi> {
         paths.ensure()?;
@@ -1175,6 +1200,8 @@ impl Habi {
             },
             snapshot: index.snapshot.clone(),
             files,
+            provenance: provenance_of(source, item),
+            origin: Some(crate::redact::redact(&portable_identity(source))),
         })
     }
 
@@ -1516,8 +1543,23 @@ impl Habi {
             })
     }
 
-    /// Applies a previously computed plan by id.
+    /// Applies a previously computed plan by id. A plan with cautions is refused
+    /// here, whichever front end asked: only `apply_accepting_cautions` runs it, for
+    /// a person who has been shown them and said yes.
     pub fn apply(&self, plan_id: &str) -> Result<OperationSummary> {
+        let plan = self.plan(plan_id)?;
+        let cautions = plan.cautions();
+        if cautions > 0 {
+            return Err(HabiError::invalid(format!(
+                "this has {cautions} caution{} that must be accepted before it is applied",
+                if cautions == 1 { "" } else { "s" }
+            )));
+        }
+        self.apply_accepting_cautions(plan_id)
+    }
+
+    /// Applies a plan whose cautions the person has seen and accepted.
+    pub fn apply_accepting_cautions(&self, plan_id: &str) -> Result<OperationSummary> {
         let plan = self.plan(plan_id)?;
         let result = self.applier().apply(&plan);
         // A plan is single-use whatever the outcome.
@@ -1533,6 +1575,11 @@ impl Habi {
     }
 
     pub fn apply_plan(&self, plan: &Plan) -> Result<OperationSummary> {
+        if plan.cautions() > 0 {
+            return Err(HabiError::invalid(
+                "this has cautions that must be accepted before it is applied",
+            ));
+        }
         let result = self.applier().apply(plan);
         self.invalidate_for_root(&plan.root);
         self.tidy_after(&plan.root, &result);

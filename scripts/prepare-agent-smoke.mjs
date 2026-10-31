@@ -23,7 +23,7 @@ export function prepareSmoke(destination, executable) {
   const env = { ...process.env, HABI_HOME: path.join(root, "data") };
   const run = (args) => execFileSync(habi, ["--json", ...args], { cwd: project, env, encoding: "utf8", timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
   run(["validate", library]);
-  run(["source", "add", "Smoke", library]);
+  run(["source", "add", "Smoke", library, "--team"]);
   run(["source", "refresh", "Smoke"]);
   const clients = "claude-code,cursor,codex,gemini-cli,copilot,opencode,junie";
   writeFileSync(path.join(root, "skill-install.json"), run(["install", "Smoke/habi-smoke-test", "--client", clients, "--mcp", "--yes"]));

@@ -230,7 +230,18 @@ impl Bridge {
             )?),
             "machine_history" => out(h.machine_history()?),
             "machine_recover" => out(h.machine_recover()?),
-            "apply_plan" => out(h.apply(&s("planId")?)?),
+            "apply_plan" => {
+                let plan = s("planId")?;
+                let accepted = a
+                    .get("acceptCautions")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                if accepted {
+                    out(h.apply_accepting_cautions(&plan)?)
+                } else {
+                    out(h.apply(&plan)?)
+                }
+            }
             "history" => out(h.history(&s("projectId")?)?),
             "recover" => out(h.recover(&s("projectId")?)?),
 

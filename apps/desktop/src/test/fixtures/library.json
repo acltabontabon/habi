@@ -1,14 +1,14 @@
 {
-  "sourceId": "1526b695b1eb",
-  "snapshot": "f08e4250ef49baf9d33090b5ce1929f1b289c2e1",
+  "sourceId": "58d98d15525b",
+  "snapshot": "23512cb9a5a3ff13ab6b39772ee513c6b9a678b4",
   "name": "Example team library",
   "owner": "Platform Guild (example)",
   "description": "Shared review workflows and conventions for the example team's Java services and web apps.",
   "contact": "#platform-guild (example channel)",
   "items": [
     {
-      "key": "1526b695b1eb/api-contract-review",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/api-contract-review",
+      "sourceId": "58d98d15525b",
       "id": "api-contract-review",
       "kind": "workflow",
       "title": "API contract review",
@@ -99,8 +99,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/frontend-test-practices",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/frontend-test-practices",
+      "sourceId": "58d98d15525b",
       "id": "frontend-test-practices",
       "kind": "skill",
       "title": "Front-end test practices",
@@ -195,8 +195,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/github-pr-summary",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/github-pr-summary",
+      "sourceId": "58d98d15525b",
       "id": "github-pr-summary",
       "kind": "skill",
       "title": "GitHub PR summary",
@@ -267,13 +267,23 @@
       "contentDigest": "sha256:1896b1b98b30091db7d48589937b3d89fbd2c1cba05e5fe5064c9efbca6a9899",
       "metadataStatus": "declared",
       "diagnostics": [],
-      "signals": [],
+      "signals": [
+        {
+          "kind": "environmentSecret",
+          "severity": "notice",
+          "summary": "Refers to a secret held in the environment",
+          "path": "skills/github-pr-summary/habi.yaml",
+          "line": 19,
+          "detail": "GITHUB_PERSONAL_ACCESS_TOKEN: [redacted]",
+          "more": 0
+        }
+      ],
       "calls": [],
       "complete": true
     },
     {
-      "key": "1526b695b1eb/incident-notes",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/incident-notes",
+      "sourceId": "58d98d15525b",
       "id": "incident-notes",
       "kind": "skill",
       "title": "Incident notes",
@@ -315,8 +325,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/java-service-conventions",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/java-service-conventions",
+      "sourceId": "58d98d15525b",
       "id": "java-service-conventions",
       "kind": "instructions",
       "title": "Java service conventions",
@@ -372,8 +382,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/jooq-query-review",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/jooq-query-review",
+      "sourceId": "58d98d15525b",
       "id": "jooq-query-review",
       "kind": "skill",
       "title": "jOOQ query review",
@@ -424,8 +434,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/jpa-entity-review",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/jpa-entity-review",
+      "sourceId": "58d98d15525b",
       "id": "jpa-entity-review",
       "kind": "skill",
       "title": "JPA entity review",
@@ -479,8 +489,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/liquibase-migration-review",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/liquibase-migration-review",
+      "sourceId": "58d98d15525b",
       "id": "liquibase-migration-review",
       "kind": "workflow",
       "title": "Liquibase migration review",
@@ -652,8 +662,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/react-component-review",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/react-component-review",
+      "sourceId": "58d98d15525b",
       "id": "react-component-review",
       "kind": "skill",
       "title": "React component review",
@@ -722,8 +732,8 @@
       "complete": true
     },
     {
-      "key": "1526b695b1eb/service-observability",
-      "sourceId": "1526b695b1eb",
+      "key": "58d98d15525b/service-observability",
+      "sourceId": "58d98d15525b",
       "id": "service-observability",
       "kind": "skill",
       "title": "Service observability",

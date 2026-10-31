@@ -259,7 +259,7 @@ impl ItemFile {
     pub fn is_code(&self) -> bool {
         const CODE: &[&str] = &[
             "py", "sh", "bash", "zsh", "fish", "js", "mjs", "cjs", "ts", "mts", "rb", "pl", "php",
-            "ps1", "lua", "go", "rs", "swift", "kt", "kts",
+            "ps1", "bat", "cmd", "lua", "go", "rs", "swift", "kt", "kts", "java", "c", "cpp",
         ];
         self.executable
             || self

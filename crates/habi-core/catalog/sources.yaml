@@ -291,6 +291,12 @@ sources:
       - "The agents, instructions and extensions in the same repository are not skills and are not read."
     # Picks checked at 5269f7ea2d6c3a9bfda5ed878b6726cf509121fd on 2026-10-30.
     picks:
+      - skill: skills/java-add-graalvm-native-image-support
+        title: GraalVM native images
+        gist: "Add native image support to a Spring Boot, Micronaut or plain Java build, and iterate until it runs."
+        why: "GraalVM native images"
+        tokens: 93
+        applies_when: { tag: "runtime:graalvm" }
       - skill: skills/spring-boot-testing
         title: Spring Boot testing
         gist: "Test Spring Boot with focused slices, not a full context for every test."
@@ -545,6 +551,7 @@ sources:
       group: 1
     notes:
       - "Broad and uneven; read a skill before adopting it."
+      - "The Helm skill's validator does a dry-run install, which contacts your current Kubernetes context."
     # Picks checked at 0874a27b17a22e2b7c2e2bcd725768e0803cad06 on 2026-10-30.
     picks:
       - skill: plugins/javascript-typescript/skills/nodejs-backend-patterns
@@ -567,6 +574,26 @@ sources:
           all:
             - tag: "lang:csharp"
             - file: "**/appsettings.json"
+      # The next three checked at 7e2fb559cf4b824b27f1fec49fe88f7511066d26 on 2026-10-31 and read in full on 2026-11-01.
+      - skill: plugins/kubernetes-operations/skills/helm-chart-scaffolding
+        title: Helm charts
+        gist: "Organize Helm charts so templates and values stay reusable. Replace its sample password."
+        why: "Helm charts"
+        tokens: 63
+        scripts: true
+        applies_when: { tag: "infra:helm" }
+      - skill: plugins/kubernetes-operations/skills/k8s-manifest-generator
+        title: Kubernetes manifests
+        gist: "Write Deployments, Services and ConfigMaps with probes, resource limits and security contexts."
+        why: "Kubernetes manifests"
+        tokens: 75
+        applies_when: { tag: "infra:kubernetes" }
+      - skill: plugins/shell-scripting/skills/bash-defensive-patterns
+        title: Defensive Bash
+        gist: "Write Bash 4+ scripts with strict mode, traps, safe temp files and input checks."
+        why: "Shell scripts"
+        tokens: 53
+        applies_when: { tag: "lang:shell" }
       - skill: plugins/systems-programming/skills/go-concurrency-patterns
         title: Go concurrency
         gist: "Worker pools, cancellation and shutdown in Go without leaks or data races."

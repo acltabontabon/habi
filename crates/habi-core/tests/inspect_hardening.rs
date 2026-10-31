@@ -547,8 +547,8 @@ fn setup_py_leaves_python_dependencies_unknown() {
 #[test]
 fn a_requirements_file_that_includes_another_leaves_dependencies_unknown() {
     let dir = tempfile::tempdir().unwrap();
-    write(dir.path(), "requirements.txt", "-r requirements/prod.txt\n");
-    write(dir.path(), "requirements/prod.txt", "django==5.0\n");
+    write(dir.path(), "requirements.txt", "-r deps/prod.in\n");
+    write(dir.path(), "deps/prod.in", "django==5.0\n");
     let i = inspected(dir.path());
     assert_eq!(coverage(&i, ".", "pypi"), CoverageStatus::Partial);
     assert_all_unknown(
@@ -558,6 +558,14 @@ fn a_requirements_file_that_includes_another_leaves_dependencies_unknown() {
             json!({"tag": "framework:django"}),
         ],
     );
+
+    // A `requirements/` folder is read for itself, so what it lists is known.
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "requirements.txt", "-r requirements/prod.txt\n");
+    write(dir.path(), "requirements/prod.txt", "django==5.0\n");
+    let i = inspected(dir.path());
+    assert!(i.fact("dep:.:pypi:django").is_some());
+    assert!(i.modules.iter().all(|m| m.id != "requirements"));
 }
 
 #[test]

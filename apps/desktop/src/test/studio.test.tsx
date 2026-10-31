@@ -136,7 +136,7 @@ describe("the Skill Studio", () => {
     expect(screen.getByLabelText("What it is for")).toHaveValue("Reviews changes before merge.");
     // One coherent state, one primary action; the rest behind a menu.
     expect(screen.getByRole("button", { name: /^Ready/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Use" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add to a project…" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
     // No tabs: the other layers are named, in a line each, at the head of the skill.
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
@@ -297,7 +297,7 @@ describe("the Skill Studio", () => {
     });
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
-    expect(screen.queryByRole("button", { name: "Use" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to a project…" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Add a purpose" }));
     await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
   });
@@ -351,7 +351,7 @@ describe("the Skill Studio", () => {
     });
     wrap(<SkillStudio id="k" />);
     expect(await screen.findByRole("button", { name: "Contribute" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Use" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add to a project…" })).toBeInTheDocument();
     // Not twice: the menu keeps only what the bar does not show.
     await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
     expect(screen.queryByRole("menuitem", { name: /Contribute to Team/ })).not.toBeInTheDocument();
@@ -577,8 +577,12 @@ describe("the Skill Studio", () => {
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     await new Promise((r) => setTimeout(r, 400));
-    // Editing the rules does not run diagnostics, and offers no test station.
-    expect(preview).not.toHaveBeenCalled();
+    // The line under the bar says where it would be suggested, as the rules change.
+    expect(await screen.findByText(billing.name, { selector: "strong" })).toBeInTheDocument();
+    // Editing the rules does not run diagnostics for one project, and offers no test station.
+    const forOneProject = () =>
+      preview.mock.calls.filter((c) => (c[0].request as { projectId?: string })?.projectId);
+    expect(forOneProject()).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Test" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
     await userEvent.click(screen.getByRole("menuitem", { name: /Test against a project/ }));
@@ -589,7 +593,7 @@ describe("the Skill Studio", () => {
     expect(within(sheet).getByText(/Maven/)).toBeInTheDocument();
     expect(within(sheet).getByText(/Looked up, never run/)).toBeInTheDocument();
     expect(within(sheet).getByText(/from build files and file names only/)).toBeInTheDocument();
-    const request = preview.mock.calls[0]?.[0].request as { projectId?: string } | undefined;
+    const request = forOneProject()[0]?.[0].request as { projectId?: string } | undefined;
     expect(request?.projectId).toBe("p1");
     await userEvent.click(within(sheet).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog", { name: "Test against a project" })).not.toBeInTheDocument();

@@ -318,11 +318,11 @@ export function Readiness({
         <span className="rd-dot" aria-hidden="true" />
         {ready ? "Ready" : "Draft"}
         {!ready ? <span className="rd-count"> · {plural(errors.length, "thing")} to finish</span> : null}
-        {/* Ready, with ways to make it better: a saffron knot, its count unfolding on hover. */}
-        {ready && better.length > 0 ? (
+        {/* Ready, with ways to make it better, broken links among them: a saffron knot and how many. */}
+        {ready && better.length + notes.length > 0 ? (
           <span className="rd-better">
             <span className="rd-better-dot" aria-hidden="true" />
-            <span className="rd-better-count"> · {better.length} to improve</span>
+            <span className="rd-better-count"> · {better.length + notes.length} to improve</span>
           </span>
         ) : null}
       </button>

@@ -495,11 +495,9 @@ describe("the start screen", () => {
     handlers.list_sources = () => [library(), library({ id: "docs", name: "Docs", skillCount: 3 })];
     handlers.list_skills = () => [skill().summary, { ...skill().summary, id: "k2" }];
     const { container } = wrap(<Welcome />);
-    expect(await screen.findByRole("button", { name: "Open a project…" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Open another project…" })).toBeInTheDocument();
     expect(container.querySelectorAll(".btn-primary")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Open a project…" })).toHaveClass("btn-primary");
-    // Counts come with the library list; no library index is read for them.
-    expect(screen.getByTitle("Team skills · team · 12 skills")).toBeInTheDocument();
+    // No library index is read for the front page.
     expect(invoke.mock.calls.some(([cmd]) => cmd === "library")).toBe(false);
     // With projects, the first-run choices step aside.
     expect(screen.queryByRole("button", { name: "connect a library" })).toBeNull();

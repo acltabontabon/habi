@@ -71,6 +71,8 @@ fn payload(lib: &Lib, id: &str) -> Payload {
         source: lib.source.clone(),
         snapshot: lib.index.snapshot.clone(),
         files,
+        provenance: Default::default(),
+        origin: None,
     }
 }
 

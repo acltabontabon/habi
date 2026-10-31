@@ -166,7 +166,7 @@ function Row({
                     onSelect: onAdd,
                   },
               {
-                label: "Use in a project…",
+                label: "Add to a project…",
                 hint: blocked ? "Some files can’t be copied" : "Reviewed before it installs",
                 icon: "download",
                 disabled: blocked || busy,

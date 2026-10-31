@@ -63,6 +63,18 @@ export type Refinement =
 
 const WHEN = /\b(when|whenever|if|before|after|during|while|once)\b/i;
 
+/** Past this a purpose is long enough that the key use should come first: tools cut and drop long ones. */
+const LONG_PURPOSE = 500;
+
+/** The one thing to say under the purpose while it is typed. */
+export function purposeHint(description: string): string {
+  const purpose = description.trim();
+  if (purpose.length > LONG_PURPOSE) return "Long purposes can be cut in an agent's list. Key use first.";
+  if (purpose.split(/\s+/).length >= 6 && !WHEN.test(purpose))
+    return "No trigger yet: say when to reach for it, as in “Use when…”.";
+  return "Agents read only this to decide whether to use it.";
+}
+
 export function refinements(input: {
   title: string;
   description: string;
@@ -104,6 +116,14 @@ export function refinements(input: {
       kind: "purpose",
       text: "The purpose says what it does, not when to reach for it.",
       action: "Add when to use it",
+    });
+  }
+
+  if (purpose.length > LONG_PURPOSE) {
+    out.push({
+      kind: "purpose",
+      text: "A long purpose costs context in every session, and tools can cut it. Say the key use first.",
+      action: "Tighten it",
     });
   }
 

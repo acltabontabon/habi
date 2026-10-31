@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Plan } from "../bindings/Plan";
 import type { ProjectOverview } from "../bindings/ProjectOverview";
+import type { Recommendation } from "../bindings/Recommendation";
 import type { SkillUsageReport } from "../bindings/SkillUsageReport";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
@@ -146,6 +147,9 @@ describe("workbench", () => {
                 installedAt: "2026-10-04T00:00:00Z",
                 clients: ["claude-code", "codex"],
                 state: "current",
+                sourceIdentity: "github.com/acme/skills",
+                provenance: null,
+                warnings: [],
                 files: [
                   {
                     path: ".claude/skills/liquibase-migration-review/SKILL.md",
@@ -405,6 +409,11 @@ describe("review dialog", () => {
         version: "abc",
         clients: ["claude-code"],
         notes: [],
+        signals: [],
+        newSignals: [],
+        origin: null,
+        provenance: null,
+        provenanceSummary: null,
       },
     ],
     changes: [],
@@ -505,5 +514,48 @@ describe("review dialog", () => {
       await screen.findByRole("checkbox", { name: /Add the suggested MCP configuration/ }),
     ).toBeChecked();
     expect(invoke).toHaveBeenCalledWith("plan_update", expect.objectContaining({ addMcp: true }));
+  });
+});
+
+describe("team requirements", () => {
+  const required = (r: Recommendation, id: string, title: string): Recommendation => ({
+    ...r,
+    group: "required",
+    installState: "notInstalled",
+    installation: null,
+    item: { ...r.item, id, key: `${r.item.sourceId}/${id}`, title, installable: true },
+  });
+  const withTwo = (): ProjectOverview => {
+    const first = billing.recommendations[0] as unknown as Recommendation;
+    return {
+      ...(billing as unknown as ProjectOverview),
+      recommendations: [required(first, "one", "Rule one"), required(first, "two", "Rule two")],
+    };
+  };
+
+  it("installs all of them through one review", async () => {
+    const overview = withTwo();
+    wrap(<Workbench overview={overview} />, overview.project.id);
+    await userEvent.click(await screen.findByRole("button", { name: "Install all 2 team requirements" }));
+    expect(await screen.findByRole("dialog", { name: /Install 2 team requirements/ })).toBeInTheDocument();
+  });
+
+  it("offers no bulk action for one", async () => {
+    const overview = withTwo();
+    overview.recommendations = overview.recommendations.slice(0, 1);
+    wrap(<Workbench overview={overview} />, overview.project.id);
+    await screen.findAllByText("Rule one");
+    expect(screen.queryByRole("button", { name: /Install all/ })).not.toBeInTheDocument();
+  });
+
+  it("says how a skill reaches the agent, and calls a skill with steps a skill", async () => {
+    const overview = withTwo();
+    const [first] = overview.recommendations as [Recommendation];
+    overview.recommendations = [{ ...first, item: { ...first.item, kind: "workflow", hasWorkflow: true } }];
+    wrap(<Workbench overview={overview} />, overview.project.id);
+    expect(await screen.findByText(/copies its files into the folder your agent reads/)).toBeInTheDocument();
+    expect(screen.getByText("has steps")).toBeInTheDocument();
+    expect(screen.queryByText("Workflow")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Filter skills")).toBeInTheDocument();
   });
 });
