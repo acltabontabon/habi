@@ -107,6 +107,22 @@ export const TAG_LABELS: Record<string, string> = {
   "ci:github-actions": "GitHub Actions",
   "ci:gitlab": "GitLab CI",
   "container:docker": "Docker",
+  "cloud:azure": "Azure",
+  "cloud:aws": "AWS",
+  "cloud:gcp": "Google Cloud",
+  "cloud:cloudflare": "Cloudflare",
+  "cloud:vercel": "Vercel",
+  "sdk:twilio": "Twilio",
+  "sdk:stripe": "Stripe",
+  "sdk:firebase": "Firebase",
+  "sdk:supabase": "Supabase",
+  "sdk:sentry": "Sentry",
+  "sdk:openai": "OpenAI SDK",
+  "sdk:mcp": "MCP SDK",
+  "framework:react-native": "React Native",
+  "framework:tailwind": "Tailwind CSS",
+  "api:graphql": "GraphQL",
+  "db:postgres": "PostgreSQL",
 };
 
 export function tagLabel(tag: string): string {
