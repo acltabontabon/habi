@@ -65,7 +65,7 @@ Habi reads a repository's files, without running anything, and matches skills to
 | **CI** | GitHub Actions, GitLab CI |
 | **Data pipelines** | dbt, Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great Expectations |
 | **Data analysis** | pandas, Polars, DuckDB, Databricks, Delta Lake, MLflow, Jupyter |
-| **Unit tests** | JUnit, TestNG, Spock, Mockito, Testcontainers, Jest, Vitest, Mocha, Jasmine, Karma, pytest, PHPUnit, Bats |
+| **Unit and integration tests** | JUnit, TestNG, Spock, Mockito, Testcontainers, Jest, Vitest, Mocha, Jasmine, Karma, pytest, PHPUnit, Bats |
 | **Browser and mobile tests** | Playwright, Cypress, Selenium, WebdriverIO, Appium |
 | **API tests** | REST Assured, Karate, Pact, WireMock, Postman |
 | **Acceptance tests** | Cucumber, Gauge, Robot Framework |
