@@ -66,7 +66,7 @@ import { DisconnectButton } from "./DisconnectButton";
 import { LibraryStrip } from "./LibraryStrip";
 import { SignalList } from "./Signals";
 import { repositoryLabel, SourceSheet } from "./SourceSheet";
-import { changesOf, LibraryUpdates } from "./UpdateNotes";
+import { changesOf, LibraryUpdates, UpdateCheck, useLibraryUpdates } from "./UpdateNotes";
 
 /** "github.com/anthropics/skills" → "anthropics/skills": the host rarely helps. */
 function shortRepo(source: Source): string {
@@ -709,6 +709,13 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
   const { navigate } = useNav();
   const library = useLibrary(source.id, Boolean(source.snapshot));
   const refresh = useRefreshSource();
+  const updates = useLibraryUpdates(source);
+  const actions = (
+    <div className="library-actions">
+      <UpdateCheck updates={updates} />
+      <DisconnectButton source={source} />
+    </div>
+  );
   const dye = useDyes()(source.id);
   const catalog = useCatalog();
   const entry = catalog.data?.find((e) => e.sourceId === source.id);
@@ -906,7 +913,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         {(entry && library.data) || (entry && library.isPending) ? null : (
           <div className="library-back">
             <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
-            <DisconnectButton source={source} />
+            {actions}
           </div>
         )}
         {entry && library.data ? (
@@ -915,10 +922,11 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
             source={source}
             items={all}
             adopted={adopted}
+            actions={actions}
             onOpen={(item, path) => navigate(path ? route(item.id, path) : route(item.id))}
           />
         ) : null}
-        <LibraryUpdates source={source} items={all} onOpen={(item) => navigate(route(item.id))} />
+        <LibraryUpdates updates={updates} items={all} onOpen={(item) => navigate(route(item.id))} />
         {machine.isError ? (
           <ErrorNotice error={machine.error} title="Could not check installations on this machine" />
         ) : null}

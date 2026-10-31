@@ -10,18 +10,16 @@
  * ownership check, and says so. Reviewed is only shown when Habi's catalog
  * records an inspection; today it says plainly that none was done.
  */
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { CatalogEntry } from "../../bindings/CatalogEntry";
 import type { LibraryItem } from "../../bindings/LibraryItem";
 import type { Source } from "../../bindings/Source";
 import { BackLink } from "../../components/BackLink";
 import { Icon } from "../../components/Icon";
-import { ErrorNotice, Notice, Working } from "../../components/ui";
+import { Notice } from "../../components/ui";
 import { countSignals, licenseLabel, ownershipShort, shortCommit, signalFile } from "../../lib/catalog";
 import { plural, relativeTime } from "../../lib/format";
-import { useCheckUpdate, useSourceUpdates } from "../../lib/queries";
 import { useOpenExternal } from "../../lib/safeInvoke";
-import { DisconnectButton } from "./DisconnectButton";
 import { SIGNALS_CAVEAT } from "./Signals";
 
 type Panel = "inspection" | "source" | null;
@@ -123,8 +121,6 @@ function InspectionPanel({
 
 function SourcePanel({ entry, source }: { entry: CatalogEntry; source: Source }) {
   const openExternal = useOpenExternal();
-  const check = useCheckUpdate();
-  const update = useSourceUpdates().data?.find((u) => u.sourceId === source.id);
   const f = entry.fetched;
   const reads = entry.include.length === 0 ? "the whole repository" : entry.include.join("  ·  ");
   return (
@@ -207,21 +203,6 @@ function SourcePanel({ entry, source }: { entry: CatalogEntry; source: Source })
           </>
         ) : null}
       </dl>
-      <div className="strip-panel-actions">
-        {check.isPending ? (
-          <Working>Asking {entry.repo} for newer versions…</Working>
-        ) : (
-          <>
-            <button type="button" className="link-quiet" onClick={() => check.mutate(source.id)}>
-              Check for updates
-            </button>
-            {update && !update.available ? (
-              <span className="muted">Up to date as of {relativeTime(update.checkedAt)}.</span>
-            ) : null}
-          </>
-        )}
-      </div>
-      {check.isError ? <ErrorNotice error={check.error} title="Could not check for updates" /> : null}
     </div>
   );
 }
@@ -233,12 +214,15 @@ export function LibraryStrip({
   source,
   items,
   adopted,
+  actions,
   onOpen,
 }: {
   entry: CatalogEntry;
   source: Source;
   items: LibraryItem[];
   adopted: number;
+  /** What can be done to the library as a whole, across from the back link. */
+  actions: ReactNode;
   /** Opens a skill, and one of its files when the signal names one. */
   onOpen: (item: LibraryItem, file: string | null) => void;
 }) {
@@ -259,7 +243,7 @@ export function LibraryStrip({
       ) : null}
       <div className="strip-top">
         <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
-        <DisconnectButton source={source} />
+        {actions}
       </div>
       <p
         className="kicker strip-kicker"
