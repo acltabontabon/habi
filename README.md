@@ -6,7 +6,7 @@
 
 Habi is a local desktop app for the skills and instructions you give AI coding agents.<br>Open a repository and Habi shows which skills fit it, and why, down to the file and line.
 
-<a href="https://github.com/acltabontabon/habi/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/acltabontabon/habi?style=flat-square&labelColor=1f1c19&color=d9913f"></a> <a href="https://github.com/acltabontabon/habi/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/acltabontabon/habi/ci.yml?branch=main&style=flat-square&labelColor=1f1c19&color=d9913f&label=CI"></a> <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-d9913f?style=flat-square&labelColor=1f1c19"></a>
+<a href="https://github.com/acltabontabon/habi/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/acltabontabon/habi?style=flat-square&labelColor=1f1c19&color=d9913f"></a> <a href="https://github.com/acltabontabon/habi/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/acltabontabon/habi/ci.yml?branch=main&style=flat-square&labelColor=1f1c19&color=d9913f&label=CI"></a> <img alt="Platforms: macOS and Windows" src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows-d9913f?style=flat-square&labelColor=1f1c19"> <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-d9913f?style=flat-square&labelColor=1f1c19"></a>
 
 <a href="https://github.com/acltabontabon/habi/releases/latest"><b>Download</b></a> &nbsp;·&nbsp; <a href="https://acltabontabon.com/habi/docs/">Documentation</a> &nbsp;·&nbsp; <a href="https://acltabontabon.com/habi/">Website</a>
 
@@ -65,17 +65,36 @@ skills to them. [Detectors](docs/library-authors/detectors.md) has every rule.
 
 ## Install
 
+<table>
+<tr>
+<th width="50%" align="left">macOS</th>
+<th width="50%" align="left">Windows</th>
+</tr>
+<tr>
+<td valign="top">
+
+11 or later, Apple Silicon and Intel
+
 ```sh
 brew install --cask acltabontabon/tap/habi
 ```
 
-Or download the installer from the [Releases page](https://github.com/acltabontabon/habi/releases/latest):
-macOS 11 or later (Apple Silicon and Intel) or Windows (64-bit). Linux is not supported.
+Or [download the `.dmg`](https://github.com/acltabontabon/habi/releases/latest).
 
-The installers are not signed by Apple or Microsoft, so the first launch asks you to confirm once
-([how](docs/guide/getting-started.md#installing)); updates after that are signed with Habi's own
-key. You can also build it yourself ([CONTRIBUTING.md](CONTRIBUTING.md#set-up)). The known
-limitations are in the [security model](docs/project/security-model.md#known-limitations).
+</td>
+<td valign="top">
+
+64-bit
+
+[Download the `.exe` installer](https://github.com/acltabontabon/habi/releases/latest), or the `.msi` for managed installs.
+
+</td>
+</tr>
+</table>
+
+The first launch asks you to confirm once, because the installers are not signed by Apple or
+Microsoft ([how](docs/guide/getting-started.md#installing)). Updates after that are signed with
+Habi's own key.
 
 ## A look inside
 
