@@ -317,6 +317,7 @@ pub fn run() {
             commands::contribution_rehearsal,
             commands::export_contribution,
             commands::publish_contribution,
+            commands::contribution_send_route,
             commands::discard_contribution,
             commands::list_skills,
             commands::get_skill,

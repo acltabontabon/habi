@@ -75,7 +75,8 @@
   `local`), so matching, planning and installation reuse the same code as library items.
 - **`contribute`**: staging, form → `habi.yaml`, preview, plumbing commit, patch, publish,
   revisions. Origins: a project skill folder, a library item, or a local skill.
-- **`review`**: pull and merge requests through the user's `gh` and `glab`: opening one,
+- **`review`**: pull and merge requests through the user's `gh` and `glab`: checking push access,
+  finding or creating the user's fork, opening one (from the library or the fork),
   reading its state and comments as untrusted text.
 - **`checks`**: verification commands and their recorded results. Nothing in the app or the CLI calls
   its preview and run, so no check can be started.

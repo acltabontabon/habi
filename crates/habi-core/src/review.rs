@@ -1,4 +1,5 @@
-//! Review requests on the library's Git host: opening one, and reading back
+//! Review requests on the library's Git host: opening one (through the
+//! author's own fork when they cannot push to the library), and reading back
 //! what happened to it.
 //!
 //! Habi talks to GitHub and GitLab only through the user's own `gh` and
@@ -30,6 +31,8 @@ const PER_PAGE: usize = 100;
 const MAX_PAGES: usize = 20;
 const MAX_BODY_CHARS: usize = 8000;
 const MAX_NAME_CHARS: usize = 64;
+/// GitLab's Developer role, the lowest that may push a new branch.
+const GITLAB_DEVELOPER: u64 = 30;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -709,10 +712,355 @@ pub fn open_request(
         })
 }
 
+/// What the signed-in person may do with a repository, as its host said.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RepoAccess {
+    pub host: ReviewHost,
+    /// The account the host's tool is signed in as.
+    pub account: String,
+    pub can_push: bool,
+    /// False only when the host says forks are turned off.
+    pub can_fork: bool,
+    pub archived: bool,
+}
+
+/// Asks the host what the signed-in person may do with `repo`. Reads only.
+pub fn read_access(
+    tools: &ReviewTools,
+    repo: &RemoteRepo,
+    cancel: &CancelToken,
+) -> std::result::Result<RepoAccess, String> {
+    let host = tools.resolve(repo, cancel)?;
+    let user = api_get(tools, host, repo, "user", cancel)?;
+    let account = name_of(&user);
+    let endpoint = match host {
+        ReviewHost::GitHub => format!("repos/{}", repo.path),
+        ReviewHost::GitLab => format!("projects/{}", encode_path(&repo.path)),
+    };
+    let project = api_get(tools, host, repo, &endpoint, cancel)?;
+    let archived = project.get("archived").and_then(Value::as_bool) == Some(true);
+    let (can_push, can_fork) = match host {
+        ReviewHost::GitHub => (
+            project
+                .get("permissions")
+                .and_then(|p| p.get("push"))
+                .and_then(Value::as_bool)
+                == Some(true),
+            project.get("allow_forking").and_then(Value::as_bool) != Some(false),
+        ),
+        ReviewHost::GitLab => {
+            let level = |key: &str| {
+                project
+                    .get("permissions")
+                    .and_then(|p| p.get(key))
+                    .and_then(|a| a.get("access_level"))
+                    .and_then(Value::as_u64)
+            };
+            (
+                level("project_access").max(level("group_access")) >= Some(GITLAB_DEVELOPER),
+                str_of(&project, "forking_access_level") != Some("disabled"),
+            )
+        }
+    };
+    Ok(RepoAccess {
+        host,
+        account,
+        can_push,
+        can_fork,
+        archived,
+    })
+}
+
+/// One GET through the host's tool, as JSON.
+fn api_get(
+    tools: &ReviewTools,
+    host: ReviewHost,
+    repo: &RemoteRepo,
+    endpoint: &str,
+    cancel: &CancelToken,
+) -> std::result::Result<Value, String> {
+    let out = tools.run(
+        host,
+        vec![
+            "api".into(),
+            "--hostname".into(),
+            repo.host.clone(),
+            endpoint.into(),
+        ],
+        cancel,
+    )?;
+    parse_json(&out, endpoint)
+}
+
+/// One POST through the host's tool, as JSON. Field values are attached with
+/// `=` and sent as plain strings, so free text is never read as an option or
+/// as a file to upload.
+fn api_post(
+    tools: &ReviewTools,
+    host: ReviewHost,
+    repo: &RemoteRepo,
+    endpoint: &str,
+    fields: &[(&str, &str)],
+    cancel: &CancelToken,
+) -> std::result::Result<Value, String> {
+    let mut args: Vec<String> = vec![
+        "api".into(),
+        "--hostname".into(),
+        repo.host.clone(),
+        endpoint.into(),
+        "--method".into(),
+        "POST".into(),
+    ];
+    args.extend(
+        fields
+            .iter()
+            .map(|(key, value)| format!("--raw-field={key}={value}")),
+    );
+    let out = tools.run(host, args, cancel)?;
+    parse_json(&out, endpoint)
+}
+
+/// The author's own copy of a library, which their branch is pushed to when
+/// they cannot push to the library itself.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Fork {
+    /// `owner/repo` (or `group/subgroup/repo`) on the library's host.
+    pub path: String,
+    /// Where to open it on the host.
+    pub url: String,
+    /// The address a push last reached it at.
+    pub push_url: Option<String>,
+    /// GitLab's id for it; merge requests from a fork are created through it.
+    pub project_id: Option<u64>,
+}
+
+impl Fork {
+    fn on(repo: &RemoteRepo, path: String, project_id: Option<u64>) -> Fork {
+        let url = RemoteRepo {
+            host: repo.host.clone(),
+            path: path.clone(),
+        }
+        .https_url();
+        Fork {
+            path,
+            url,
+            push_url: None,
+            project_id,
+        }
+    }
+
+    /// The account or group the fork is under.
+    pub fn owner(&self) -> &str {
+        self.path.split('/').next().unwrap_or(&self.path)
+    }
+}
+
+/// A repository path from a host's answer, only if it is safe to build a Git
+/// address from.
+fn fork_path(raw: Option<&str>) -> Option<String> {
+    let path = raw?;
+    let segment_ok = |s: &str| {
+        !s.is_empty()
+            && !s.starts_with(['-', '.'])
+            && s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    };
+    (path.split('/').count() >= 2 && path.split('/').all(segment_ok)).then(|| path.to_string())
+}
+
+/// The signed-in person's fork of `repo`, created if they have none. Safe to
+/// repeat: GitHub answers with the fork that already exists, and on GitLab
+/// Habi looks for one first. A new fork takes a moment to accept pushes.
+pub fn ensure_fork(
+    tools: &ReviewTools,
+    repo: &RemoteRepo,
+    cancel: &CancelToken,
+) -> std::result::Result<Fork, String> {
+    let host = tools.resolve(repo, cancel)?;
+    let unreadable = || format!("{} did not say where the fork is.", host.name());
+    match host {
+        ReviewHost::GitHub => {
+            let endpoint = format!("repos/{}/forks", repo.path);
+            let made = api_post(tools, host, repo, &endpoint, &[], cancel)?;
+            if made.get("fork").and_then(Value::as_bool) != Some(true) {
+                return Err(unreadable());
+            }
+            let path = fork_path(str_of(&made, "full_name")).ok_or_else(unreadable)?;
+            Ok(Fork::on(repo, path, None))
+        }
+        ReviewHost::GitLab => {
+            let project = encode_path(&repo.path);
+            let mine = api_get(
+                tools,
+                host,
+                repo,
+                &format!("projects/{project}/forks?owned=true&per_page={PER_PAGE}"),
+                cancel,
+            )?;
+            let existing = mine.as_array().and_then(|list| {
+                list.iter()
+                    .find(|p| p.get("archived").and_then(Value::as_bool) != Some(true))
+                    .cloned()
+            });
+            let made = match existing {
+                Some(found) => found,
+                None => api_post(
+                    tools,
+                    host,
+                    repo,
+                    &format!("projects/{project}/fork"),
+                    &[],
+                    cancel,
+                )?,
+            };
+            let path = fork_path(str_of(&made, "path_with_namespace")).ok_or_else(unreadable)?;
+            Ok(Fork::on(repo, path, made.get("id").and_then(Value::as_u64)))
+        }
+    }
+}
+
+/// The addresses to try pushing to a fork at, best first: the protocol the
+/// host's tool was set up with, then the one the library was connected with.
+/// Built from the validated path, never taken from a host's answer.
+pub fn fork_push_urls(
+    tools: &ReviewTools,
+    repo: &RemoteRepo,
+    fork: &Fork,
+    library_url: &str,
+    cancel: &CancelToken,
+) -> Vec<String> {
+    let https = format!("{}.git", fork.url);
+    // An SSH port is not known from a web address.
+    let ssh = (!repo.host.contains(':')).then(|| format!("git@{}:{}.git", repo.host, fork.path));
+    let configured = tools.resolve(repo, cancel).ok().and_then(|host| {
+        tools
+            .run(
+                host,
+                vec![
+                    "config".into(),
+                    "get".into(),
+                    "git_protocol".into(),
+                    "--host".into(),
+                    repo.host.clone(),
+                ],
+                cancel,
+            )
+            .ok()
+    });
+    let prefer_ssh = match configured.as_deref().map(str::trim) {
+        Some("ssh") => true,
+        Some("https") => false,
+        _ => !library_url.to_ascii_lowercase().starts_with("http"),
+    };
+    match (ssh, prefer_ssh) {
+        (Some(ssh), true) => vec![ssh, https],
+        (Some(ssh), false) => vec![https, ssh],
+        (None, _) => vec![https],
+    }
+}
+
+/// Opens a pull/merge request from `branch` on `fork` into `base` on `repo`.
+/// Returns its URL.
+#[allow(clippy::too_many_arguments)]
+pub fn open_request_from_fork(
+    tools: &ReviewTools,
+    repo: &RemoteRepo,
+    fork: &Fork,
+    branch: &str,
+    base: &str,
+    title: &str,
+    body: &str,
+    cancel: &CancelToken,
+) -> std::result::Result<String, String> {
+    let host = tools.resolve(repo, cancel)?;
+    let not_opened = |e: String| format!("{e} No {} was opened.", host.request_word());
+    let printed = match host {
+        ReviewHost::GitHub => tools
+            .run(
+                host,
+                vec![
+                    "pr".into(),
+                    "create".into(),
+                    "--repo".into(),
+                    format!("{}/{}", repo.host, repo.path),
+                    "--head".into(),
+                    format!("{}:{branch}", fork.owner()),
+                    "--base".into(),
+                    base.into(),
+                    format!("--title={title}"),
+                    format!("--body={body}"),
+                ],
+                cancel,
+            )
+            .map_err(not_opened)?,
+        // Created through the REST endpoint: `glab mr create` works from a
+        // checkout of the fork, and Habi never has one.
+        ReviewHost::GitLab => {
+            let target = api_get(
+                tools,
+                host,
+                repo,
+                &format!("projects/{}", encode_path(&repo.path)),
+                cancel,
+            )
+            .map_err(not_opened)?;
+            let target_id = target
+                .get("id")
+                .and_then(Value::as_u64)
+                .map(|id| id.to_string())
+                .ok_or_else(|| not_opened("GitLab did not say which project this is.".into()))?;
+            let source = fork
+                .project_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| encode_path(&fork.path));
+            let made = api_post(
+                tools,
+                host,
+                repo,
+                &format!("projects/{source}/merge_requests"),
+                &[
+                    ("source_branch", branch),
+                    ("target_branch", base),
+                    ("target_project_id", &target_id),
+                    ("title", title),
+                    ("description", body),
+                ],
+                cancel,
+            )
+            .map_err(not_opened)?;
+            str_of(&made, "web_url").unwrap_or_default().to_string()
+        }
+    };
+    printed
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find_map(|l| https_on_host(Some(l), &repo.host))
+        .ok_or_else(|| {
+            format!(
+                "`{}` succeeded but did not print the request's address.",
+                host.tool()
+            )
+        })
+}
+
 /// Reads the request for `branch` (the newest one, open or not).
 pub fn fetch_status(
     tools: &ReviewTools,
     repo: &RemoteRepo,
+    branch: &str,
+    cancel: &CancelToken,
+) -> std::result::Result<Option<ReviewStatus>, String> {
+    fetch_status_from(tools, repo, None, branch, cancel)
+}
+
+/// Like `fetch_status`, for a branch that lives on the author's fork.
+pub fn fetch_status_from(
+    tools: &ReviewTools,
+    repo: &RemoteRepo,
+    fork: Option<&Fork>,
     branch: &str,
     cancel: &CancelToken,
 ) -> std::result::Result<Option<ReviewStatus>, String> {
@@ -751,7 +1099,9 @@ pub fn fetch_status(
     };
     match host {
         ReviewHost::GitHub => {
-            let owner = repo.path.split('/').next().unwrap_or_default();
+            let owner = fork
+                .map(Fork::owner)
+                .unwrap_or_else(|| repo.path.split('/').next().unwrap_or_default());
             let pulls = api(format!(
                 "repos/{}/pulls?state=all&per_page=10&head={}:{}",
                 repo.path,
@@ -786,6 +1136,18 @@ pub fn fetch_status(
                 "projects/{project}/merge_requests?state=all&per_page=10&source_branch={}",
                 encode_path(branch)
             ))?;
+            // The same branch name in someone else's fork is another request.
+            let mrs = match fork.and_then(|f| f.project_id) {
+                Some(id) => Value::Array(
+                    mrs.as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter(|m| m.get("source_project_id").and_then(Value::as_u64) == Some(id))
+                        .cloned()
+                        .collect(),
+                ),
+                None => mrs,
+            };
             let Some(mr) = newest(&mrs, "created_at") else {
                 return Ok(None);
             };
@@ -1002,6 +1364,27 @@ mod tests {
         let merged = json!({ "iid": 3, "state": "merged" });
         let s = parse_gitlab("gitlab.example.com", &merged, &json!({}), &json!([]), "now").unwrap();
         assert_eq!(s.state, ReviewState::Merged);
+    }
+
+    #[test]
+    fn a_fork_path_must_be_safe_to_build_an_address_from() {
+        assert_eq!(fork_path(Some("me/skills")).as_deref(), Some("me/skills"));
+        assert_eq!(
+            fork_path(Some("group/sub/skills-1")).as_deref(),
+            Some("group/sub/skills-1")
+        );
+        for bad in [
+            "skills",
+            "me/../../etc",
+            "-u/x",
+            "me/x y",
+            "me/x\ny",
+            "me//x",
+            "ext::sh/x",
+        ] {
+            assert_eq!(fork_path(Some(bad)), None, "{bad}");
+        }
+        assert_eq!(fork_path(None), None);
     }
 
     #[test]

@@ -8,7 +8,8 @@ gets merged.
 
 ✓ A Git library (remote or local clone)  
 ✓ Git configured with name & email (`git config --global user.name` / `user.email`)  
-✓ Optional: [`gh`](https://cli.github.com) (GitHub) or `glab` (GitLab) for opening PRs from Habi
+✓ Optional: [`gh`](https://cli.github.com) (GitHub) or `glab` (GitLab) for opening PRs from Habi,
+and for sharing to libraries you cannot push to
 
 Without the CLI tools, Habi still pushes the branch—you open the PR manually on the host.
 
@@ -71,15 +72,38 @@ your Git credentials.
 
 **Options:**
 - **Create pull/merge request** — if `gh` or `glab` is installed & signed in
+- **Fork and create pull/merge request** — the same, when you cannot push to the library
 - **Push branch** — without the CLI tools  
-- **Export patch** — for no-push libraries; creates a `git am`-compatible file
+- **Export patch** — creates a `git am`-compatible file to send any other way
 
 For a local library, Habi creates the branch via `git fetch` (no push).
 
 ### When you cannot push to the library
 
-After preparing the branch, expand **No write access? Contribute through a fork**. This route
-does not attempt a push to the original library:
+Most community libraries are public repositories you have no push access to. With `gh` or `glab`
+signed in, Habi handles this when you send. It asks the host what you may do with the library,
+only at that moment, and the confirmation changes to **Fork and create pull/merge request**:
+
+1. Habi forks the library to your account, or reuses the fork you already have.
+2. It pushes the contribution branch to your fork, waiting up to a minute for a new fork to be
+   ready. The library itself is not pushed to.
+3. It opens the request from your fork into the library's target branch.
+
+![The Fork and create pull request confirmation: you cannot push to acme/skills, so this goes through your own fork on GitHub. It lists three steps: fork acme/skills to your account or reuse your fork, push the contribution branch there, and open the pull request into the library, above the usual destination and files.](../media/share-fork.jpg)
+
+Nothing is forked until you confirm. Revisions go to the same fork and show on the same request,
+and **Check status** follows it as usual. A fork of a public library is public, and Habi leaves it
+on your account; delete it on the host when you no longer need it.
+
+![The contribution after sending: its route runs from the contribution branch, which Habi pushes to your fork sam-dev/skills on GitHub, to the target branch of acme/skills, which a maintainer merges.](../media/share-fork-sent.jpg)
+
+If the library is archived or its owner turned off forks, the confirmation says so and offers
+**Export patch…** instead.
+
+#### Without `gh` or `glab`
+
+When the tool is missing or signed out, expand **No write access? Contribute through a fork**.
+This route does not attempt a push to the original library:
 
 1. **Open library to fork** opens the repository on its Git host. Use the host's **Fork** action.
 2. **Export patch…** saves the reviewed change as a `git am`-compatible patch on this machine.
@@ -87,8 +111,8 @@ does not attempt a push to the original library:
 4. Push the branch to your fork and open a pull/merge request against the original library's
    intended target branch. If it follows a tag, choose an appropriate target branch on the host.
 
-Fork creation and submission happen in the Git host and terminal. Habi continues to show the
-contribution as prepared and cannot follow a request created this way. Exporting a patch does
+On this route, fork creation and submission happen in the Git host and terminal. Habi continues to
+show the contribution as prepared and cannot follow a request created this way. Exporting a patch does
 not redirect Habi's **Send** action to your fork. For an unrecognized host, export the patch
 and follow its own contribution instructions.
 
@@ -241,6 +265,9 @@ group.
 | | GitHub | GitLab |
 |---|---|---|
 | Open a request | `gh pr create --repo host/owner/repo` | `glab mr create --repo https://host/group/…/repo` (full URL, so nested groups work) |
+| Can you push? | `gh api`: the repository's `permissions.push`, `allow_forking`, `archived` | `glab api`: the project's access level (Developer or above), `forking_access_level`, `archived` |
+| Fork | `gh api --method POST repos/…/forks`, which returns the fork you already have | `glab api`: your existing fork from `projects/…/forks?owned=true`, else `POST projects/…/fork` |
+| Request from a fork | `gh pr create --head you:branch` | `glab api`: `POST projects/<fork>/merge_requests` with `target_project_id` |
 | Status and comments | `gh api` REST: pulls, reviews, issue and review comments | `glab api` REST: merge requests, approvals, discussions |
 | "Changes requested" | From each reviewer's latest review | Not reported (GitLab has no equivalent in the REST API Habi uses); approvals are |
 | Self-hosted | Recognized when `gh auth status --hostname` succeeds | Recognized when `glab auth status --hostname` succeeds |
@@ -255,6 +282,10 @@ a revision to the open request. Approvals, *changes requested*, merged and close
 self-hosted hosts have not been run live; they are covered with a real Git and a stand-in `gh`
 in `tests/review_flow.rs`. GitLab is covered only through a stand-in `glab` in
 `tests/review_requests.rs`, and has not been run against a live host.
+
+Sending through a fork is covered with a real Git and a stand-in `gh` in `tests/fork_flow.rs`, and
+a stand-in `glab` in `tests/review_requests.rs`. Against live GitHub, only the check of what you
+may do with a repository has been run. Creating a fork and opening a request from it have not.
 
 ### Requirements
 

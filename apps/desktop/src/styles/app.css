@@ -9754,6 +9754,13 @@ button.chooser-crumb:focus-visible {
 .fork-guide li .btn {
   margin: var(--s2) 0 0;
 }
+.fork-steps {
+  margin: 0 0 var(--s3);
+  padding-left: var(--s5);
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--text-md);
+}
 
 /* ---------- Libraries: your libraries as a ledger, the catalog to explore ---------- */
 

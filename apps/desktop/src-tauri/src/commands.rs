@@ -10,7 +10,9 @@ use habi_core::catalog::github::RepoFacts;
 use habi_core::catalog::{CatalogEntry, CatalogFit};
 use habi_core::checks::CheckRun;
 use habi_core::clients::ClientId;
-use habi_core::contribute::{Contribution, ContributionOrigin, PublishOutcome, ShareForm};
+use habi_core::contribute::{
+    Contribution, ContributionOrigin, PublishOutcome, SendRoute, ShareForm,
+};
 use habi_core::diagnostics::DiagnosticBundle;
 use habi_core::error::{ErrorInfo, HabiError};
 use habi_core::install::apply::OperationSummary;
@@ -1093,14 +1095,26 @@ pub async fn publish_contribution(
     state: State<'_, AppState>,
     id: String,
     open_request: bool,
+    via_fork: bool,
     job_id: Option<String>,
 ) -> CmdResult<PublishOutcome> {
     let habi = state.habi()?;
     let (cancel, _guard) = state.job(job_id);
     blocking(habi, move |h| {
-        h.publish_contribution(&id, open_request, &cancel)
+        h.publish_contribution_with(&id, open_request, via_fork, &cancel)
     })
     .await
+}
+
+#[tauri::command]
+pub async fn contribution_send_route(
+    state: State<'_, AppState>,
+    id: String,
+    job_id: Option<String>,
+) -> CmdResult<SendRoute> {
+    let habi = state.habi()?;
+    let (cancel, _guard) = state.job(job_id);
+    blocking(habi, move |h| h.contribution_send_route(&id, &cancel)).await
 }
 
 #[tauri::command]

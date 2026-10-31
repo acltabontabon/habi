@@ -103,6 +103,7 @@ const base: Contribution = {
   revising: false,
   stagingPath: "~/habi/contributions/c1/files",
   pushedCommit: null,
+  fork: null,
   attention: null,
   publishedAt: null,
   basedOn: null,
@@ -224,6 +225,24 @@ describe("sharing state", () => {
     expect(finalAction(local, info(true)).label).toBe("Push branch");
     // A revision of an open request pushes to the same branch and request.
     expect(finalAction({ ...sent, state: "committed" }, info(true)).label).toBe("Push revision");
+  });
+
+  it("goes through a fork only when the host said so, or it already has one", () => {
+    const ready = { ...base, state: "committed" as const, commitId: "c0ffee" };
+    const fork = { path: "me/skills", url: "https://github.com/me/skills", pushUrl: null, projectId: null };
+    expect(finalAction(ready, info(true), { kind: "library" }).viaFork).toBe(false);
+    expect(finalAction(ready, info(true), { kind: "unknown", reason: "signed out" }).viaFork).toBe(false);
+    expect(finalAction(ready, info(true), { kind: "fork", account: "me", existing: null })).toMatchObject({
+      label: "Fork and create pull request",
+      openRequest: true,
+      viaFork: true,
+    });
+    expect(finalAction({ ...ready, fork }, info(true))).toMatchObject({
+      label: "Create pull request",
+      viaFork: true,
+    });
+    // A revision stays on the fork the core has recorded.
+    expect(finalAction({ ...sent, state: "committed", fork }, info(true)).label).toBe("Push revision");
   });
 
   it("says what it does not know about the destination", () => {
@@ -381,6 +400,87 @@ describe("contribution review", () => {
     expect(screen.getByText("This does not test what the skill does.")).toBeInTheDocument();
     expect(screen.getByText("main")).toBeInTheDocument();
     expect(screen.getByText("Unknown — not checked")).toBeInTheDocument();
+  });
+
+  const ready = { ...base, state: "committed" as const, commitId: "c0ffee" };
+  const repo = { ...remote, repositoryUrl: "https://github.com/acme/skills" };
+
+  it("asks the host only on sending, and forks only after the person confirms it", async () => {
+    const user = userEvent.setup();
+    const publish = vi.fn(() => ({
+      remote: "https://github.com/me/skills",
+      branch: base.branch,
+      fork: "me/skills",
+      pullRequestUrl: "https://github.com/acme/skills/pull/9",
+      pullRequestNote: null,
+      updatedExisting: false,
+    }));
+    const routeCheck = vi.fn(() => ({ kind: "fork", account: "me", existing: null }));
+    handlers = {
+      contribution: () => ({ ...ready, remote: repo }),
+      app_info: () => info(true),
+      contribution_send_route: routeCheck,
+      publish_contribution: publish,
+    };
+    wrap(<ContributionsView contributionId="c1" />, { name: "contributions", contributionId: "c1" });
+    await user.click(await screen.findByRole("button", { name: "Create pull request…" }));
+    expect(routeCheck).toHaveBeenCalledOnce();
+    const go = await screen.findByRole("button", { name: "Fork and create pull request" });
+    expect(screen.getByText(/You cannot push to acme\/skills/)).toBeInTheDocument();
+    expect(screen.getByText(/A fork of a public library is public/)).toBeInTheDocument();
+    expect(publish).not.toHaveBeenCalled();
+    await user.click(go);
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        "publish_contribution",
+        expect.objectContaining({ id: "c1", openRequest: true, viaFork: true }),
+      ),
+    );
+    expect(await screen.findByText(/to your fork me\/skills/)).toBeInTheDocument();
+  });
+
+  it("sends to the library as before when the person can push there", async () => {
+    const user = userEvent.setup();
+    handlers = {
+      contribution: () => ({ ...ready, remote: repo }),
+      app_info: () => info(true),
+      contribution_send_route: () => ({ kind: "library" }),
+      publish_contribution: () => ({
+        remote: "x",
+        branch: base.branch,
+        fork: null,
+        pullRequestUrl: null,
+        pullRequestNote: null,
+        updatedExisting: false,
+      }),
+    };
+    wrap(<ContributionsView contributionId="c1" />, { name: "contributions", contributionId: "c1" });
+    await user.click(await screen.findByRole("button", { name: "Create pull request…" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Create pull request" })).toBeEnabled());
+    expect(screen.queryByText(/your own fork/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Create pull request" }));
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        "publish_contribution",
+        expect.objectContaining({ openRequest: true, viaFork: false }),
+      ),
+    );
+  });
+
+  it("says when nothing can be sent, and offers the patch instead", async () => {
+    const user = userEvent.setup();
+    handlers = {
+      contribution: () => ({ ...ready, remote: repo }),
+      app_info: () => info(true),
+      contribution_send_route: () => ({
+        kind: "blocked",
+        reason: "You cannot push to acme/skills, and its owner turned off forks on GitHub.",
+      }),
+    };
+    wrap(<ContributionsView contributionId="c1" />, { name: "contributions", contributionId: "c1" });
+    await user.click(await screen.findByRole("button", { name: "Create pull request…" }));
+    expect(await screen.findByText(/its owner turned off forks/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Create pull request$/ })).toBeNull();
   });
 
   it("offers the honest fallback when no command-line tool can open a request", async () => {

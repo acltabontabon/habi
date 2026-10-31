@@ -52,6 +52,7 @@ import type { RefreshOutcome } from "../bindings/RefreshOutcome";
 import type { Rehearsal } from "../bindings/Rehearsal";
 import type { RepoFacts } from "../bindings/RepoFacts";
 import type { Resolution } from "../bindings/Resolution";
+import type { SendRoute } from "../bindings/SendRoute";
 import type { Settings } from "../bindings/Settings";
 import type { ShareForm } from "../bindings/ShareForm";
 import type { SkillDocument } from "../bindings/SkillDocument";
@@ -236,8 +237,10 @@ export const api = {
   refreshContributionReview: (id: string, jobId?: string) =>
     call<Contribution>("refresh_contribution_review", { id, jobId: jobId ?? null }),
   exportContribution: (id: string) => call<string | null>("export_contribution", { id }),
-  publishContribution: (id: string, openRequest: boolean, jobId?: string) =>
-    call<PublishOutcome>("publish_contribution", { id, openRequest, jobId: jobId ?? null }),
+  publishContribution: (id: string, openRequest: boolean, viaFork: boolean, jobId?: string) =>
+    call<PublishOutcome>("publish_contribution", { id, openRequest, viaFork, jobId: jobId ?? null }),
+  contributionSendRoute: (id: string, jobId?: string) =>
+    call<SendRoute>("contribution_send_route", { id, jobId: jobId ?? null }),
   discardContribution: (id: string) => call<void>("discard_contribution", { id }),
 
   listSkills: () => call<LocalSkillSummary[]>("list_skills"),
