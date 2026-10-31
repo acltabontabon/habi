@@ -65,32 +65,19 @@ skills to them. [Detectors](docs/library-authors/detectors.md) has every rule.
 
 ## Install
 
-<table>
-<tr>
-<th width="50%" align="left">macOS</th>
-<th width="50%" align="left">Windows</th>
-</tr>
-<tr>
-<td valign="top">
+<p align="center">
+<a href="https://github.com/acltabontabon/habi/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download%20for%20macOS-d9913f?style=for-the-badge&logo=apple&logoColor=white"></a>
+&nbsp;
+<a href="https://github.com/acltabontabon/habi/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download%20for%20Windows-d9913f?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDMuNCA5LjggMnY5LjVIMHpNMTEgMS44IDI0IDB2MTEuNUgxMXpNMCAxMi41aDkuOFYyMkwwIDIwLjZ6TTExIDEyLjVoMTNWMjRsLTEzLTEuOHoiLz48L3N2Zz4%3D"></a>
+<br>
+<sub>macOS 11 or later, Apple Silicon and Intel &nbsp;·&nbsp; Windows 64-bit</sub>
+</p>
 
-11 or later, Apple Silicon and Intel
+Or on macOS, with Homebrew:
 
 ```sh
 brew install --cask acltabontabon/tap/habi
 ```
-
-Or [download the `.dmg`](https://github.com/acltabontabon/habi/releases/latest).
-
-</td>
-<td valign="top">
-
-64-bit
-
-[Download the `.exe` installer](https://github.com/acltabontabon/habi/releases/latest), or the `.msi` for managed installs.
-
-</td>
-</tr>
-</table>
 
 The first launch asks you to confirm once, because the installers are not signed by Apple or
 Microsoft ([how](docs/guide/getting-started.md#installing)). Updates after that are signed with
