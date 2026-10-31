@@ -30,10 +30,10 @@
   "picks": [],
   "groupSegment": 1,
   "availability": "previewed",
-  "sourceId": "59c5ad9e874c",
+  "sourceId": "794b6ae4002c",
   "fetched": {
-    "snapshot": "8c51bb8f8ff0401cdab68ff14f428d8f3d13b376",
-    "snapshotAt": "2026-10-31T21:54:57Z",
+    "snapshot": "fb353f959d09a6e62c3176ef66fd438cf3504a4c",
+    "snapshotAt": "2026-10-31T23:23:40Z",
     "branch": "main",
     "release": null,
     "commitSummary": "Add skills — Example, 2026-11-01",

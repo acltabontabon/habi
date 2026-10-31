@@ -6,9 +6,10 @@
 
 use super::condition::Condition;
 use super::version;
+use crate::inspect::code::{CodeIndex, Usage};
 use crate::inspect::model::{
-    Coverage, CoverageStatus, Ecosystem, Fact, FactOrigin, FactSubject, ProjectInspection,
-    VersionState,
+    CodeKind, CodeLanguage, Coverage, CoverageStatus, Ecosystem, Evidence, Fact, FactOrigin,
+    FactSubject, ProjectInspection, VersionState,
 };
 use crate::inspect::tags::{self, TagBasis, wildcard_match};
 use serde::{Deserialize, Serialize};
@@ -77,6 +78,10 @@ pub struct EvalNode {
     pub files: Vec<String>,
     /// Compact location of the decisive evidence, e.g. `pom.xml:31`.
     pub location: Option<String>,
+    /// Where the project's source uses what this says, each with the name
+    /// found there. A few places, the project's own code first.
+    #[serde(default)]
+    pub code: Vec<Evidence>,
     pub children: Vec<EvalNode>,
 }
 
@@ -89,6 +94,7 @@ pub struct View<'a> {
     pub coverage: Vec<&'a Coverage>,
     pub ecosystems: BTreeSet<Ecosystem>,
     pub declarations: Vec<&'a Declaration>,
+    pub code: &'a CodeIndex,
 }
 
 /// Whether a fact describes the repository as a whole rather than the module
@@ -142,6 +148,7 @@ impl<'a> View<'a> {
                 .iter()
                 .filter(|d| d.module == id || d.module == "*")
                 .collect(),
+            code: &inspection.code,
         }
     }
 
@@ -195,6 +202,7 @@ impl<'a> View<'a> {
                 .flat_map(|m| m.ecosystems.iter().copied())
                 .collect(),
             declarations: declarations.iter().collect(),
+            code: &inspection.code,
         }
     }
 
@@ -274,8 +282,40 @@ fn node(condition: &Condition, outcome: Tri, reason: String) -> EvalNode {
         declarations: Vec::new(),
         files: Vec::new(),
         location: None,
+        code: Vec::new(),
         children: Vec::new(),
     }
+}
+
+fn cited_place(e: &Evidence) -> String {
+    match e.line {
+        Some(l) => format!("{}:{l}", e.file),
+        None => e.file.clone(),
+    }
+}
+
+/// "src/a.ts:4", "src/a.ts:4 and 12 more files".
+fn cited(usage: &Usage) -> String {
+    let first = usage.cited.first().map(cited_place).unwrap_or_default();
+    match usage.files.saturating_sub(1) {
+        0 => first,
+        1 => format!("{first} and 1 more file"),
+        n => format!("{first} and {n} more files"),
+    }
+}
+
+/// Adds where the source uses what a declared dependency or tag rests on. Only
+/// ever evidence: what a manifest declares holds with or without an import
+/// (a plugin, a runtime), so finding none says nothing and is not said.
+fn cite_usage<'a>(n: &mut EvalNode, ids: impl Iterator<Item = &'a str>, view: &View) {
+    let Some(usage) = ids
+        .filter_map(|id| view.code.usage_of(id))
+        .max_by_key(|u| u.files)
+    else {
+        return;
+    };
+    n.reason = format!("{}; imported in {}", n.reason, cited(usage));
+    n.code = usage.cited.clone();
 }
 
 /// " in module api" when a repository-scope result rests on a declaration
@@ -365,7 +405,70 @@ pub fn evaluate(condition: &Condition, view: &View) -> EvalNode {
         } => eval_dependency(condition, name, *ecosystem, version.as_deref(), view),
         Condition::File { glob } => eval_file(condition, glob, view),
         Condition::Tag { tag } => eval_tag(condition, tag, view),
+        Condition::Code {
+            kind,
+            name,
+            language,
+        } => eval_code(condition, *kind, name, *language, view),
     }
+}
+
+fn eval_code(
+    condition: &Condition,
+    kind: CodeKind,
+    name: &str,
+    language: Option<CodeLanguage>,
+    view: &View,
+) -> EvalNode {
+    let found = view.code.lookup(view.module, kind, name, language);
+    let verb = match kind {
+        CodeKind::Import => "imported",
+        CodeKind::Annotation => "used",
+    };
+    if found.files > 0 {
+        let mut n = node(condition, Tri::True, format!("{verb} in {}", cited(&found)));
+        n.location = found.cited.first().map(cited_place);
+        n.code = found.cited;
+        return n;
+    }
+    let gaps = view.incomplete(&["files", "code"]);
+    if !gaps.is_empty() {
+        return node(
+            condition,
+            Tri::Unknown,
+            format!("not found, but not all source was read: {}", gaps.join(" ")),
+        );
+    }
+    // A rule for any language cannot be ruled out where Habi reads only some.
+    let unread = view.code.languages_unread(view.module);
+    if language.is_none() && !unread.is_empty() {
+        let unread: Vec<&str> = unread.into_iter().collect();
+        return node(
+            condition,
+            Tri::Unknown,
+            format!(
+                "not found, but {} also holds {} source, which Habi does not read",
+                view.where_(),
+                unread.join(" and ")
+            ),
+        );
+    }
+    let read = view.code.languages_read(view.module);
+    let reason = match language {
+        Some(l) if !read.contains(&l) => {
+            format!("{} has no {} source", view.where_(), l.label())
+        }
+        _ if read.is_empty() => format!("{} has no source Habi reads", view.where_()),
+        _ => {
+            let read: Vec<&str> = read.iter().map(|l| l.label()).collect();
+            format!(
+                "not {verb} in the {} source of {}",
+                read.join(", "),
+                view.where_()
+            )
+        }
+    };
+    node(condition, Tri::False, reason)
 }
 
 #[allow(
@@ -444,6 +547,7 @@ fn eval_dependency(
                 Tri::True,
                 format!("{how} {}", evidence_location(f)),
             );
+            cite_usage(&mut n, ids.iter().map(String::as_str), view);
             n.facts = ids;
             n.location = Some(evidence_location(f));
             return n;
@@ -490,6 +594,9 @@ fn eval_dependency(
         }
         let mut n = node(condition, best, reasons.join("; "));
         n.location = Some(evidence_location(candidates[0]));
+        if best == Tri::True {
+            cite_usage(&mut n, ids.iter().map(String::as_str), view);
+        }
         n.facts = ids;
         return n;
     }
@@ -720,6 +827,7 @@ fn eval_tag(condition: &Condition, tag: &str, view: &View) -> EvalNode {
         let mut n = node(condition, Tri::True, reason);
         n.location = Some(evidence_location(first));
         n.facts = fact_ids(&uncontested);
+        cite_usage(&mut n, uncontested.iter().map(|f| f.id.as_str()), view);
         return n;
     }
     if let Some(d) = view.deciding(&declarations) {

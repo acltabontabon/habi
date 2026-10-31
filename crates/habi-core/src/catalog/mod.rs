@@ -117,10 +117,12 @@ pub enum TriggerKind {
     Dependency,
     File,
     Tag,
+    Code,
 }
 
 /// One feature of a project that makes the catalog suggest this library's
-/// skills: a dependency, a file or a detected tag, as the registry's hints say.
+/// skills: a dependency, a file, a detected tag or a name in its source, as the
+/// registry's hints say.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -153,6 +155,7 @@ fn triggers_of(entry: &Entry) -> Vec<CatalogTrigger> {
                 glob.strip_prefix("**/").unwrap_or(glob).to_string(),
             ),
             Condition::Tag { tag } => push(TriggerKind::Tag, crate::inspect::tags::phrase(tag)),
+            Condition::Code { name, .. } => push(TriggerKind::Code, name.clone()),
         }
     }
     let mut out = Vec::new();

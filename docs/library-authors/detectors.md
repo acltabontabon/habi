@@ -3,7 +3,8 @@
 What can Habi establish as conditions in `habi.yaml`? This page lists what inspection finds.
 
 **Inspection is read-only:** lists files (respecting `.gitignore`, `.ignore`, `.habiignore` and
-`.git/info/exclude`), reads build manifests and config files, and never runs code, builds, Git,
+`.git/info/exclude`), reads build manifests and config files, parses source for
+[imports and annotations](#source-code), and never runs code, builds, Git,
 hooks, or package managers. Ignore files above the repository root are not honoured, and one that
 cannot be applied is reported, so the result says it may not have seen everything.
 READMEs are never inspected as evidence.
@@ -50,6 +51,45 @@ and the module's coverage says so.
 
 **Partial content coverage** → absence of content-recognized tags (`api:openapi`, `db:liquibase`,
 `infra:kubernetes`, `data:databricks`) becomes *unknown*
+
+## Source code
+
+Habi parses source files and keeps two things from them: imported names and annotation names, each
+with its file and first line. No other source text is stored, shown or logged.
+
+| Language | Imports | Annotations |
+|---|---|---|
+| **Java**, **Kotlin** | `import` | `@Annotation` |
+| **JavaScript**, **TypeScript** | `import`, `export … from`, `require()`, `import()`, `import x = require()` | Decorators |
+| **Python** | `import`, `from … import` | Decorators |
+| **Go** | `import` | |
+| **Rust** | `use`, `extern crate`, paths such as `serde_json::from_str` | Attributes, and the names in `#[derive()]` |
+| **PHP** | `use` | `#[Attribute]` |
+
+Local paths (`./x`, `@/x`, Rust's `crate::`, Python's `from .x`) and URLs are not kept. Nor is anything
+in a fixture or an installed skill, a `.d.ts` file, a Gradle script, or a minified or binary file.
+
+C# and Scala have no grammar in Habi. A rule that names no language is *unknown* in a module that holds
+them, because the name could be there.
+
+| Limit | Impact |
+|-------|--------|
+| 30,000 source files | Files past it are not read |
+| 1 MiB per file | A larger file is not read |
+| 512 MiB per inspection | Files past it are not read |
+| 1 second per file, 30 seconds per inspection | A file past its time is not read; the next inspection continues, because what was read is remembered while Habi runs |
+
+**Source not fully read** → absence of a [`code` condition](metadata-schema.md#conditions) becomes
+*unknown*. Finding a name is still *true*.
+
+**A declared dependency's reason says where it is used** (`imported in src/App.java:5 and 12 more
+files`) when its name says how it is imported: npm, Go, Cargo, PyPI (a few packages import under
+another name, and Habi knows the common ones), and Maven or Gradle where the artifact names its package.
+A framework or tool on the JVM cites its own packages, whichever dependency brought it in: JUnit cites
+`org.junit`, never another import from the group of the starter that brought it. Composer names say
+nothing about namespaces, so they cite nothing, and neither does a name Habi cannot tie to a package.
+This is only evidence: finding no import does not change whether a dependency counts, because plugins
+and runtimes are not imported.
 
 ## Module discovery
 

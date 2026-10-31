@@ -5,6 +5,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import type { EvalNode } from "../../bindings/EvalNode";
+import type { Evidence } from "../../bindings/Evidence";
 import type { Fact } from "../../bindings/Fact";
 import type { ModuleMatch } from "../../bindings/ModuleMatch";
 import type { ProjectOverview } from "../../bindings/ProjectOverview";
@@ -83,6 +84,12 @@ export function EvidenceExcerpt({
   );
 }
 
+/** Where source code uses something: `src/App.java:5 — org.jooq.DSLContext`. */
+function codeLabel(e: Evidence): string {
+  const where = e.line ? `${e.file}:${e.line}` : e.file;
+  return e.excerpt ? `${where} — ${e.excerpt}` : where;
+}
+
 function Chip({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
   return (
     <button type="button" className={`chip${open ? " is-open" : ""}`} aria-expanded={open} onClick={onToggle}>
@@ -108,11 +115,13 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
     .filter((x, i) => located.findIndex((y) => y.loc.text === x.loc.text) === i)
     .slice(0, 4);
   const files = node.files.slice(0, 4);
+  const code = node.code;
   const declarations = node.declarations
     .map((id) => overview.declarations.find((d) => d.id === id))
     .filter((d) => d !== undefined);
 
-  if (unique.length === 0 && files.length === 0 && declarations.length === 0) return null;
+  if (unique.length === 0 && files.length === 0 && code.length === 0 && declarations.length === 0)
+    return null;
   const undo = async (id: string) => {
     if (undoing) return;
     setUndoing(id);
@@ -128,6 +137,7 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
   };
   const openItem = unique.find((x) => x.loc.text === open) ?? null;
   const openFile = files.find((f) => f === open) ?? null;
+  const openCode = code.find((e) => codeLabel(e) === open) ?? null;
   return (
     <div className="node-evidence">
       <div className="chips">
@@ -142,6 +152,17 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
         {files.map((f) => (
           <Chip key={f} label={f} open={open === f} onToggle={() => setOpen(open === f ? null : f)} />
         ))}
+        {code.map((e) => {
+          const label = codeLabel(e);
+          return (
+            <Chip
+              key={label}
+              label={label}
+              open={open === label}
+              onToggle={() => setOpen(open === label ? null : label)}
+            />
+          );
+        })}
         {declarations.map((d) => (
           <span key={d.id} className="chip chip-declared">
             <Icon name="pencil" size={13} />
@@ -163,6 +184,9 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
         <EvidenceExcerpt projectId={overview.project.id} file={openItem.loc.file} line={openItem.loc.line} />
       ) : null}
       {openFile ? <EvidenceExcerpt projectId={overview.project.id} file={openFile} line={null} /> : null}
+      {openCode ? (
+        <EvidenceExcerpt projectId={overview.project.id} file={openCode.file} line={openCode.line} />
+      ) : null}
     </div>
   );
 }

@@ -5,4 +5,8 @@ export type ScanReport = { filesSeen: number, directoriesSkipped: Array<string>,
  * True if a traversal limit stopped the scan early. File-pattern absence
  * is then unknown rather than false.
  */
-truncated: boolean, limitsHit: Array<string>, unreadable: Array<string>, symlinksSkipped: number, largeFilesSkipped: number, elapsedMs: number, };
+truncated: boolean, limitsHit: Array<string>, unreadable: Array<string>, symlinksSkipped: number, largeFilesSkipped: number, elapsedMs: number, 
+/**
+ * Source files whose imports and annotations were read.
+ */
+sourceFilesRead: number, };

@@ -677,8 +677,8 @@ export function ItemDetailPane({
                 </dd>
                 <dt>Limits</dt>
                 <dd className="muted">
-                  Habi read build manifests and file names. It did not run builds or read source code, and it
-                  cannot see whether an agent loads or follows this content.
+                  Habi read build manifests, file names and the imports in source code. It did not run builds,
+                  and it cannot see whether an agent loads or follows this content.
                 </dd>
               </dl>
             </Section>
