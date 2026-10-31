@@ -498,6 +498,25 @@ describe("the project page", () => {
     expect(screen.getByText(/On this machine Claude Code uses the global copy/)).toBeTruthy();
   });
 
+  it("says whether a skill here gets used, before anything from a library fits", async () => {
+    machine = [];
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "machine_skills") return machine;
+      if (cmd === "discover_project") return found(".claude/skills/alpha");
+      if (cmd === "list_sources") return [];
+      if (cmd === "skill_usage")
+        return {
+          partial: false,
+          skills: [
+            { name: "alpha", tokens: 9, usage: { uses: 3, lastUsed: "2026-10-01T00:00:00Z", days: 12 } },
+          ],
+        };
+      throw { code: "notFound", message: `no mock for ${cmd}` };
+    });
+    wrap(<AlreadyHere project={project} />);
+    expect(await screen.findByText("Used 3× in Claude Code here in 12 days")).toBeTruthy();
+  });
+
   it("says nothing about a skill that has no counterpart among the person's own", async () => {
     machine = [machineSkill({ inProjects: [sharedCopy] })];
     invoke.mockImplementation(async (cmd: string) => {

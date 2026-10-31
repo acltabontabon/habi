@@ -186,6 +186,13 @@ can hold anything said or shown in a session, so what happens to them is stated 
 - **Other projects' transcripts are opened too.** Folder names are lossy, so `/w/app-two` is among
   the folders for `/w/app`. Each transcript is read until its first record that names a folder, and
   one from elsewhere is put down there: nothing is taken from it, and it uses none of the size limits.
+- **A `.claude` folder your repository ignores.** Scanning a project leaves out what its ignore files
+  name, but Claude Code still reads those skills. So listing a project's skills also looks in
+  `.claude/skills`: the folders directly in it that hold a `SKILL.md`, read like any other skill in
+  the project, and ignore files found on the way there. `.habiignore`, `.ignore` and a project's
+  exclusions still hold, and if an ignore file cannot be applied, nothing is taken from here. Links
+  are not followed, so a linked skill gets no line. Nothing else that is ignored is read, and none of
+  this counts towards what Habi detects about the project.
 - **When.** Whenever a project's *All skills* list opens, and again if it reopens after a minute;
   leaving stops the read. A project opens on that list once it has something installed or nothing to
   suggest, so opening such a project is enough. Never in the background or on a schedule. A project

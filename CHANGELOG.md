@@ -12,6 +12,11 @@ All notable changes to Habi are listed here. The format follows
 - **Only your team can require a skill.** A skill a community library marks `required` no longer
   appears under *Team requirements* in All skills or `habi recommend`, or as required on the
   library's page. It is listed by how well it fits, like any other skill.
+- **Skills in an ignored `.claude` folder are seen.** All skills lists them and says whether they get
+  used, as it does for any other skill. Only `.claude/skills` is looked at: everything else your
+  repository ignores stays unread, and `.habiignore`, `.ignore` and a project's exclusions still hold.
+- **Use counts before a library fits.** A skill already in a project says whether it gets used even
+  when nothing from your libraries fits yet.
 
 ## 0.5.0 - 2026-10-30
 

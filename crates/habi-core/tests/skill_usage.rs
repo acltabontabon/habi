@@ -224,6 +224,151 @@ fn the_service_says_what_the_transcripts_show() {
     );
 }
 
+fn usage_of_project(world: &World) -> (Habi, String, tempfile::TempDir) {
+    let data = tempfile::tempdir().unwrap();
+    let habi = Habi::open(AppPaths::at(data.path().to_path_buf()))
+        .unwrap()
+        .with_user_home(world.home.clone());
+    let project = habi.open_project(&world.project).unwrap();
+    (habi, project.id, data)
+}
+
+fn found_skills(habi: &Habi, project: &str) -> Vec<String> {
+    let knowledge = habi.discover(project, &CancelToken::new()).unwrap();
+    knowledge.skills.into_iter().map(|s| s.path).collect()
+}
+
+#[test]
+fn a_skill_in_an_ignored_claude_folder_is_still_counted() {
+    let world = World::new();
+    world.all_fixtures();
+    write_skill(
+        &world.project,
+        ".claude/skills",
+        "migration-review",
+        "Does one thing well.",
+    );
+    let (habi, project, _data) = usage_of_project(&world);
+    let cancel = CancelToken::new();
+    let tracked = habi.skill_usage(&project, &cancel).unwrap();
+    assert_eq!(uses(&tracked, "migration-review"), Some(3));
+
+    fs::write(world.project.join(".gitignore"), ".claude/\n").unwrap();
+    habi.invalidate_inspection(&project);
+    let ignored = habi.skill_usage(&project, &cancel).unwrap();
+    assert_eq!(uses(&ignored, "migration-review"), Some(3));
+    assert_eq!(
+        found_skills(&habi, &project),
+        [".claude/skills/migration-review"],
+        "once, and with no help from the scan"
+    );
+    let inspection = habi.inspect(&project, false, &cancel).unwrap();
+    assert!(inspection.files.iter().all(|f| !f.starts_with(".claude")));
+}
+
+#[test]
+fn nothing_else_ignored_is_read_or_detected() {
+    let world = World::new();
+    let root = &world.project;
+    fs::write(root.join(".gitignore"), ".claude/\nbuild/\n").unwrap();
+    write_skill(root, ".claude/skills", "kept", "Does one thing well.");
+    // Skills in name only: elsewhere under `.claude`, deeper than a skill sits, or in another
+    // ignored folder.
+    write_skill(root, ".claude", "notes", "Not in the skills folder.");
+    write_skill(root, ".claude/skills/group", "nested", "Too deep.");
+    write_skill(root, "build/skills", "output", "Build output.");
+    fs::write(root.join(".claude/SKILL.md"), "---\nname: stray\n---\n").unwrap();
+    fs::write(root.join(".claude/CLAUDE.md"), "# Instructions\n").unwrap();
+    // A skill's own files are no sign of what the project is built with.
+    fs::write(
+        root.join(".claude/skills/kept/package.json"),
+        r#"{"dependencies":{"react":"19.0.0"}}"#,
+    )
+    .unwrap();
+
+    let (habi, project, _data) = usage_of_project(&world);
+    let knowledge = habi.discover(&project, &CancelToken::new()).unwrap();
+    let paths: Vec<&str> = knowledge.skills.iter().map(|s| s.path.as_str()).collect();
+    assert_eq!(paths, [".claude/skills/kept"]);
+    assert!(knowledge.instructions.is_empty());
+    let inspection = habi.inspect(&project, false, &CancelToken::new()).unwrap();
+    assert!(
+        inspection.files.iter().all(|f| f == ".gitignore"),
+        "{:?}",
+        inspection.files
+    );
+    assert!(inspection.facts.is_empty(), "{:?}", inspection.facts);
+    assert!(inspection.modules.iter().all(|m| m.id != ".claude"));
+}
+
+#[test]
+fn what_habi_was_asked_to_skip_stays_skipped() {
+    for (file, rule) in [
+        (".habiignore", ".claude/"),
+        (".ignore", ".claude/skills/"),
+        (".habiignore", ".claude/skills/kept/"),
+        (".ignore", "SKILL.md"),
+    ] {
+        let world = World::new();
+        fs::write(world.project.join(".gitignore"), ".claude/\n").unwrap();
+        write_skill(&world.project, ".claude/skills", "kept", "Does one thing.");
+        let (habi, project, _data) = usage_of_project(&world);
+        assert_eq!(found_skills(&habi, &project), [".claude/skills/kept"]);
+        fs::write(world.project.join(file), format!("{rule}\n")).unwrap();
+        assert!(found_skills(&habi, &project).is_empty(), "{file}: {rule}");
+    }
+
+    let world = World::new();
+    fs::write(world.project.join(".gitignore"), ".claude/\n").unwrap();
+    write_skill(&world.project, ".claude/skills", "kept", "Does one thing.");
+    let (habi, project, _data) = usage_of_project(&world);
+    habi.set_exclusions(&project, vec![".claude/**".into()])
+        .unwrap();
+    assert!(found_skills(&habi, &project).is_empty());
+}
+
+#[test]
+fn ignore_rules_that_could_not_be_applied_find_nothing() {
+    let world = World::new();
+    fs::write(world.project.join(".gitignore"), ".claude/\n").unwrap();
+    write_skill(&world.project, ".claude/skills", "kept", "Does one thing.");
+    fs::write(
+        world.project.join(".habiignore"),
+        vec![b'#'; 2 * 1024 * 1024],
+    )
+    .unwrap();
+    let (habi, project, _data) = usage_of_project(&world);
+    assert!(found_skills(&habi, &project).is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn links_in_an_ignored_claude_folder_are_not_followed() {
+    let world = World::new();
+    let elsewhere = tempfile::tempdir().unwrap();
+    write_skill(
+        elsewhere.path(),
+        "skills",
+        "outside",
+        "Not in this project.",
+    );
+    fs::write(world.project.join(".gitignore"), ".claude/\n").unwrap();
+    let skills = world.project.join(".claude/skills");
+    fs::create_dir_all(&skills).unwrap();
+    std::os::unix::fs::symlink(
+        elsewhere.path().join("skills/outside"),
+        skills.join("outside"),
+    )
+    .unwrap();
+    let (habi, project, _data) = usage_of_project(&world);
+    assert!(found_skills(&habi, &project).is_empty());
+
+    fs::remove_dir_all(world.project.join(".claude")).unwrap();
+    fs::create_dir_all(world.project.join(".claude")).unwrap();
+    std::os::unix::fs::symlink(elsewhere.path().join("skills"), &skills).unwrap();
+    assert!(found_skills(&habi, &project).is_empty());
+}
+
 #[test]
 fn no_transcripts_says_nothing_but_still_estimates_context() {
     let world = World::new();
