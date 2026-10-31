@@ -103,8 +103,6 @@ limitations are in the [security model](docs/project/security-model.md#known-lim
 
 <a href="https://ko-fi.com/aclt_attic"><img alt="Buy me a coffee" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-d9913f?style=flat-square&labelColor=1f1c19"></a>
 
-<sub>Maintained by Alvin Cris Tabontabon in their own time. Issues and pull requests are read, responses are best effort, and security reports come first.</sub>
-
 <sub><a href="LICENSE">Apache License 2.0</a>. Bundles third-party software and fonts under their own licenses; see <a href="THIRD_PARTY_NOTICES.md">the notices</a>.</sub>
 
 </div>
