@@ -89,15 +89,3 @@ limitations are in the [security model](docs/project/security-model.md#known-lim
 <td width="50%" valign="top"><img src="docs/media/share-review.jpg" alt="Sharing a skill: the files that leave your machine, as a diff, and the checks that ran." width="100%"><br><b>Send it back</b><br><sub>Preview what leaves your machine, then open a pull request.</sub></td>
 </tr>
 </table>
-
-<br>
-
-<div align="center">
-
-<a href="docs/guide/getting-started.md"><b>Getting started</b></a> &nbsp;·&nbsp; <a href="docs/README.md">Documentation</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contributing</a> &nbsp;·&nbsp; <a href="SUPPORT.md">Support</a> &nbsp;·&nbsp; <a href="SECURITY.md">Security</a>
-
-<a href="https://ko-fi.com/aclt_attic"><img alt="Buy me a coffee" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-d9913f?style=flat-square&labelColor=1f1c19"></a>
-
-<sub><a href="LICENSE">Apache License 2.0</a>. Bundles third-party software and fonts under their own licenses; see <a href="THIRD_PARTY_NOTICES.md">the notices</a>.</sub>
-
-</div>
