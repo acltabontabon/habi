@@ -407,19 +407,47 @@ fn a_community_library_cannot_require_on_the_teams_behalf() {
             .iter()
             .any(|s| s.name == "service-observability" && s.group == KitGroup::Required)
     };
-    let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
-    assert!(required(&kit), "the team's own library can require it");
+    let listed = |o: &habi_core::service::ProjectOverview, name: &str| {
+        let r = o
+            .recommendations
+            .iter()
+            .find(|r| r.item.name == name)
+            .unwrap_or_else(|| panic!("{name} is listed"));
+        (r.group, r.item.requirement)
+    };
+    let overview = habi.overview(&project.id, false, &cancel).unwrap();
+    assert!(
+        required(&overview.kit),
+        "the team's own library can require it"
+    );
+    assert_eq!(
+        listed(&overview, "service-observability"),
+        (Group::Required, Requirement::Required)
+    );
 
     habi.sources()
         .set_role(&source.id, SourceRole::Community)
         .unwrap();
-    let kit = habi.overview(&project.id, false, &cancel).unwrap().kit;
-    assert!(!required(&kit));
-    let skill = kit
+    let overview = habi.overview(&project.id, false, &cancel).unwrap();
+    assert!(!required(&overview.kit));
+    let skill = overview
+        .kit
         .suggestions
         .iter()
         .find(|s| s.name == "service-observability")
         .expect("it still fits, as any other skill");
     assert_eq!(skill.group, KitGroup::Stack);
     assert!(!skill.chosen);
+    assert_eq!(
+        listed(&overview, "service-observability"),
+        (Group::Relevant, Requirement::Recommended),
+        "All skills and the command line read the same list"
+    );
+    assert!(
+        overview
+            .recommendations
+            .iter()
+            .all(|r| r.group != Group::Required && r.item.requirement != Requirement::Required),
+        "nothing else in it requires on the team's behalf either"
+    );
 }

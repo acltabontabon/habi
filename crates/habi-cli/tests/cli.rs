@@ -603,6 +603,27 @@ fn the_catalog_lists_every_library_without_touching_the_network() {
 }
 
 #[test]
+fn a_community_library_is_not_listed_as_a_team_requirement() {
+    let env = Env::new();
+    copy_dir(&library_fixture(), &env.work.path().join("lib"));
+    env.ok(
+        env.work.path(),
+        &["source", "add", "Theirs", "lib", "--community"],
+    );
+    env.ok(env.work.path(), &["source", "refresh"]);
+
+    let project = env.project("billing-service");
+    let text = stdout(&env.ok(&project, &["recommend", "--all"]));
+    assert!(text.contains("Service observability"), "{text}");
+    assert!(!text.contains("Team requirements"), "{text}");
+    assert!(!text.contains("(team requirement)"), "{text}");
+
+    env.ok(env.work.path(), &["source", "role", "Theirs", "team"]);
+    let text = stdout(&env.ok(&project, &["recommend", "--all"]));
+    assert!(text.contains("Team requirements"), "{text}");
+}
+
+#[test]
 fn recommend_and_explain_say_whose_rule_a_fit_rests_on() {
     let env = Env::new();
     let lib = env.work.path().join("lib");

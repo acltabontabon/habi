@@ -7,6 +7,12 @@ All notable changes to Habi are listed here. The format follows
 
 ## Unreleased
 
+### Fixed
+
+- **Only your team can require a skill.** A skill a community library marks `required` no longer
+  appears under *Team requirements* in All skills or `habi recommend`, or as required on the
+  library's page. It is listed by how well it fits, like any other skill.
+
 ## 0.5.0 - 2026-10-30
 
 Every project gets Habi's answer to "what should my agents have here?", before a library is connected.
