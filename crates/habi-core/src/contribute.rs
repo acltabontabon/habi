@@ -13,8 +13,10 @@
 //!    never touched, and no hook, filter or checkout runs.
 //! 5. The author then exports a patch, or explicitly publishes: push the
 //!    branch and, where `gh`/`glab` is installed and authenticated, open a
-//!    pull/merge request. Habi never merges and never pushes to the tracked
-//!    branch.
+//!    pull/merge request. When the host says the author cannot push to the
+//!    library and they confirm it, the branch goes to their own fork instead
+//!    (created through `gh`/`glab`) and the request is opened from there.
+//!    Habi never merges and never pushes to the tracked branch.
 
 use crate::cancel::CancelToken;
 use crate::error::{GitFailure, HabiError, Result};
@@ -23,6 +25,7 @@ use crate::install::diff::{TextDiff, diff};
 use crate::library::model::{Diagnostic, DiagnosticLevel, SnapshotFile};
 use crate::library::{self, SIDECAR_FILES, SKILL_FILE};
 use crate::paths::{RelPath, display_path, resolve_for_read};
+pub use crate::review::Fork;
 pub use crate::review::{RemoteRepo, remote_repo};
 use crate::review::{ReviewHost, ReviewState, ReviewStatus, ReviewTools};
 use crate::source::git::{Git, SKIP_BLOBS_OVER};
@@ -211,6 +214,8 @@ pub struct Contribution {
     pub revision: u32,
     /// The commit last pushed to the contribution branch.
     pub pushed_commit: Option<String>,
+    /// The author's fork, when the branch goes there instead of the library.
+    pub fork: Option<Fork>,
     /// The private folder holding the files that would be shared, for
     /// display. Edit a library-item contribution's files here; skills from
     /// My skills or a project are copied again from where they live.
@@ -249,8 +254,7 @@ pub struct ContributionRemote {
     pub tracked: TrackedRef,
     /// Why no review request can be opened from here, if so.
     pub request_unavailable: Option<String>,
-    /// Credential-free link for opening the library and creating a fork on
-    /// its host. Habi never creates a fork or changes a push destination.
+    /// Credential-free link for opening the library on its host.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub repository_url: Option<String>,
@@ -262,11 +266,35 @@ pub struct ContributionRemote {
 pub struct PublishOutcome {
     pub remote: String,
     pub branch: String,
+    /// `owner/repo` of the author's fork, when the branch went there.
+    pub fork: Option<String>,
     pub pull_request_url: Option<String>,
     /// Why no pull request was opened, if none was.
     pub pull_request_note: Option<String>,
     /// The branch already had an open request; it now shows this revision.
     pub updated_existing: bool,
+}
+
+/// How a contribution would reach the library, asked just before sending.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+#[ts(export)]
+pub enum SendRoute {
+    /// The branch goes to the library: the author may push there, or it is on
+    /// this machine.
+    Library,
+    /// The author cannot push to the library, so sending forks it to their
+    /// account. `existing` is the fork this contribution already uses.
+    #[serde(rename_all = "camelCase")]
+    Fork {
+        account: String,
+        existing: Option<Fork>,
+    },
+    /// No branch can reach the library from here; the reason.
+    Blocked { reason: String },
+    /// Could not ask the host (tool missing or signed out, network, an
+    /// unrecognized address); the reason. Sending tries the library itself.
+    Unknown { reason: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -282,6 +310,10 @@ struct Stored {
     review: Option<ReviewStatus>,
     #[serde(default)]
     pushed_commit: Option<String>,
+    /// The author's fork. Once set, every version of the contribution goes
+    /// there: the request is opened from it.
+    #[serde(default)]
+    fork: Option<Fork>,
     /// While revising: the commit the next one builds on.
     #[serde(default)]
     parent_commit: Option<String>,
@@ -1339,6 +1371,7 @@ impl<'a> Contributions<'a> {
                 review: stored.review.clone(),
                 revision: stored.revision,
                 pushed_commit: stored.pushed_commit.clone(),
+                fork: stored.fork.clone(),
                 attention: stored.attention.clone(),
                 published_at: stored.published_at.clone(),
                 based_on: None,
@@ -1756,6 +1789,7 @@ impl<'a> Contributions<'a> {
             review: None,
             revision: 0,
             pushed_commit: None,
+            fork: None,
             attention: None,
             published_at: None,
             based_on: None,
@@ -1776,6 +1810,7 @@ impl<'a> Contributions<'a> {
             publish_note: None,
             review: None,
             pushed_commit: None,
+            fork: None,
             parent_commit: None,
             revision: 0,
             executables: Some(executables),
@@ -2536,7 +2571,13 @@ impl<'a> Contributions<'a> {
             // Never sent: nobody else can have built on it.
             return Ok(previous.to_string());
         }
-        let url = self.sources.fetch_url(&c.source_id)?;
+        let url = match &c.fork {
+            Some(fork) => fork
+                .push_url
+                .clone()
+                .unwrap_or_else(|| format!("{}.git", fork.url)),
+            None => self.sources.fetch_url(&c.source_id)?,
+        };
         let tracking = format!("refs/habi/review/{}", c.id);
         match git.fetch(
             cache,
@@ -2589,7 +2630,13 @@ impl<'a> Contributions<'a> {
                 "the remote is not a recognizable GitHub or GitLab address".into(),
             );
         };
-        match crate::review::fetch_status(self.tools, &repo, &c.branch, cancel) {
+        match crate::review::fetch_status_from(
+            self.tools,
+            &repo,
+            c.fork.as_ref(),
+            &c.branch,
+            cancel,
+        ) {
             Ok(Some(status)) => HostCheck::Found(status),
             Ok(None) => HostCheck::NoRequest,
             Err(message) => HostCheck::Unavailable(message),
@@ -2816,7 +2863,13 @@ impl<'a> Contributions<'a> {
                 "this remote is not a recognizable GitHub or GitLab address".into(),
             )
         })?;
-        match crate::review::fetch_status(self.tools, &repo, &c.branch, cancel) {
+        match crate::review::fetch_status_from(
+            self.tools,
+            &repo,
+            c.fork.as_ref(),
+            &c.branch,
+            cancel,
+        ) {
             Ok(Some(status)) => {
                 if c.published_url.is_none() {
                     c.published_url = status.url.clone();
@@ -2894,15 +2947,196 @@ impl<'a> Contributions<'a> {
         open_request: bool,
         cancel: &CancelToken,
     ) -> Result<PublishOutcome> {
+        self.publish_with(id, open_request, false, cancel)
+    }
+
+    /// Like `publish`. `via_fork` is the author's confirmed choice to send
+    /// through their own fork: Habi finds or creates it on the host first. A
+    /// contribution that already has a fork keeps using it either way.
+    pub fn publish_with(
+        &self,
+        id: &str,
+        open_request: bool,
+        via_fork: bool,
+        cancel: &CancelToken,
+    ) -> Result<PublishOutcome> {
         let _lock = self.lock_source(id)?;
-        self.publish_inner(id, open_request, cancel)
+        self.publish_inner(id, open_request, via_fork, cancel)
             .inspect_err(|e| self.record_attention(id, AttentionKind::Send, e))
+    }
+
+    /// Asks the Git host how this contribution would reach the library. Only
+    /// when the author is about to send; changes nothing.
+    pub fn send_route(&self, id: &str, cancel: &CancelToken) -> Result<SendRoute> {
+        let (c, stored) = self.load_active(id)?;
+        if let Some(fork) = &stored.fork {
+            return Ok(SendRoute::Fork {
+                account: fork.owner().to_string(),
+                existing: Some(fork.clone()),
+            });
+        }
+        let url = self.sources.fetch_url(&c.source_id)?;
+        // Already sent to the library itself, so its request is there too.
+        if Path::new(&url).is_absolute() || stored.pushed_commit.is_some() {
+            return Ok(SendRoute::Library);
+        }
+        let Some(repo) = remote_repo(&url) else {
+            return Ok(SendRoute::Unknown {
+                reason: "This address is not a recognizable GitHub or GitLab repository.".into(),
+            });
+        };
+        if matches!(
+            self.sources.get(&c.source_id)?.tracked,
+            TrackedRef::Tag { .. }
+        ) {
+            return Ok(SendRoute::Unknown {
+                reason:
+                    "The library follows a tag, so there is no branch to open a request against."
+                        .into(),
+            });
+        }
+        let access = match crate::review::read_access(self.tools, &repo, cancel) {
+            Ok(access) => access,
+            Err(reason) => {
+                cancel.check()?;
+                return Ok(SendRoute::Unknown { reason });
+            }
+        };
+        Ok(if access.archived {
+            SendRoute::Blocked {
+                reason: format!(
+                    "{} is archived on {}, so it takes no new contributions.",
+                    repo.path,
+                    access.host.name()
+                ),
+            }
+        } else if access.can_push {
+            SendRoute::Library
+        } else if access.can_fork {
+            SendRoute::Fork {
+                account: access.account,
+                existing: None,
+            }
+        } else {
+            SendRoute::Blocked {
+                reason: format!(
+                    "You cannot push to {}, and its owner turned off forks on {}.",
+                    repo.path,
+                    access.host.name()
+                ),
+            }
+        })
+    }
+
+    /// Finds or creates the author's fork of the library and records it, so a
+    /// retry or a revision goes to the same place even if a later step fails.
+    fn adopt_fork(
+        &self,
+        c: &mut Contribution,
+        stored: &mut Stored,
+        url: &str,
+        tracked: &TrackedRef,
+        cancel: &CancelToken,
+    ) -> Result<()> {
+        if stored.fork.is_none() && stored.pushed_commit.is_some() {
+            return Err(HabiError::invalid(
+                "this contribution was already sent to the library itself; start a new one to send it through a fork",
+            ));
+        }
+        if matches!(tracked, TrackedRef::Tag { .. }) {
+            return Err(HabiError::invalid(
+                "the library follows a tag, so there is no branch to open a request against",
+            ));
+        }
+        let repo = (!Path::new(url).is_absolute())
+            .then(|| remote_repo(url))
+            .flatten()
+            .ok_or_else(|| {
+                HabiError::Unsupported(
+                    "only a library on GitHub or GitLab can be sent through a fork".into(),
+                )
+            })?;
+        let mut fork =
+            crate::review::ensure_fork(self.tools, &repo, cancel).map_err(|message| {
+                HabiError::Unsupported(format!("Habi could not fork {}: {message}", repo.path))
+            })?;
+        if let Some(known) = stored.fork.as_ref().filter(|f| f.path == fork.path) {
+            fork.push_url = known.push_url.clone();
+        }
+        stored.fork = Some(fork.clone());
+        c.fork = Some(fork);
+        c.updated_at = crate::time::now();
+        self.save_row(c, stored)
+    }
+
+    /// Pushes to the author's fork and returns the address that took it. A
+    /// fork that never took a push yet may still be being created on the host,
+    /// so "not found" is waited out for up to a minute.
+    fn push_to_fork(
+        &self,
+        git: &Git,
+        cache: &Path,
+        fork: &Fork,
+        library_url: &str,
+        refspec: &str,
+        cancel: &CancelToken,
+    ) -> Result<String> {
+        let mut urls = match remote_repo(library_url) {
+            Some(repo) => {
+                crate::review::fork_push_urls(self.tools, &repo, fork, library_url, cancel)
+            }
+            None => vec![format!("{}.git", fork.url)],
+        };
+        let waits: &[u64] = match &fork.push_url {
+            Some(known) => {
+                urls.retain(|u| u != known);
+                urls.insert(0, known.clone());
+                &[]
+            }
+            None => &FORK_READY_WAITS,
+        };
+        let mut waits = waits.iter();
+        loop {
+            let mut first_error = None;
+            let mut not_ready = false;
+            for url in &urls {
+                match git.run(
+                    Some(cache),
+                    &["push", "--porcelain", "--", url, refspec],
+                    Duration::from_secs(300),
+                    cancel,
+                ) {
+                    Ok(_) => return Ok(url.clone()),
+                    Err(e) => {
+                        not_ready |= fork_not_ready(&e);
+                        first_error.get_or_insert(e);
+                    }
+                }
+                cancel.check()?;
+            }
+            let error = first_error
+                .ok_or_else(|| HabiError::Internal("no address to push the fork to".into()))?;
+            if !not_ready {
+                return Err(error);
+            }
+            let Some(seconds) = waits.next() else {
+                return Err(HabiError::Conflict(format!(
+                    "Your fork {} is not ready to take the branch yet. Send again in a minute; nothing is lost.",
+                    fork.path
+                )));
+            };
+            for _ in 0..seconds * 4 {
+                cancel.check()?;
+                std::thread::sleep(Duration::from_millis(250));
+            }
+        }
     }
 
     fn publish_inner(
         &self,
         id: &str,
         open_request: bool,
+        via_fork: bool,
         cancel: &CancelToken,
     ) -> Result<PublishOutcome> {
         let (mut c, mut stored) = self.load_active(id)?;
@@ -2921,6 +3155,9 @@ impl<'a> Contributions<'a> {
             return Err(HabiError::invalid(
                 "refusing to push to the library's tracked branch",
             ));
+        }
+        if via_fork {
+            self.adopt_fork(&mut c, &mut stored, &url, &source.tracked, cancel)?;
         }
         let local = Path::new(&url).is_absolute();
         let sent_before =
@@ -2970,6 +3207,16 @@ impl<'a> Contributions<'a> {
                 Duration::from_secs(300),
                 cancel,
             )?;
+        } else if let Some(fork) = stored.fork.as_mut() {
+            let reached = self.push_to_fork(
+                &git,
+                &cache,
+                fork,
+                &url,
+                &format!("{commit}:{target}"),
+                cancel,
+            )?;
+            fork.push_url = Some(reached);
         } else {
             git.run(
                 Some(&cache),
@@ -2985,12 +3232,15 @@ impl<'a> Contributions<'a> {
             )?;
         }
         let mut outcome = PublishOutcome {
-            remote: crate::redact::redact(&if crate::source::is_local_location(&url) {
+            remote: crate::redact::redact(&if let Some(fork) = &stored.fork {
+                fork.url.clone()
+            } else if crate::source::is_local_location(&url) {
                 display_path(Path::new(&url))
             } else {
                 url.clone()
             }),
             branch: c.branch.clone(),
+            fork: stored.fork.as_ref().map(|f| f.path.clone()),
             pull_request_url: None,
             pull_request_note: None,
             updated_existing: false,
@@ -3039,9 +3289,15 @@ impl<'a> Contributions<'a> {
                                 stored.message.trim()
                             )
                         };
-                        match crate::review::open_request(
-                            self.tools, &repo, &c.branch, &base, &c.title, &body, cancel,
-                        ) {
+                        let opened = match &stored.fork {
+                            Some(fork) => crate::review::open_request_from_fork(
+                                self.tools, &repo, fork, &c.branch, &base, &c.title, &body, cancel,
+                            ),
+                            None => crate::review::open_request(
+                                self.tools, &repo, &c.branch, &base, &c.title, &body, cancel,
+                            ),
+                        };
+                        match opened {
                             Ok(url) => outcome.pull_request_url = Some(url),
                             Err(note) => outcome.pull_request_note = Some(note),
                         }
@@ -3089,6 +3345,25 @@ impl<'a> Contributions<'a> {
         stored.attention = None;
         c.updated_at = crate::time::now();
         self.save_row(&c, &stored)
+    }
+}
+
+/// Seconds between attempts to push to a fork that may still be being
+/// created. Forking is asynchronous on both hosts.
+const FORK_READY_WAITS: [u64; 5] = [2, 4, 8, 16, 30];
+
+/// The host does not know the fork (yet). Sign-in and refused pushes are real
+/// answers, and are not waited out.
+fn fork_not_ready(error: &HabiError) -> bool {
+    match error {
+        HabiError::Git { failure, message } => {
+            let message = message.to_ascii_lowercase();
+            *failure == GitFailure::NotFound
+                || message.contains("repository not found")
+                || message.contains("could not be found")
+                || message.contains("does not exist")
+        }
+        _ => false,
     }
 }
 

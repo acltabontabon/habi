@@ -5,6 +5,7 @@ import type { ContributionRemote } from "./ContributionRemote";
 import type { ContributionState } from "./ContributionState";
 import type { Diagnostic } from "./Diagnostic";
 import type { DraftFile } from "./DraftFile";
+import type { Fork } from "./Fork";
 import type { ReviewStatus } from "./ReviewStatus";
 import type { ShareForm } from "./ShareForm";
 
@@ -42,6 +43,10 @@ revision: number,
  * The commit last pushed to the contribution branch.
  */
 pushedCommit: string | null, 
+/**
+ * The author's fork, when the branch goes there instead of the library.
+ */
+fork: Fork | null, 
 /**
  * The private folder holding the files that would be shared, for
  * display. Edit a library-item contribution's files here; skills from

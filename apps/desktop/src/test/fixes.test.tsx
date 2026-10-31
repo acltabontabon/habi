@@ -105,6 +105,7 @@ const contribution: Contribution = {
   revising: false,
   stagingPath: "~/habi/contributions/c/files",
   pushedCommit: null,
+  fork: null,
   attention: null,
   publishedAt: null,
   basedOn: null,

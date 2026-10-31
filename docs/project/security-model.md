@@ -47,7 +47,9 @@ user explicitly chooses to build on those commits. Pushes are never forced.
 ### Review requests on GitHub and GitLab
 
 Habi reads and opens review requests only through the user's own `gh`/`glab` (no tokens are
-stored), only when asked, and only for the library's own remote. Everything the host returns
+stored), only when asked, and only for the library's own remote and the user's fork of it. A fork
+is created only after the user confirms it, and its Git address is built from a validated path
+rather than taken from the host's answer. Everything the host returns
 is untrusted: comment bodies and author names are reduced to plain text (control and
 bidirectional-override characters removed, lengths bounded), paths are validated as relative
 repository paths, and a request URL is kept only when it is `https://` on the library's own
@@ -275,9 +277,10 @@ By design, or not solved yet:
   secret; it does not remove it.
 - **Another process running as you** could race between path validation and directory
   creation while a plan is applied.
-- **Community libraries** usually need push access (or a fork) that you do not have. Habi
-  prepares the branch and offers a guided manual fork route with *Export patch*. Creating
-  the fork and opening its review request remain manual; *Send* keeps its original destination.
+- **Sending through a fork needs `gh` or `glab`, signed in.** When you go to send, Habi asks the
+  host whether you can push, and offers to fork the library to your own account if not. Without
+  those tools, or on an unrecognized host, the fork stays manual through *Export patch*. A fork of
+  a public library is public, and Habi does not delete it afterwards.
 - **Unsigned installers, by choice.** Habi ships on GitHub Releases only, without Apple or
   Microsoft code signing, so the first launch needs one confirmation
   ([how](../guide/getting-started.md#installing)). Updates are signed with Habi's own updater key

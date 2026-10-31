@@ -6,6 +6,7 @@
  */
 import type { AppInfo } from "../bindings/AppInfo";
 import type { Contribution } from "../bindings/Contribution";
+import type { SendRoute } from "../bindings/SendRoute";
 import type { Tone } from "./format";
 
 /**
@@ -122,11 +123,24 @@ export function nextAction(c: Contribution): NextAction {
   return { kind: "details", label: "Review changes" };
 }
 
+/** `owner/repo` of the library on its host, for sentences. */
+export function libraryPath(c: Contribution): string {
+  const url = c.remote?.repositoryUrl;
+  if (!url) return c.sourceName;
+  try {
+    return new URL(url).pathname.replace(/^\/+/, "");
+  } catch {
+    return c.sourceName;
+  }
+}
+
 export type FinalAction = {
   /** Names exactly what happens: "Create pull request", "Push branch"… */
   label: string;
   /** Ask the host (through gh/glab) to open a request after pushing. */
   openRequest: boolean;
+  /** Go through the author's own fork, which Habi finds or creates first. */
+  viaFork: boolean;
   /** Why the action is what it is, when it is not the obvious one. */
   note: string | null;
 };
@@ -134,19 +148,27 @@ export type FinalAction = {
 /**
  * The action that sends a prepared contribution. It creates a request only
  * where the host is known and its command-line tool is installed; otherwise
- * it honestly pushes the branch (or a patch can be exported).
+ * it honestly pushes the branch (or a patch can be exported). `route` is what
+ * the host said when the author went to send; until then the label assumes
+ * the library takes the push.
  */
-export function finalAction(c: Contribution, info: AppInfo | undefined): FinalAction {
+export function finalAction(c: Contribution, info: AppInfo | undefined, route?: SendRoute): FinalAction {
   const remote = c.remote;
   const word = requestWord(c);
   const host = hostName(c);
   if (!remote) {
-    return { label: "Push branch", openRequest: false, note: "Habi cannot read the library's address." };
+    return {
+      label: "Push branch",
+      openRequest: false,
+      viaFork: false,
+      note: "Habi cannot read the library's address.",
+    };
   }
   if (remote.onThisMachine) {
     return {
       label: "Push branch",
       openRequest: false,
+      viaFork: false,
       note: "The library is a repository on this machine: the branch is written there, to be reviewed there.",
     };
   }
@@ -154,32 +176,44 @@ export function finalAction(c: Contribution, info: AppInfo | undefined): FinalAc
     return {
       label: "Push revision",
       openRequest: false,
+      viaFork: false,
       note: `Habi checks the ${word} on ${host} first. If it is still open, it shows the new commit; no second request is opened.`,
     };
   }
   if (remote.requestUnavailable) {
-    return { label: "Push branch", openRequest: false, note: remote.requestUnavailable };
+    return { label: "Push branch", openRequest: false, viaFork: false, note: remote.requestUnavailable };
+  }
+  if (route?.kind === "fork" || c.fork) {
+    return {
+      label: c.fork ? `Create ${word}` : `Fork and create ${word}`,
+      openRequest: true,
+      viaFork: true,
+      note: null,
+    };
   }
   const tool = remote.host === "github" ? "gh" : remote.host === "gitlab" ? "glab" : null;
   if (tool) {
     const installed = tool === "gh" ? info?.ghAvailable : info?.glabAvailable;
-    if (installed) return { label: `Create ${word}`, openRequest: true, note: null };
+    if (installed) return { label: `Create ${word}`, openRequest: true, viaFork: false, note: null };
     return {
       label: "Push branch",
       openRequest: false,
-      note: `\`${tool}\` is not installed, so Habi cannot open the ${word}. It pushes the branch; open the ${word} on ${host}, or export a patch instead.`,
+      viaFork: false,
+      note: `\`${tool}\` is not installed, so Habi cannot open the ${word} or fork the library for you. It pushes the branch; open the ${word} on ${host}, or export a patch instead.`,
     };
   }
   if (info?.ghAvailable || info?.glabAvailable) {
     return {
       label: "Push branch",
       openRequest: true,
+      viaFork: false,
       note: "The address does not say which host this is. Habi asks gh or glab; if one is signed in to it, a review request is opened too.",
     };
   }
   return {
     label: "Push branch",
     openRequest: false,
+    viaFork: false,
     note: "Neither gh nor glab is installed, so Habi cannot open a review request. Open one on your Git host from the pushed branch, or export a patch instead.",
   };
 }

@@ -9,6 +9,10 @@ All notable changes to Habi are listed here. The format follows
 
 ### Added
 
+- **Share to libraries you cannot push to.** When you send a contribution, Habi asks the host whether you
+  can push. If not, it offers to fork the library to your account with `gh` or `glab`, push the branch
+  there and open the pull or merge request from it. Revisions and status follow the same fork. Without
+  those tools, the manual route through **Export patch…** is still there.
 - **More kinds of project are recognized.** Infrastructure (Terraform, Terragrunt, Helm, Kubernetes,
   Kustomize, Ansible, Pulumi, HCL), data and notebooks (Databricks, Delta Lake, MLflow, Jupyter), Spring
   Security, Batch, Cloud and plain Spring, GraalVM, Scala and shell scripts. Skills that name them match,

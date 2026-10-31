@@ -37,6 +37,7 @@ import {
   type FinalAction,
   finalAction,
   hostName,
+  libraryPath,
   nextAction,
   openRequestUrl,
   requestWord,
@@ -316,10 +317,13 @@ function hostLine(c: Contribution): string {
 function Destination({
   c,
   compact,
+  fork,
   onLineage,
 }: {
   c: Contribution;
   compact?: boolean;
+  /** Where the branch goes when it is not the library itself. */
+  fork?: string;
   onLineage?: (record: boolean) => void;
 }) {
   return (
@@ -352,6 +356,12 @@ function Destination({
           <dd className="mono">{c.remote?.display ?? "unknown"}</dd>
           <dt>Host</dt>
           <dd>{hostLine(c)}</dd>
+          {fork ? (
+            <>
+              <dt>Pushes to</dt>
+              <dd className="mono">{fork}</dd>
+            </>
+          ) : null}
           <dt>Target branch</dt>
           <dd className={c.review?.targetBranch || c.remote?.tracked.kind === "branch" ? "mono" : undefined}>
             {targetBranch(c)}
@@ -398,6 +408,8 @@ export function ForkGuide({ c, onExport, busy }: { c: Contribution; onExport: ()
       <p className="muted">
         The remaining steps happen in your Git host and terminal. Habi keeps this contribution as prepared; it
         cannot follow a request created this way. Exporting does not change where Habi’s Send action pushes.
+        With {c.remote.host === "gitlab" ? "glab" : "gh"} installed and signed in, Habi does all of this for
+        you when you send.
       </p>
     </details>
   );
@@ -408,7 +420,7 @@ export function ForkGuide({ c, onExport, busy }: { c: Contribution; onExport: ()
  * maintainer, never Habi, merges it into the target. Every name is the
  * real one; nothing here is drawn from a guess.
  */
-function Route({ c }: { c: Contribution }) {
+function Route({ c, fork }: { c: Contribution; fork?: string }) {
   const target = targetBranch(c);
   const exact = Boolean(c.review?.targetBranch || c.remote?.tracked.kind === "branch");
   return (
@@ -422,9 +434,9 @@ function Route({ c }: { c: Contribution }) {
         <span>Habi pushes</span>
       </li>
       <li className="route-stop">
-        <span className="route-kicker">Repository</span>
-        <span className="route-name mono">{c.remote?.display ?? "unknown"}</span>
-        <span className="route-sub">{hostLine(c)}</span>
+        <span className="route-kicker">{fork ? "Your fork" : "Repository"}</span>
+        <span className="route-name mono">{fork ?? c.remote?.display ?? "unknown"}</span>
+        <span className="route-sub">{fork ? `on ${hostLine(c)}, your account` : hostLine(c)}</span>
       </li>
       <li className="route-link is-merge" aria-hidden="true">
         <span>a maintainer merges</span>
@@ -432,7 +444,7 @@ function Route({ c }: { c: Contribution }) {
       <li className="route-stop is-target">
         <span className="route-kicker">Target branch</span>
         <span className={`route-name${exact ? " mono" : ""}`}>{target}</span>
-        <span className="route-sub">Habi never pushes here</span>
+        <span className="route-sub">{fork ? `of ${libraryPath(c)}. ` : ""}Habi never pushes here</span>
       </li>
     </ol>
   );
@@ -740,8 +752,21 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
   const word = requestWord(c);
   const host = hostName(c);
   const requestUrl = openRequestUrl(c);
-  const send = finalAction(c, info.data);
+  // Asked only once the person goes to send: nothing reads the host before that.
+  const routeQuery = useQuery({
+    queryKey: keys.contributionRoute(id),
+    queryFn: () => api.contributionSendRoute(id, newJobId()),
+    enabled: sendOpen && !c.remote?.onThisMachine,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+  const route = sendOpen ? routeQuery.data : undefined;
+  const checkingRoute = sendOpen && !c.remote?.onThisMachine && routeQuery.isFetching;
+  const send = finalAction(c, info.data, route);
   const attention = c.attention;
+  const blocked = route?.kind === "blocked" ? route.reason : null;
+  const forkName = c.fork?.path ?? (route?.kind === "fork" ? `${route.account}’s fork` : undefined);
 
   const refresh = () => {
     void client.invalidateQueries({ queryKey: keys.contribution(id) });
@@ -844,13 +869,14 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
     setBusy("publish");
     setSendError(null);
     try {
-      const out = await api.publishContribution(id, send.openRequest, newJobId());
+      const out = await api.publishContribution(id, send.openRequest, send.viaFork, newJobId());
       setSendOpen(false);
+      const pushed = out.fork ? `Pushed ${out.branch} to your fork ${out.fork}.` : `Pushed ${out.branch}.`;
       setResult(
         out.updatedExisting
-          ? `Pushed ${out.branch}. The open ${word} on ${host} shows this revision.`
+          ? `${pushed} The open ${word} on ${host} shows this revision.`
           : out.pullRequestUrl
-            ? `Pushed ${out.branch}. ${host} opened the ${word}: ${out.pullRequestUrl}`
+            ? `${pushed} ${host} opened the ${word}: ${out.pullRequestUrl}`
             : `Pushed ${out.branch} to ${out.remote}. No ${word} was opened.${
                 out.pullRequestNote ? ` ${out.pullRequestNote}` : ""
               }`,
@@ -883,7 +909,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
     requestUrl
       ? ` An open ${word} on ${host} stays open; close it there if you no longer want it.`
       : pushed
-        ? ` The branch already pushed to ${c.remote?.onThisMachine ? "the library" : host} stays there.`
+        ? ` The branch already pushed to ${c.fork ? "your fork" : c.remote?.onThisMachine ? "the library" : host} stays there.`
         : ""
   }${local ? " Your skill in My skills is kept." : ""}`;
 
@@ -1142,7 +1168,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         </Station>
 
         <Station n={3} state={stations[2]?.state ?? "todo"} title={stations[2]?.label ?? send.label}>
-          <Route c={c} />
+          <Route c={c} fork={forkName} />
           <div className="send-layout">
             <div className="send-main">
               {editable ? (
@@ -1193,7 +1219,9 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
                 Based on <span className="mono">{shortId(c.baseCommit)}</span> of {c.sourceName}. Habi never
                 pushes to the target branch, never overwrites commits and never merges.
               </p>
-              {c.state === "committed" || c.state === "exported" ? (
+              {(c.state === "committed" || c.state === "exported") &&
+              !c.fork &&
+              (!send.openRequest || blocked || routeQuery.data?.kind === "unknown") ? (
                 <ForkGuide c={c} onExport={() => void exportPatch()} busy={busy === "export"} />
               ) : null}
             </div>
@@ -1242,30 +1270,91 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
           setSendOpen(open);
           if (!open) setSendError(null);
         }}
-        title={send.label}
+        title={blocked ? "This library cannot take a branch from you" : send.label}
         description={
           c.remote?.onThisMachine
             ? "This writes the branch into the library repository on this machine."
-            : `This sends the files below to ${host} with your Git credentials.`
+            : checkingRoute
+              ? `Asking ${host} whether you can push to ${libraryPath(c)}…`
+              : send.viaFork
+                ? `You cannot push to ${libraryPath(c)}, so this goes through your own fork on ${host}.`
+                : `This sends the files below to ${host} with your Git credentials.`
         }
         footer={
           <>
             <Button variant="quiet" disabled={busy === "publish"} onClick={() => setSendOpen(false)}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              busy={busy === "publish"}
-              disabled={working}
-              onClick={() => void publish()}
-            >
-              {send.label}
-            </Button>
+            {blocked ? (
+              <Button
+                variant="primary"
+                icon="download"
+                disabled={working}
+                onClick={() => {
+                  setSendOpen(false);
+                  void exportPatch();
+                }}
+              >
+                Export patch…
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                busy={busy === "publish"}
+                disabled={working || checkingRoute}
+                onClick={() => void publish()}
+              >
+                {send.label}
+              </Button>
+            )}
           </>
         }
       >
-        {sendError ? <ErrorNotice error={sendError} title="Nothing was pushed" /> : null}
-        <Destination c={c} />
+        {sendError ? (
+          <ErrorNotice
+            error={sendError}
+            title={send.viaFork ? "The branch was not sent" : "Nothing was pushed"}
+          />
+        ) : null}
+        {blocked ? (
+          <Notice tone="warn" title="Nothing can be sent from here">
+            <p>{blocked} You can still export the change as a patch.</p>
+          </Notice>
+        ) : null}
+        {send.viaFork && !blocked ? (
+          <ol className="fork-steps">
+            <li>
+              {c.fork ? (
+                <>
+                  Uses your fork <span className="mono">{c.fork.path}</span>
+                </>
+              ) : (
+                <>
+                  Forks <span className="mono">{libraryPath(c)}</span> to your account{" "}
+                  {route?.kind === "fork" ? <span className="mono">{route.account}</span> : null}, or reuses
+                  the fork you have
+                </>
+              )}
+            </li>
+            <li>
+              Pushes <span className="mono">{c.branch}</span> there
+            </li>
+            <li>Opens the {word} into the library</li>
+          </ol>
+        ) : null}
+        {send.viaFork && !c.fork && !blocked ? (
+          <p className="muted">
+            A fork of a public library is public. You can delete it once the {word} closes.
+          </p>
+        ) : null}
+        {route?.kind === "unknown" && send.openRequest ? (
+          <p className="muted">
+            Habi could not check whether you can push: {route.reason} It will try the library itself; if that
+            is refused, sign in with {c.remote?.host === "gitlab" ? "glab" : "gh"} and send again, or export a
+            patch.
+          </p>
+        ) : null}
+        <Destination c={c} fork={forkName} />
         <ul className="publish-files">
           {outgoing.map((x) => (
             <li key={x.path} className="mono">
@@ -1273,7 +1362,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
             </li>
           ))}
         </ul>
-        {send.note ? <p className="muted">{send.note}</p> : null}
+        {send.note && !blocked ? <p className="muted">{send.note}</p> : null}
       </Dialog>
     </div>
   );

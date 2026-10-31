@@ -122,6 +122,7 @@ habi contribute rehearse <id>                         # where its rules apply, a
 habi contribute commit <id>                           # a branch in Habi's cache; nothing is pushed
 habi contribute export <id> ~/Desktop                 # a patch file
 habi contribute publish <id> --open-request           # push, and open a pull or merge request
+habi contribute publish <id> --open-request --fork    # the same through your own fork, for a library you cannot push to
 habi contribute status <id>                           # state and comments from the host
 habi contribute revise <id>                           # then commit and publish again
 habi contribute commit <id> --build-on-remote         # only if someone else pushed to the branch

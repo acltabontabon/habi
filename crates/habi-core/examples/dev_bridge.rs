@@ -282,9 +282,13 @@ impl Bridge {
                 }
                 None => Ok(Value::Null),
             },
-            "publish_contribution" => {
-                out(h.publish_contribution(&s("id")?, arg(a, "openRequest")?, cancel)?)
-            }
+            "publish_contribution" => out(h.publish_contribution_with(
+                &s("id")?,
+                arg(a, "openRequest")?,
+                arg(a, "viaFork")?,
+                cancel,
+            )?),
+            "contribution_send_route" => out(h.contribution_send_route(&s("id")?, cancel)?),
             "discard_contribution" => out(h.contributions().discard(&s("id")?)?),
 
             "list_skills" => out(h.skills().list()?),

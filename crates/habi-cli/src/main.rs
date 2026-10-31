@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use habi_core::cancel::CancelToken;
 use habi_core::clients::ClientId;
-use habi_core::contribute::{Contribution, ContributionOrigin};
+use habi_core::contribute::{Contribution, ContributionOrigin, SendRoute};
 use habi_core::error::HabiError;
 use habi_core::install::plan::{Decisions, Plan, Resolution};
 use habi_core::install::status::InstallState;
@@ -406,6 +406,10 @@ Then: habi contribute show <id>  →  edit the files  →  habi contribute commi
         /// Also open a pull/merge request (through `gh` or `glab`).
         #[arg(long)]
         open_request: bool,
+        /// Send through your own fork (found or created with `gh` or `glab`).
+        /// Without this, Habi asks the host and offers it when you cannot push.
+        #[arg(long)]
+        fork: bool,
         /// Push without asking for confirmation.
         #[arg(long)]
         yes: bool,
@@ -1799,6 +1803,7 @@ fn contribute_inner(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
         ContributeCmd::Publish {
             id,
             open_request,
+            fork,
             yes,
         } => {
             let c = habi.contributions().preview(&id)?;
@@ -1815,7 +1820,30 @@ fn contribute_inner(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
                     "refusing to publish without --yes (no terminal to ask on)",
                 ));
             }
+            let route = habi.contribution_send_route(&id, cancel)?;
+            if let SendRoute::Blocked { reason } = &route {
+                return Err(fail(
+                    "cannotSend",
+                    format!("{reason} Export a patch instead."),
+                ));
+            }
+            let needs_fork = matches!(route, SendRoute::Fork { existing: None, .. });
+            if needs_fork && !fork && yes {
+                return Err(fail(
+                    "forkRequired",
+                    "You cannot push to this library. Pass --fork to send through your own fork.",
+                ));
+            }
+            let via_fork = fork || needs_fork;
             if !ctx.json {
+                if let SendRoute::Fork { account, existing } = &route {
+                    match existing {
+                        Some(f) => println!("This goes to your fork {}.", f.path),
+                        None => println!(
+                            "You cannot push to this library, so this forks it to your account ({account}), which is public if the library is."
+                        ),
+                    }
+                }
                 let remote = c
                     .remote
                     .as_ref()
@@ -1842,7 +1870,7 @@ fn contribute_inner(ctx: &Ctx, cmd: ContributeCmd) -> Result<Value> {
                 note("Nothing was pushed.");
                 return Ok(Value::Null);
             }
-            let out = habi.publish_contribution(&id, open_request, cancel)?;
+            let out = habi.publish_contribution_with(&id, open_request, via_fork, cancel)?;
             emit(ctx, &out, || {
                 println!("Pushed {} to {}.", out.branch, out.remote);
                 if let Some(url) = &out.pull_request_url {

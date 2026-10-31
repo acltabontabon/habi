@@ -19,6 +19,7 @@ export const keys = {
   history: (projectId: string) => ["history", projectId] as const,
   contributions: ["contributions"] as const,
   contribution: (id: string) => ["contribution", id] as const,
+  contributionRoute: (id: string) => ["contributionRoute", id] as const,
   checkRuns: (projectId: string, itemKey: string) => ["checkRuns", projectId, itemKey] as const,
   skills: ["skills"] as const,
   skill: (id: string) => ["skill", id] as const,

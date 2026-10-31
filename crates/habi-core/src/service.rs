@@ -10,7 +10,7 @@ use crate::checks::{self, CheckPreview, CheckRun};
 use crate::clients::ClientId;
 use crate::contribute::ShareForm as ApplicabilityForm;
 use crate::contribute::{
-    Contribution, ContributionOrigin, Contributions, PublishOutcome, ShareForm,
+    Contribution, ContributionOrigin, Contributions, PublishOutcome, SendRoute, ShareForm,
 };
 use crate::error::ErrorInfo;
 use crate::error::{HabiError, Result};
@@ -2852,6 +2852,23 @@ impl Habi {
         cancel: &CancelToken,
     ) -> Result<PublishOutcome> {
         self.contributions().publish(id, open_request, cancel)
+    }
+
+    /// Like `publish_contribution`, through the author's own fork when
+    /// `via_fork` is true.
+    pub fn publish_contribution_with(
+        &self,
+        id: &str,
+        open_request: bool,
+        via_fork: bool,
+        cancel: &CancelToken,
+    ) -> Result<PublishOutcome> {
+        self.contributions()
+            .publish_with(id, open_request, via_fork, cancel)
+    }
+
+    pub fn contribution_send_route(&self, id: &str, cancel: &CancelToken) -> Result<SendRoute> {
+        self.contributions().send_route(id, cancel)
     }
 }
 

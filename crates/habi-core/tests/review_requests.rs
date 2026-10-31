@@ -5,7 +5,8 @@
 
 use habi_core::cancel::CancelToken;
 use habi_core::review::{
-    CommentKind, RemoteRepo, ReviewHost, ReviewState, ReviewTools, fetch_status, open_request,
+    CommentKind, Fork, RemoteRepo, ReviewHost, ReviewState, ReviewTools, ensure_fork, fetch_status,
+    fetch_status_from, fork_push_urls, open_request, open_request_from_fork, read_access,
 };
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -287,4 +288,151 @@ fn the_tools_run_in_habis_own_folder() {
         Path::new(seen.trim()).canonicalize().unwrap(),
         own.canonicalize().unwrap()
     );
+}
+
+/// A GitLab with one project (id 11), a fork of it (id 22) once `forked`
+/// exists, and a merge request list holding someone else's as well.
+const GLAB_FORKS: &str = r#"
+case "$1 $2" in
+  "config get") echo ssh; exit 0 ;;
+esac
+dir=$(dirname "$0")
+case "$4" in
+  user) echo '{"username":"me"}' ;;
+  projects/group%2Fsub%2Fskills)
+    echo '{"id":11,"archived":false,"forking_access_level":"enabled","permissions":{"project_access":{"access_level":20},"group_access":null}}' ;;
+  projects/group%2Fsub%2Fskills/forks\?*)
+    if [ -f "$dir/forked" ]; then echo '[{"id":22,"path_with_namespace":"me/skills","archived":false}]'; else echo '[]'; fi ;;
+  projects/group%2Fsub%2Fskills/fork)
+    touch "$dir/forked"; echo '{"id":22,"path_with_namespace":"me/skills"}' ;;
+  projects/22/merge_requests)
+    echo '{"iid":3,"web_url":"https://gitlab.example.com/group/sub/skills/-/merge_requests/3"}' ;;
+  projects/group%2Fsub%2Fskills/merge_requests\?*)
+    echo '[{"iid":4,"state":"opened","source_project_id":33,"created_at":"2026-10-02T00:00:00Z"},{"iid":3,"state":"opened","source_project_id":22,"created_at":"2026-10-01T00:00:00Z"}]' ;;
+  */approvals) echo '{"approved_by":[]}' ;;
+  *) echo '[]' ;;
+esac"#;
+
+#[test]
+fn gitlab_forks_are_found_or_made_and_requests_opened_from_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let tools = ReviewTools {
+        gh: None,
+        glab: Some(stand_in(dir.path(), "glab", GLAB_FORKS)),
+        cwd: None,
+    };
+    let cancel = CancelToken::new();
+    let repo = gitlab_repo();
+
+    let access = read_access(&tools, &repo, &cancel).unwrap();
+    assert_eq!(access.account, "me");
+    assert!(!access.can_push, "Reporter cannot push");
+    assert!(access.can_fork);
+
+    let fork = ensure_fork(&tools, &repo, &cancel).unwrap();
+    assert_eq!(fork.path, "me/skills");
+    assert_eq!(fork.project_id, Some(22));
+    assert_eq!(fork.url, "https://gitlab.example.com/me/skills");
+    assert!(log(dir.path(), "glab").contains("projects/group%2Fsub%2Fskills/fork --method POST"));
+
+    // Asking again reuses it instead of creating a second one.
+    assert_eq!(ensure_fork(&tools, &repo, &cancel).unwrap(), fork);
+    assert_eq!(log(dir.path(), "glab").matches("--method POST").count(), 1);
+
+    // The tool's own protocol comes first; the address is built, not read.
+    assert_eq!(
+        fork_push_urls(
+            &tools,
+            &repo,
+            &fork,
+            "https://gitlab.example.com/group/sub/skills.git",
+            &cancel
+        ),
+        vec![
+            "git@gitlab.example.com:me/skills.git".to_string(),
+            "https://gitlab.example.com/me/skills.git".to_string()
+        ]
+    );
+
+    let url = open_request_from_fork(
+        &tools,
+        &repo,
+        &fork,
+        "habi/contrib/x-1",
+        "main",
+        "-Share x",
+        "@secrets.txt",
+        &cancel,
+    )
+    .unwrap();
+    assert_eq!(
+        url,
+        "https://gitlab.example.com/group/sub/skills/-/merge_requests/3"
+    );
+    let calls = log(dir.path(), "glab");
+    assert!(
+        calls.contains(
+            "projects/22/merge_requests --method POST --raw-field=source_branch=habi/contrib/x-1 --raw-field=target_branch=main --raw-field=target_project_id=11 --raw-field=title=-Share x --raw-field=description=@secrets.txt"
+        ),
+        "free text stays attached and raw: {calls}"
+    );
+
+    // The same branch name in someone else's fork is not this request.
+    let status = fetch_status_from(&tools, &repo, Some(&fork), "habi/contrib/x-1", &cancel)
+        .unwrap()
+        .unwrap();
+    assert_eq!(status.number, 3);
+}
+
+#[test]
+fn a_github_answer_that_is_not_a_fork_is_not_trusted() {
+    let dir = tempfile::tempdir().unwrap();
+    let cancel = CancelToken::new();
+    for (name, answer) in [
+        ("own", r#"{"full_name":"acme/skills","fork":false}"#),
+        ("odd", r#"{"full_name":"me/../../x","fork":true}"#),
+    ] {
+        let tools = ReviewTools {
+            gh: Some(stand_in(dir.path(), name, &format!("echo '{answer}'"))),
+            glab: None,
+            cwd: None,
+        };
+        let err = ensure_fork(&tools, &github_repo(), &cancel).unwrap_err();
+        assert!(err.contains("did not say where the fork is"), "{err}");
+    }
+
+    // An SSH address has no port to carry over from a web address.
+    let on_port = RemoteRepo {
+        host: "gitlab.example.com:8443".into(),
+        path: "group/skills".into(),
+    };
+    let fork = Fork {
+        path: "me/skills".into(),
+        url: "https://gitlab.example.com:8443/me/skills".into(),
+        push_url: None,
+        project_id: None,
+    };
+    assert_eq!(
+        fork_push_urls(
+            &ReviewTools::default(),
+            &on_port,
+            &fork,
+            "https://gitlab.example.com:8443/group/skills",
+            &cancel
+        ),
+        vec!["https://gitlab.example.com:8443/me/skills.git".to_string()]
+    );
+
+    // A fork's request is looked up by the fork owner's branch.
+    let tools = ReviewTools {
+        gh: Some(stand_in(dir.path(), "gh-status", "echo '[]'")),
+        glab: None,
+        cwd: None,
+    };
+    assert!(
+        fetch_status_from(&tools, &github_repo(), Some(&fork), "b", &cancel)
+            .unwrap()
+            .is_none()
+    );
+    assert!(log(dir.path(), "gh-status").contains("head=me:b"));
 }
