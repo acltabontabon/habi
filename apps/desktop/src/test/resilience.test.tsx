@@ -290,6 +290,18 @@ function skill(): LocalSkill {
   };
 }
 
+function Leave() {
+  const { navigate, route } = useNav();
+  return (
+    <>
+      <p>on {route.name}</p>
+      <button type="button" onClick={() => navigate({ name: "settings" })}>
+        Go to settings
+      </button>
+    </>
+  );
+}
+
 describe("the skill editor", () => {
   it("does not export when the latest edits could not be saved", async () => {
     handlers.get_skill = () => skill();
@@ -317,17 +329,6 @@ describe("the skill editor", () => {
     handlers.save_skill_document = () => {
       throw { code: "conflict", message: "SKILL.md changed outside Habi" };
     };
-    function Leave() {
-      const { navigate, route } = useNav();
-      return (
-        <>
-          <p>on {route.name}</p>
-          <button type="button" onClick={() => navigate({ name: "settings" })}>
-            Go to settings
-          </button>
-        </>
-      );
-    }
     wrap(
       <>
         <Leave />
@@ -530,6 +531,11 @@ describe("the start screen", () => {
   });
 });
 
+function Where() {
+  const { route } = useNav();
+  return <p>on {route.name}</p>;
+}
+
 describe("the project list", () => {
   it("offers removal in the list only for a missing folder, without touching anything on disk", async () => {
     let listed = [project, { ...project, id: "p2", name: "web-app", path: "~/code/web-app", exists: false }];
@@ -551,10 +557,6 @@ describe("the project list", () => {
 
   it("removes a project from its settings after a confirmation, and leaves it", async () => {
     handlers.forget_project = vi.fn(() => null);
-    function Where() {
-      const { route } = useNav();
-      return <p>on {route.name}</p>;
-    }
     wrap(
       <>
         <ProjectSettings overview={billing as unknown as ProjectOverview} onClose={() => {}} />
@@ -886,22 +888,23 @@ describe("connecting your own library", () => {
   });
 });
 
+function Shout() {
+  const toast = useToast();
+  return (
+    <>
+      <button type="button" onClick={() => toast.show("Copied")}>
+        ok
+      </button>
+      <button type="button" onClick={() => toast.show("Not saved", "danger")}>
+        fail
+      </button>
+    </>
+  );
+}
+
 describe("toasts and dialogs", () => {
   it("announces errors at once, and keeps a hovered toast until the pointer leaves", async () => {
     vi.useFakeTimers();
-    function Shout() {
-      const toast = useToast();
-      return (
-        <>
-          <button type="button" onClick={() => toast.show("Copied")}>
-            ok
-          </button>
-          <button type="button" onClick={() => toast.show("Not saved", "danger")}>
-            fail
-          </button>
-        </>
-      );
-    }
     render(
       <ToastProvider>
         <Shout />

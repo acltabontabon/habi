@@ -71,6 +71,18 @@ function home(data: { projects?: unknown[]; sources?: unknown[]; contributions?:
   );
 }
 
+function Where() {
+  const { route, navigate } = useNav();
+  return (
+    <>
+      <output>{JSON.stringify(route)}</output>
+      <button type="button" onClick={() => navigate({ name: "welcome" })}>
+        Home again
+      </button>
+    </>
+  );
+}
+
 describe("home", () => {
   beforeEach(() => invoke.mockReset());
 
@@ -189,17 +201,6 @@ describe("home", () => {
       if (cmd === "project_overview") return { recommendations: [rec] };
       return [];
     });
-    function Where() {
-      const { route, navigate } = useNav();
-      return (
-        <>
-          <output>{JSON.stringify(route)}</output>
-          <button type="button" onClick={() => navigate({ name: "welcome" })}>
-            Home again
-          </button>
-        </>
-      );
-    }
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
