@@ -235,6 +235,81 @@ const BEAM_NOUNS: &[&str] = &[
     "transforms",
 ];
 
+/// Words after "React" that make it the verb ("React quickly to incidents"), or
+/// another technology.
+const REACT_VERB: &[&str] = &[
+    "to",
+    "native",
+    "quickly",
+    "fast",
+    "faster",
+    "immediately",
+    "promptly",
+    "swiftly",
+    "appropriately",
+    "accordingly",
+    "when",
+    "whenever",
+    "if",
+];
+
+/// Words after "Expo" (opening a sentence) that make it the framework, not a show.
+const EXPO_NOUNS: &[&str] = &[
+    "and", "or", "app", "apps", "go", "module", "modules", "project", "projects", "router", "sdk",
+];
+/// Words after "Spark" (opening a sentence) that make it Apache Spark, not an idea.
+const SPARK_NOUNS: &[&str] = &[
+    "and",
+    "or",
+    "application",
+    "applications",
+    "cluster",
+    "clusters",
+    "dataframe",
+    "dataframes",
+    "job",
+    "jobs",
+    "performance",
+    "pipeline",
+    "pipelines",
+    "sql",
+    "streaming",
+    "tuning",
+];
+/// Words after "Helm" (opening a sentence) that make it the tool.
+const HELM_NOUNS: &[&str] = &[
+    "and",
+    "or",
+    "chart",
+    "charts",
+    "release",
+    "releases",
+    "repository",
+    "template",
+    "templates",
+    "upgrade",
+    "values",
+];
+/// Words after "Jest" (opening a sentence) that make it the test tool.
+const JEST_NOUNS: &[&str] = &[
+    "and",
+    "or",
+    "config",
+    "configuration",
+    "mock",
+    "mocks",
+    "runner",
+    "setup",
+    "snapshot",
+    "snapshots",
+    "suite",
+    "suites",
+    "test",
+    "testing",
+    "tests",
+    "to",
+];
+
 /// How descriptions name each tag. Every tag in `TAG_RULES` and
 /// `LANGUAGE_TAGS` except `agents:*` has at least one term (tested).
 static DESCRIPTION_TERMS: &[Term] = &[
@@ -261,7 +336,7 @@ static DESCRIPTION_TERMS: &[Term] = &[
     term("db:jooq", "jOOQ"),
     term("api:springdoc", "springdoc"),
     // JavaScript and TypeScript
-    cased("framework:react", "React").not_then(&["to", "native"]),
+    cased("framework:react", "React").not_then(REACT_VERB),
     term("framework:react", "React.js"),
     term("framework:react", "ReactJS"),
     cased("framework:vue", "Vue"),
@@ -288,7 +363,7 @@ static DESCRIPTION_TERMS: &[Term] = &[
     term("framework:nestjs", "NestJS"),
     term("framework:nestjs", "Nest.js"),
     term("build:vite", "Vite"),
-    cased("test:jest", "Jest"),
+    cased("test:jest", "Jest").initial(JEST_NOUNS),
     term("test:jest", "jest.config"),
     term("test:vitest", "Vitest"),
     term("test:playwright", "Playwright"),
@@ -333,7 +408,7 @@ static DESCRIPTION_TERMS: &[Term] = &[
     cased("data:prefect", "Prefect"),
     term("data:spark", "Apache Spark"),
     term("data:spark", "PySpark"),
-    cased("data:spark", "Spark"),
+    cased("data:spark", "Spark").initial(SPARK_NOUNS),
     term("data:beam", "Apache Beam"),
     cased("data:beam", "Beam").then(BEAM_NOUNS),
     term("data:kafka", "Kafka"),
@@ -350,7 +425,7 @@ static DESCRIPTION_TERMS: &[Term] = &[
     term("infra:terraform", "Terraform"),
     term("infra:terraform", "OpenTofu"),
     term("infra:terragrunt", "Terragrunt"),
-    cased("infra:helm", "Helm"),
+    cased("infra:helm", "Helm").initial(HELM_NOUNS),
     term("infra:helm", "helm chart"),
     term("infra:helm", "helm charts"),
     // Azure Kubernetes Service and Google Kubernetes Engine are clouds of their own.
@@ -465,7 +540,7 @@ static DESCRIPTION_TERMS: &[Term] = &[
         "server", "servers", "sdk", "tool", "tools", "client", "clients",
     ]),
     cased("framework:react-native", "React Native"),
-    cased("framework:react-native", "Expo"),
+    cased("framework:react-native", "Expo").initial(EXPO_NOUNS),
     term("framework:tailwind", "Tailwind"),
     term("framework:tailwind", "TailwindCSS"),
     cased("api:graphql", "GraphQL"),
@@ -1017,13 +1092,23 @@ fn read_words(name: &str, description: &str) -> Reading {
     let named: Vec<&'static str> = in_name(name).into_iter().map(|(tag, _)| tag).collect();
     let hits = in_description(description);
 
-    // A product named is the rule, with any language the name narrows it to.
+    // A product named is the rule, with any language or framework the name
+    // narrows it to (`stripe-go`, `sentry-nextjs-sdk`).
     let products: Vec<&'static str> = unique(named.iter().copied().filter(|t| product(t)));
     if !products.is_empty() {
-        let mut languages: Vec<&'static str> =
-            unique(named.iter().copied().filter(|t| language(t)));
-        languages.extend(language_suffix(name).filter(|t| !languages.contains(t)));
-        return Reading::About(all_of(any_of(&products), any_of(&languages)));
+        let mut narrowed: Vec<&'static str> = unique(
+            named
+                .iter()
+                .copied()
+                .filter(|t| language(t) || stack(t))
+                .filter(|t| !product(t)),
+        );
+        for tag in name_language(name) {
+            if !narrowed.contains(&tag) {
+                narrowed.push(tag);
+            }
+        }
+        return Reading::About(all_of(any_of(&products), any_of(&narrowed)));
     }
     if !named.is_empty() && !about_the_technology(name, description) {
         return Reading::Aside {
@@ -1125,14 +1210,25 @@ fn all_of(first: Option<Condition>, second: Option<Condition>) -> Condition {
     }
 }
 
-/// The language a name ends in, the way SDK skills spell it (`azure-cosmos-py`).
-fn language_suffix(name: &str) -> Option<&'static str> {
-    match name_tokens(name).last().map(|t| t.2.as_str()) {
-        Some("py") => Some("lang:python"),
-        Some("ts") => Some("lang:typescript"),
-        Some("js") => Some("lang:javascript"),
-        _ => None,
+/// The language a product skill's name gives the way SDK skills spell it, which
+/// names read alone do not count: `azure-cosmos-py`, `stripe-go`, `aws-sdk-go`.
+fn name_language(name: &str) -> Vec<&'static str> {
+    let tokens = name_tokens(name);
+    let words: Vec<&str> = tokens.iter().map(|t| t.2.as_str()).collect();
+    let mut found = Vec::new();
+    match words.last() {
+        Some(&"py") => found.push("lang:python"),
+        Some(&"ts") => found.push("lang:typescript"),
+        Some(&"js") => found.push("lang:javascript"),
+        _ => {}
     }
+    let go = words.iter().enumerate().any(|(i, word)| {
+        *word == "go" && !words.get(i + 1).is_some_and(|next| GO_VERBS.contains(next))
+    });
+    if go {
+        found.push("lang:go");
+    }
+    found
 }
 
 /// Whether what a name says beside its technologies is general. A version in
@@ -1190,7 +1286,8 @@ fn subjects<'f>(text: &str, found: &'f [Found]) -> Vec<&'f Found> {
             && !in_brackets(text, h.start);
         let means = words_before(text, h.start)
             .first()
-            .is_some_and(|w| MEANS.contains(&w.as_str()));
+            .is_some_and(|w| MEANS.contains(&w.as_str()))
+            || after_an_example_marker(text, h.start);
         if !lead || means || aside_to.is_some_and(|e| same_list(text, e, h.start)) {
             aside_to = Some(aside_to.map_or(h.end, |e| e.max(h.end)));
         } else {
@@ -1201,7 +1298,19 @@ fn subjects<'f>(text: &str, found: &'f [Found]) -> Vec<&'f Found> {
 }
 
 /// A word that makes the technology right after it a means or an example.
-const MEANS: &[&str] = &["using", "via", "by", "like", "including", "e.g", "eg", "as"];
+const MEANS: &[&str] = &["using", "via", "by", "like", "including", "as"];
+
+/// Whether "e.g." or "for example" comes right before `at`, punctuated or not.
+fn after_an_example_marker(text: &str, at: usize) -> bool {
+    let before = text
+        .get(..at)
+        .unwrap_or("")
+        .trim_end_matches(|c: char| c.is_whitespace() || matches!(c, ',' | ':'))
+        .to_lowercase();
+    [" e.g.", " e.g", " eg", " for example", " for instance"]
+        .iter()
+        .any(|marker| before.ends_with(marker))
+}
 
 /// Where the clause starting at `from` ends: a full stop, a colon, a dash.
 fn clause_end(text: &str, from: usize) -> usize {
@@ -1285,6 +1394,7 @@ fn name_tokens(name: &str) -> Vec<(usize, usize, String)> {
             && c.is_ascii_digit()
             && version
             && i - s >= 2
+            && name.get(s..i) != Some("web")
         {
             if let Some(token) = name.get(s..i) {
                 tokens.push((s, i, token.to_lowercase()));
@@ -2022,6 +2132,39 @@ mod tests {
     }
 
     #[test]
+    fn examples_are_examples_however_they_are_punctuated() {
+        for description in [
+            "Frontend component patterns, e.g., React and Vue.",
+            "Component patterns e.g React and Vue.",
+            "Component patterns, for example React.",
+            "Component patterns such as React.",
+        ] {
+            assert!(rule_tags("x", description).is_empty(), "{description}");
+        }
+    }
+
+    #[test]
+    fn ordinary_words_opening_a_description_are_not_its_subject() {
+        for description in [
+            "React quickly to production incidents.",
+            "React when alerts fire in production.",
+            "Expo booth planning for trade shows.",
+            "Spark ideas in a workshop.",
+            "Helm of the project: who decides.",
+            "Jest aside, keep the tone light.",
+        ] {
+            assert!(rule_tags("x", description).is_empty(), "{description}");
+        }
+        assert_eq!(rule_tags("x", "Spark jobs and shuffles."), ["data:spark"]);
+        assert_eq!(rule_tags("x", "Helm charts for services."), ["infra:helm"]);
+        assert_eq!(rule_tags("x", "Jest tests and mocks."), ["test:jest"]);
+        assert_eq!(
+            rule_tags("x", "Expo apps on real devices."),
+            ["framework:react-native"]
+        );
+    }
+
+    #[test]
     fn a_name_narrower_than_its_technology_is_aside() {
         for name in [
             "react-view-transitions",
@@ -2029,6 +2172,8 @@ mod tests {
             "react18-string-refs",
             "typescript-data-visualization",
             "migrate-to-rust",
+            "python-web3",
+            "react-web3",
         ] {
             assert!(
                 matches!(
@@ -2085,6 +2230,27 @@ mod tests {
                 "{name}"
             );
         }
+        // However the name spells what narrows it.
+        for (name, narrowed) in [
+            ("stripe-go", "lang:go"),
+            ("sentry-go-sdk", "lang:go"),
+            ("aws-sdk-go", "lang:go"),
+            ("sentry-nextjs-sdk", "framework:next"),
+            ("sentry-react-sdk", "framework:react"),
+            ("stripe-django-integration", "framework:django"),
+        ] {
+            let found = rule_tags(name, "A skill.");
+            assert_eq!(found.len(), 2, "{name}: {found:?}");
+            assert!(found.iter().any(|t| t == narrowed), "{name}: {found:?}");
+            assert!(
+                matches!(
+                    described_rule(name, "A skill."),
+                    Some(Condition::All { .. })
+                ),
+                "{name}"
+            );
+        }
+        assert_eq!(rule_tags("stripe-go-live", "A skill."), ["sdk:stripe"]);
         // An extension that speaks MCP is not a skill for building on it.
         assert!(rule_tags("chrome-mcp-troubleshooting", "A skill.").is_empty());
         assert_eq!(
