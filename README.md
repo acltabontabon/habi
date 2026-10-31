@@ -118,7 +118,11 @@ Updates after that are signed with Habi's own key.
 <td width="50%" valign="top"><img src="docs/media/project.jpg" alt="A project in Habi: skills grouped by whether they are installed, required by the team or fit, with the files and lines that explain why one fits." width="100%"><br><b>Fits, and why</b></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="docs/media/install-review.jpg" alt="The install dialog: seven agent tools to choose from and the three files that will change." width="100%"><br><b>See every file first</b></td>
-<td width="50%" valign="top"><img src="docs/media/share-review.jpg" alt="Sharing a skill: the files that leave your machine, as a diff, and the checks that ran." width="100%"><br><b>Send it back</b></td>
+<td width="50%" valign="top"><img src="docs/media/explore.jpg" alt="Explore: fifteen public libraries from tool builders and the community, as cards, each saying which of your projects it suits." width="100%"><br><b>Libraries for your projects</b></td>
+<td width="50%" valign="top"><img src="docs/media/install-review.jpg" alt="The install dialog: seven agent tools to choose from and the three files that will change." width="100%"><br><b>Seven agents, every file shown first</b></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/skill-studio.jpg" alt="The Skill Studio: a skill written as one document, with its purpose, when to use it and its instructions." width="100%"><br><b>Write a skill as one document</b></td>
+<td width="50%" valign="top"><img src="docs/media/share-review.jpg" alt="Sharing a skill: the files that leave your machine, as a diff, and the checks that ran." width="100%"><br><b>Send it back as a pull request</b></td>
 </tr>
 </table>
