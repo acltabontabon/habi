@@ -18,6 +18,8 @@
 // The pull request is closed, and its branch deleted, when the run ends. To retake only the
 // draft-state pictures (share-dialog, share-review, share-send) without pushing anything or opening
 // a pull request, set HABI_SHARE_STOP=draft; the library is then only read, never written to.
+// HABI_SHARE_STOP=confirm goes on to share-prepared and share-confirm, the last pictures before
+// anything is sent: the branch is only prepared in Habi's own copy of the library.
 // Captured like the other
 // screenshots: 1440×900 at twice the resolution, light theme, motion reduced, the development
 // setup tidied away.
@@ -142,6 +144,7 @@ async function run() {
   await click("Create pull request");
   await until(`document.querySelector("[role=dialog]")`, "the confirmation");
   await shot("share-confirm.jpg");
+  if (process.env.HABI_SHARE_STOP === "confirm") return;
   await click("Create pull request", "[role=dialog] button");
   await until(`/opened the pull request: https:/.test(document.body.textContent)`, "the pull request to open", 120000);
   pull = await page(`document.body.textContent.match(/https:\\/\\/github\\.com\\/[^\\s]+\\/pull\\/(\\d+)/)[1]`);
