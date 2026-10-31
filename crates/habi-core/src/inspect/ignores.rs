@@ -32,6 +32,8 @@ const MAX_PROBLEMS: usize = 100;
 const NAMES: [&str; 3] = [".habiignore", ".ignore", ".gitignore"];
 /// `NAMES`, then `.git/info/exclude`.
 const KINDS: usize = NAMES.len() + 1;
+/// The kinds said to tools like Habi. The others say what Git tracks.
+const ASKED_OF_TOOLS: usize = 2;
 
 struct Frame {
     dir: PathBuf,
@@ -88,6 +90,15 @@ impl IgnoreStack {
     /// Whether the rules say to leave out `path`, an entry `depth` levels below
     /// the walked folder.
     pub(super) fn ignored(&mut self, path: &Path, depth: usize, is_dir: bool) -> bool {
+        self.decide(path, depth, is_dir, KINDS)
+    }
+
+    /// Whether `.habiignore` or `.ignore` leave out `path`, whatever Git makes of it.
+    pub(super) fn asked_to_skip(&mut self, path: &Path, depth: usize, is_dir: bool) -> bool {
+        self.decide(path, depth, is_dir, ASKED_OF_TOOLS)
+    }
+
+    fn decide(&mut self, path: &Path, depth: usize, is_dir: bool, kinds: usize) -> bool {
         let Some(parent) = path.parent() else {
             return false;
         };
@@ -102,7 +113,7 @@ impl IgnoreStack {
             let frame = self.frame(parent);
             self.frames.push(frame);
         }
-        for kind in 0..KINDS {
+        for kind in 0..kinds {
             for frame in self.frames.iter().rev() {
                 let Some(rules) = frame.rules.get(kind).and_then(Option::as_ref) else {
                     continue;

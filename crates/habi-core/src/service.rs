@@ -1712,9 +1712,17 @@ impl Habi {
         let inspection = self.inspect(project, false, cancel)?;
         let lock = read_lock(&p.root)?;
         let skills = self.skills();
+        let unlisted = crate::inspect::walk::skill_folders_in(
+            &p.root,
+            crate::clients::layout::CLAUDE_SKILLS,
+            crate::library::SKILL_FILE,
+            &p.exclusions,
+            cancel,
+        );
         Ok(intake::discover(
             &p.root,
             &inspection,
+            unlisted,
             &lock,
             &skills.list()?,
             &skills.origin_digests()?,

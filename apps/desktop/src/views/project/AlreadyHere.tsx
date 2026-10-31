@@ -11,6 +11,7 @@ import type { InstructionSection } from "../../bindings/InstructionSection";
 import type { MachineSkill } from "../../bindings/MachineSkill";
 import type { ProjectKnowledge } from "../../bindings/ProjectKnowledge";
 import type { ProjectRecord } from "../../bindings/ProjectRecord";
+import type { SkillUsage } from "../../bindings/SkillUsage";
 import { Dialog } from "../../components/Dialog";
 import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Notice, Status, Working } from "../../components/ui";
@@ -19,9 +20,17 @@ import { api } from "../../lib/api";
 import { clientsPhrase, plural } from "../../lib/format";
 import { copyState, precedenceNote } from "../../lib/machine";
 import { useNav } from "../../lib/nav";
-import { invalidateSkills, useKnowledge, useMachineSkills, useSources } from "../../lib/queries";
+import {
+  invalidateSkills,
+  useKnowledge,
+  useMachineSkills,
+  useSkillUsage,
+  useSources,
+} from "../../lib/queries";
 import { lineRange } from "../../lib/skills";
+import { usageLine } from "../../lib/usage";
 import { EvidenceExcerpt } from "./Explain";
+import { SkillUse } from "./SkillUse";
 
 /** The copy of this skill among the person's own folders, if there is one: where it is and how it compares. */
 function ownCopy(machine: MachineSkill[], skill: DiscoveredSkill, project: ProjectRecord) {
@@ -36,10 +45,14 @@ function SkillRow({
   skill,
   project,
   machine,
+  usage,
+  usagePartial,
 }: {
   skill: DiscoveredSkill;
   project: ProjectRecord;
   machine: MachineSkill[];
+  usage: SkillUsage | undefined;
+  usagePartial: boolean;
 }) {
   const { navigate } = useNav();
   const own = ownCopy(machine, skill, project);
@@ -60,6 +73,11 @@ function SkillRow({
           ) : null}
         </div>
         {skill.description ? <p className="found-desc">{skill.description}</p> : null}
+        {usageLine(usage, usagePartial) ? (
+          <p className="rec-row-meta">
+            <SkillUse entry={usage} partial={usagePartial} />
+          </p>
+        ) : null}
         {skill.readers.length === 0 ? (
           <p className="found-warn">Not in a folder an agent reads — agents will not find it.</p>
         ) : null}
@@ -515,6 +533,7 @@ export function NothingFits({
 export function AlreadyHere({ project }: { project: ProjectRecord }) {
   const knowledge = useKnowledge(project.id);
   const machine = useMachineSkills();
+  const usage = useSkillUsage(project.id);
   const data = knowledge.data;
 
   if (knowledge.isPending) return <Working>Looking for skills and instructions already here…</Working>;
@@ -549,7 +568,14 @@ export function AlreadyHere({ project }: { project: ProjectRecord }) {
       </h3>
       <ul className="found-list">
         {data.skills.map((s) => (
-          <SkillRow key={s.path} skill={s} project={project} machine={machine.data ?? []} />
+          <SkillRow
+            key={s.path}
+            skill={s}
+            project={project}
+            machine={machine.data ?? []}
+            usage={usage.data?.skills.find((u) => u.name === s.name)}
+            usagePartial={usage.data?.partial ?? false}
+          />
         ))}
         {data.instructions.map((f) => (
           <InstructionRow key={f.path} file={f} project={project} />

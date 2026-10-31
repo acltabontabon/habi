@@ -197,10 +197,12 @@ fn read_text(root: &Path, rel: &str) -> std::result::Result<String, String> {
 }
 
 /// What already exists in a project: skill folders and instruction files.
+/// `unlisted` is skill folders the scan leaves out and an agent still reads.
 /// Read-only; nothing is adopted, installed or imported.
 pub fn discover(
     root: &Path,
     inspection: &ProjectInspection,
+    unlisted: Vec<String>,
     lock: &LockFile,
     local: &[LocalSkillSummary],
     origin_digests: &[(String, Option<String>)],
@@ -233,8 +235,10 @@ pub fn discover(
             p.strip_suffix(&format!("/{SKILL_FILE}"))
                 .map(str::to_string)
         })
+        .chain(unlisted)
         .collect();
     dirs.sort();
+    dirs.dedup();
     let mut accepted: Vec<String> = Vec::new();
     for dir in dirs {
         if !accepted.iter().any(|o| dir.starts_with(&format!("{o}/"))) {

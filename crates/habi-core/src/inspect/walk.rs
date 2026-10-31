@@ -223,6 +223,71 @@ fn globset(patterns: &[&str]) -> GlobSet {
     b.build().expect("built-in patterns")
 }
 
+/// The skill folders directly in `base`, a folder an agent reads whatever Git
+/// tracks. A repository often ignores `.claude`, and what is in it still reaches
+/// the agent. Only Git's say is set aside: `.habiignore`, `.ignore` and the
+/// project's exclusions hold, and links are not entered, as in a walk. Rules that
+/// could not all be applied find nothing. Nothing else ignored is looked at, and
+/// what this finds is no part of a walk, so it says nothing of the project's stack.
+pub fn skill_folders_in(
+    root: &Path,
+    base: &str,
+    file: &str,
+    exclusions: &[String],
+    cancel: &CancelToken,
+) -> Vec<String> {
+    let mut excluded = GlobSetBuilder::new();
+    for glob in exclusions.iter().filter_map(|p| Glob::new(p).ok()) {
+        excluded.add(glob);
+    }
+    let excluded = excluded.build().unwrap_or_else(|_| GlobSet::empty());
+    let mut rules = IgnoreStack::new(root, cancel.clone());
+    let mut left_out = |rel: &str, depth: usize, is_dir: bool| {
+        excluded.is_match(rel) || rules.asked_to_skip(&root.join(rel), depth, is_dir)
+    };
+
+    let mut depth = 0;
+    let mut here = String::new();
+    for part in base.split('/') {
+        here = if here.is_empty() {
+            part.to_string()
+        } else {
+            format!("{here}/{part}")
+        };
+        depth += 1;
+        let real = std::fs::symlink_metadata(root.join(&here)).is_ok_and(|m| m.is_dir());
+        if !real || left_out(&here, depth, true) {
+            return Vec::new();
+        }
+    }
+    let Ok(listing) = std::fs::read_dir(root.join(base)) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = listing
+        .flatten()
+        .filter(|entry| entry.file_type().is_ok_and(|t| t.is_dir()))
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect();
+    names.sort();
+    let parent = root.join(base);
+    let found: Vec<String> = names
+        .into_iter()
+        .filter(|name| !skipped_dir(name, &parent, root))
+        .filter_map(|name| {
+            let dir = format!("{base}/{name}");
+            let skill = format!("{dir}/{file}");
+            let is_skill = std::fs::symlink_metadata(root.join(&skill)).is_ok_and(|m| m.is_file());
+            (is_skill && !left_out(&dir, depth + 1, true) && !left_out(&skill, depth + 2, false))
+                .then_some(dir)
+        })
+        .collect();
+    if rules.take_gaps().is_empty() {
+        found
+    } else {
+        Vec::new()
+    }
+}
+
 pub fn walk(root: &Path, options: &WalkOptions, cancel: &CancelToken) -> Result<WalkResult> {
     let started = Instant::now();
     let mut report = ScanReport::default();
