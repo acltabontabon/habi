@@ -45,23 +45,17 @@ Skills can also go in the same folders under your home folder, for all your proj
 
 ## Supported technology
 
-Habi reads these from a repository's manifests and files, without running anything, and matches
-skills to them. [Detectors](docs/library-authors/detectors.md) has every rule.
+Habi reads a repository's files, without running anything, and matches skills to what it finds.
+These are the most common; [Detectors](docs/library-authors/detectors.md) has the full list.
 
-| Area | Recognized |
+| Area | Examples |
 |---|---|
-| Languages | Java, Kotlin, TypeScript, JavaScript, Python, Go, Rust, C#, PHP, Scala, shell, HCL |
-| Build and packages | Maven, Gradle, npm, pnpm, Go modules, Cargo, pip, Poetry, uv, Pipenv, Composer |
-| Java and Kotlin | Spring Boot, Spring, Spring Security, Spring Batch, Spring Cloud, Quarkus, Micronaut, GraalVM |
-| JavaScript and TypeScript | React, Vue, Angular, Next.js, Svelte, Vite, Express, NestJS |
-| Go | Gin, Echo, Fiber, Wails |
-| Rust | Axum, Actix, Tauri, Tokio |
-| Python | Django, Flask, FastAPI |
-| PHP | Laravel, Symfony |
-| Databases and APIs | Liquibase, Flyway, jOOQ, JPA, GORM, Diesel, SQLx, SQLAlchemy, Doctrine, OpenAPI, springdoc |
-| Data | dbt, Airflow, Dagster, Prefect, Spark, Beam, Kafka, Great Expectations, pandas, Polars, DuckDB, Databricks, Delta Lake, MLflow, Jupyter |
-| Infrastructure and CI | Docker, GitHub Actions, GitLab CI, Terraform, Terragrunt, Helm, Kubernetes, Kustomize, Ansible, Pulumi |
-| Testing | JUnit, Testcontainers, Jest, Vitest, Playwright, Cypress, pytest, PHPUnit, Bats, Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito, REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact, WireMock, Postman |
+| **Languages** | Java, Kotlin, TypeScript, Python, Go, Rust, C#, PHP |
+| **Frameworks** | Spring Boot, React, Vue, Angular, Next.js, Django, FastAPI, Laravel |
+| **Databases** | Liquibase, Flyway, jOOQ, JPA, SQLAlchemy |
+| **Data** | dbt, Airflow, Spark, Kafka, Databricks |
+| **Infrastructure** | Docker, Kubernetes, Terraform, Helm, GitHub Actions |
+| **Testing** | JUnit, Jest, Vitest, Playwright, Cypress, pytest |
 
 ## Install
 
