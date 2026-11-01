@@ -276,3 +276,20 @@ export function insertSkillRef(name: string, role: string | null, plugin: string
     return true;
   };
 }
+
+/** Ticks or unticks the list item at a position. */
+export function toggleTask(pos: number): Command {
+  return (state, dispatch) => {
+    const item = state.doc.nodeAt(pos);
+    if (item?.type !== nodes.list_item || item.attrs.checked === null) return false;
+    if (dispatch) dispatch(state.tr.setNodeAttribute(pos, "checked", !item.attrs.checked));
+    return true;
+  };
+}
+
+/** A checklist at the caret. */
+export const insertChecklist: Command = (state, dispatch) => {
+  const para = nodes.paragraph.create();
+  const list = nodes.bullet_list.create(null, nodes.list_item.create({ checked: false }, para));
+  return insertBlock(list)(state, dispatch);
+};

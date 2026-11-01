@@ -11,14 +11,17 @@ import type { ShelfSkill } from "../../../../bindings/ShelfSkill";
 import { useToast } from "../../../../components/Toasts";
 import { api } from "../../../../lib/api";
 import { useNav } from "../../../../lib/nav";
+import { armDrag, ghostLabel } from "../doc/drag";
 import type { DocEditorHandle } from "../doc/lazy";
 import { canonOf } from "../doc/markdown/canon";
+import { moveBlocks, sectionRange, topBlockAt } from "../doc/moves";
 import { LOOKS_CHANGED, type SkillLook, type ViewContext } from "../doc/nodeViews";
 import type { SlashItem } from "../doc/SlashMenu";
 import type { SkillDraft } from "../useSkillDraft";
 import {
   canReword,
-  dropSkill,
+  dropSkillBetween,
+  dropSkillInText,
   insertSkill,
   type Pick,
   promote,
@@ -31,7 +34,7 @@ import {
 import { Inside } from "./Inside";
 import { knotColor, titleOfName } from "./knots";
 import { Overview } from "./Overview";
-import { overviewOf } from "./overviewData";
+import { endOfRow, overviewOf } from "./overviewData";
 import { type InspectorTarget, RefInspector } from "./RefInspector";
 import {
   type ComposeEntry,
@@ -67,6 +70,7 @@ export function useComposer({
   editor,
   projectId,
   onOpenFile,
+  onAddFile,
   onWhen,
   onReadiness,
   onSource,
@@ -77,6 +81,8 @@ export function useComposer({
   editor: RefObject<DocEditorHandle | null>;
   projectId: string | null;
   onOpenFile: (path: string) => void;
+  /** Lets the author choose a file to bring into the skill, at the caret. */
+  onAddFile: () => void;
   onWhen: () => void;
   onReadiness: () => void;
   onSource: () => void;
@@ -253,6 +259,63 @@ export function useComposer({
     setInspector(null);
   }, []);
 
+  /** Carries a skill from the shelf to the page, trailing a thread from the margin. */
+  const liftSkill = useCallback(
+    (s: ShelfSkill, event: PointerEvent) => {
+      armDrag(event, () => {
+        const current = withView();
+        if (!current) return null;
+        const color = knotColor(s.name);
+        return {
+          view: current,
+          ghost: ghostLabel(s.title, color),
+          grip: { x: 18, y: 15 },
+          inline: true,
+          tether: () => ({ x: current.dom.getBoundingClientRect().right + 28, color }),
+          onLand: (landing) => {
+            if (landing.type === "text") dropSkillInText(current, pickOf(s), landing.pos);
+            else if (landing.type === "slot") dropSkillBetween(current, pickOf(s), landing.slot.pos);
+            current.focus();
+          },
+        };
+      });
+    },
+    [withView],
+  );
+
+  /** Picks up a knot in the margin: along the thread moves its sentence, away from it takes it out. */
+  const liftKnot = useCallback(
+    (pos: number, event: PointerEvent) => {
+      armDrag(event, () => {
+        const current = withView();
+        if (!current) return null;
+        const chip = current.state.doc.nodeAt(pos);
+        const range = topBlockAt(current.state.doc, pos);
+        if (!chip || !range) return null;
+        const name = chip.attrs.name as string;
+        // A short way off the thread, measured from where it was: it works at any window width.
+        const pullAt = event.clientX + 64;
+        return {
+          view: current,
+          ghost: ghostLabel(titleOf(name), knotColor(name)),
+          grip: { x: 18, y: 15 },
+          source: range,
+          pulls: (x) => x > pullAt,
+          onLand: (landing) => {
+            if (landing.type === "pull") {
+              removeUse(current, pos);
+              toast.show(`${titleOf(name)} taken out. ⌘Z brings it back.`);
+            } else if (landing.type === "slot") {
+              moveBlocks(current, range.from, range.to, landing.slot.pos);
+            }
+            current.focus();
+          },
+        };
+      });
+    },
+    [withView, titleOf, toast],
+  );
+
   const pick = useCallback(
     (s: ShelfSkill) => {
       const current = withView();
@@ -282,15 +345,9 @@ export function useComposer({
       }),
       onSkillClick: (name, pos, rect) => openInspector(name, pos, rect),
       onLinkSkill: (query) => setPanel({ kind: "shelf", query, inline: true }),
-      onDropSkill: (data, coords) => {
-        const current = withView();
-        if (!current) return;
-        try {
-          dropSkill(current, pickOf(JSON.parse(data) as ShelfSkill), coords);
-          current.focus();
-        } catch {
-          // Something else's drag data: nothing to add.
-        }
+      onChoosePiece: (what) => {
+        if (what === "skill") setPanel({ kind: "shelf", inline: false });
+        else onAddFile();
       },
     }),
     [titleOf, statusOf, openInspector, withView],
@@ -387,6 +444,7 @@ export function useComposer({
             : undefined
         }
         onPick={pick}
+        onLift={panel.replace ? undefined : liftSkill}
         onClose={closePanel}
       />
     ) : panel?.kind === "overview" ? (
@@ -399,6 +457,36 @@ export function useComposer({
           if (dom instanceof HTMLElement) dom.scrollIntoView({ block: "start", behavior: "smooth" });
         }}
         onUse={openUse}
+        onTie={(name, row) => {
+          const current = withView();
+          if (!current) return;
+          const at = endOfRow(current.state.doc, overviewOf(current.state.doc), row);
+          const s = byName.get(name)?.[0];
+          dropSkillBetween(current, s ? pickOf(s) : { name }, at);
+        }}
+        onMoveUse={(pos, row) => {
+          const current = withView();
+          if (!current) return;
+          const range = topBlockAt(current.state.doc, pos);
+          if (!range) return;
+          moveBlocks(
+            current,
+            range.from,
+            range.to,
+            endOfRow(current.state.doc, overviewOf(current.state.doc), row),
+          );
+        }}
+        onMoveSection={(row, before) => {
+          const current = withView();
+          if (!current) return;
+          const data = overviewOf(current.state.doc);
+          const here = data.rows[row];
+          if (!here) return;
+          const range = sectionRange(current.state.doc, here.pos);
+          if (!range) return;
+          const target = data.rows[before]?.pos ?? current.state.doc.content.size;
+          moveBlocks(current, range.from, range.to, target);
+        }}
         onAddBack={(name) => {
           const current = withView();
           if (!current) return;
@@ -496,6 +584,7 @@ export function useComposer({
       tick={tick}
       look={look}
       onOpen={openUse}
+      onLift={liftKnot}
       expanded={panel?.kind === "overview"}
       onOverview={() => setPanel((p) => (p?.kind === "overview" ? null : { kind: "overview" }))}
     />

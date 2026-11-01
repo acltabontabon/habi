@@ -24,10 +24,11 @@ import {
   useState,
 } from "react";
 import type { LineMark, SourceEditorHandle } from "../../../../components/SourceEditor";
-import { SKILL_DRAG_TYPE } from "../compose/Shelf";
 import { BlockHandle, type BlockMenuTarget } from "./BlockHandle";
+import { BlockTools } from "./BlockTools";
 import { clipboardTextParser, clipboardTextSerializer } from "./clipboard";
-import { sliceFromMarkdown } from "./commands";
+import { sliceFromMarkdown, toggleTask } from "./commands";
+import { armDrag } from "./drag";
 import { FILE_ATTR, fileRefsPlugin, refreshFileRefs } from "./fileRefs";
 import { editingPlugins } from "./keys";
 import { canonOf } from "./markdown/canon";
@@ -37,6 +38,7 @@ import { schema } from "./markdown/schema";
 import { canonText, type Verdict } from "./markdown/verify";
 import { verifyInBackground } from "./markdown/verifyWorker";
 import { imageView, opaqueView, skillRefView, type ViewContext } from "./nodeViews";
+import { Pieces } from "./Pieces";
 import {
   flashBlock,
   flashPlugin,
@@ -184,6 +186,8 @@ export function DocEditor({
   settledRef.current = onSettled;
 
   const [selectionTick, setSelectionTick] = useState(0);
+  // The tools and tray need the page to exist, and it's created after the first render.
+  const [, setMounted] = useState(false);
   const [slash, setSlash] = useState<SlashState>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuTarget | null>(null);
   const slashMenu = useRef<SlashMenuHandle>(null);
@@ -306,13 +310,6 @@ export function DocEditor({
         },
         clipboardTextParser,
         clipboardTextSerializer,
-        handleDrop(_view, event) {
-          const data = event.dataTransfer?.getData(SKILL_DRAG_TYPE);
-          if (!data) return false;
-          contextRef.current.onDropSkill?.(data, { left: event.clientX, top: event.clientY });
-          event.preventDefault();
-          return true;
-        },
         handleKeyDown(current, event) {
           // The keyboard's way to open a skill named at the caret.
           if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return false;
@@ -330,8 +327,20 @@ export function DocEditor({
           contextRef.current.onSkillClick?.(node?.attrs.name as string, pos, dom.getBoundingClientRect());
           return true;
         },
-        handleClickOn(_view, _pos, _node, _nodePos, event) {
+        handleClickOn(current, _pos, node, nodePos, event) {
           const target = event.target as HTMLElement;
+          // The box of a checklist item is on the item itself, left of its words.
+          if (
+            node.type.name === "list_item" &&
+            node.attrs.checked !== null &&
+            target.closest("li.doc-task")
+          ) {
+            const words = target.closest("li.doc-task")?.firstElementChild?.getBoundingClientRect();
+            if (words && event.clientX < words.left) {
+              toggleTask(nodePos)(current.state, current.dispatch);
+              return true;
+            }
+          }
           const file = target.closest<HTMLElement>(`[${FILE_ATTR}]`);
           // A file named in the words opens a peek, with or without ⌘.
           if (file && !event.shiftKey) {
@@ -368,6 +377,7 @@ export function DocEditor({
       },
     );
     viewRef.current = view;
+    setMounted(true);
     placeMarks();
     return () => {
       settle();
@@ -491,6 +501,33 @@ export function DocEditor({
       ) : null}
       {view && !readOnly ? (
         <SelectionBar view={view} tick={selectionTick} onLinkSkill={context.onLinkSkill} />
+      ) : null}
+      {view && !readOnly ? (
+        <BlockTools
+          view={view}
+          tick={selectionTick}
+          wrap={() => host.current?.parentElement ?? null}
+          onOpenLink={(href) => {
+            if (pathsRef.current().includes(href)) openRef.current?.(href);
+            else contextRef.current.openExternal?.(href);
+          }}
+        />
+      ) : null}
+      {view && !readOnly ? (
+        <Pieces
+          view={view}
+          onChoose={(what) => contextRef.current.onChoosePiece?.(what)}
+          landInto={(event, ghost, land) =>
+            armDrag(event, () => ({
+              view,
+              ghost,
+              grip: { x: 30, y: 16 },
+              onLand: (landing) => {
+                if (landing.type === "slot") land(landing.slot.pos);
+              },
+            }))
+          }
+        />
       ) : null}
       {view && slash && !readOnly ? (
         <SlashMenu ref={slashMenu} view={view} slash={slash} extras={slashExtras} />

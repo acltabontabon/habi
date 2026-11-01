@@ -1,13 +1,17 @@
 /**
- * The handle in the margin beside the block under the pointer: drag it to move the
- * block, click it for the same things by name. Alt+↑ and Alt+↓ do it from the keyboard.
+ * The handle in the margin beside the block under the pointer. Pick it up to move
+ * the block (from a heading, the whole section comes along), or press it for the
+ * same things by name. Alt+↑ and Alt+↓ do it from the keyboard. The + beside it
+ * starts a new block right there.
  */
 import type { Node as PMNode } from "prosemirror-model";
 import { NodeSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { moveBlock, setHeading, setParagraph, toggleList } from "./commands";
+import { armDrag, ghostOfBlocks } from "./drag";
 import { schema } from "./markdown/schema";
+import { moveBlocks, moveItem, sectionRange } from "./moves";
 
 export type BlockMenuTarget = { pos: number; left: number; top: number };
 
@@ -158,35 +162,79 @@ export function BlockHandle({
   return (
     <>
       {spot ? (
-        <button
-          ref={handle}
-          type="button"
-          className="doc-handle"
-          style={{ left: spot.left, top: spot.top }}
-          aria-label="Move or change this block"
-          title="Drag to move. Click for more."
-          draggable
-          tabIndex={-1}
-          onDragStart={(e) => {
-            select(spot.pos);
-            const sel = view.state.selection;
-            view.dragging = { slice: sel.content(), move: true };
-            const dom = view.nodeDOM(spot.pos);
-            if (dom instanceof HTMLElement) e.dataTransfer.setDragImage(dom, 0, 0);
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", view.state.doc.textBetween(sel.from, sel.to, "\n"));
-          }}
-          onClick={() => onMenu({ pos: spot.pos, left: spot.left, top: spot.top + 26 })}
-        >
-          <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
-            <circle cx="2.5" cy="2.5" r="1.2" />
-            <circle cx="7.5" cy="2.5" r="1.2" />
-            <circle cx="2.5" cy="7" r="1.2" />
-            <circle cx="7.5" cy="7" r="1.2" />
-            <circle cx="2.5" cy="11.5" r="1.2" />
-            <circle cx="7.5" cy="11.5" r="1.2" />
-          </svg>
-        </button>
+        <>
+          <button
+            type="button"
+            className="doc-add"
+            style={{ left: spot.left - 22, top: spot.top }}
+            aria-label="Add a block below"
+            title="Add a block below"
+            tabIndex={-1}
+            onClick={() => {
+              const size = spot.node.nodeSize;
+              const at = spot.pos + size;
+              const para = schema.nodes.paragraph.create();
+              const item = spot.node.type === schema.nodes.list_item;
+              const tr = view.state.tr.insert(at, item ? schema.nodes.list_item.create(null, para) : para);
+              tr.setSelection(NodeSelection.near(tr.doc.resolve(at + (item ? 2 : 1))));
+              if (!item) tr.insertText("/");
+              view.dispatch(tr.scrollIntoView());
+              view.focus();
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+          <button
+            ref={handle}
+            type="button"
+            className="doc-handle"
+            style={{ left: spot.left, top: spot.top }}
+            aria-label="Move or change this block"
+            title={
+              spot.node.type === schema.nodes.heading
+                ? "Drag to move this whole section. Click for more."
+                : "Drag to move. Click for more."
+            }
+            tabIndex={-1}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              const { pos, node } = spot;
+              armDrag(e.nativeEvent, () => {
+                const item = node.type === schema.nodes.list_item;
+                const range =
+                  node.type === schema.nodes.heading
+                    ? (sectionRange(view.state.doc, pos) ?? { from: pos, to: pos + node.nodeSize })
+                    : { from: pos, to: pos + node.nodeSize };
+                const { ghost, count } = ghostOfBlocks(view, range.from, range.to);
+                if (count > 4) ghost.dataset.more = `and ${count - 4} more`;
+                return {
+                  view,
+                  ghost,
+                  grip: { x: 18, y: 16 },
+                  source: { ...range, list: item },
+                  onLand: (landing) => {
+                    if (landing.type !== "slot") return;
+                    if (item) moveItem(view, range.from, range.to, landing.slot.pos);
+                    else moveBlocks(view, range.from, range.to, landing.slot.pos);
+                    view.focus();
+                  },
+                };
+              });
+            }}
+            onClick={() => onMenu({ pos: spot.pos, left: spot.left, top: spot.top + 26 })}
+          >
+            <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
+              <circle cx="2.5" cy="2.5" r="1.2" />
+              <circle cx="7.5" cy="2.5" r="1.2" />
+              <circle cx="2.5" cy="7" r="1.2" />
+              <circle cx="7.5" cy="7" r="1.2" />
+              <circle cx="2.5" cy="11.5" r="1.2" />
+              <circle cx="7.5" cy="11.5" r="1.2" />
+            </svg>
+          </button>
+        </>
       ) : null}
       {menu ? (
         <div

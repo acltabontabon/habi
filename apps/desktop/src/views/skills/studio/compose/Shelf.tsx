@@ -8,8 +8,6 @@ import type { ShelfSkill } from "../../../../bindings/ShelfSkill";
 import { Icon } from "../../../../components/Icon";
 import { knotColor } from "./knots";
 
-export const SKILL_DRAG_TYPE = "application/x-habi-skill";
-
 const ORDER: Record<string, number> = { mine: 0, machine: 1, project: 2, library: 3, community: 4 };
 
 export function matchesQuery(skill: ShelfSkill, query: string): boolean {
@@ -50,7 +48,7 @@ export function Shelf({
   currentName,
   onPick,
   onClose,
-  onDragging,
+  onLift,
 }: {
   skills: ShelfSkill[] | undefined;
   loading: boolean;
@@ -62,7 +60,8 @@ export function Shelf({
   currentName: string;
   onPick: (skill: ShelfSkill) => void;
   onClose: () => void;
-  onDragging?: (on: boolean) => void;
+  /** It was picked up, to carry to the page. */
+  onLift?: (skill: ShelfSkill, event: PointerEvent) => void;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [active, setActive] = useState(0);
@@ -76,7 +75,8 @@ export function Shelf({
   }, []);
 
   const found = useMemo(
-    () => (skills ?? []).filter((s) => s.name !== currentName && matchesQuery(s, query.trim())),
+    // Something with no name yet can't be named by another skill.
+    () => (skills ?? []).filter((s) => s.name && s.name !== currentName && matchesQuery(s, query.trim())),
     [skills, query, currentName],
   );
   const groups = useMemo(() => group(found), [found]);
@@ -144,8 +144,8 @@ export function Shelf({
           </p>
         ) : null}
         {groups.map((g) => (
-          <section key={g.label} className="shelf-group">
-            <h3>{g.label}</h3>
+          <section key={g.label} className="shelf-group" role="group" aria-label={g.label}>
+            <h3 role="presentation">{g.label}</h3>
             {g.items.map((s) => {
               index += 1;
               const here = index;
@@ -158,15 +158,11 @@ export function Shelf({
                   role="option"
                   tabIndex={-1}
                   aria-selected={here === active}
-                  className={`shelf-row${here === active ? " is-active" : ""}`}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData(SKILL_DRAG_TYPE, JSON.stringify(s));
-                    e.dataTransfer.setData("text/plain", `\`${s.name}\` skill`);
-                    e.dataTransfer.effectAllowed = "copy";
-                    onDragging?.(true);
+                  className={`shelf-row${here === active ? " is-active" : ""}${expanded ? " is-open" : ""}`}
+                  onPointerDown={(e) => {
+                    if ((e.target as HTMLElement).closest(".shelf-info")) return;
+                    onLift?.(s, e.nativeEvent);
                   }}
-                  onDragEnd={() => onDragging?.(false)}
                   onMouseEnter={() => setActive(here)}
                   onClick={() => onPick(s)}
                   onKeyDown={(e) => {
@@ -175,7 +171,7 @@ export function Shelf({
                 >
                   <span className="shelf-knot" style={{ background: knotColor(s.name) }} aria-hidden="true" />
                   <span className="shelf-words">
-                    <span className="shelf-name">{s.title}</span>
+                    <span className="shelf-name">{s.title || s.name || "Untitled skill"}</span>
                     <span className={`shelf-what${expanded ? " is-open" : ""}`}>
                       {s.description || "No description."}
                     </span>
@@ -198,19 +194,19 @@ export function Shelf({
                       <span className="shelf-flag">{copies}</span>
                     ) : null}
                   </span>
-                  <button
-                    type="button"
+                  {/* The keyboard's way is the right arrow, from the search box. */}
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: a pointer shortcut for what ArrowRight does. */}
+                  {/* biome-ignore lint/a11y/useKeyWithClickEvents: as above. */}
+                  <span
                     className="shelf-info"
-                    aria-label={expanded ? `Less about ${s.title}` : `More about ${s.title}`}
-                    aria-expanded={expanded}
-                    tabIndex={-1}
+                    aria-hidden="true"
                     onClick={(e) => {
                       e.stopPropagation();
                       setOpen(expanded ? null : s.key);
                     }}
                   >
                     {expanded ? "Less" : "More"}
-                  </button>
+                  </span>
                 </div>
               );
             })}

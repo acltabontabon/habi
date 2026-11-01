@@ -29,6 +29,9 @@ export function Overview({
   titleOf,
   onGo,
   onUse,
+  onTie,
+  onMoveUse,
+  onMoveSection,
   onAddBack,
   onForget,
   onClose,
@@ -40,11 +43,43 @@ export function Overview({
   onGo: (pos: number) => void;
   /** Opens that use. */
   onUse: (pos: number) => void;
+  /** Ties a knot: this skill, used in this section. */
+  onTie: (name: string, row: number) => void;
+  /** Moves a use's sentence to another section. */
+  onMoveUse: (pos: number, row: number) => void;
+  /** Moves a section to before another (or to the end). */
+  onMoveSection: (row: number, before: number) => void;
   onAddBack: (name: string) => void;
   onForget: (name: string) => void;
   onClose: () => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+
+  /** Follows the pointer over the rows, and says which row it's let go on. */
+  const followRows = (start: PointerEvent, land: (row: number) => void, click: () => void) => {
+    start.preventDefault();
+    const rowAt = (x: number, y: number) => {
+      const tr = document.elementFromPoint(x, y)?.closest<HTMLElement>("tr[data-row]");
+      return tr ? Number(tr.dataset.row) : null;
+    };
+    let moved = false;
+    const onMove = (e: PointerEvent) => {
+      if (!moved && Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) < 4) return;
+      moved = true;
+      setOver(rowAt(e.clientX, e.clientY));
+    };
+    const finish = (e: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", finish, true);
+      setOver(null);
+      if (!moved) return click();
+      const row = rowAt(e.clientX, e.clientY);
+      if (row !== null) land(row);
+    };
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("pointerup", finish, true);
+  };
   const deps = useMemo(
     () => new Map((composition?.dependencies ?? []).map((d) => [d.name, d])),
     [composition],
@@ -95,11 +130,32 @@ export function Overview({
             <tbody>
               {overview.rows.map((row, r) => (
                 <tr
+                  data-row={r}
+                  className={over === r ? "is-over" : undefined}
                   key={`${row.pos}:${row.title}`}
                   style={{ "--depth": Math.max(0, row.level - 1) } as React.CSSProperties}
                 >
                   <th scope="row">
-                    <button type="button" className="weave-row" onClick={() => onGo(row.pos)}>
+                    <button
+                      type="button"
+                      className="weave-row"
+                      title="Click to go there. Drag to move the section. Alt+arrows from the keyboard."
+                      onPointerDown={(e) =>
+                        followRows(
+                          e.nativeEvent,
+                          (to) => {
+                            if (to !== r) onMoveSection(r, to > r ? to + 1 : to);
+                          },
+                          () => onGo(row.pos),
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") onGo(row.pos);
+                        if (e.altKey && e.key === "ArrowUp" && r > 0) onMoveSection(r, r - 1);
+                        if (e.altKey && e.key === "ArrowDown" && r < overview.rows.length - 1)
+                          onMoveSection(r, r + 2);
+                      }}
+                    >
                       {row.title}
                     </button>
                   </th>
@@ -116,11 +172,30 @@ export function Overview({
                             style={status === "missing" ? undefined : { background: knotColor(name) }}
                             aria-label={`${titleOf(name)} in ${row.title}, ${here.map((u) => roleWords(u.role)).join(", ")}`}
                             title={`${titleOf(name)}: ${here.map((u) => roleWords(u.role)).join(", ")}`}
-                            onClick={() => onUse(first.pos)}
+                            onPointerDown={(e) =>
+                              followRows(
+                                e.nativeEvent,
+                                (to) => {
+                                  if (to !== r) onMoveUse(first.pos, to);
+                                },
+                                () => onUse(first.pos),
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") onUse(first.pos);
+                            }}
                           >
                             {here.length > 1 ? here.length : null}
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            type="button"
+                            className="weave-tie"
+                            aria-label={`Use ${titleOf(name)} in ${row.title}`}
+                            title={`Tie a knot: use ${titleOf(name)} in ${row.title}`}
+                            onClick={() => onTie(name, r)}
+                          />
+                        )}
                       </td>
                     );
                   })}

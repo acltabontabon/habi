@@ -54,6 +54,7 @@ export function Threads({
   tick,
   look,
   onOpen,
+  onLift,
   onOverview,
   expanded,
 }: {
@@ -62,6 +63,8 @@ export function Threads({
   tick: number;
   look: (name: string) => { title: string; status: ThreadStatus };
   onOpen: (pos: number) => void;
+  /** A knot was picked up. */
+  onLift: (pos: number, event: PointerEvent) => void;
   onOverview: () => void;
   expanded: boolean;
 }) {
@@ -115,6 +118,8 @@ export function Threads({
                     type="button"
                     className={`thread-item is-${u.status}`}
                     aria-label={`${u.title}, ${roleWords(u.role)}${u.status === "missing" ? ", not found here" : ""}`}
+                    title="Drag to move its sentence. Pull away to take it out."
+                    onPointerDown={(e) => onLift(u.pos, e.nativeEvent)}
                     onClick={() => onOpen(u.pos)}
                   >
                     <span

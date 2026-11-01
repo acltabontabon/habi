@@ -23,8 +23,8 @@ export type ViewContext = {
   skillLook?: (name: string, role: string | null) => SkillLook;
   onSkillClick?: (name: string, pos: number, rect: DOMRect) => void;
   onLinkSkill?: (query: string) => void;
-  /** Something from the shelf was dropped on the page. */
-  onDropSkill?: (data: string, coords: { left: number; top: number }) => void;
+  /** A piece from the tray needs a choice: which skill, or which file. */
+  onChoosePiece?: (what: "skill" | "file") => void;
   /** A file named in the words was clicked. */
   onFileClick?: (path: string, rect: DOMRect, absent: boolean) => void;
   /** A package file's bytes as a data: URL, if it's an image inside the package. */

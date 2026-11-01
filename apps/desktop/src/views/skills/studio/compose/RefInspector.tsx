@@ -39,9 +39,18 @@ function statusLine(
         ? { text: "It has changed since it was added here.", tone: "unsure" }
         : { text: "The same skill that was added here.", tone: "ok" };
     case "named":
+      // Only a recorded source can differ from what's found: otherwise the name is all there is to go on.
+      if (dep.from?.library) {
+        return {
+          text: "A skill with this name is here, but not from where it was added. It may not be the same one.",
+          tone: "unsure",
+        };
+      }
       return {
-        text: "A skill with this name is here. Habi can't tell if it's the one meant.",
-        tone: "unsure",
+        text: shelf[0]
+          ? `Agents will find it by name, in ${shelf[0].sourceLabel.toLowerCase()}.`
+          : "Agents will find it by name.",
+        tone: "ok",
       };
     case "ambiguous":
       return { text: "Different skills have this name. An agent could find any of them.", tone: "unsure" };

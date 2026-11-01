@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import {
+  insertChecklist,
   insertRule,
   insertTable,
   setCallout,
@@ -57,6 +58,13 @@ const BUILT_IN: SlashItem[] = [
     hint: "Points in no order",
     run: toggleList(nodes.bullet_list),
     keywords: "bullets unordered",
+  },
+  {
+    id: "checklist",
+    label: "Checklist",
+    hint: "Things to confirm",
+    run: insertChecklist,
+    keywords: "task todo checkbox",
   },
   {
     id: "code",

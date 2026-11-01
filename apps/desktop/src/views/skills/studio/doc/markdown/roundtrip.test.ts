@@ -144,6 +144,22 @@ describe("structure", () => {
     expect(write(rTr.doc, repeating.baseline).text).toBe("1. b\n1. c\n");
   });
 
+  it("a paragraph emptied at the start leaves no blank lines behind", () => {
+    const source = "First\n\nSecond\n";
+    const parsed = parseBody(source);
+    const first = parsed.doc.child(0);
+    const doc = new Transform(parsed.doc).delete(1, first.nodeSize - 1).doc;
+    expect(write(doc, parsed.baseline).text).toBe("Second\n");
+  });
+
+  it("a paragraph emptied in the middle leaves one gap", () => {
+    const source = "First\n\nSecond\n\nThird\n";
+    const parsed = parseBody(source);
+    const at = parsed.doc.child(0).nodeSize;
+    const doc = new Transform(parsed.doc).delete(at + 1, at + parsed.doc.child(1).nodeSize - 1).doc;
+    expect(write(doc, parsed.baseline).text).toBe("First\n\nThird\n");
+  });
+
   it("an empty trailing paragraph isn't content", () => {
     const source = "Text\n";
     const parsed = parseBody(source);

@@ -337,7 +337,7 @@ function writeSiblings(
     const canon = canons[i] ?? "";
     const m = match[i] ?? -1;
     const p = paired[i] ?? -1;
-    if (canon === "" && m < 0 && p < 0 && node.type.name === "paragraph") {
+    if (canon === "" && node.type.name === "paragraph") {
       // An empty paragraph is the caret's place to be, not content.
       pos += size;
       return;

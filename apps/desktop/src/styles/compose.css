@@ -278,7 +278,7 @@
 
 .shelf-row:hover .shelf-info,
 .shelf-row.is-active .shelf-info,
-.shelf-info[aria-expanded="true"] {
+.shelf-row.is-open .shelf-info {
   opacity: 1;
 }
 
@@ -1140,4 +1140,427 @@
 
 .compose-note-where.is-short {
   color: var(--warn-ink, var(--thread-strong));
+}
+
+/* ---------- Picking things up ---------- */
+
+body.is-lifting,
+body.is-lifting * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.doc-page.is-parting > * {
+  transition: transform 190ms var(--ease);
+  will-change: transform;
+}
+
+body.is-lifting .doc-handle,
+body.is-lifting .doc-add,
+body.is-lifting .doc-tools,
+body.is-lifting [role="tooltip"] {
+  display: none;
+}
+
+.doc-ghost {
+  position: fixed;
+  z-index: 70;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transition: opacity 120ms var(--ease);
+}
+
+.doc-ghost.is-landing {
+  transition:
+    transform 160ms var(--ease),
+    opacity 160ms var(--ease);
+  opacity: 0;
+}
+
+.doc-ghost-page {
+  max-height: 340px;
+  overflow: hidden;
+  min-height: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 22px 48px -16px rgb(0 0 0 / 0.42),
+    0 6px 14px -6px rgb(0 0 0 / 0.2);
+  rotate: -0.5deg;
+  translate: -14px -10px;
+}
+
+.doc-ghost-page > :last-child {
+  margin-bottom: 0;
+}
+
+.doc-ghost-page[data-more]::after {
+  content: attr(data-more);
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.doc-ghost.is-pulled {
+  opacity: 0.55;
+}
+
+.doc-ghost.is-pulled::before {
+  content: "Let go to take it out";
+  position: absolute;
+  z-index: 1;
+  top: -26px;
+  left: 14px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--paper);
+}
+
+.doc-ghost-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 14px 30px -10px rgb(0 0 0 / 0.42);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.doc-ghost-knot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Where it would land: a thread stretched across the page, tied at both ends. */
+.doc-gap {
+  position: fixed;
+  z-index: 65;
+  top: 0;
+  left: 0;
+  height: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    transform 110ms var(--ease),
+    opacity 90ms linear;
+  background: linear-gradient(var(--thread), var(--thread)) center / 100% 1.5px no-repeat;
+}
+
+.doc-gap.is-on {
+  opacity: 1;
+}
+
+.doc-gap::before,
+.doc-gap::after {
+  content: "";
+  position: absolute;
+  top: 3.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--thread);
+}
+
+.doc-gap::before {
+  left: -3px;
+}
+
+.doc-gap::after {
+  right: -3px;
+}
+
+.doc-word-gap {
+  position: fixed;
+  z-index: 65;
+  top: 0;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--thread);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.doc-word-gap.is-on {
+  opacity: 1;
+}
+
+.doc-tether {
+  position: fixed;
+  z-index: 64;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.doc-tether path {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-page.is-parting > *,
+  .doc-gap,
+  .doc-ghost {
+    transition: none;
+  }
+
+  .doc-ghost-page {
+    rotate: none;
+  }
+}
+
+.thread-item {
+  touch-action: none;
+}
+
+/* ---------- The + beside the handle ---------- */
+
+.doc-add {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-faint);
+  opacity: 0.55;
+  transition:
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.doc-add:hover {
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
+.doc-handle {
+  touch-action: none;
+}
+
+/* ---------- The tray ---------- */
+
+.doc-tray {
+  position: sticky;
+  z-index: 8;
+  bottom: var(--s4);
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  margin: var(--s5) auto 0;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 12px 30px -14px rgb(0 0 0 / 0.36);
+  font-family: var(--font-ui);
+}
+
+.doc-piece {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 6px 8px 5px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  cursor: grab;
+  touch-action: none;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.doc-piece:hover,
+.doc-piece:focus-visible {
+  background: var(--paper-sunken);
+  color: var(--ink);
+  transform: translateY(-1.5px);
+  outline: none;
+}
+
+.doc-piece:active {
+  cursor: grabbing;
+}
+
+.doc-piece.is-skill {
+  color: var(--thread-strong);
+}
+
+@container skstage (max-width: 620px) {
+  .doc-piece span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .doc-piece {
+    min-width: 36px;
+  }
+}
+
+/* ---------- Controls on the block the caret is in ---------- */
+
+.doc-tools {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.doc-tools.is-table,
+.doc-tools.is-link {
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 6px 16px -8px rgb(0 0 0 / 0.3);
+}
+
+.doc-tools button {
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.doc-tools button:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.doc-tools select {
+  max-width: 100%;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font: inherit;
+  text-align: right;
+  color: var(--ink-muted);
+}
+
+.doc-tools select:hover,
+.doc-tools select:focus-visible {
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+}
+
+.doc-tools-address {
+  max-width: 300px;
+  overflow: hidden;
+  padding: 0 7px;
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-tools input {
+  width: 300px;
+  height: 24px;
+  padding: 0 7px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+/* The info label gives way to the control while the caret is in the block. */
+.doc-page pre:focus-within::before {
+  opacity: 0;
+}
+
+/* A checklist's box is something you press. */
+.doc-page li.doc-task {
+  cursor: text;
+}
+
+.doc-page li.doc-task::before {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* ---------- The loom ---------- */
+
+.weave-table tr.is-over .weave-row,
+.weave-table tr.is-over .weave-cell {
+  background-color: var(--thread-wash);
+}
+
+.weave-row {
+  touch-action: none;
+  cursor: grab;
+}
+
+.weave-knot {
+  touch-action: none;
+  cursor: grab;
+}
+
+/* An empty crossing is where a knot could be tied. */
+.weave-tie {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--paper);
+  opacity: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.25px var(--thread);
+  transition:
+    opacity var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.weave-cell:hover .weave-tie,
+.weave-tie:focus-visible {
+  opacity: 1;
+  transform: scale(1.15);
+  outline: none;
 }

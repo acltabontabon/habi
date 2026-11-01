@@ -244,6 +244,21 @@ function Studio({ initial }: { initial: LocalSkill }) {
     editor,
     projectId: evalProjectRef.current,
     onOpenFile: (path) => openFileRef.current(path),
+    onAddFile: () => {
+      void api
+        .addSkillFiles(id, "auto")
+        .then((fresh) => {
+          if (!fresh) return;
+          const added = fresh.files.filter((f) => !skill.files.some((b) => b.path === f.path));
+          draft.adopt(fresh, { document: false, metadata: false });
+          if (added.length) {
+            requestAnimationFrame(() =>
+              editor.current?.insertAt(added.map((f) => markdownForFile(f.path)).join("\n\n"), null),
+            );
+          }
+        })
+        .catch(draft.setActionError);
+    },
     onWhen: () => goRef.current("when"),
     onReadiness: () =>
       window.document.querySelector<HTMLElement>(".sk-acts .sk-ready, .sk-acts [aria-haspopup]")?.click(),

@@ -110,29 +110,23 @@ function firstMention(doc: PMNode, blockPos: number, name: string): number | nul
   return hit?.pos ?? null;
 }
 
-/** A skill dropped on the page: into the words under the pointer, or as a new sentence between blocks. */
-export function dropSkill(
+/** A skill put down inside a sentence: it joins the words there. */
+export function dropSkillInText(view: EditorView, pick: Pick, pos: number): number | null {
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  return insertSkill(view, pick, { inline: true });
+}
+
+/** A skill put down between blocks: it brings its own sentence, with the blank selected. */
+export function dropSkillBetween(
   view: EditorView,
   pick: Pick,
-  coords: { left: number; top: number },
+  at: number,
+  role: RoleId = "when-relevant",
 ): number | null {
-  const hit = view.posAtCoords(coords);
-  if (!hit) return null;
-  const $pos = view.state.doc.resolve(hit.pos);
-  if ($pos.parent.isTextblock && !$pos.parent.type.spec.code && $pos.parent.content.size > 0) {
-    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, hit.pos)));
-    return insertSkill(view, pick, { inline: true });
-  }
-  const at = $pos.depth > 0 ? $pos.after(1) : hit.pos;
-  view.dispatch(
-    view.state.tr.setSelection(
-      TextSelection.near(view.state.doc.resolve(Math.min(at, view.state.doc.content.size))),
-    ),
-  );
-  const para = sentenceParagraph("when-relevant", pick);
-  const tr = view.state.tr.insert(at, para);
-  view.dispatch(tr);
+  const para = sentenceParagraph(role, pick);
+  view.dispatch(view.state.tr.insert(at, para));
   selectBlank(view, at);
+  view.focus();
   return firstMention(view.state.doc, at, pick.name);
 }
 

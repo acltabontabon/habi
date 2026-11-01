@@ -38,3 +38,9 @@ export function overviewOf(doc: PMNode): Overview {
   for (const u of uses) if (!names.includes(u.name)) names.push(u.name);
   return { rows, names, uses };
 }
+
+/** Where the last block of a row's section ends: new things for that section go there. */
+export function endOfRow(doc: PMNode, overview: Overview, row: number): number {
+  const next = overview.rows[row + 1];
+  return next ? next.pos : doc.content.size;
+}
