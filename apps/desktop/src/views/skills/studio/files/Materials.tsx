@@ -65,7 +65,8 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 const isTextEntry = (t: EventTarget | null) =>
-  t instanceof Element && t.closest("input, textarea, select, [contenteditable='true'], .cm-editor") !== null;
+  t instanceof Element &&
+  t.closest("input, textarea, select, [contenteditable='true'], .cm-editor, .doc-page") !== null;
 
 // ----- bringing files in: dropped on the window, placed by type, undoable
 

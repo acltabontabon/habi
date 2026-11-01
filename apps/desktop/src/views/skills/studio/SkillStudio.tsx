@@ -23,7 +23,6 @@ import { BackLink } from "../../../components/BackLink";
 import { Icon } from "../../../components/Icon";
 import { Menu } from "../../../components/Menu";
 import { SaveIndicator } from "../../../components/SaveIndicator";
-import type { SourceEditorHandle } from "../../../components/SourceEditor";
 import { useToast } from "../../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
 import { useActions } from "../../../lib/actions";
@@ -54,6 +53,7 @@ import { tagLabel } from "../../../lib/tags";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
+import type { DocEditorHandle } from "./doc/lazy";
 import { Materials, useDropToAdd } from "./files/Materials";
 import { Instructions, Outline, useOutline } from "./Instructions";
 import { ProjectEvaluation } from "./ProjectEvaluation";
@@ -78,7 +78,8 @@ const DESCRIPTION_LIMIT = 1024;
 const otherDialogOpen = () =>
   document.querySelector('[role="dialog"]:not(.sk-pop):not(.sk-sheet), [role="alertdialog"]') !== null;
 const isTextEntry = (t: EventTarget | null) =>
-  t instanceof Element && t.closest("input, textarea, select, [contenteditable='true'], .cm-editor") !== null;
+  t instanceof Element &&
+  t.closest("input, textarea, select, [contenteditable='true'], .cm-editor, .doc-page") !== null;
 
 /** The Studio's own width (not the window's): the sidebar takes its share. */
 function useWidth(ref: React.RefObject<HTMLElement | null>): number {
@@ -230,7 +231,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const [identEditing, setIdentEditing] = useState(false);
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
   const [titleInView, setTitleInView] = useState(true);
-  const editor = useRef<SourceEditorHandle>(null);
+  const [sourceMode, setSourceMode] = useState(false);
+  const editor = useRef<DocEditorHandle>(null);
   const { outline, current } = useOutline(document.body, cursorLine);
   const materials = useMemo(() => materialsOf(skill.files, document.body), [skill.files, document.body]);
   // Use only when there is something ready to use; until then, the next step.
@@ -325,12 +327,10 @@ function Studio({ initial }: { initial: LocalSkill }) {
   /** A material the instructions never mention: a line for it at the end, ready to be described. */
   const reference = (path: string) => {
     const name = path.slice(path.lastIndexOf("/") + 1);
-    const body = document.body.replace(/\s*$/, "");
     // A path with a space is only a Markdown link inside angle brackets.
     const target = /\s/.test(path) ? `<${path}>` : path;
-    const next = `${body}${body ? "\n\n" : ""}- [${name}](${target}) — `;
-    setDocument((d) => ({ ...d, body: next }));
-    reveal(next.split("\n").length, true);
+    go("skill");
+    requestAnimationFrame(() => editor.current?.appendMarkdown(`- [${name}](${target}) — `));
   };
 
   /** From a problem, a dialog or the palette to the place that fixes it. */
@@ -735,6 +735,21 @@ function Studio({ initial }: { initial: LocalSkill }) {
           </nav>
         </div>
         <div className="sk-acts">
+          {layer === "skill" && !broken ? (
+            <button
+              type="button"
+              className="sk-mode"
+              aria-pressed={sourceMode}
+              title="The same instructions, as the Markdown an agent receives"
+              onClick={() => {
+                // The page's latest words go first, so nothing is left behind on either side.
+                editor.current?.text();
+                setSourceMode((on) => !on);
+              }}
+            >
+              {sourceMode ? "Back to the page" : "Markdown"}
+            </button>
+          ) : null}
           {!trashed ? (
             <SaveIndicator state={draft.saveState} ambient onRetry={() => void draft.flushAll()} />
           ) : null}
@@ -941,6 +956,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                 <Instructions
                   draft={draft}
                   editor={editor}
+                  sourceMode={sourceMode}
                   onCursorLine={setCursorLine}
                   onOpenFile={openFile}
                 />

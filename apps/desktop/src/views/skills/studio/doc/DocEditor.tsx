@@ -1,0 +1,419 @@
+/**
+ * The page. A skill's instructions as a document you write in directly: no marks
+ * under the caret, no split view. The Markdown string stays the one truth; this is
+ * a view of it, and what it gives back is the author's own text wherever they
+ * didn't touch it.
+ *
+ * Typing costs one transaction. The text is worked out when typing pauses, or at
+ * once when something asks for it, so a long document never slows the caret.
+ */
+import { dropCursor } from "prosemirror-dropcursor";
+import { gapCursor } from "prosemirror-gapcursor";
+import { DOMSerializer, type Node as PMNode, Slice } from "prosemirror-model";
+import { EditorState, NodeSelection, TextSelection, type Transaction } from "prosemirror-state";
+import { tableEditing } from "prosemirror-tables";
+import { EditorView, type NodeViewConstructor } from "prosemirror-view";
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import type { LineMark, SourceEditorHandle } from "../../../../components/SourceEditor";
+import { BlockHandle, type BlockMenuTarget } from "./BlockHandle";
+import { clipboardTextParser, clipboardTextSerializer } from "./clipboard";
+import { sliceFromMarkdown } from "./commands";
+import { editingPlugins } from "./keys";
+import { canonOf } from "./markdown/canon";
+import { type Parsed, parseBody } from "./markdown/parse";
+import { type Span, write } from "./markdown/reconcile";
+import { schema } from "./markdown/schema";
+import { canonText, type Verdict } from "./markdown/verify";
+import { verifyInBackground } from "./markdown/verifyWorker";
+import { imageView, opaqueView, skillRefView, type ViewContext } from "./nodeViews";
+import {
+  flashBlock,
+  flashPlugin,
+  invisiblesPlugin,
+  marksPlugin,
+  type PromptFor,
+  promptPlugin,
+  type SlashState,
+  setBlockMarks,
+  slashPlugin,
+} from "./plugins";
+import { SelectionBar } from "./SelectionBar";
+import { type SlashItem, SlashMenu, type SlashMenuHandle } from "./SlashMenu";
+import { syntaxPlugin } from "./syntax";
+
+const PAUSE_MS = 200;
+
+export type DocEditorHandle = SourceEditorHandle & {
+  /** Markdown at the caret, as content, undoable. */
+  insertMarkdown: (markdown: string) => void;
+  /** Markdown as a new last block, with the caret at its end. */
+  appendMarkdown: (markdown: string) => void;
+  /** The text right now, without waiting for the pause. */
+  text: () => string;
+  /** Whether the text would read back as what's on the page. */
+  verify: (text: string) => Promise<Verdict>;
+  view: () => EditorView | null;
+};
+
+function lineOfBlocks(spans: Span[], pos: number): number {
+  let best = 1;
+  for (const s of spans) {
+    if (s.pos > pos) break;
+    best = s.line;
+  }
+  return best;
+}
+
+/**
+ * Where a line of the text is on the page. A block that wasn't touched is one
+ * span, so inside it the line is found by walking its children's own lengths.
+ */
+export function positionForLine(doc: PMNode, spans: Span[], line: number): number {
+  let span: Span | undefined;
+  for (const s of spans) {
+    if (s.line <= line && (!span || s.line >= span.line)) span = s;
+    if (s.line > line) break;
+  }
+  if (!span) return 0;
+  let pos = span.pos;
+  let node = doc.nodeAt(pos);
+  let left = line - span.line;
+  // Down to the words themselves, so a mark sits on one item and not on its whole list.
+  while (node && !node.isTextblock && !node.isAtom && node.type.name !== "table" && node.childCount > 0) {
+    let inner = pos + 1;
+    let found = false;
+    for (let i = 0; i < node.childCount; i++) {
+      const child = node.child(i);
+      const lines = canonOf(child).split("\n").length;
+      if (left < lines || i === node.childCount - 1) {
+        pos = inner;
+        node = child;
+        found = true;
+        break;
+      }
+      left -= lines;
+      inner += child.nodeSize;
+    }
+    if (!found) break;
+  }
+  return pos;
+}
+
+export function DocEditor({
+  value,
+  onChange,
+  label,
+  placeholder,
+  readOnly = false,
+  handle,
+  marks,
+  onCursorLine,
+  paths,
+  onOpenFile,
+  promptFor,
+  slashExtras,
+  context,
+  footer,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  placeholder?: string;
+  readOnly?: boolean;
+  handle?: Ref<DocEditorHandle>;
+  marks?: LineMark[];
+  onCursorLine?: (line: number) => void;
+  /** The skill's own files, for references. */
+  paths: () => string[];
+  onOpenFile?: (path: string) => void;
+  promptFor?: PromptFor;
+  /** Skills and files the slash menu offers, for what's typed so far. */
+  slashExtras?: (query: string) => SlashItem[];
+  context: ViewContext;
+  footer?: ReactNode;
+}) {
+  const host = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const parsed = useRef<Parsed | null>(null);
+  const spans = useRef<Span[]>([]);
+  /** What the page last said in text. An incoming value equal to this is its own echo. */
+  const emitted = useRef(value);
+  const timer = useRef<number | null>(null);
+  const dirty = useRef(false);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const onCursorRef = useRef(onCursorLine);
+  onCursorRef.current = onCursorLine;
+  const marksRef = useRef(marks);
+  marksRef.current = marks;
+  const pathsRef = useRef(paths);
+  pathsRef.current = paths;
+  const openRef = useRef(onOpenFile);
+  openRef.current = onOpenFile;
+  const promptRef = useRef<PromptFor>(() => placeholder ?? null);
+  promptRef.current = promptFor ?? (() => placeholder ?? null);
+  const contextRef = useRef(context);
+  contextRef.current = context;
+
+  const [selectionTick, setSelectionTick] = useState(0);
+  const [slash, setSlash] = useState<SlashState>(null);
+  const [blockMenu, setBlockMenu] = useState<BlockMenuTarget | null>(null);
+  const slashMenu = useRef<SlashMenuHandle>(null);
+
+  const placeMarks = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const list = marksRef.current ?? [];
+    setBlockMarks(
+      view,
+      list.map((m) => ({
+        pos: positionForLine(view.state.doc, spans.current, m.line),
+        level: m.level,
+        message: m.message,
+      })),
+    );
+  }, []);
+
+  /** Works out the text. Cheap for what didn't change: blocks remember how they were written. */
+  const settle = useCallback((): string => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const view = viewRef.current;
+    const base = parsed.current;
+    if (!view || !base || !dirty.current) return emitted.current;
+    const written = write(view.state.doc, base.baseline);
+    dirty.current = false;
+    spans.current = written.spans;
+    if (written.text !== emitted.current) {
+      emitted.current = written.text;
+      onChangeRef.current(written.text);
+    }
+    return written.text;
+  }, []);
+
+  const reportCursor = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    onCursorRef.current?.(lineOfBlocks(spans.current, view.state.selection.from));
+  }, []);
+
+  const stateFor = useCallback((source: string, prior?: EditorState): EditorState => {
+    const next = parseBody(source);
+    parsed.current = next;
+    spans.current = write(next.doc, next.baseline).spans;
+    const state = EditorState.create({
+      doc: next.doc,
+      plugins: [
+        ...editingPlugins(),
+        tableEditing({ allowTableNodeSelection: false }),
+        dropCursor({ color: "var(--thread)", width: 2, class: "doc-drop" }),
+        gapCursor(),
+        promptPlugin(() => promptRef.current),
+        marksPlugin(),
+        flashPlugin(),
+        invisiblesPlugin(),
+        syntaxPlugin(),
+        slashPlugin(() => ({
+          onChange: setSlash,
+          onKey: (e) => slashMenu.current?.key(e) ?? false,
+        })),
+      ],
+    });
+    if (!prior) return state;
+    const at = Math.min(prior.selection.from, state.doc.content.size);
+    return state.apply(state.tr.setSelection(TextSelection.near(state.doc.resolve(at))));
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the page is created once; later values arrive below.
+  useEffect(() => {
+    if (!host.current) return;
+    const nodeViews: Record<string, NodeViewConstructor> = {
+      opaque_block: opaqueView(() => contextRef.current),
+      image: imageView(() => contextRef.current),
+      skill_ref: skillRefView(() => contextRef.current),
+    };
+    const view: EditorView = new EditorView(
+      { mount: host.current },
+      {
+        state: stateFor(value),
+        nodeViews,
+        editable: () => !readOnly,
+        attributes: {
+          "aria-label": label,
+          "aria-multiline": "true",
+          role: "textbox",
+          class: `doc-page${readOnly ? " is-readonly" : ""}`,
+          spellcheck: "true",
+          "data-skill-editor": "",
+        },
+        dispatchTransaction(tr: Transaction) {
+          const next = view.state.apply(tr);
+          view.updateState(next);
+          if (tr.docChanged) {
+            dirty.current = true;
+            if (timer.current !== null) window.clearTimeout(timer.current);
+            timer.current = window.setTimeout(() => {
+              settle();
+              reportCursor();
+              placeMarks();
+            }, PAUSE_MS);
+          }
+          if (tr.selectionSet || tr.docChanged) setSelectionTick((t) => t + 1);
+          if (tr.selectionSet && !tr.docChanged) reportCursor();
+        },
+        clipboardTextParser,
+        clipboardTextSerializer,
+        handleClickOn(_view, _pos, _node, _nodePos, event) {
+          const target = event.target as HTMLElement;
+          const link = target.closest("a[href]");
+          // Links open only when asked to with ⌘, and through what the app already trusts.
+          if (link && (event.metaKey || event.ctrlKey)) {
+            const href = link.getAttribute("href") ?? "";
+            if (pathsRef.current().includes(href)) openRef.current?.(href);
+            else contextRef.current.openExternal?.(href);
+            event.preventDefault();
+            return true;
+          }
+          return false;
+        },
+        handleDOMEvents: {
+          // A click on a link while writing is a click in text, not a departure.
+          click(_view, event) {
+            if ((event.target as HTMLElement).closest("a[href]")) event.preventDefault();
+            return false;
+          },
+          blur() {
+            settle();
+            return false;
+          },
+        },
+      },
+    );
+    viewRef.current = view;
+    placeMarks();
+    return () => {
+      settle();
+      view.destroy();
+      viewRef.current = null;
+    };
+  }, [readOnly, label]);
+
+  useImperativeHandle(
+    handle,
+    (): DocEditorHandle => ({
+      insert: (text) => {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch(view.state.tr.insertText(text).scrollIntoView());
+        view.focus();
+      },
+      insertMarkdown: (markdown) => {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch(view.state.tr.replaceSelection(sliceFromMarkdown(markdown)).scrollIntoView());
+        view.focus();
+      },
+      appendMarkdown: (markdown) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const slice = sliceFromMarkdown(markdown);
+        const tr = view.state.tr;
+        const empty = tr.doc.childCount === 1 && tr.doc.firstChild?.content.size === 0;
+        const nodes = slice.openStart
+          ? [schema.nodes.paragraph.create(null, slice.content.firstChild?.content)]
+          : null;
+        const at = empty ? 0 : tr.doc.content.size;
+        if (nodes) tr.replaceWith(at, empty ? tr.doc.content.size : at, nodes);
+        else tr.replace(at, empty ? tr.doc.content.size : at, new Slice(slice.content, 0, 0));
+        tr.setSelection(TextSelection.atEnd(tr.doc));
+        view.dispatch(tr.scrollIntoView());
+        view.focus();
+      },
+      revealLine: (line, atEnd) => {
+        const view = viewRef.current;
+        if (!view) return;
+        settle();
+        const pos = positionForLine(view.state.doc, spans.current, line);
+        const $pos = view.state.doc.resolve(Math.min(pos + 1, view.state.doc.content.size));
+        const sel = atEnd
+          ? TextSelection.near(view.state.doc.resolve($pos.end()), -1)
+          : TextSelection.near($pos);
+        view.dispatch(view.state.tr.setSelection(sel));
+        view.focus();
+        const dom = view.nodeDOM(pos);
+        if (dom instanceof HTMLElement) dom.scrollIntoView?.({ block: "center", behavior: "smooth" });
+        flashBlock(view, pos);
+      },
+      focus: () => viewRef.current?.focus(),
+      text: () => settle(),
+      verify: async (text) => {
+        const view = viewRef.current;
+        if (!view) return "same";
+        return verifyInBackground(text, canonText(view.state.doc));
+      },
+      view: () => viewRef.current,
+    }),
+    [settle],
+  );
+
+  // A value from outside: a starter, a reload, the other version in a conflict.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || value === emitted.current) return;
+    const apply = () => {
+      if (!viewRef.current || viewRef.current.composing) {
+        window.setTimeout(apply, 120);
+        return;
+      }
+      if (value === emitted.current) return;
+      settle();
+      if (value === emitted.current) return;
+      emitted.current = value;
+      dirty.current = false;
+      viewRef.current.updateState(stateFor(value, viewRef.current.state));
+      placeMarks();
+    };
+    apply();
+  }, [value, settle, stateFor, placeMarks]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: marks are read through their ref.
+  useEffect(() => {
+    placeMarks();
+  }, [marks, placeMarks]);
+
+  const view = viewRef.current;
+  return (
+    <div className={`doc-editor${readOnly ? " is-readonly" : ""}`}>
+      <div className="doc-host" ref={host} />
+      {view && !readOnly ? (
+        <BlockHandle view={view} host={host} onMenu={setBlockMenu} menu={blockMenu} tick={selectionTick} />
+      ) : null}
+      {view && !readOnly ? (
+        <SelectionBar view={view} tick={selectionTick} onLinkSkill={context.onLinkSkill} />
+      ) : null}
+      {view && slash && !readOnly ? (
+        <SlashMenu ref={slashMenu} view={view} slash={slash} extras={slashExtras} />
+      ) : null}
+      {footer}
+    </div>
+  );
+}
+
+export function renderToElement(node: PMNode): HTMLElement {
+  const dom = document.createElement("div");
+  dom.appendChild(DOMSerializer.fromSchema(schema).serializeNode(node));
+  return dom;
+}
+
+export { NodeSelection };

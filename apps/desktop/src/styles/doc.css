@@ -1,0 +1,905 @@
+/*
+ * The page. A skill reads as a document before it reads as anything else: serif
+ * for what the agent is told, the interface's sans for structure around it, and
+ * the thread colour kept for what is woven in from elsewhere.
+ */
+
+:root {
+  --font-page: "IBM Plex Serif", ui-serif, Georgia, "Times New Roman", serif;
+  --page-size: 17px;
+  --page-line: 1.68;
+}
+
+.doc-editor {
+  position: relative;
+}
+
+.doc-page {
+  min-height: 42vh;
+  padding: 2px 0 var(--s8);
+  outline: none;
+  font-family: var(--font-page);
+  font-size: var(--page-size);
+  line-height: var(--page-line);
+  color: var(--ink);
+  caret-color: var(--thread-strong);
+  word-wrap: break-word;
+  white-space: break-spaces;
+  font-variant-ligatures: common-ligatures;
+  hanging-punctuation: first;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ins.is-empty .doc-page {
+  min-height: 0;
+  padding-bottom: var(--s5);
+}
+
+.doc-page:focus-visible {
+  outline: none;
+}
+
+.doc-page ::selection {
+  background: color-mix(in srgb, var(--thread) 26%, transparent);
+}
+
+.doc-page p {
+  margin: 0 0 0.85em;
+}
+
+/* Structure speaks in the interface's own voice. */
+.doc-page h1,
+.doc-page h2,
+.doc-page h3,
+.doc-page h4,
+.doc-page h5,
+.doc-page h6 {
+  margin: 1.9em 0 0.5em;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.doc-page > :first-child {
+  margin-top: 0;
+}
+
+.doc-page h1 {
+  font-size: 1.55em;
+  font-weight: 640;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+}
+
+.doc-page h2 {
+  font-size: 1.22em;
+  font-weight: 620;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+}
+
+.doc-page h3 {
+  margin-top: 1.5em;
+  font-size: 1em;
+  font-weight: 620;
+  line-height: 1.4;
+  letter-spacing: -0.004em;
+}
+
+.doc-page h4,
+.doc-page h5,
+.doc-page h6 {
+  margin-top: 1.4em;
+  font-size: 0.82em;
+  font-weight: 620;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+}
+
+.doc-page strong {
+  font-weight: 620;
+}
+
+.doc-page a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--thread) 60%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: text;
+}
+
+.doc-page code {
+  padding: 0.08em 0.32em;
+  border-radius: 4px;
+  background: var(--paper-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--ink-soft);
+  white-space: break-spaces;
+}
+
+/* Steps count in the margin, so the words line up as a column you can read down. */
+.doc-page ol,
+.doc-page ul {
+  margin: 0 0 1em;
+  padding: 0 0 0 1.55em;
+  list-style: none;
+}
+
+.doc-page ol {
+  counter-reset: step var(--start, 0);
+}
+
+.doc-page li {
+  position: relative;
+  margin: 0 0 0.3em;
+}
+
+.doc-page li > p {
+  margin: 0 0 0.3em;
+}
+
+.doc-page li > ul,
+.doc-page li > ol {
+  margin-top: 0.15em;
+  margin-bottom: 0.4em;
+}
+
+.doc-page ol > li {
+  counter-increment: step;
+}
+
+.doc-page ol > li::before {
+  content: counter(step);
+  position: absolute;
+  right: 100%;
+  top: 0.32em;
+  width: 2.2em;
+  margin-right: 0.55em;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.68em;
+  font-weight: 500;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+  color: var(--thread-strong);
+  pointer-events: none;
+}
+
+.doc-page ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.02em;
+  top: 0.72em;
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  pointer-events: none;
+}
+
+.doc-page ul ul > li::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ink-muted);
+}
+
+.doc-page li.doc-task::before {
+  left: -1.42em;
+  top: 0.42em;
+  width: 13px;
+  height: 13px;
+  border-radius: 3.5px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.25px var(--hairline-strong);
+}
+
+.doc-page li.doc-task[data-checked="true"]::before {
+  background: var(--thread-strong);
+  box-shadow: none;
+}
+
+.doc-page li.doc-task[data-checked="true"] > p {
+  color: var(--ink-muted);
+}
+
+.doc-page blockquote {
+  margin: 0 0 1em;
+  padding: 0 0 0 1.15em;
+  border-left: 1.5px solid var(--hairline-strong);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.doc-page blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* A callout is a quote on GitHub and everywhere else: here, it says what kind. */
+.doc-page .doc-callout {
+  position: relative;
+  padding: 0.85em 1.1em 0.9em;
+  border-left: 0;
+  border-radius: 8px;
+  background: var(--paper-sunken);
+  font-style: normal;
+  color: var(--ink);
+}
+
+.doc-page .doc-callout::before {
+  content: attr(data-kind);
+  display: block;
+  margin-bottom: 0.25em;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+}
+
+.doc-page .doc-callout.is-warning,
+.doc-page .doc-callout.is-caution,
+.doc-page .doc-callout.is-important {
+  background: var(--warn-wash);
+}
+
+.doc-page .doc-callout.is-warning::before,
+.doc-page .doc-callout.is-caution::before,
+.doc-page .doc-callout.is-important::before {
+  color: var(--warn-ink, var(--ink-soft));
+}
+
+.doc-page hr {
+  margin: 2.2em 0;
+  border: 0;
+  height: 1px;
+  background: var(--hairline-strong);
+}
+
+.doc-page hr.ProseMirror-selectednode {
+  outline: 2px solid var(--thread);
+  outline-offset: 4px;
+}
+
+/* ---------- Code ---------- */
+
+.doc-page pre {
+  margin: 0 0 1.1em;
+  padding: 0.95em 1.15em;
+  border-radius: 8px;
+  background: var(--paper-sunken);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.doc-page pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  white-space: inherit;
+}
+
+.doc-page pre[data-info]:not([data-info=""])::before {
+  content: attr(data-info);
+  float: right;
+  margin: -0.3em -0.35em 0 1em;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  user-select: none;
+}
+
+.doc-page .tok-keyword,
+.doc-page .tok-atom,
+.doc-page .tok-bool {
+  color: var(--dye-0);
+}
+
+.doc-page .tok-string,
+.doc-page .tok-string2 {
+  color: var(--dye-2, var(--thread-strong));
+}
+
+.doc-page .tok-number {
+  color: var(--dye-5, var(--thread-strong));
+}
+
+.doc-page .tok-comment {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.doc-page .tok-definition,
+.doc-page .tok-propertyName,
+.doc-page .tok-typeName {
+  color: var(--ink);
+}
+
+/* ---------- Tables ---------- */
+
+.doc-page .tableWrapper {
+  margin: 0 0 1.2em;
+  overflow-x: auto;
+}
+
+.doc-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+
+.doc-page th,
+.doc-page td {
+  position: relative;
+  padding: 0.5em 1em 0.5em 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+  text-align: left;
+}
+
+.doc-page th {
+  border-bottom-color: var(--hairline-strong);
+  font-weight: 620;
+  color: var(--ink);
+}
+
+.doc-page th > p,
+.doc-page td > p {
+  margin: 0;
+}
+
+.doc-page .selectedCell {
+  background: color-mix(in srgb, var(--thread) 12%, transparent);
+}
+
+/* ---------- Kept as written ---------- */
+
+.doc-opaque {
+  margin: 0 0 1.1em;
+  padding: 0;
+  border-left: 1.5px dashed var(--hairline-strong);
+}
+
+.doc-opaque figcaption {
+  padding: 0 0 2px 0.95em;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  user-select: none;
+}
+
+.doc-page .doc-opaque pre,
+.doc-opaque-edit {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.1em 0 0.1em 0.95em;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+  white-space: pre-wrap;
+  cursor: default;
+}
+
+.doc-opaque-edit {
+  resize: none;
+  outline: none;
+  color: var(--ink);
+  background: var(--paper-sunken);
+}
+
+.doc-opaque.is-selected {
+  border-left-color: var(--thread);
+}
+
+.doc-raw {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--ink-muted);
+}
+
+.doc-raw.is-entity,
+.doc-raw.is-reference[data-display] {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.doc-raw.is-reference[data-display] {
+  text-decoration: underline;
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.doc-invisible {
+  border-radius: 2px;
+  background: var(--warn-wash);
+  box-shadow: inset 0 0 0 1px var(--warn-line, var(--hairline-strong));
+  padding: 0 1.5px;
+}
+
+.doc-invisibles-note {
+  margin: 0 0 var(--s4);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* ---------- Pictures ---------- */
+
+.doc-image {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+.doc-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 460px;
+  border-radius: 6px;
+}
+
+.doc-image.is-remote,
+.doc-image.is-missing {
+  padding: 0.05em 0.5em;
+  border-radius: 4px;
+  background: var(--paper-sunken);
+  font-family: var(--font-ui);
+  font-size: 0.74em;
+  color: var(--ink-muted);
+}
+
+.doc-image.ProseMirror-selectednode img {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+
+/* ---------- Other skills, in a sentence ---------- */
+
+.doc-skill {
+  cursor: pointer;
+  white-space: normal;
+  border-radius: 3px;
+  transition: background var(--duration) var(--ease);
+}
+
+.doc-skill:hover,
+.doc-skill.ProseMirror-selectednode {
+  background: color-mix(in srgb, var(--thread) 12%, transparent);
+}
+
+.doc-skill.is-composed {
+  font-family: var(--font-ui);
+  font-size: 0.92em;
+  font-weight: 560;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--thread);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3.5px;
+}
+
+.doc-skill.is-composed.is-missing {
+  text-decoration-style: dashed;
+  text-decoration-color: var(--ink-faint);
+  color: var(--ink-soft);
+}
+
+.doc-skill.is-mentioned {
+  text-decoration: underline dotted var(--hairline-strong);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3.5px;
+}
+
+.doc-skill-knot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.36em;
+  border-radius: 50%;
+  vertical-align: 0.1em;
+  background: var(--knot, var(--thread));
+}
+
+.is-missing > .doc-skill-knot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.25px var(--ink-faint);
+}
+
+/* ---------- What the page suggests ---------- */
+
+.doc-page .is-prompt::before {
+  content: attr(data-prompt);
+  float: left;
+  height: 0;
+  color: var(--ink-faint);
+  font-style: italic;
+  pointer-events: none;
+}
+
+.doc-page.ProseMirror-hideselection .is-prompt::before {
+  display: none;
+}
+
+/* ---------- Marks on a block ---------- */
+
+.doc-page .has-mark {
+  position: relative;
+}
+
+.doc-page .has-mark::after {
+  content: attr(data-note);
+  display: block;
+  margin-top: 0.15em;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+  color: var(--thread-strong);
+  text-decoration: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.doc-page .has-mark.is-info::after {
+  display: none;
+}
+
+.doc-page .is-flash {
+  background: var(--thread-wash);
+  border-radius: 4px;
+  box-shadow: 0 0 0 6px var(--thread-wash);
+  transition:
+    background 900ms var(--ease),
+    box-shadow 900ms var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-page .is-flash {
+    transition: none;
+  }
+}
+
+/* ---------- Block handle ---------- */
+
+.doc-handle {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: grab;
+  opacity: 0.55;
+  transition:
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.doc-handle svg {
+  fill: currentColor;
+}
+
+.doc-handle:hover {
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  opacity: 1;
+}
+
+.doc-handle:active {
+  cursor: grabbing;
+}
+
+.doc-block-menu,
+.doc-slash,
+.doc-bar {
+  font-family: var(--font-ui);
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 10px 30px -8px rgb(0 0 0 / 0.22),
+    0 2px 6px -2px rgb(0 0 0 / 0.1);
+  animation: sk-pop-in 140ms var(--ease);
+}
+
+.doc-block-menu {
+  position: absolute;
+  z-index: 20;
+  display: grid;
+  min-width: 190px;
+  padding: 4px;
+  border-radius: 9px;
+}
+
+.doc-block-menu button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s4);
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--ink-soft);
+}
+
+.doc-block-menu button:hover,
+.doc-block-menu button:focus-visible {
+  background: var(--paper-sunken);
+  color: var(--ink);
+  outline: none;
+}
+
+.doc-block-menu button.is-danger:hover {
+  color: var(--danger, var(--ink));
+}
+
+.doc-block-menu kbd {
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.doc-block-menu hr {
+  margin: 4px 6px;
+  border: 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* ---------- Selection bar ---------- */
+
+.doc-bar {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border-radius: 8px;
+  transform: translate(-50%, -100%);
+}
+
+.doc-bar.is-below {
+  transform: translate(-50%, 0);
+}
+
+.doc-bar-btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.doc-bar-btn:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.doc-bar-btn[aria-pressed="true"] {
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+
+.doc-bar-btn.is-bold {
+  font-weight: 700;
+}
+
+.doc-bar-btn.is-italic {
+  font-family: var(--font-page);
+  font-style: italic;
+}
+
+.doc-bar-btn.is-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.doc-bar-btn.is-strikethrough {
+  text-decoration: line-through;
+}
+
+.doc-bar-btn.is-skill {
+  color: var(--thread-strong);
+  font-weight: 560;
+}
+
+.doc-bar-gap {
+  width: 1px;
+  height: 14px;
+  margin: 0 3px;
+  background: var(--hairline);
+}
+
+.doc-bar-link input {
+  width: 270px;
+  height: 26px;
+  padding: 0 7px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  outline: none;
+}
+
+/* ---------- Slash menu ---------- */
+
+.doc-slash {
+  position: fixed;
+  z-index: 30;
+  width: 280px;
+  max-height: 310px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.doc-slash ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.doc-slash-none {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.doc-slash-group {
+  padding: 8px 9px 3px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.doc-slash button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+
+.doc-slash button.is-active {
+  background: var(--paper-sunken);
+}
+
+.doc-slash-label {
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.doc-slash-hint {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Starting points ---------- */
+
+.doc-starters {
+  font-family: var(--font-ui);
+}
+
+.doc-starters-lead {
+  display: block;
+  margin-bottom: var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.doc-starters ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1px var(--s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.doc-starter {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  padding: 8px 10px 9px;
+  margin-left: -10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  transition: background var(--duration) var(--ease);
+}
+
+.doc-starter:hover,
+.doc-starter:focus-visible {
+  background: var(--paper-sunken);
+  outline: none;
+}
+
+.doc-starter-name {
+  font-size: 13.5px;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.doc-starter-what {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+/* ProseMirror's own needs. */
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+
+.ProseMirror-gapcursor::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1.5px solid var(--ink);
+  animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes ProseMirror-cursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+
+.ProseMirror-selectednode {
+  outline: none;
+}

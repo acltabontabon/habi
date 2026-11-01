@@ -96,9 +96,9 @@ function textRuns(value: string, raw: string, active: readonly Mark[]): PMNode[]
   const out: PMNode[] = [];
   let at = 0;
   let joined = "";
-  const unescape = (s: string) => s.replace(/\\([!-/:-@[-`{-~])/g, "$1").replace(/[ \t]*\r?\n[ \t]*/g, " ");
+  const plainOf = (s: string) => s.replace(/\\([!-/:-@[-`{-~])/g, "$1").replace(/[ \t]*\r?\n[ \t]*/g, " ");
   for (const m of raw.matchAll(ENTITY)) {
-    const before = unescape(raw.slice(at, m.index));
+    const before = plainOf(raw.slice(at, m.index));
     if (before) {
       out.push(schema.text(before, active));
       joined += before;
@@ -110,7 +110,7 @@ function textRuns(value: string, raw: string, active: readonly Mark[]): PMNode[]
     else out.push(nodes.inline_raw.create({ raw: entity, display: shown, kind: "entity" }, null, active));
     at = m.index + entity.length;
   }
-  const after = unescape(raw.slice(at));
+  const after = plainOf(raw.slice(at));
   if (after) {
     out.push(schema.text(after, active));
     joined += after;

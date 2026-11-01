@@ -34,6 +34,14 @@ function worst(...states: SaveState[]): SaveState {
   return states.reduce((a, b) => (RANK.indexOf(b) > RANK.indexOf(a) ? b : a), "clean");
 }
 
+export type PageBridge = {
+  text: () => string;
+  verify: (text: string) => Promise<"same" | "words" | "differs">;
+};
+
+const NOT_FAITHFUL =
+  "Habi couldn't write this so that it reads back the same, so nothing was saved. Your edits are still here. Undo the last change, or view the source.";
+
 export function useSkillDraft(initial: LocalSkill) {
   const id = initial.summary.id;
   const client = useQueryClient();
@@ -107,12 +115,23 @@ export function useSkillDraft(initial: LocalSkill) {
   // pause later) whether the skill on screen is the one the diagnostics are for.
   const docSavedKey = useRef(docKey({ title: initial.summary.title, document: initial.document }));
 
+  /** The page, once it's open: it hands over its text when asked and vouches for it before a write. */
+  const page = useRef<PageBridge | null>(null);
+  const docValueRef = useRef(docValue);
+  docValueRef.current = docValue;
   const docSave = useAutosave<DocValue>({
     value: docValue,
     keyOf: docKey,
     enabled: docOn,
+    fresh: () => {
+      const body = page.current?.text();
+      const v = docValueRef.current;
+      return body === undefined || body === v.document.body ? v : { ...v, document: { ...v.document, body } };
+    },
     save: async (v) => {
       if (!modes.current.doc) return;
+      // What reaches the file has to read back as what's on the page, or it isn't written.
+      if ((await page.current?.verify(v.document.body)) === "differs") throw new Error(NOT_FAITHFUL);
       const fresh = await api.saveSkillDocument(id, v.title, v.document, docDigest.current);
       docDigest.current = fresh.documentDigest;
       docSavedKey.current = docKey(v);
@@ -267,6 +286,7 @@ export function useSkillDraft(initial: LocalSkill) {
 
   return {
     id,
+    page,
     skill,
     title,
     setTitle,

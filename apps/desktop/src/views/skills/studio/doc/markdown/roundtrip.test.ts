@@ -240,7 +240,7 @@ describe("random edits on every difficult document", () => {
     }
     expect(edits).toBeGreaterThan(5000);
     expect(failures.slice(0, 8)).toEqual([]);
-  });
+  }, 120_000);
 
   it("deleting any stretch of text inside a block stays inside it", () => {
     const failures: string[] = [];

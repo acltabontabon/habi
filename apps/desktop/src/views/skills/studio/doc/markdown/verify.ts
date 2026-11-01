@@ -146,16 +146,24 @@ export type Verdict =
   /** Reading the file back gives something else. It must not be saved. */
   | "differs";
 
-/** Whether `output` reads back as the document on screen. Run at save time, never per keystroke. */
-export function verifyOutput(output: string, doc: PMNode): Verdict {
-  // Read as one text, not block by block: a `[link][ref]` means nothing without its definition.
+/** What a document says, as one text. Read whole, not block by block: a `[link][ref]` needs its definition. */
+export function canonText(doc: PMNode): string {
   const canons: string[] = [];
   doc.forEach((child) => {
     const canon = canonOf(child);
     if (canon) canons.push(canon);
   });
-  const want = meaningsOf(canons.join("\n\n"));
+  return canons.join("\n\n");
+}
+
+export function verifyText(output: string, canon: string): Verdict {
+  const want = meaningsOf(canon);
   const got = meaningsOf(output);
   if (got.length === want.length && got.every((m, i) => m === want[i])) return "same";
   return wordsOf(got) === wordsOf(want) ? "words" : "differs";
+}
+
+/** Whether `output` reads back as the document on screen. Run at save time, never per keystroke. */
+export function verifyOutput(output: string, doc: PMNode): Verdict {
+  return verifyText(output, canonText(doc));
 }

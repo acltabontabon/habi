@@ -157,7 +157,7 @@ describe("the Skill Studio", () => {
     // The package format stays out of sight.
     expect(screen.queryByText("habi.yaml")).not.toBeInTheDocument();
     expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
-    expect(await screen.findByText("Or begin from")).toBeInTheDocument();
+    expect(await screen.findByText("Or begin from a shape")).toBeInTheDocument();
     const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
@@ -170,7 +170,7 @@ describe("the Skill Studio", () => {
     }));
     handlers.save_skill_document = saved;
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: "Step by step" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Step by step/ }));
     await waitFor(() => expect(saved).toHaveBeenCalled(), { timeout: 2000 });
     expect((saved.mock.calls[0]?.[0].document as { body: string } | undefined)?.body).toBe(
       templates[1]?.body,
