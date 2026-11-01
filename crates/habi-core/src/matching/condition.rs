@@ -1,8 +1,9 @@
 //! Applicability conditions: a small declarative language with `all`, `any`,
-//! `not` and four predicates (dependency, file, tag). No scripting, no
-//! regular expressions from content, bounded size.
+//! `not` and four predicates (dependency, file, tag, code). No scripting, no
+//! regular expressions from content, bounded size. `code` looks a name up among
+//! the imports and annotations inspection already found; it searches nothing.
 
-use crate::inspect::model::Ecosystem;
+use crate::inspect::model::{CodeKind, CodeLanguage, Ecosystem};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
@@ -78,11 +79,18 @@ pub enum Condition {
     Tag {
         tag: String,
     },
+    /// An import or annotation in the project's source.
+    Code {
+        kind: CodeKind,
+        name: String,
+        language: Option<CodeLanguage>,
+    },
 }
 
 impl Condition {
     /// Parses the authoring form (`{all: [...]}`, `{dependency: "g:a"}`,
-    /// `{file: "glob"}`, `{tag: "x"}`), enforcing size and depth limits.
+    /// `{file: "glob"}`, `{tag: "x"}`, `{code: {import: "x"}}`), enforcing
+    /// size and depth limits.
     /// Schema validation runs first; these checks guard the engine itself.
     pub fn parse(value: &Value) -> Result<Condition, String> {
         let mut nodes = 0;
@@ -122,6 +130,20 @@ impl Condition {
                 _ => format!("has files matching {glob}"),
             },
             Condition::Tag { tag } => crate::inspect::tags::phrase(tag),
+            Condition::Code {
+                kind,
+                name,
+                language,
+            } => {
+                let mut s = match kind {
+                    CodeKind::Import => format!("imports {name}"),
+                    CodeKind::Annotation => format!("uses the annotation {name}"),
+                };
+                if let Some(l) = language {
+                    s.push_str(&format!(" ({})", l.label()));
+                }
+                s
+            }
         }
     }
 }
@@ -132,7 +154,7 @@ fn single_key(value: &Value) -> Result<(&str, &Value), String> {
         .ok_or_else(|| "a condition must be a mapping such as `tag: lang:java`".to_string())?;
     if obj.len() != 1 {
         return Err(format!(
-            "a condition must have exactly one key (all, any, not, dependency, file or tag); found {}",
+            "a condition must have exactly one key (all, any, not, dependency, file, tag or code); found {}",
             obj.keys().cloned().collect::<Vec<_>>().join(", ")
         ));
     }
@@ -227,10 +249,59 @@ fn parse_node(value: &Value, depth: usize, nodes: &mut usize) -> Result<Conditio
                 tag: tag.to_string(),
             })
         }
+        "code" => parse_code(inner),
         other => Err(format!(
-            "unknown condition `{other}` (expected all, any, not, dependency, file or tag)"
+            "unknown condition `{other}` (expected all, any, not, dependency, file, tag or code)"
         )),
     }
+}
+
+fn parse_code(inner: &Value) -> Result<Condition, String> {
+    let o = inner
+        .as_object()
+        .ok_or("`code` must be a mapping such as `import: react`")?;
+    if let Some(other) = o
+        .keys()
+        .find(|k| !matches!(k.as_str(), "import" | "annotation" | "language"))
+    {
+        return Err(format!(
+            "unknown `code` key `{other}` (expected import, annotation or language)"
+        ));
+    }
+    let (kind, name) = match (o.get("import"), o.get("annotation")) {
+        (Some(v), None) => (CodeKind::Import, v),
+        (None, Some(v)) => (CodeKind::Annotation, v),
+        _ => return Err("`code` needs exactly one of `import` or `annotation`".into()),
+    };
+    let name = name.as_str().ok_or("a `code` name must be a string")?;
+    // Written as it reads in source; `@` is not part of an annotation's name.
+    let name = match kind {
+        CodeKind::Annotation => name.strip_prefix('@').unwrap_or(name),
+        CodeKind::Import => name,
+    };
+    let clean = name
+        .chars()
+        .all(|c| c.is_alphanumeric() || "._-/@:\\$+~*".contains(c));
+    if name.is_empty() || name.len() > 200 || name.matches('*').count() > 3 || !clean {
+        return Err(format!("invalid `code` name `{name}`"));
+    }
+    let language = match o.get("language").and_then(Value::as_str) {
+        None => None,
+        Some("java") => Some(CodeLanguage::Java),
+        Some("kotlin") => Some(CodeLanguage::Kotlin),
+        Some("javascript") => Some(CodeLanguage::Javascript),
+        Some("typescript") => Some(CodeLanguage::Typescript),
+        Some("python") => Some(CodeLanguage::Python),
+        Some("go") => Some(CodeLanguage::Go),
+        Some("rust") => Some(CodeLanguage::Rust),
+        Some("php") => Some(CodeLanguage::Php),
+        Some(other) => return Err(format!("Habi does not read `{other}` source")),
+    };
+    Ok(Condition::Code {
+        kind,
+        name: name.to_string(),
+        language,
+    })
 }
 
 fn check_name(name: &str) -> Result<String, String> {
@@ -271,6 +342,45 @@ mod tests {
             Condition::parse(&json!({"dependency": {"name": "x", "version": "not a range!!"}}))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn parses_code_conditions() {
+        assert_eq!(
+            Condition::parse(&json!({"code": {"import": "org.jooq.*", "language": "java"}})),
+            Ok(Condition::Code {
+                kind: CodeKind::Import,
+                name: "org.jooq.*".into(),
+                language: Some(CodeLanguage::Java),
+            })
+        );
+        let annotation = Condition::parse(&json!({"code": {"annotation": "@Transactional"}}));
+        assert_eq!(
+            annotation,
+            Ok(Condition::Code {
+                kind: CodeKind::Annotation,
+                name: "Transactional".into(),
+                language: None,
+            })
+        );
+        assert_eq!(
+            annotation.unwrap().describe(),
+            "uses the annotation Transactional"
+        );
+        for bad in [
+            json!({"code": "react"}),
+            json!({"code": {}}),
+            json!({"code": {"language": "java"}}),
+            json!({"code": {"import": "a", "annotation": "b"}}),
+            json!({"code": {"import": "a", "pattern": "b"}}),
+            json!({"code": {"import": ""}}),
+            json!({"code": {"import": "a b"}}),
+            json!({"code": {"import": "$(whoami)"}}),
+            json!({"code": {"import": "a*b*c*d*e"}}),
+            json!({"code": {"import": "a", "language": "cobol"}}),
+        ] {
+            assert!(Condition::parse(&bad).is_err(), "{bad}");
+        }
     }
 
     #[test]

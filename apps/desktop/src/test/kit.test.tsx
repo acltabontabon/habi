@@ -94,7 +94,9 @@ describe("the kit", () => {
     const stack = screen.getByRole("region", { name: "For this stack" });
     // The team's own rules say so; Habi's picks need no word, the page is Habi's picks.
     expect(within(stack).getAllByText("Author's rule").length).toBeGreaterThan(0);
-    expect(within(stack).getByText("Uses Spring Boot (pom.xml:6)")).toBeInTheDocument();
+    expect(
+      within(stack).getByText("Uses Spring Boot (pom.xml:6, used in BillingApplication.java:3)"),
+    ).toBeInTheDocument();
     expect(within(stack).queryByText("Habi's pick")).toBeNull();
     // Practices carry Habi's reason in place of a rule.
     const practice = screen.getByRole("region", { name: "For how you work" });

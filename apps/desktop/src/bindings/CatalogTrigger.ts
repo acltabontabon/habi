@@ -3,6 +3,7 @@ import type { TriggerKind } from "./TriggerKind";
 
 /**
  * One feature of a project that makes the catalog suggest this library's
- * skills: a dependency, a file or a detected tag, as the registry's hints say.
+ * skills: a dependency, a file, a detected tag or a name in its source, as the
+ * registry's hints say.
  */
 export type CatalogTrigger = { kind: TriggerKind, text: string, };

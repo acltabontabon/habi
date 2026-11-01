@@ -870,7 +870,7 @@ pub fn names(rule: &Condition) -> Vec<String> {
                     out.push(label);
                 }
             }
-            Condition::Dependency { .. } | Condition::File { .. } => {}
+            Condition::Dependency { .. } | Condition::File { .. } | Condition::Code { .. } => {}
         }
     }
     let mut out = Vec::new();

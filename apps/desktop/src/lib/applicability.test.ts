@@ -12,6 +12,18 @@ describe("toolPhrase", () => {
 });
 
 describe("statementsFromCondition", () => {
+  it("words conditions on source code", () => {
+    expect(
+      statementsFromCondition({ op: "code", kind: "import", name: "org.jooq", language: "java" }),
+    ).toEqual({ op: "leaf", phrase: { text: "its code imports", code: "org.jooq", after: "(java)" } });
+    expect(
+      statementsFromCondition({ op: "code", kind: "annotation", name: "Transactional", language: null }),
+    ).toEqual({
+      op: "leaf",
+      phrase: { text: "its code uses the annotation", code: "Transactional", after: undefined },
+    });
+  });
+
   it("keeps nesting the builder cannot show", () => {
     const tree = statementsFromCondition({
       op: "all",

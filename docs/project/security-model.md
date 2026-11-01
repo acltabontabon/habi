@@ -69,6 +69,14 @@ and it is what makes authentication work without Habi handling secrets.
   bounded globs and conditions). Ignore files must be regular files (1 MiB each, 16 MiB per
   inspection), and one inspection reads at most 2,000 modules, 128 MiB of manifests and 250,000
   facts; past any of these, coverage says so rather than claiming a complete answer.
+- Source files are parsed for imported and annotation names, and nothing else from them is kept
+  ([what and how much](../library-authors/detectors.md#source-code)). A name that does not look like a
+  name (a URL, anything with spaces or punctuation) is dropped. A library's rule looks a name up in
+  that list: it brings no pattern to run against the repository.
+- The source and shell parsers (tree-sitter and its grammars) are C, and run in Habi's process on input
+  from repositories and libraries. Input is bounded in size and time. tree-sitter frees an abandoned
+  parse recursively, so parsers run on threads with a stack sized for the largest input they accept;
+  hostile inputs are part of the tests.
 - Writes use atomic replacement (temp file + file flush + rename) and journals; see
   [Recovery](../guide/recovery.md). Unix directory flush failures are reported, including
   newly created parents. Windows does not flush directory entries here; this is not an
@@ -192,7 +200,8 @@ and it is what makes authentication work without Habi handling secrets.
   files, invisible characters. Nothing is executed, imported or followed. Matches in reference
   documents are capped at a notice, because documentation about an attack is not an attack.
   Rules read a file's first 5,000 lines and a longer file says so; invisible characters are looked
-  for throughout.
+  for throughout. A shell script is read as parsed: a command split over lines is one command, and a `#`
+  inside a string hides nothing. One that does not parse is read line by line.
   The wording is "found by reading the files"; a skill with no signals is not called safe.
 - **Things that run by themselves** are a caution: hooks in a skill's frontmatter (whose commands are
   read as code), `hooks.json`, plugin definitions, Git hooks, an agent's settings with hooks, and
@@ -269,6 +278,9 @@ re-creation of deleted files. All were fixed, with regression tests.
 
 By design, or not solved yet:
 
+- **The parsers have no sandbox.** They run in Habi's process. A memory-safety bug in tree-sitter or a
+  grammar, reached by a crafted source file or script, would run with Habi's rights. Nothing from a
+  parse is executed, and input is bounded, but that is not isolation.
 - **Signals are not a sandbox.** Static patterns catch what they know. A hook or script written to avoid them
   will pass, which is why every skill that ships code says so and the preview shows new scripts.
 - **A library's role is your word.** `habi source add` connects a library as community unless you pass `--team`, and the

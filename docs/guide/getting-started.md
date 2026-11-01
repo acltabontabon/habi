@@ -140,8 +140,7 @@ applicable module. **Partially checked** means some pairs are still unchecked, o
 was incomplete. A failure remains visible even if a different check passed later. An old failure, like an old pass, is marked
 out of date when the item or inspected project state changes.
 
-Habi notices ordinary source and script edits through file sizes and modification times,
-without reading their bodies. Changes outside inspection's scope (ignored files, environment
+Habi notices ordinary source and script edits through file sizes and modification times. Changes outside inspection's scope (ignored files, environment
 variables, external services, or edits preserving size and modification time) are not covered.
 A passing result establishes only that command's success condition.
 

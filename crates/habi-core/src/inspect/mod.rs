@@ -1,11 +1,12 @@
 //! Read-only repository inspection.
 //!
-//! `inspect` walks a project (bounded, ignore-aware), reads build manifests
-//! and recognized files, and returns facts with provenance plus coverage
-//! describing what could not be established. It never runs builds, Git,
-//! package managers or hooks.
+//! `inspect` walks a project (bounded, ignore-aware), reads build manifests,
+//! recognized files and the imports and annotations of its source (`code`), and
+//! returns facts with provenance plus coverage describing what could not be
+//! established. It never runs builds, Git, package managers or hooks.
 
 pub mod cargo;
+pub mod code;
 pub mod composer;
 mod describe;
 pub mod files;
@@ -1000,6 +1001,12 @@ fn inspect_within(
     cancel.check()?;
     tags::derive(&mut out, &files, &module_of, &module_ecosystems);
 
+    // What the source imports and annotates.
+    cancel.check()?;
+    let source = code::scan(&root, &files, &module_of, &options.code, cancel)?;
+    let mut code_index = source.index;
+    report.source_files_read = source.files_read;
+
     // File coverage per module: the listing is incomplete when a traversal
     // limit stopped the walk or some directories could not be read.
     let mut file_notes = std::mem::take(&mut out.file_notes);
@@ -1032,6 +1039,10 @@ fn inspect_within(
                 vec![files::content_note(n)],
             ),
             _ => out.coverage(module, "content", CoverageStatus::Complete, Vec::new()),
+        }
+        match source.gaps.get(module) {
+            Some(notes) => out.coverage(module, "code", CoverageStatus::Partial, notes.clone()),
+            None => out.coverage(module, "code", CoverageStatus::Complete, Vec::new()),
         }
     }
 
@@ -1140,8 +1151,8 @@ fn inspect_within(
     let freshness = model::Freshness::capture(&root, watched.iter().map(String::as_str));
 
     // Include file modification times: checks may depend on source or script
-    // contents, even when an edit leaves the file size unchanged. Source bodies
-    // stay unread. Unchanged files keep the same fingerprint across rescans.
+    // contents, even when an edit leaves the file size unchanged. Unchanged
+    // files keep the same fingerprint across rescans.
     let file_stamps: HashMap<_, _> = freshness
         .stamps
         .iter()
@@ -1171,6 +1182,7 @@ fn inspect_within(
 
     let mut facts = out.facts;
     facts.sort_by(|a, b| a.module.cmp(&b.module).then(a.id.cmp(&b.id)));
+    code_index.link(&facts);
     let name = modules
         .iter()
         .find(|m| m.id == ".")
@@ -1191,6 +1203,7 @@ fn inspect_within(
         fingerprint,
         inspected_at: crate::time::now(),
         files: files.into_iter().map(|(p, _)| p).collect(),
+        code: std::sync::Arc::new(code_index),
         index: Default::default(),
         freshness: Some(std::sync::Arc::new(freshness)),
     };

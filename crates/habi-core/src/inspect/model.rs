@@ -56,6 +56,46 @@ impl Ecosystem {
     }
 }
 
+/// A language whose source Habi can read for imports and annotations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum CodeLanguage {
+    Java,
+    Kotlin,
+    Javascript,
+    Typescript,
+    Python,
+    Go,
+    Rust,
+    Php,
+}
+
+impl CodeLanguage {
+    pub fn label(self) -> &'static str {
+        match self {
+            CodeLanguage::Java => "Java",
+            CodeLanguage::Kotlin => "Kotlin",
+            CodeLanguage::Javascript => "JavaScript",
+            CodeLanguage::Typescript => "TypeScript",
+            CodeLanguage::Python => "Python",
+            CodeLanguage::Go => "Go",
+            CodeLanguage::Rust => "Rust",
+            CodeLanguage::Php => "PHP",
+        }
+    }
+}
+
+/// What a `code` condition looks for in source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum CodeKind {
+    Import,
+    /// An annotation, decorator or attribute.
+    Annotation,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -162,7 +202,7 @@ pub enum FactSubject {
     File { path: String, role: String },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Evidence {
@@ -241,6 +281,9 @@ pub struct ScanReport {
     pub symlinks_skipped: u32,
     pub large_files_skipped: u32,
     pub elapsed_ms: u32,
+    /// Source files whose imports and annotations were read.
+    #[serde(default)]
+    pub source_files_read: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -266,6 +309,11 @@ pub struct ProjectInspection {
     #[serde(skip)]
     #[ts(skip)]
     pub files: Vec<String>,
+    /// Imports and annotations found in the project's source. Not sent to the
+    /// UI; evaluation cites what a rule asks about.
+    #[serde(skip)]
+    #[ts(skip)]
+    pub code: Arc<super::code::CodeIndex>,
     /// Facts, coverage and files grouped by module, built once per inspection
     /// and shared by every evaluation against it.
     #[serde(skip)]
@@ -467,6 +515,14 @@ pub(crate) struct Stamp {
 impl Stamp {
     pub(crate) fn fingerprint(&self) -> String {
         format!("{}:{:?}:{}", self.size, self.modified, self.is_dir)
+    }
+
+    pub(crate) fn size(&self) -> u64 {
+        self.size
+    }
+
+    pub(crate) fn is_regular_file(path: &Path) -> bool {
+        std::fs::symlink_metadata(path).is_ok_and(|m| m.is_file())
     }
 
     pub(crate) fn of(path: &Path) -> Option<Stamp> {

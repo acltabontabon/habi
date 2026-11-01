@@ -3418,6 +3418,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_rule_on_code_is_left_to_the_yaml_view_and_kept_as_written() {
+        let rule = json!({ "all": [{ "tag": "lang:java" }, { "code": { "annotation": "Transactional" } }] });
+        let existing = json!({ "habi": 1, "title": "Old", "applies_when": rule });
+        let form = form_from(Some(&existing), "Default");
+        assert!(!form.conditions_editable);
+        let mut edited = form.clone();
+        edited.title = "New".into();
+        let v = apply_form(Some(existing), &edited);
+        assert_eq!(v["applies_when"], rule);
+    }
+
+    #[test]
     fn form_round_trip_keeps_unknown_fields() {
         let existing = json!({
             "habi": 1, "title": "Old", "x-team": "keep me",

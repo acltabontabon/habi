@@ -9,6 +9,14 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Added
 
+- **Reasons reach into the code.** A skill that fits because of a dependency or framework now says where your
+  code uses it: *declared in pom.xml:31; imported in src/main/java/Orders.java:5 and 12 more files*. Each place
+  opens at its line. This works for every skill, with no change to any library. Finding no import changes
+  nothing, because plugins and runtimes are not imported.
+- **Rules can ask what the code does.** A `code` condition in `habi.yaml` matches an import or an annotation:
+  `code: { annotation: Transactional }`, `code: { import: org.jooq, language: java }`. It reads Java, Kotlin,
+  JavaScript, TypeScript, Python, Go, Rust and PHP, and answers *unknown* rather than *no* when not all source
+  was read. Habi keeps only those names and their places from your source, and still runs nothing.
 - **Share to libraries you cannot push to.** When you send a contribution, Habi asks the host whether you
   can push. If not, it offers to fork the library to your account with `gh` or `glab`, push the branch
   there and open the pull or merge request from it. Revisions and status follow the same fork. Without
@@ -28,6 +36,8 @@ the lock file or data directory, minor for features, patch for fixes.
 - **Habi is about half the size and much faster.** The app takes up a little over half the space it did.
   Screens that read a project or your libraries answer several times faster, and the app no longer waits
   for your shell's startup files each time it opens.
+- **Shell scripts in a skill are read as the shell reads them.** A `curl … | sh` split over several lines is one
+  command and is flagged, a `#` inside a string no longer hides what follows it, and a comment is not a command.
 - **Where to start.** Among the skills that fit, *Fits this project* now leads with up to three: each
   brings a technology the ones before did not, and none is something the project already has. The rest
   follow in a stated order: the author's rule, Habi's pick, Habi's other rules, then the skill's own words;

@@ -298,6 +298,8 @@ pub struct WalkOptions {
     pub max_depth: usize,
     /// User exclusions: globs relative to the project root.
     pub exclusions: Vec<String>,
+    /// How much source is read for its imports and annotations.
+    pub code: super::code::CodeLimits,
 }
 
 impl Default for WalkOptions {
@@ -306,6 +308,7 @@ impl Default for WalkOptions {
             max_files: 50_000,
             max_depth: 24,
             exclusions: Vec::new(),
+            code: Default::default(),
         }
     }
 }
