@@ -17,7 +17,6 @@ flate2.workspace = true
 globset.workspace = true
 hex.workspace = true
 ignore.workspace = true
-jsonschema.workspace = true
 regex.workspace = true
 unicode-normalization.workspace = true
 roxmltree.workspace = true

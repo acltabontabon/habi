@@ -33,6 +33,18 @@ function changelogWatch(): Plugin {
   };
 }
 
+/** WebKit and WebView2 read woff2, so the font packages' woff fallbacks would only add to the app. */
+function woff2Only(): Plugin {
+  return {
+    name: "habi-woff2-only",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.includes("@fontsource") || !id.endsWith(".css")) return null;
+      return code.replace(/,\s*url\([^)]+\.woff\)\s*format\('woff'\)/g, "");
+    },
+  };
+}
+
 // Tauri serves the built files; the dev server is only used during development.
 // HABI_UI_PORT / HABI_BRIDGE_PORT let a second dev pair run alongside the default one.
 export default defineConfig(({ mode, command }) => {
@@ -40,7 +52,7 @@ export default defineConfig(({ mode, command }) => {
   const uiPort = Number(env.HABI_UI_PORT || 1420);
   const bridgePort = Number(env.HABI_BRIDGE_PORT || 1430);
   return {
-    plugins: [react(), changelogWatch()],
+    plugins: [react(), changelogWatch(), woff2Only()],
     define: { __HABI_RELEASES__: JSON.stringify(releasesFor(command)) },
     clearScreen: false,
     server: {

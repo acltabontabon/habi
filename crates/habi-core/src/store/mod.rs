@@ -11,7 +11,10 @@ mod migrations;
 use crate::brand;
 use crate::error::{HabiError, Result};
 use rusqlite::Connection;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 /// Locations of Habi's machine-local data.
@@ -125,12 +128,67 @@ fn private_found(path: &Path, mode: u32) -> Result<()> {
     }
 }
 
-/// Handle to the SQLite database. Connections are opened per operation, so
-/// the handle is cheap to clone and safe to share between threads; WAL mode
-/// and a busy timeout let the desktop app and the CLI use it concurrently.
+/// Connections kept open between operations. Beyond this, a connection closes when it is done.
+const MAX_IDLE_CONNECTIONS: usize = 4;
+
+/// Handle to the SQLite database. Clones share the connections left open
+/// between operations, because opening one costs far more than most queries:
+/// it reads the schema and, as the only connection, sets up and removes the
+/// write-ahead log. The handle is cheap to clone and safe to share between
+/// threads; WAL mode and a busy timeout let the desktop app and the CLI use it
+/// concurrently.
 #[derive(Debug, Clone)]
 pub struct Store {
     path: PathBuf,
+    pool: Arc<Pool>,
+}
+
+/// The connections left open between operations.
+#[derive(Debug, Default)]
+struct Pool {
+    idle: Mutex<Vec<Connection>>,
+    /// The app is quitting: a connection closes as soon as its operation ends.
+    closing: AtomicBool,
+}
+
+/// A connection for one operation. It stays open for the next one when dropped.
+#[derive(Debug)]
+pub struct StoreConnection {
+    conn: Option<Connection>,
+    pool: Arc<Pool>,
+}
+
+impl Deref for StoreConnection {
+    type Target = Connection;
+
+    fn deref(&self) -> &Connection {
+        self.conn.as_ref().expect("present until dropped")
+    }
+}
+
+impl DerefMut for StoreConnection {
+    fn deref_mut(&mut self) -> &mut Connection {
+        self.conn.as_mut().expect("present until dropped")
+    }
+}
+
+impl Drop for StoreConnection {
+    fn drop(&mut self) {
+        let Some(conn) = self.conn.take() else {
+            return;
+        };
+        // A transaction left open must not reach the next operation: closing rolls it back.
+        if conn.is_autocommit() && !self.pool.closing.load(Ordering::Relaxed) {
+            let mut idle = self
+                .pool
+                .idle
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            if idle.len() < MAX_IDLE_CONNECTIONS {
+                idle.push(conn);
+            }
+        }
+    }
 }
 
 impl Store {
@@ -138,6 +196,7 @@ impl Store {
     pub fn open(path: &Path) -> Result<Self> {
         let store = Store {
             path: path.to_path_buf(),
+            pool: Arc::default(),
         };
         // Created private from the start, not made private afterwards.
         #[cfg(unix)]
@@ -167,6 +226,7 @@ impl Store {
                 }
             }
         }
+        drop(store.lend(conn));
         Ok(store)
     }
 
@@ -189,12 +249,43 @@ impl Store {
             }
         }
         conn.pragma_update(None, "foreign_keys", "ON")?;
-        conn.pragma_update(None, "synchronous", "NORMAL")?;
+        // A connection stays open, so nothing moves the log into the database
+        // when one closes: a commit is made durable when it is written.
+        conn.pragma_update(None, "synchronous", "FULL")?;
         Ok(conn)
     }
 
-    pub fn conn(&self) -> Result<Connection> {
-        self.connect_raw()
+    fn lend(&self, conn: Connection) -> StoreConnection {
+        StoreConnection {
+            conn: Some(conn),
+            pool: Arc::clone(&self.pool),
+        }
+    }
+
+    pub fn conn(&self) -> Result<StoreConnection> {
+        let idle = self
+            .pool
+            .idle
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .pop();
+        let conn = match idle {
+            Some(conn) => conn,
+            None => self.connect_raw()?,
+        };
+        Ok(self.lend(conn))
+    }
+
+    /// For when the app is about to quit: stops keeping connections open. The
+    /// last one to close folds the write-ahead log into the database and
+    /// removes it, so the data folder can be copied once Habi has quit.
+    pub fn close_connections(&self) {
+        self.pool.closing.store(true, Ordering::Relaxed);
+        self.pool
+            .idle
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clear();
     }
 
     pub fn schema_version(&self) -> Result<i64> {
@@ -290,6 +381,49 @@ mod tests {
         let store = Store::open(&dir.path().join("habi.db")).unwrap();
         store.set_setting("a", "1").unwrap();
         assert_eq!(store.setting("a").unwrap().as_deref(), Some("1"));
+    }
+
+    #[test]
+    fn connections_stay_open_until_closed_and_then_leave_no_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("habi.db");
+        let store = Store::open(&path).unwrap();
+        store.set_setting("a", "1").unwrap();
+        let idle = || store.pool.idle.lock().unwrap().len();
+        assert_eq!(idle(), 1);
+        {
+            let (_first, _second) = (store.conn().unwrap(), store.conn().unwrap());
+            assert_eq!(idle(), 0);
+        }
+        assert_eq!(idle(), 2);
+        let held: Vec<_> = (0..MAX_IDLE_CONNECTIONS + 1)
+            .map(|_| store.conn().unwrap())
+            .collect();
+        drop(held);
+        assert_eq!(idle(), MAX_IDLE_CONNECTIONS);
+
+        let in_use = store.conn().unwrap();
+        store.close_connections();
+        assert_eq!(idle(), 0);
+        drop(in_use);
+        assert_eq!(idle(), 0, "the one still in use closes when it is done");
+        assert!(!dir.path().join("habi.db-wal").exists());
+        assert!(!dir.path().join("habi.db-shm").exists());
+        assert_eq!(store.setting("a").unwrap().as_deref(), Some("1"));
+        assert_eq!(idle(), 0);
+        assert!(!dir.path().join("habi.db-wal").exists());
+    }
+
+    #[test]
+    fn a_transaction_left_open_does_not_reach_the_next_operation() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(&dir.path().join("habi.db")).unwrap();
+        store
+            .conn()
+            .unwrap()
+            .execute_batch("BEGIN; INSERT INTO settings (key, value) VALUES ('a', '1');")
+            .unwrap();
+        assert_eq!(store.setting("a").unwrap(), None);
     }
 
     #[test]

@@ -25,6 +25,9 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Changed
 
+- **Habi is about half the size and much faster.** The app takes up a little over half the space it did.
+  Screens that read a project or your libraries answer several times faster, and the app no longer waits
+  for your shell's startup files each time it opens.
 - **Where to start.** Among the skills that fit, *Fits this project* now leads with up to three: each
   brings a technology the ones before did not, and none is something the project already has. The rest
   follow in a stated order: the author's rule, Habi's pick, Habi's other rules, then the skill's own words;

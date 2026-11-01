@@ -414,10 +414,6 @@ impl Collector {
         }
     }
 
-    pub fn global_file_note(&mut self, note: String) {
-        self.file_notes.push(note);
-    }
-
     #[cfg(test)]
     pub fn find_dependency(&self, module: &str, name: &str) -> Option<VersionInfo> {
         self.facts.iter().find_map(|f| match &f.subject {

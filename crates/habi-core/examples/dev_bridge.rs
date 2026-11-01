@@ -155,7 +155,6 @@ impl Bridge {
             "retract" => out(h.retract(&s("projectId")?, &s("declarationId")?)?),
 
             "list_sources" => out(h.sources().list()?),
-            "get_source" => out(h.sources().get(&s("sourceId")?)?),
             "pick_library_folder" | "pick_import_folder" => Ok(match picked(a)? {
                 Some(path) => json!(
                     std::fs::canonicalize(&path)
@@ -174,13 +173,7 @@ impl Bridge {
             "dismiss_update_report" => out(h.sources().dismiss_update_report(&s("sourceId")?)?),
             "catalog" => out(h.catalog().entries()?),
             "catalog_repo_facts" => out(h.catalog().repo_facts(&s("entryId")?, cancel)?),
-            "preview_catalog_entry" => {
-                out(h
-                    .catalog()
-                    .preview(&s("entryId")?, arg(a, "refresh")?, cancel)?)
-            }
             "connect_catalog_entry" => out(h.catalog().connect(&s("entryId")?, cancel)?),
-            "forget_catalog_preview" => out(h.catalog().forget(&s("entryId")?)?),
             "catalog_fits" => out(h.catalog_fits(&s("projectId")?, cancel)?),
             "library" => out(h.sources().index(&s("sourceId")?)?),
             "item_detail" => out(h.item_detail(&s("sourceId")?, &s("itemId")?)?),
