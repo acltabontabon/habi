@@ -89,7 +89,7 @@ Files are auto-organized by type; scripts are stored but never run.
 **Skills without signals** are manual only—never recommended. Habi never auto-adds signals;
 you choose when to add them.
 
-The top bar shows **Ready** or **Draft** and what to do next, with the rest in **•••**.
+The top bar shows where the skill stands and what to do next, with the rest in **•••**.
 
 ### Using other skills
 
@@ -103,16 +103,16 @@ The instructions are what an agent reads, so a skill is named in plain words:
 and decide for themselves when to use them, so this works anywhere and promises nothing about
 what an agent will do.
 
-A skill you add is **part of this skill**: its name is a coloured token, and a sentence that uses it
-becomes a tile with a knot. One that's only named in the words is **mentioned**, shown with a dotted underline, and
-isn't counted until you press it and choose *Make it part of this skill*. Press a skill to say
-how it's used, see which agents would find it, or replace it. Each use is separate: changing one
+A skill you add is **linked**: its name is a coloured token, and a sentence that uses it becomes a
+tile with a knot. A link is a pointer, not a requirement. It doesn't install the other skill or make
+an agent use it. One that's only named in the words is **mentioned**, shown with a dotted underline,
+and Habi doesn't check it until you press it and choose *Link this skill*. Press a skill to say how it's used, see which agents would find it, or replace it. Each use is separate: changing one
 leaves the others alone.
 
 Pick up a tile by its knot to move it, or pull it off to the right to take it out. A step moves
 by its number. **How the skills fit**, in the **•••** menu, opens the whole composition as a grid of sections and skills: press an empty crossing to use
 that skill in that section, drag a knot to another section, drag a section to reorder it. A dashed
-thread means Habi can't find that skill here.
+one means Habi can't find that skill here.
 
 When a skill you use isn't found, open it to look for a match, connect the library it came from,
 or use another. Installing and sharing say which skills it names. They aren't included, and
@@ -122,7 +122,13 @@ another copy of Habi can read it; the skill works without it. See
 
 ### Readiness
 
-**Ready** or **Draft** opens what is left to do, each item with the way to it: a title, a
+That word opens three separate answers. **Format**: whether it's a valid package. **Content**: what
+could be better, read from the skill's shape, not a judgement of its advice. **Other skills**: whether
+each link can be found here. **Ready** means the format is valid and every link was found; suggestions
+don't take that away. **Valid** means a linked skill is missing, and **Draft** means the format isn't
+done yet.
+
+Each item comes with the way to it: a title, a
 purpose, a valid identifier. The identifier is changed deliberately, with *Change the
 identifier*.
 

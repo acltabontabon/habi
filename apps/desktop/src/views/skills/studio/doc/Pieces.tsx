@@ -5,7 +5,7 @@
  */
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
-import { type ReactNode, type PointerEvent as ReactPointerEvent, useEffect, useState } from "react";
+import { type ReactNode, type PointerEvent as ReactPointerEvent, useEffect, useId, useState } from "react";
 import { ghostLabel } from "./drag";
 import { markdownForFile } from "./fileRefs";
 import { parseBody } from "./markdown/parse";
@@ -136,7 +136,7 @@ const PIECES: Piece[] = [
   {
     id: "skill",
     label: "Skill",
-    hint: "Bring in another skill's expertise",
+    hint: "A link to another skill, for where it applies",
     glyph: (
       <>
         <circle cx="9" cy="9" r="3" />
@@ -162,6 +162,9 @@ export function Pieces({
   landInto: (event: PointerEvent, ghost: HTMLElement, land: (at: number) => void) => void;
 }) {
   const [filesOpen, setFilesOpen] = useState(false);
+  const [hint, setHint] = useState<Piece | null>(null);
+  const [quiet, setQuiet] = useState(false);
+  const hintId = useId();
 
   useEffect(() => {
     if (!filesOpen) return;
@@ -178,6 +181,22 @@ export function Pieces({
       window.removeEventListener("keydown", esc);
     };
   }, [filesOpen]);
+
+  // Writing, the tray steps back. It's there again the moment the pointer moves.
+  useEffect(() => {
+    const writing = (e: KeyboardEvent) => {
+      if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) setQuiet(true);
+    };
+    const wake = () => setQuiet(false);
+    view.dom.addEventListener("keydown", writing);
+    view.dom.addEventListener("blur", wake);
+    window.addEventListener("mousemove", wake);
+    return () => {
+      view.dom.removeEventListener("keydown", writing);
+      view.dom.removeEventListener("blur", wake);
+      window.removeEventListener("mousemove", wake);
+    };
+  }, [view]);
 
   const blocksFor = (path: string) => {
     const blocks: PMNode[] = [];
@@ -220,7 +239,12 @@ export function Pieces({
   };
 
   return (
-    <div className="doc-tray" role="toolbar" aria-label="Add to the page">
+    <div className={`doc-tray${quiet ? " is-quiet" : ""}`} role="toolbar" aria-label="Add to the page">
+      {hint && !filesOpen ? (
+        <div className="doc-tray-hint" role="tooltip" id={hintId}>
+          {hint.hint}. Drag it to where it belongs, or press to add it at the caret.
+        </div>
+      ) : null}
       {filesOpen ? (
         <div className="doc-tray-files">
           {files().map((f) => (
@@ -260,7 +284,11 @@ export function Pieces({
           key={piece.id}
           type="button"
           className={`doc-piece is-${piece.id}`}
-          title={`${piece.hint}. Drag it onto the page, or press to add it at the caret.`}
+          aria-describedby={hint === piece ? hintId : undefined}
+          onMouseEnter={() => setHint(piece)}
+          onMouseLeave={() => setHint(null)}
+          onFocus={() => setHint(piece)}
+          onBlur={() => setHint(null)}
           onPointerDown={(e) => lift(e, piece)}
           onClick={() => atCaret(piece)}
         >

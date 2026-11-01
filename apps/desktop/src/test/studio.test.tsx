@@ -80,6 +80,7 @@ function skill(over: Partial<LocalSkill["document"]> = {}): LocalSkill {
       deletedAt: null,
       errors: 0,
       warnings: 0,
+      links: [],
       hasApplicability: false,
       fileCount: 1,
       contentDigest: "d",
@@ -441,7 +442,7 @@ describe("the Skill Studio", () => {
     expect(within(sheet).getByRole("button", { name: /Share to a library/ })).toBeInTheDocument();
     // A modal sheet: the rest of the Studio is inert, and Escape closes it wherever focus is.
     expect(sheet).toHaveAttribute("aria-modal", "true");
-    expect(document.querySelector(".sk-stage")).toHaveAttribute("inert");
+    expect(document.querySelector(".sk-stage-col")).toHaveAttribute("inert");
     expect(document.querySelector(".sk-bar")).toHaveAttribute("inert");
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Where it came from" })).not.toBeInTheDocument();

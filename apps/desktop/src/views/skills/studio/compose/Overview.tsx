@@ -10,7 +10,7 @@ import type { Composition } from "../../../../bindings/Composition";
 import type { Dependency } from "../../../../bindings/Dependency";
 import { Icon } from "../../../../components/Icon";
 import { Button } from "../../../../components/ui";
-import { knotColor } from "./knots";
+import { KNOT } from "./knots";
 import type { Overview as OverviewData } from "./overviewData";
 import { roleWords } from "./roles";
 
@@ -101,7 +101,7 @@ export function Overview({
 
       {overview.names.length === 0 ? (
         <p className="shelf-empty">
-          No skills are part of this one yet. Press ⌘⇧K, or type /skill in the instructions, to add one.
+          No skills linked yet. Press ⌘⇧K, or type /skill in the instructions, to add one.
         </p>
       ) : (
         <div className="weave-scroll">
@@ -169,7 +169,7 @@ export function Overview({
                           <button
                             type="button"
                             className="weave-knot"
-                            style={status === "missing" ? undefined : { background: knotColor(name) }}
+                            style={status === "missing" ? undefined : { background: KNOT }}
                             aria-label={`${titleOf(name)} in ${row.title}, ${here.map((u) => roleWords(u.role)).join(", ")}`}
                             title={`${titleOf(name)}: ${here.map((u) => roleWords(u.role)).join(", ")}`}
                             onPointerDown={(e) =>
@@ -268,7 +268,7 @@ export function Overview({
 
       {composition?.mentioned.length ? (
         <section className="weave-detail">
-          <h3>Mentioned, not part of this skill</h3>
+          <h3>Mentioned, not linked</h3>
           <p>These are only named in the words. Habi hasn't counted them.</p>
           <ul>
             {composition.mentioned.map((m) => (

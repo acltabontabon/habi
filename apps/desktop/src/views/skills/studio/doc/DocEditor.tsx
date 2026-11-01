@@ -14,7 +14,16 @@ import { EditorState, NodeSelection, TextSelection, type Transaction } from "pro
 import { tableEditing } from "prosemirror-tables";
 import { Transform } from "prosemirror-transform";
 import { EditorView, type NodeViewConstructor } from "prosemirror-view";
-import { type Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import type { LineMark, SourceEditorHandle } from "../../../../components/SourceEditor";
 import { BlockHandle, type BlockMenuTarget } from "./BlockHandle";
 import { BlockTools } from "./BlockTools";
@@ -29,6 +38,7 @@ import { type Span, write } from "./markdown/reconcile";
 import { schema } from "./markdown/schema";
 import { canonText, type Verdict } from "./markdown/verify";
 import { verifyInBackground } from "./markdown/verifyWorker";
+import { placeBlocks } from "./moves";
 import { imageView, opaqueView, skillRefView, type ViewContext } from "./nodeViews";
 import { Pieces } from "./Pieces";
 import {
@@ -58,6 +68,8 @@ export type DocEditorHandle = SourceEditorHandle & {
   refreshFiles: () => void;
   /** Markdown where something was dropped, or at the caret. */
   insertAt: (markdown: string, coords: { left: number; top: number } | null) => void;
+  /** Blocks of their own, in the gap nearest a point on screen: where a dropped file lands. */
+  insertBlocksNear: (markdown: string, coords: { left: number; top: number }) => void;
   /** The text right now, without waiting for the pause. */
   text: () => string;
   /** Replaces what mentions are said to be, after their record changed elsewhere. */
@@ -127,6 +139,7 @@ export function DocEditor({
   context,
   annotate,
   onSettled,
+  trayHost,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -147,7 +160,11 @@ export function DocEditor({
   annotate?: (doc: PMNode) => Map<number, { role: string; from: string | null }>;
   /** The document after typing paused. */
   onSettled?: (doc: PMNode) => void;
+  /** Where the tray lives, clear of the page. Null keeps it away; unset leaves it under the page. */
+  trayHost?: HTMLElement | null;
 }) {
+  const tray = (pieces: ReactNode) =>
+    trayHost === undefined ? pieces : trayHost ? createPortal(pieces, trayHost) : null;
   const host = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const parsed = useRef<Parsed | null>(null);
@@ -438,6 +455,27 @@ export function DocEditor({
         view.dispatch(tr.scrollIntoView());
         view.focus();
       },
+      insertBlocksNear: (markdown, coords) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const hit = view.posAtCoords(coords);
+        const blocks: PMNode[] = [];
+        parseBody(markdown).doc.forEach((block) => {
+          blocks.push(block);
+        });
+        let at = view.state.doc.content.size;
+        if (hit) {
+          const $hit = view.state.doc.resolve(hit.pos);
+          if ($hit.depth === 0) at = hit.pos;
+          else {
+            const dom = view.nodeDOM($hit.before(1));
+            const box = dom instanceof HTMLElement ? dom.getBoundingClientRect() : null;
+            at = box && coords.top < box.top + box.height / 2 ? $hit.before(1) : $hit.after(1);
+          }
+        }
+        placeBlocks(view, at, blocks);
+        view.focus();
+      },
       text: () => settle(),
       setRoles: (roles) => {
         const view = viewRef.current;
@@ -512,23 +550,25 @@ export function DocEditor({
           }}
         />
       ) : null}
-      {view && !readOnly ? (
-        <Pieces
-          view={view}
-          files={() => contextRef.current.files?.() ?? []}
-          onChoose={(what) => contextRef.current.onChoosePiece?.(what)}
-          landInto={(event, ghost, land) =>
-            armDrag(event, () => ({
-              view,
-              ghost,
-              grip: { x: 30, y: 16 },
-              onLand: (landing) => {
-                if (landing.type === "slot") land(landing.slot.pos);
-              },
-            }))
-          }
-        />
-      ) : null}
+      {tray(
+        view && !readOnly ? (
+          <Pieces
+            view={view}
+            files={() => contextRef.current.files?.() ?? []}
+            onChoose={(what) => contextRef.current.onChoosePiece?.(what)}
+            landInto={(event, ghost, land) =>
+              armDrag(event, () => ({
+                view,
+                ghost,
+                grip: { x: 30, y: 16 },
+                onLand: (landing) => {
+                  if (landing.type === "slot") land(landing.slot.pos);
+                },
+              }))
+            }
+          />
+        ) : null,
+      )}
       {view && slash && !readOnly ? (
         <SlashMenu ref={slashMenu} view={view} slash={slash} extras={slashExtras} />
       ) : null}

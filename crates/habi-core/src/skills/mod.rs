@@ -465,6 +465,8 @@ pub struct LocalSkillSummary {
     /// Problems that block installing, exporting and sharing.
     pub errors: u32,
     pub warnings: u32,
+    /// The skills this one deliberately links to, by name.
+    pub links: Vec<String>,
     pub has_applicability: bool,
     pub file_count: u32,
     pub content_digest: String,
@@ -1549,6 +1551,7 @@ impl<'a> Skills<'a> {
         });
         let dir = package_dir(self.paths, &row.id).unwrap_or_default();
         let composes = item.map(|i| i.composes.clone()).unwrap_or_default();
+        let links = composes.iter().map(|e| e.skill.clone()).collect();
         let mentions = skill_mentions(&document.body);
         let unmentioned = composes
             .iter()
@@ -1572,6 +1575,7 @@ impl<'a> Skills<'a> {
                 deleted_at: row.deleted_at.clone(),
                 errors: count(&diagnostics, DiagnosticLevel::Error),
                 warnings: count(&diagnostics, DiagnosticLevel::Warning),
+                links,
                 has_applicability,
                 file_count: files.len() as u32,
                 modified_locally: match (&row.baseline, &row.origin_digest) {

@@ -204,7 +204,7 @@ describe("one use, opened", () => {
 
   it("never promises an agent will use it", () => {
     render(<RefInspector {...handlers} target={target} dependency={dep()} shelf={[skill()]} />);
-    expect(screen.getByText(/decide for themselves when to use them/)).toBeInTheDocument();
+    expect(screen.getByText(/decide for themselves whether to use it/)).toBeInTheDocument();
   });
 
   it("tells a mention apart from something composed, and lets the author promote it", async () => {
@@ -218,9 +218,9 @@ describe("one use, opened", () => {
         onMakePart={onMakePart}
       />,
     );
-    expect(screen.getByText(/Only mentioned in the words/)).toBeInTheDocument();
+    expect(screen.getByText(/Only named in the words/)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Make it part of this skill" }));
+    await userEvent.click(screen.getByRole("button", { name: "Link this skill" }));
     expect(onMakePart).toHaveBeenCalled();
   });
 
@@ -289,7 +289,7 @@ describe("one use, opened", () => {
       />,
     );
     expect(screen.getByText(/Changes apply only to this one/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Use another skill" }));
+    await userEvent.click(screen.getByRole("button", { name: "Link another skill" }));
     expect(onReplace).toHaveBeenLastCalledWith(false);
     await userEvent.click(screen.getByRole("button", { name: "Replace all 3" }));
     expect(onReplace).toHaveBeenLastCalledWith(true);
@@ -399,7 +399,7 @@ describe("the loom", () => {
     );
     expect(screen.getByText(/C-D isn't on this machine/)).toBeInTheDocument();
     expect(screen.getByText(/A-B → C-D → A-B/)).toBeInTheDocument();
-    expect(screen.getByText("Mentioned, not part of this skill")).toBeInTheDocument();
+    expect(screen.getByText("Mentioned, not linked")).toBeInTheDocument();
     expect(screen.getByText("E-F")).toBeInTheDocument();
   });
 

@@ -167,7 +167,7 @@ export function Inside({
         <p>
           {deps.length
             ? "Each has its own size, and loads only if the agent chooses to use it. That's why they aren't added up here."
-            : "None are part of this skill yet."}
+            : "None linked yet."}
         </p>
         {deps.length ? (
           <ul className="inside-rows is-plain">

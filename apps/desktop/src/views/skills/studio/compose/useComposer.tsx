@@ -36,7 +36,7 @@ import {
   setRole,
 } from "./edit";
 import { Inside } from "./Inside";
-import { knotColor, titleOfName } from "./knots";
+import { KNOT, titleOfName } from "./knots";
 import { Overview } from "./Overview";
 import { endOfRow, overviewOf } from "./overviewData";
 import { type InspectorTarget, RefInspector } from "./RefInspector";
@@ -262,7 +262,7 @@ export function useComposer({
       armDrag(event, () => {
         const current = withView();
         if (!current) return null;
-        const color = knotColor(s.name);
+        const color = KNOT;
         return {
           view: current,
           ghost: ghostLabel(s.title, color),
@@ -294,7 +294,7 @@ export function useComposer({
         const pullAt = event.clientX + 64;
         return {
           view: current,
-          ghost: ghostLabel(titleOf(name), knotColor(name)),
+          ghost: ghostLabel(titleOf(name), KNOT),
           grip: { x: 18, y: 15 },
           source: range,
           pulls: (x) => x > pullAt,
@@ -370,7 +370,6 @@ export function useComposer({
         title: titleOf(name),
         explicit: role !== null,
         status: statusOf(name),
-        dye: knotColor(name),
       }),
       onSkillClick: (name, pos, rect) => openInspector(name, pos, rect),
       onLiftUse: (pos, event) => liftKnot(pos, event),
@@ -465,7 +464,7 @@ export function useComposer({
         loading={shelfQuery.isLoading}
         initialQuery={panel.query}
         currentName={draft.document.name}
-        title={panel.replace ? "Use another skill" : "Use a skill"}
+        title={panel.replace ? "Link another skill" : "Link a skill"}
         note={
           panel.replace
             ? panel.replace.all
@@ -608,6 +607,26 @@ export function useComposer({
     />
   ) : null;
 
+  const others = useMemo(
+    () =>
+      (composition.data?.dependencies ?? []).map((d) => ({
+        name: d.name,
+        title: titleOf(d.name),
+        status: statusOf(d.name),
+      })),
+    [composition.data, titleOf, statusOf],
+  );
+
+  /** Goes to where a skill is linked, and opens it there. */
+  const showUse = useCallback(
+    (name: string) => {
+      const current = withView();
+      const use = current && occurrencesIn(current.state.doc).find((o) => o.name === name);
+      if (use) openUse(use.pos);
+    },
+    [withView, openUse],
+  );
+
   const liveComposes = useCallback(() => {
     const current = editor.current?.view();
     return current ? derived(current.state.doc) : loaded.current;
@@ -624,6 +643,8 @@ export function useComposer({
     annotate,
     onSettled,
     liveComposes,
+    others,
+    showUse,
     /** How many skills this one is deliberately made of. */
     used: composition.data?.dependencies.length ?? 0,
     canon: canonOf,

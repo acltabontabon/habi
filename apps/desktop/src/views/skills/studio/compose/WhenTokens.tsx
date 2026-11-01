@@ -176,6 +176,9 @@ export function WhenTokens({
       ) : null}
       {editing ? (
         <div className="sk-when-menu">
+          {applies.length === 0 && !text ? (
+            <p className="sk-when-lead">Optional. Projects that have this get the skill suggested.</p>
+          ) : null}
           {offers.length ? (
             <div id={`${id}-offers`} role="listbox" aria-label="What that could mean">
               {offers.map((o, i) => (

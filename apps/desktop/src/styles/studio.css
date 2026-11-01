@@ -177,6 +177,18 @@ button.rd-word:hover,
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok-ink) 18%, transparent);
 }
 
+.rd-word.is-check .rd-dot {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--thread-strong);
+}
+
+.rd-note {
+  margin: 6px 0 0;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
 .rd-word.is-draft .rd-dot {
   background: transparent;
   border: 1.5px solid var(--warn-ink);
@@ -271,6 +283,15 @@ button.rd-word:hover,
 .rd-item.is-todo .rd-label,
 .rd-item.is-todo .rd-detail {
   grid-column: 2;
+}
+
+.rd-item.is-other {
+  grid-template-columns: 16px auto minmax(0, 1fr);
+}
+
+.rd-item.is-other .rd-label,
+.rd-item.is-other .rd-detail {
+  grid-column: auto;
 }
 
 .rd-mark {
@@ -371,6 +392,7 @@ button.rd-word:hover,
 
 /* The skill: a reading measure, with the outline's spine in the margin. */
 .sk-page {
+  --measure: 660px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--measure)) minmax(0, 1fr);
   padding: clamp(var(--s5), 5cqi, var(--s8)) var(--gutter) 0;

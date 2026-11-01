@@ -175,7 +175,7 @@ export function setRole(view: EditorView, pos: number, role: RoleId): void {
   if (!found.blank || found.blank === "…") selectBlank(view, at.blockPos);
 }
 
-/** Makes a plain mention part of this skill. */
+/** Turns a plain mention into a link. */
 export function promote(view: EditorView, pos: number, from?: ComposeSource | null): void {
   if (!chipAt(view, pos)) return;
   const tr = view.state.tr.setNodeAttribute(pos, "role", USED_HERE);

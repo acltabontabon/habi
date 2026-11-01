@@ -165,7 +165,7 @@ export function SelectionBar({
                 onLinkSkill(view.state.doc.textBetween(from, to, " "));
               }}
             >
-              Use a skill
+              Link a skill
             </button>
           ) : null}
         </>

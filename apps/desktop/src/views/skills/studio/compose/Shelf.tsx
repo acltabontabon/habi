@@ -6,7 +6,7 @@
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ShelfSkill } from "../../../../bindings/ShelfSkill";
 import { Icon } from "../../../../components/Icon";
-import { knotColor } from "./knots";
+import { KNOT } from "./knots";
 
 const ORDER: Record<string, number> = { mine: 0, machine: 1, project: 2, library: 3, community: 4 };
 
@@ -43,7 +43,7 @@ export function Shelf({
   skills,
   loading,
   initialQuery = "",
-  title = "Use a skill",
+  title = "Link a skill",
   note,
   currentName,
   onPick,
@@ -170,7 +170,7 @@ export function Shelf({
                     if (e.key === "Enter") onPick(s);
                   }}
                 >
-                  <span className="shelf-knot" style={{ background: knotColor(s.name) }} aria-hidden="true" />
+                  <span className="shelf-knot" style={{ background: KNOT }} aria-hidden="true" />
                   <span className="shelf-words">
                     <span className="shelf-name">{s.title || s.name || "Untitled skill"}</span>
                     <span className={`shelf-what${expanded ? " is-open" : ""}`}>

@@ -129,6 +129,7 @@ export function Instructions({
   draft,
   editor,
   sourceMode,
+  trayHost,
   composer,
   onCursorLine,
   onOpenFile,
@@ -137,6 +138,7 @@ export function Instructions({
   editor: RefObject<DocEditorHandle | null>;
   /** The same text, as text: for those who want the Markdown itself. */
   sourceMode: boolean;
+  trayHost: HTMLElement | null;
   composer: Composer;
   onCursorLine: (line: number) => void;
   /** A reference to one of the package's files was ⌘-clicked. */
@@ -279,6 +281,11 @@ export function Instructions({
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       ) : null}
+      {empty && !trashed && !sourceMode ? (
+        <p className="doc-intro">
+          Agents read the line above to decide when to open this skill, then follow what you write here.
+        </p>
+      ) : null}
       <div hidden={sourceMode}>
         <DocEditor
           handle={editor}
@@ -294,6 +301,7 @@ export function Instructions({
           slashExtras={slashExtras}
           annotate={composer.annotate}
           onSettled={composer.onSettled}
+          trayHost={sourceMode ? null : trayHost}
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       </div>

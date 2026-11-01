@@ -156,6 +156,8 @@ fn zip_between_independent_homes_keeps_body_composes_and_comments() {
     );
     assert_eq!(imported.document.body, body);
     assert_eq!(imported.composes, skill.composes);
+    let names: Vec<String> = skill.composes.iter().map(|e| e.skill.clone()).collect();
+    assert_eq!(imported.summary.links, names);
     assert_eq!(imported.metadata_text, Some(meta));
     assert_eq!(
         other

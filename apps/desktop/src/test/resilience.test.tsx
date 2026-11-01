@@ -258,6 +258,7 @@ function skill(): LocalSkill {
       deletedAt: null,
       errors: 0,
       warnings: 0,
+      links: [],
       hasApplicability: false,
       fileCount: 1,
       contentDigest: "d",

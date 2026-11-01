@@ -49,6 +49,7 @@ function skillFrom(origin: LocalSkill["summary"]["origin"]): LocalSkill {
       deletedAt: null,
       errors: 0,
       warnings: 0,
+      links: [],
       hasApplicability: false,
       fileCount: 4,
       contentDigest: "d",

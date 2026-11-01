@@ -109,7 +109,8 @@ export function useDropToAdd({
             else if (p.type === "drop") {
               setHovering(false);
               if (p.paths.length > 0) {
-                const scale = window.devicePixelRatio || 1;
+                // Elsewhere the position is in device pixels. On macOS it's already in points.
+                const scale = navigator.platform.startsWith("Mac") ? 1 : window.devicePixelRatio || 1;
                 void add(p.paths, { left: p.position.x / scale, top: p.position.y / scale });
               }
             }

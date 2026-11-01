@@ -11,11 +11,10 @@ import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 export type SkillLook = {
   /** How the name reads to a person. */
   title: string;
-  /** Deliberately part of this skill, or only named in its words. */
+  /** Deliberately linked, or only named in the words. */
   explicit: boolean;
   /** Found somewhere Habi can see, or not. */
   status: "found" | "unsure" | "missing";
-  dye?: string;
 };
 
 export type ViewContext = {
@@ -207,7 +206,6 @@ export function skillRefView(ctx: () => ViewContext): NodeViewConstructor {
       dom.className = `doc-skill is-${look.explicit ? "composed" : "mentioned"} is-${look.status}`;
       dom.dataset.skillRef = name;
       dom.textContent = "";
-      if (look.dye) dom.style.setProperty("--knot", look.dye);
       const word = document.createElement("span");
       word.className = "doc-skill-name";
       word.textContent = n.attrs.plugin ? `${n.attrs.plugin as string}: ${look.title}` : look.title;
@@ -220,7 +218,16 @@ export function skillRefView(ctx: () => ViewContext): NodeViewConstructor {
       dom.append(word);
       // The file says "the x skill". A composed one is an object, and needs no noun to say so.
       if (!n.attrs.plugin && !look.explicit) dom.append(document.createTextNode(" skill"));
-      const says = look.explicit ? "Part of this skill" : "Mentioned";
+      if (look.explicit && look.status === "missing") {
+        const note = document.createElement("span");
+        note.className = "doc-skill-note";
+        note.textContent = "not found here";
+        dom.append(note);
+      }
+      const says = look.explicit ? "Linked" : "Mentioned";
+      dom.title = look.explicit
+        ? "Press to see where it's found and how it's used"
+        : "Only named in the words. Press to link it";
       const where = look.status === "missing" ? ", not found here" : "";
       dom.setAttribute("aria-label", `${look.title} skill. ${says}${where}.`);
     };

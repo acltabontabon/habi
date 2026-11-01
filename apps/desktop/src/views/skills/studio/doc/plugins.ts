@@ -24,7 +24,7 @@ export function promptPlugin(promptFor: () => PromptFor): Plugin {
         const pos = docEmpty ? 0 : $from.before(1);
         const node = docEmpty ? doc.firstChild : $from.parent;
         if (!node || node.type.name !== "paragraph") return null;
-        const text = promptFor()(doc) ?? (docEmpty ? null : "Type / for steps, code, files and other skills");
+        const text = promptFor()(doc) ?? (docEmpty ? null : "Keep writing, or pick a piece from below");
         if (!text) return null;
         return DecorationSet.create(doc, [
           Decoration.node(pos, pos + node.nodeSize, { class: "is-prompt", "data-prompt": text }),

@@ -6,7 +6,6 @@
 import type { Node as PMNode } from "prosemirror-model";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import { knotColor } from "../compose/knots";
 
 /** Where the first skill a block deliberately uses sits inside it, and its name. */
 export function composedUseIn(block: PMNode): { offset: number; name: string } | null {
@@ -25,12 +24,7 @@ function decorate(doc: PMNode): DecorationSet {
   doc.forEach((block, pos) => {
     const use = composedUseIn(block);
     if (use) {
-      decos.push(
-        Decoration.node(pos, pos + block.nodeSize, {
-          class: "doc-use",
-          style: `--knot: ${knotColor(use.name)}`,
-        }),
-      );
+      decos.push(Decoration.node(pos, pos + block.nodeSize, { class: "doc-use" }));
     }
   });
   return DecorationSet.create(doc, decos);

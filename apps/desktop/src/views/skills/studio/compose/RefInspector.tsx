@@ -8,7 +8,7 @@ import type { Dependency } from "../../../../bindings/Dependency";
 import type { ShelfSkill } from "../../../../bindings/ShelfSkill";
 import { Button } from "../../../../components/ui";
 import { clientName } from "./clients";
-import { knotColor, titleOfName } from "./knots";
+import { KNOT, titleOfName } from "./knots";
 import { ROLES, type RoleId, roleInfo, USED_HERE } from "./roles";
 
 export type InspectorTarget = {
@@ -47,9 +47,7 @@ function statusLine(
         };
       }
       return {
-        text: shelf[0]
-          ? `Agents will find it by name, in ${shelf[0].sourceLabel.toLowerCase()}.`
-          : "Agents will find it by name.",
+        text: shelf[0] ? `Found by name, in ${shelf[0].sourceLabel.toLowerCase()}.` : "Found by name.",
         tone: "ok",
       };
     case "ambiguous":
@@ -132,7 +130,7 @@ export function RefInspector({
       <header className="ref-head">
         <span
           className={`ref-knot${missing ? " is-ghost" : ""}`}
-          style={{ background: missing ? undefined : knotColor(target.name) }}
+          style={{ background: missing ? undefined : KNOT }}
           aria-hidden="true"
         />
         <div className="ref-title">
@@ -165,8 +163,8 @@ export function RefInspector({
         </fieldset>
       ) : (
         <div className="ref-mentioned">
-          <p>Only mentioned in the words. It isn't counted as part of this skill.</p>
-          <Button onClick={onMakePart}>Make it part of this skill</Button>
+          <p>Only named in the words, so Habi doesn't check it.</p>
+          <Button onClick={onMakePart}>Link this skill</Button>
         </div>
       )}
 
@@ -188,7 +186,10 @@ export function RefInspector({
             ))}
           </ul>
         ) : null}
-        <p className="ref-truth">Agents find skills by name, and decide for themselves when to use them.</p>
+        <p className="ref-truth">
+          A link is a pointer, not a requirement. Agents decide for themselves whether to use it, and linking
+          installs nothing.
+        </p>
       </section>
 
       {missing ? (
@@ -219,7 +220,7 @@ export function RefInspector({
 
       <footer className="ref-actions">
         <button type="button" className="link-btn" onClick={() => onReplace(false)}>
-          Use another skill
+          Link another skill
         </button>
         {target.otherUses.length ? (
           <button type="button" className="link-btn" onClick={() => onReplace(true)}>

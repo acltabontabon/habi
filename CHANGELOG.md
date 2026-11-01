@@ -14,11 +14,11 @@ the lock file or data directory, minor for features, patch for fixes.
   block or whole section by its handle while the page makes room. Your file stays ordinary Markdown, and only
   what you change is rewritten, so a Git diff shows your edit and nothing else. What the page can't show as
   rich text stays on it, kept exactly as written.
-- **Build a skill from other skills.** Drag skills in from yours, this machine, your projects and your
+- **Link a skill to other skills.** Drag skills in from yours, this machine, your projects and your
   libraries, and each becomes a sentence an agent can read anywhere, drawn as a tile on the page. Pick up a tile
   by its knot to move it, or pull it away to take it out. A grid of sections and skills shows larger
-  compositions: press a crossing to use a skill in that section. Habi says which agents would find each skill,
-  and never installs one on its own.
+  compositions: press a crossing to use a skill in that section. A link is a pointer, not a requirement: Habi says which
+  agents would find each skill, never installs one on its own, and can't make an agent use it.
 - **See inside a skill.** A panel shows what it holds in the order an agent meets it, with rough sizes, and
   files open a preview right where the instructions name them.
 - **More ways to start a skill.** Start with research, a document, an analysis, or coordinating other skills, alongside the existing patterns.

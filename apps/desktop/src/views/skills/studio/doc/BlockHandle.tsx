@@ -217,9 +217,13 @@ export function BlockHandle({
             style={{ left: spot.left, top: spot.top }}
             aria-label="Move or change this block"
             title={
-              spot.node.type === schema.nodes.heading
-                ? "Drag to move this whole section. Click for more."
-                : "Drag to move. Click for more."
+              spot.bead
+                ? composedUseIn(spot.node)
+                  ? "Drag to move. Pull right to take it out. Click for more."
+                  : "Drag to reorder. Click for more."
+                : spot.node.type === schema.nodes.heading
+                  ? "Drag to move this whole section. Click for more."
+                  : "Drag to move. Click for more."
             }
             tabIndex={-1}
             onPointerDown={(e) => {

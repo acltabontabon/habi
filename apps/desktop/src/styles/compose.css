@@ -10,9 +10,25 @@
   flex: 1;
 }
 
-.sk-with-panel > .sk-stage {
-  container: skstage / inline-size;
+/* The page scrolls above the tray, so the tray can never lie over the words. */
+.sk-tray-dock {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding: var(--s2) var(--gutter) var(--s3);
+}
+
+.sk-tray-dock:empty,
+.sk-tray-dock[hidden] {
+  display: none;
+}
+
+.sk-stage-col {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
+  container: skstage / inline-size;
   min-width: 0;
 }
 
@@ -1253,22 +1269,40 @@ body.is-lifting [role="tooltip"] {
 /* ---------- The tray ---------- */
 
 .doc-tray {
-  position: sticky;
+  position: relative;
   z-index: 8;
-  bottom: var(--s4);
   display: flex;
   justify-content: center;
   gap: 2px;
   width: fit-content;
   max-width: 100%;
-  margin: var(--s5) auto 0;
+  margin: 0 auto;
   padding: 4px;
   border-radius: 12px;
   background: var(--paper-raised);
-  box-shadow:
-    0 0 0 0.5px var(--hairline-strong),
-    0 12px 30px -14px rgb(0 0 0 / 0.36);
+  box-shadow: 0 0 0 0.5px var(--hairline-strong);
   font-family: var(--font-ui);
+  transition: opacity 240ms var(--ease);
+}
+
+.doc-tray.is-quiet:not(:hover, :focus-within) {
+  opacity: 0.4;
+}
+
+.doc-tray-hint {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  width: max-content;
+  max-width: min(460px, 90vw);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  font-size: var(--text-xs);
+  color: var(--paper);
+  pointer-events: none;
 }
 
 .doc-piece {
@@ -1304,6 +1338,20 @@ body.is-lifting [role="tooltip"] {
 
 .doc-piece.is-skill {
   color: var(--thread-strong);
+}
+
+@media (max-height: 640px) {
+  .doc-piece span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .doc-piece {
+    min-width: 36px;
+  }
 }
 
 @container skstage (max-width: 620px) {
@@ -1689,6 +1737,13 @@ body.is-lifting [role="tooltip"] {
     0 0 0 0.5px var(--hairline-strong),
     0 10px 30px -8px rgb(0 0 0 / 0.22);
   animation: sk-pop-in 140ms var(--ease);
+}
+
+.sk-when-lead {
+  margin: 0;
+  padding: 5px 9px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
 }
 
 .sk-when-menu [role="option"] {

@@ -7,11 +7,18 @@
 :root {
   --font-page: "IBM Plex Serif", ui-serif, Georgia, "Times New Roman", serif;
   --page-size: 17px;
-  --page-line: 1.68;
+  --page-line: 1.62;
 }
 
 .doc-editor {
   position: relative;
+}
+
+.doc-intro {
+  margin: 0 0 var(--s4);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
 }
 
 .doc-page {
@@ -45,6 +52,7 @@
 
 .doc-page p {
   margin: 0 0 0.85em;
+  text-wrap: pretty;
 }
 
 /* Structure speaks in the interface's own voice. */
@@ -54,7 +62,7 @@
 .doc-page h4,
 .doc-page h5,
 .doc-page h6 {
-  margin: 1.9em 0 0.5em;
+  margin: 2.1em 0 0.45em;
   font-family: var(--font-ui);
   color: var(--ink);
   text-wrap: balance;
@@ -72,7 +80,7 @@
 }
 
 .doc-page h2 {
-  font-size: 1.22em;
+  font-size: 1.3em;
   font-weight: 620;
   line-height: 1.3;
   letter-spacing: -0.012em;
@@ -115,8 +123,8 @@
   border-radius: 4px;
   background: var(--paper-sunken);
   font-family: var(--font-mono);
-  font-size: 0.82em;
-  color: var(--ink-soft);
+  font-size: 0.86em;
+  color: var(--ink);
   white-space: break-spaces;
 }
 
@@ -160,6 +168,7 @@
 .doc-page > ol > li {
   margin: 0;
   padding-bottom: 0.5em;
+  line-height: 1.55;
 }
 
 .doc-page > ol > li:not(.doc-task)::before {
@@ -259,7 +268,7 @@
   padding: 0.85em 1.1em 0.9em;
   border-left: 0;
   border-radius: 12px;
-  background: var(--thread-wash);
+  background: color-mix(in srgb, var(--thread) 7%, var(--paper-raised));
   font-style: normal;
   color: var(--ink);
 }
@@ -308,9 +317,9 @@
   background: var(--paper-sunken);
   box-shadow: inset 0 0 0 0.5px var(--hairline-strong);
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
   white-space: pre;
   overflow-x: auto;
   tab-size: 2;
@@ -555,6 +564,18 @@
   color: var(--ink-soft);
 }
 
+.doc-skill-note {
+  margin-left: 0.5em;
+  font-weight: 450;
+  color: var(--ink-muted);
+}
+
+/* Found under another name or somewhere unsure: the knot stays open until it's known. */
+.doc-page p.doc-use:has(.doc-skill.is-unsure)::before {
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 2.5px var(--thread);
+}
+
 .doc-skill.is-missing .doc-skill-knot {
   background: none;
   box-shadow: inset 0 0 0 1px var(--ink-faint);
@@ -716,6 +737,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--hairline-strong);
   opacity: 1;
 }
 

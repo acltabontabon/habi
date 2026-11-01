@@ -238,6 +238,7 @@ describe("share dialog", () => {
       deletedAt: null,
       errors: 0,
       warnings: 0,
+      links: [],
       hasApplicability: true,
       fileCount: 1,
       contentDigest: "d",

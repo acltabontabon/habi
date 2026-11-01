@@ -1,9 +1,9 @@
 /**
- * Whether the skill is ready, as one word with one place to look: Ready or
- * Draft in the bar, and behind it what that is made of — what still needs
- * doing (each with the way to it), what is done, and what is optional. The
- * identifier agents and install folders use lives here too: it is part of
- * being ready, rarely something to look at.
+ * Where the skill stands, as one word with one place to look. Behind it are three
+ * separate questions: is it a valid package, could the words be better, and can the
+ * other skills it links to be found. Ready means the first and the last are fine;
+ * suggestions never take that away. The identifier agents and install folders use
+ * lives here too: it is part of being valid, rarely something to look at.
  */
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { Diagnostic } from "../../../bindings/Diagnostic";
@@ -221,6 +221,14 @@ function needWords(
   return p;
 }
 
+export type OtherSkill = { name: string; title: string; status: "found" | "unsure" | "missing" };
+
+const OTHER_WORDS: Record<OtherSkill["status"], string> = {
+  found: "Found",
+  unsure: "Can't be sure",
+  missing: "Not found here",
+};
+
 export function readinessOf(draft: SkillDraft) {
   const errors = draft.skill.diagnostics.filter((d) => d.level === "error");
   const notes = draft.skill.diagnostics.filter((d) => d.level !== "error");
@@ -264,6 +272,8 @@ export function Readiness({
   onFix,
   better,
   onRefine,
+  others,
+  onOpenOther,
 }: {
   draft: SkillDraft;
   standing: SkillStanding | undefined;
@@ -273,11 +283,15 @@ export function Readiness({
   /** What would make it better beyond being valid, most useful first. */
   better: Refinement[];
   onRefine: (r: Refinement) => void;
+  /** The skills this one links to, and whether they can be found. */
+  others: OtherSkill[];
+  onOpenOther: (name: string) => void;
 }) {
   const { document, trashed } = draft;
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const { errors, notes, ready } = readinessOf(draft);
+  const missing = others.filter((o) => o.status === "missing").length;
   // Asked to change the identifier from elsewhere (the palette, a problem): open here.
   useEffect(() => {
     if (identEditing) setOpen(true);
@@ -305,41 +319,47 @@ export function Readiness({
     },
   ];
 
+  const word = !ready ? "Draft" : missing > 0 ? "Valid" : "Ready";
+  const headline = !ready ? "Draft" : missing > 0 ? "Valid, with a skill to check" : "Ready to use";
+  const improve = better.length + notes.length;
+
   return (
     <span className="rd">
       <button
         ref={button}
         type="button"
-        className={`rd-word${ready ? " is-ready" : " is-draft"}`}
+        className={`rd-word${!ready ? " is-draft" : missing > 0 ? " is-check" : " is-ready"}`}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >
         <span className="rd-dot" aria-hidden="true" />
-        {ready ? "Ready" : "Draft"}
+        {word}
         {!ready ? <span className="rd-count"> · {plural(errors.length, "thing")} to finish</span> : null}
-        {/* Ready, with ways to make it better, broken links among them: a saffron knot and how many. */}
-        {ready && better.length + notes.length > 0 ? (
+        {ready && missing > 0 ? (
+          <span className="rd-count"> · {plural(missing, "skill")} not found</span>
+        ) : null}
+        {ready && missing === 0 && improve > 0 ? (
           <span className="rd-better">
             <span className="rd-better-dot" aria-hidden="true" />
-            <span className="rd-better-count"> · {better.length + notes.length} to improve</span>
+            <span className="rd-better-count"> · {improve} to improve</span>
           </span>
         ) : null}
       </button>
       <Popover
         open={open}
         anchor={button}
-        label={ready ? "Ready to use" : "What is left to do"}
+        label={ready ? headline : "What is left to do"}
         className="rd-pop"
         onClose={() => {
           setOpen(false);
           setIdentEditing(false);
         }}
       >
-        <p className="rd-head">{ready ? "Ready to use" : "Draft"}</p>
-        {errors.length > 0 ? (
-          <section className="rd-group">
-            <p className="rd-kicker">Needs attention</p>
+        <p className="rd-head">{headline}</p>
+        <section className="rd-group">
+          <p className="rd-kicker">Format</p>
+          {errors.length > 0 ? (
             <ul className="rd-list">
               {errors.map((d, i) => {
                 const p = needWords(d, draft);
@@ -367,9 +387,7 @@ export function Readiness({
                 );
               })}
             </ul>
-          </section>
-        ) : null}
-        <section className="rd-group">
+          ) : null}
           <ul className="rd-list">
             {checks.map((c) => (
               <li key={c.label} className={`rd-item${c.done ? " is-done" : " is-todo"}`}>
@@ -382,9 +400,13 @@ export function Readiness({
             ))}
           </ul>
         </section>
-        {notes.length > 0 || better.length > 0 ? (
-          <section className="rd-group">
-            <p className="rd-kicker">To make it better</p>
+        <section className="rd-group">
+          <p className="rd-kicker">Content</p>
+          {improve === 0 ? (
+            <p className="rd-note">
+              Nothing to suggest. Habi checks a skill's shape, not whether its advice is good.
+            </p>
+          ) : (
             <ul className="rd-list">
               {better.map((r) => (
                 <li key={r.kind} className="rd-item is-optional">
@@ -432,6 +454,37 @@ export function Readiness({
                 );
               })}
             </ul>
+          )}
+        </section>
+        {others.length > 0 ? (
+          <section className="rd-group">
+            <p className="rd-kicker">Other skills</p>
+            <ul className="rd-list">
+              {others.map((o) => (
+                <li
+                  key={o.name}
+                  className={`rd-item is-other${o.status === "found" ? " is-done" : " is-todo"}`}
+                >
+                  <span className="rd-mark" aria-hidden="true">
+                    {o.status === "found" ? <Icon name="check" size={12} /> : "○"}
+                  </span>
+                  <button
+                    type="button"
+                    className="rd-label link-quiet"
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenOther(o.name);
+                    }}
+                  >
+                    {o.title}
+                  </button>
+                  <span className="rd-detail rd-quiet">{OTHER_WORDS[o.status]}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="rd-note">
+              Found means Habi can see it here. Agents decide for themselves whether to use it.
+            </p>
           </section>
         ) : null}
       </Popover>

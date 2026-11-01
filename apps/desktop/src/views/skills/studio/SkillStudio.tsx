@@ -204,6 +204,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const toast = useToast();
   const safely = useSafeInvoke();
   const projects = useRecentProjects();
+  const [trayHost, setTrayHost] = useState<HTMLDivElement | null>(null);
   const overview = useSkillsOverview();
   const standing = overview.data?.find((s) => s.skillId === id);
   const available = (projects.data ?? []).filter((p) => p.exists);
@@ -555,10 +556,13 @@ function Studio({ initial }: { initial: LocalSkill }) {
     beforeChange,
     onSkill: (fresh) => onSkill(fresh),
     onError: draft.setActionError,
-    // Dropped on the page, a file also joins the words at that spot: a picture shows, the rest link.
+    // Dropped on the page, a file also gets a line of its own there: a picture shows, the rest link.
     onAdded: (paths, at) => {
       if (layer !== "skill" || sourceMode || paths.length === 0) return;
-      requestAnimationFrame(() => editor.current?.insertAt(paths.map(markdownForFile).join("\n\n"), at));
+      const markdown = paths.map(markdownForFile).join("\n\n");
+      requestAnimationFrame(() =>
+        at ? editor.current?.insertBlocksNear(markdown, at) : editor.current?.insertAt(markdown, null),
+      );
     },
   });
 
@@ -795,6 +799,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
             onFix={focusTarget}
             better={better}
             onRefine={refine}
+            others={composer.others}
+            onOpenOther={composer.showUse}
           />
           {trashed ? (
             <Button variant="primary" disabled={busy === "restore"} onClick={() => void restore()}>
@@ -902,147 +908,151 @@ function Studio({ initial }: { initial: LocalSkill }) {
       <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} inert={sheet !== null} />
 
       <div className="sk-with-panel">
-        <div className="sk-stage" ref={stage} inert={sheet !== null}>
-          <section className="sk-layer is-skill" hidden={layer !== "skill"} aria-label="The skill">
-            <div className="sk-page">
-              {!broken ? (
-                <aside className={`sk-margin${wide ? "" : " is-narrow"}`}>
-                  <Outline
-                    outline={outline}
-                    current={current}
-                    pinned={outlinePinned}
-                    onPinned={setOutlinePinned}
-                    onGo={(line) => reveal(line)}
-                  />
-                </aside>
-              ) : null}
-              <article className="sk-doc">
-                <header className="sk-head">
-                  <label className="visually-hidden" htmlFor="studio-title">
-                    Skill title
-                  </label>
-                  <input
-                    ref={titleRef}
-                    id="studio-title"
-                    className="sk-title"
-                    value={title}
-                    placeholder="Untitled skill"
-                    disabled={trashed || broken}
-                    spellCheck
-                    autoComplete="off"
-                    onChange={(e) => {
-                      names.stopTitle();
-                      setTitle(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        window.document.getElementById("studio-purpose")?.focus();
+        <div className="sk-stage-col" inert={sheet !== null}>
+          <div className="sk-stage" ref={stage}>
+            <section className="sk-layer is-skill" hidden={layer !== "skill"} aria-label="The skill">
+              <div className="sk-page">
+                {!broken ? (
+                  <aside className={`sk-margin${wide ? "" : " is-narrow"}`}>
+                    <Outline
+                      outline={outline}
+                      current={current}
+                      pinned={outlinePinned}
+                      onPinned={setOutlinePinned}
+                      onGo={(line) => reveal(line)}
+                    />
+                  </aside>
+                ) : null}
+                <article className="sk-doc">
+                  <header className="sk-head">
+                    <label className="visually-hidden" htmlFor="studio-title">
+                      Skill title
+                    </label>
+                    <input
+                      ref={titleRef}
+                      id="studio-title"
+                      className="sk-title"
+                      value={title}
+                      placeholder="Untitled skill"
+                      disabled={trashed || broken}
+                      spellCheck
+                      autoComplete="off"
+                      onChange={(e) => {
+                        names.stopTitle();
+                        setTitle(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          window.document.getElementById("studio-purpose")?.focus();
+                        }
+                      }}
+                    />
+                    <label className="visually-hidden" htmlFor="studio-purpose">
+                      What it is for
+                    </label>
+                    <AutoGrow
+                      id="studio-purpose"
+                      className="sk-purpose"
+                      value={document.description}
+                      disabled={trashed || broken}
+                      placeholder="What it helps with, and when an agent should reach for it."
+                      aria-describedby="studio-purpose-hint"
+                      aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
+                      // SKILL.md keeps its description on one line: Enter goes on to the
+                      // instructions, and line breaks pasted in become spaces.
+                      onChange={(text) =>
+                        setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
                       }
-                    }}
-                  />
-                  <label className="visually-hidden" htmlFor="studio-purpose">
-                    What it is for
-                  </label>
-                  <AutoGrow
-                    id="studio-purpose"
-                    className="sk-purpose"
-                    value={document.description}
-                    disabled={trashed || broken}
-                    placeholder="What it helps with, and when an agent should reach for it."
-                    aria-describedby="studio-purpose-hint"
-                    aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
-                    // SKILL.md keeps its description on one line: Enter goes on to the
-                    // instructions, and line breaks pasted in become spaces.
-                    onChange={(text) =>
-                      setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        editor.current?.focus();
-                      }
-                    }}
-                  />
-                  <p
-                    id="studio-purpose-hint"
-                    className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
-                  >
-                    {purposeLength > DESCRIPTION_LIMIT
-                      ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}, and tools may cut or refuse the rest.`
-                      : `${purposeHint(document.description)}${
-                          purposeLength > DESCRIPTION_LIMIT - 150
-                            ? ` ${DESCRIPTION_LIMIT - purposeLength} left.`
-                            : ""
-                        }`}
-                  </p>
-                  {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
-                  {fresh || !cameFrom ? null : (
-                    <Provenance
-                      summary={skill.summary}
-                      standing={standing}
-                      onOpen={() => openSheet("provenance")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault();
+                          editor.current?.focus();
+                        }
+                      }}
+                    />
+                    <p
+                      id="studio-purpose-hint"
+                      className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
+                    >
+                      {purposeLength > DESCRIPTION_LIMIT
+                        ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}, and tools may cut or refuse the rest.`
+                        : `${purposeHint(document.description)}${
+                            purposeLength > DESCRIPTION_LIMIT - 150
+                              ? ` ${DESCRIPTION_LIMIT - purposeLength} left.`
+                              : ""
+                          }`}
+                    </p>
+                    {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
+                    {fresh || !cameFrom ? null : (
+                      <Provenance
+                        summary={skill.summary}
+                        standing={standing}
+                        onOpen={() => openSheet("provenance")}
+                      />
+                    )}
+                    {fresh ? null : (
+                      <WhenTokens draft={draft} onMore={() => go("when")}>
+                        {!trashed && !broken && available.length > 0 ? (
+                          <SuggestedStrip
+                            draft={draft}
+                            projectIds={available.map((p) => p.id)}
+                            onTest={() => openSheet("test")}
+                            onRules={() => go("when")}
+                          />
+                        ) : null}
+                      </WhenTokens>
+                    )}
+                  </header>
+                  {broken ? (
+                    <p className="sk-broken">
+                      SKILL.md can’t be read as a skill.{" "}
+                      <button type="button" className="link-btn" onClick={() => viewSource("SKILL.md")}>
+                        Repair it as text
+                      </button>
+                    </p>
+                  ) : (
+                    <Instructions
+                      draft={draft}
+                      editor={editor}
+                      sourceMode={sourceMode}
+                      composer={composer}
+                      trayHost={trayHost}
+                      onCursorLine={setCursorLine}
+                      onOpenFile={openFile}
                     />
                   )}
-                  {fresh ? null : (
-                    <WhenTokens draft={draft} onMore={() => go("when")}>
-                      {!trashed && !broken && available.length > 0 ? (
-                        <SuggestedStrip
-                          draft={draft}
-                          projectIds={available.map((p) => p.id)}
-                          onTest={() => openSheet("test")}
-                          onRules={() => go("when")}
-                        />
-                      ) : null}
-                    </WhenTokens>
-                  )}
-                </header>
-                {broken ? (
-                  <p className="sk-broken">
-                    SKILL.md can’t be read as a skill.{" "}
-                    <button type="button" className="link-btn" onClick={() => viewSource("SKILL.md")}>
-                      Repair it as text
-                    </button>
-                  </p>
-                ) : (
-                  <Instructions
-                    draft={draft}
-                    editor={editor}
-                    sourceMode={sourceMode}
-                    composer={composer}
-                    onCursorLine={setCursorLine}
-                    onOpenFile={openFile}
-                  />
-                )}
-              </article>
-            </div>
-          </section>
-
-          {visited.has("materials") || visited.has("source") ? (
-            <section
-              className="sk-layer is-materials"
-              hidden={layer !== "materials" && layer !== "source"}
-              aria-label={layer === "source" ? "Package source" : "Materials"}
-            >
-              <div className={filePath || layer === "source" ? "sk-work-page" : "sk-sheet-page"}>
-                <Materials
-                  skill={skill}
-                  readOnly={trashed}
-                  active={layer === "materials"}
-                  source={layer === "source"}
-                  path={filePath}
-                  line={file.line}
-                  instructions={document.body}
-                  beforeChange={beforeChange}
-                  onSkill={onSkill}
-                  onPath={(path, line) => setFile({ path, line })}
-                  onSource={(on) => (on ? viewSource(null) : go("materials"))}
-                  onReference={reference}
-                  onWhen={() => go("when")}
-                />
+                </article>
               </div>
             </section>
-          ) : null}
+
+            {visited.has("materials") || visited.has("source") ? (
+              <section
+                className="sk-layer is-materials"
+                hidden={layer !== "materials" && layer !== "source"}
+                aria-label={layer === "source" ? "Package source" : "Materials"}
+              >
+                <div className={filePath || layer === "source" ? "sk-work-page" : "sk-sheet-page"}>
+                  <Materials
+                    skill={skill}
+                    readOnly={trashed}
+                    active={layer === "materials"}
+                    source={layer === "source"}
+                    path={filePath}
+                    line={file.line}
+                    instructions={document.body}
+                    beforeChange={beforeChange}
+                    onSkill={onSkill}
+                    onPath={(path, line) => setFile({ path, line })}
+                    onSource={(on) => (on ? viewSource(null) : go("materials"))}
+                    onReference={reference}
+                    onWhen={() => go("when")}
+                  />
+                </div>
+              </section>
+            ) : null}
+          </div>
+          <div className="sk-tray-dock" ref={setTrayHost} hidden={layer !== "skill"} />
         </div>
         {composer.panel?.kind === "when" && layer === "skill" ? (
           <section className="sk-panel is-wide sk-when-panel" aria-label="When to use">
