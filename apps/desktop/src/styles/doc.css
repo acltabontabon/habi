@@ -151,6 +151,43 @@
   counter-increment: step;
 }
 
+/* Top-level steps are beads on a thread. The bead is what you pick up. */
+.doc-page > ol {
+  margin-bottom: 1.2em;
+  padding-left: 38px;
+}
+
+.doc-page > ol > li {
+  margin: 0;
+  padding-bottom: 0.5em;
+}
+
+.doc-page > ol > li:not(.doc-task)::before {
+  top: 3px;
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  border-radius: 50%;
+  background: var(--thread-wash);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 24px;
+  text-align: center;
+  color: var(--thread-strong);
+}
+
+.doc-page > ol > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: -24.75px;
+  top: 28px;
+  bottom: -2px;
+  width: 1.5px;
+  background: var(--hairline-strong);
+  pointer-events: none;
+}
+
 .doc-page ol > li::before {
   content: counter(step);
   position: absolute;
@@ -221,8 +258,8 @@
   position: relative;
   padding: 0.85em 1.1em 0.9em;
   border-left: 0;
-  border-radius: 8px;
-  background: var(--paper-sunken);
+  border-radius: 12px;
+  background: var(--thread-wash);
   font-style: normal;
   color: var(--ink);
 }
@@ -267,8 +304,9 @@
 .doc-page pre {
   margin: 0 0 1.1em;
   padding: 0.95em 1.15em;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--paper-sunken);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-strong);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.65;
@@ -482,20 +520,108 @@
 }
 
 .doc-skill.is-composed {
+  padding: 0.2em 0.62em 0.22em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--knot, var(--thread)) 13%, var(--paper-raised));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--knot, var(--thread)) 42%, transparent);
   font-family: var(--font-ui);
-  font-size: 0.92em;
-  font-weight: 560;
+  font-size: 0.84em;
+  font-weight: 600;
   color: var(--ink);
-  text-decoration: underline;
-  text-decoration-color: var(--knot, var(--thread));
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 3.5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.doc-skill.is-composed:hover,
+.doc-skill.is-composed.ProseMirror-selectednode {
+  background: color-mix(in srgb, var(--knot, var(--thread)) 24%, var(--paper-raised));
+}
+
+.doc-skill-knot {
+  display: inline-block;
+  width: 0.56em;
+  height: 0.56em;
+  margin-right: 0.42em;
+  border-radius: 50%;
+  background: var(--knot, var(--thread));
+  vertical-align: 0.06em;
 }
 
 .doc-skill.is-composed.is-missing {
-  text-decoration-style: dashed;
-  text-decoration-color: var(--ink-faint);
+  background: none;
+  box-shadow: none;
+  outline: 1px dashed var(--ink-faint);
+  outline-offset: -1px;
   color: var(--ink-soft);
+}
+
+.doc-skill.is-missing .doc-skill-knot {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--ink-faint);
+}
+
+/* A sentence that uses a skill is a piece of the skill: a tile on the thread. */
+.doc-page p.doc-use {
+  position: relative;
+  margin: 0 0 8px;
+  padding: 12px 16px 13px 44px;
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 3px 10px -7px rgb(0 0 0 / 0.28);
+}
+
+.doc-page p.doc-use + :not(.doc-use) {
+  margin-top: 1.1em;
+}
+
+.doc-page p.doc-use::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: 15px;
+  top: 19px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--knot, var(--thread));
+  box-shadow: 0 0 0 3px var(--paper-raised);
+}
+
+.doc-page p.doc-use:has(.doc-skill.is-missing)::before {
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 1.5px var(--ink-faint);
+}
+
+/* Uses in a row are tied together, and each hides its own knot on the chip. */
+.doc-page p.doc-use .doc-skill-knot {
+  display: none;
+}
+
+.doc-page p.doc-use + p.doc-use::after,
+.doc-page p.doc-use:has(+ p.doc-use)::after {
+  content: "";
+  position: absolute;
+  left: 21px;
+  width: 1.5px;
+  background: var(--hairline-strong);
+}
+
+.doc-page p.doc-use + p.doc-use::after {
+  top: -1px;
+  height: 22px;
+}
+
+.doc-page p.doc-use:has(+ p.doc-use)::after {
+  top: 26px;
+  bottom: -9px;
+}
+
+.doc-page p.doc-use + p.doc-use:has(+ p.doc-use)::after {
+  top: -1px;
+  bottom: -9px;
+  height: auto;
 }
 
 .doc-skill.is-mentioned {
@@ -583,6 +709,23 @@
 
 .doc-handle svg {
   fill: currentColor;
+}
+
+/* Over a number or a knot, the handle is that thing, not a grip beside it. */
+.doc-handle.is-bead {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  opacity: 1;
+}
+
+.doc-handle.is-bead svg {
+  display: none;
+}
+
+.doc-handle.is-bead:hover {
+  background: transparent;
+  box-shadow: 0 0 0 2px var(--thread);
 }
 
 .doc-handle:hover {

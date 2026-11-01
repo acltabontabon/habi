@@ -22,6 +22,8 @@ export type ViewContext = {
   /** What's known about a named skill. */
   skillLook?: (name: string, role: string | null) => SkillLook;
   onSkillClick?: (name: string, pos: number, rect: DOMRect) => void;
+  /** A sentence that uses a skill was picked up by its knot. */
+  onLiftUse?: (pos: number, event: PointerEvent) => void;
   onLinkSkill?: (query: string) => void;
   /** The skill's own files, for the tray to offer. */
   files?: () => { path: string; name: string; referenced: boolean }[];
@@ -209,8 +211,15 @@ export function skillRefView(ctx: () => ViewContext): NodeViewConstructor {
       const word = document.createElement("span");
       word.className = "doc-skill-name";
       word.textContent = n.attrs.plugin ? `${n.attrs.plugin as string}: ${look.title}` : look.title;
+      if (look.explicit) {
+        const knot = document.createElement("span");
+        knot.className = "doc-skill-knot";
+        knot.setAttribute("aria-hidden", "true");
+        dom.append(knot);
+      }
       dom.append(word);
-      if (!n.attrs.plugin) dom.append(document.createTextNode(" skill"));
+      // The file says "the x skill". A composed one is an object, and needs no noun to say so.
+      if (!n.attrs.plugin && !look.explicit) dom.append(document.createTextNode(" skill"));
       const says = look.explicit ? "Part of this skill" : "Mentioned";
       const where = look.status === "missing" ? ", not found here" : "";
       dom.setAttribute("aria-label", `${look.title} skill. ${says}${where}.`);

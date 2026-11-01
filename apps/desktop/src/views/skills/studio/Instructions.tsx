@@ -294,7 +294,6 @@ export function Instructions({
           slashExtras={slashExtras}
           annotate={composer.annotate}
           onSettled={composer.onSettled}
-          footer={sourceMode ? null : composer.threads}
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       </div>

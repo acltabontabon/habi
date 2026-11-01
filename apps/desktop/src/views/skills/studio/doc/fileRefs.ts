@@ -23,7 +23,9 @@ export function looksLikePackagePath(text: string): boolean {
 
 const refreshKey = new PluginKey("doc-file-refs");
 
-function decorate(doc: PMNode, paths: readonly string[]): DecorationSet {
+const SCRIPT = /\.(sh|bash|zsh|py|rb|js|mjs|ts|pl|ps1)$/i;
+
+function decorate(doc: PMNode, paths: readonly string[], caret: { from: number; to: number }): DecorationSet {
   const known = new Set(paths);
   const decos: Decoration[] = [];
   doc.descendants((node, pos) => {
@@ -35,12 +37,22 @@ function decorate(doc: PMNode, paths: readonly string[]): DecorationSet {
     if (!target) return false;
     const inside = known.has(target);
     if (!inside && !(code && looksLikePackagePath(text))) return false;
-    decos.push(
-      Decoration.inline(pos, pos + node.nodeSize, {
-        class: `doc-file${inside ? "" : " is-absent"}`,
-        [FILE_ATTR]: target,
-      }),
-    );
+    const end = pos + node.nodeSize;
+    const attrs = {
+      class: `doc-file${inside ? "" : " is-absent"}`,
+      [FILE_ATTR]: target,
+      "data-kind": SCRIPT.test(target) ? "script" : "file",
+    };
+    // A file reads as its name. The folder comes back while the caret is in it, to edit.
+    const slash = code ? text.lastIndexOf("/") : -1;
+    if (slash >= 0 && (caret.to < pos || caret.from > end)) {
+      decos.push(
+        Decoration.inline(pos, pos + slash + 1, { class: "doc-file-dir", [FILE_ATTR]: target }),
+        Decoration.inline(pos + slash + 1, end, attrs),
+      );
+    } else {
+      decos.push(Decoration.inline(pos, end, attrs));
+    }
     return false;
   });
   return DecorationSet.create(doc, decos);
@@ -50,8 +62,11 @@ export function fileRefsPlugin(paths: () => readonly string[]): Plugin {
   return new Plugin({
     key: refreshKey,
     state: {
-      init: (_c, state) => decorate(state.doc, paths()),
-      apply: (tr, old) => (tr.docChanged || tr.getMeta(refreshKey) ? decorate(tr.doc, paths()) : old),
+      init: (_c, state) => decorate(state.doc, paths(), state.selection),
+      apply: (tr, old, _before, state) =>
+        tr.docChanged || tr.selectionSet || tr.getMeta(refreshKey)
+          ? decorate(tr.doc, paths(), state.selection)
+          : old,
     },
     props: {
       decorations(state) {

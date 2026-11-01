@@ -12,10 +12,18 @@ import { moveBlock, setHeading, setParagraph, toggleList } from "./commands";
 import { armDrag, ghostOfBlocks } from "./drag";
 import { schema } from "./markdown/schema";
 import { moveBlocks, moveItem, sectionRange } from "./moves";
+import { composedUseIn } from "./uses";
 
 export type BlockMenuTarget = { pos: number; left: number; top: number };
 
-type Spot = { pos: number; left: number; top: number; node: PMNode };
+type Spot = {
+  pos: number;
+  left: number;
+  top: number;
+  node: PMNode;
+  /** The block has its own knot or number, and that is what you pick up. */
+  bead: boolean;
+};
 
 /** The block at a point: a list item rather than the whole list, otherwise the top-level block. */
 function blockAt(view: EditorView, x: number, y: number): { pos: number; node: PMNode } | null {
@@ -37,12 +45,14 @@ export function BlockHandle({
   menu,
   onMenu,
   tick,
+  onLiftUse,
 }: {
   view: EditorView;
   host: RefObject<HTMLDivElement | null>;
   menu: BlockMenuTarget | null;
   onMenu: (target: BlockMenuTarget | null) => void;
   tick: number;
+  onLiftUse?: (pos: number, event: PointerEvent) => void;
 }) {
   const [spot, setSpot] = useState<Spot | null>(null);
   const handle = useRef<HTMLButtonElement>(null);
@@ -63,7 +73,8 @@ export function BlockHandle({
       frame = requestAnimationFrame(() => {
         frame = 0;
         const box = view.dom.getBoundingClientRect();
-        const found = blockAt(view, Math.max(x, box.left + 2), y);
+        // Past the numbers that hang in a list's padding: over one, it's that step that's meant.
+        const found = blockAt(view, Math.max(x, box.left + 44), y);
         if (!found || found.node.type === schema.nodes.doc) return setSpot(null);
         const dom = view.nodeDOM(found.pos);
         if (!(dom instanceof HTMLElement) || !wrap) return setSpot(null);
@@ -72,13 +83,26 @@ export function BlockHandle({
         const style = window.getComputedStyle(dom);
         const lineHeight = Number.parseFloat(style.lineHeight) || 24;
         const padding = Number.parseFloat(style.paddingTop) || 0;
-        setSpot({
-          pos: found.pos,
-          node: found.node,
-          // A list's numbers hang in the margin: the handle stays clear of them.
-          left: rect.left - origin.left - (found.node.type === schema.nodes.list_item ? 50 : 28),
-          top: rect.top - origin.top + padding + (lineHeight - 22) / 2,
-        });
+        const left = rect.left - origin.left;
+        const top = rect.top - origin.top;
+        const parent = view.state.doc.resolve(found.pos);
+        const step =
+          found.node.type === schema.nodes.list_item &&
+          parent.depth === 1 &&
+          parent.parent.type === schema.nodes.ordered_list;
+        // A step's number and a used skill's knot are the things you pick up.
+        if (step) setSpot({ pos: found.pos, node: found.node, bead: true, left: left - 36, top: top + 2 });
+        else if (dom.classList.contains("doc-use")) {
+          setSpot({ pos: found.pos, node: found.node, bead: true, left: left + 8, top: top + 12 });
+        } else {
+          setSpot({
+            pos: found.pos,
+            node: found.node,
+            bead: false,
+            left: left - (found.node.type === schema.nodes.list_item ? 50 : 28),
+            top: top + padding + (lineHeight - 22) / 2,
+          });
+        }
       });
     };
     const onLeave = (e: MouseEvent) => {
@@ -189,7 +213,7 @@ export function BlockHandle({
           <button
             ref={handle}
             type="button"
-            className="doc-handle"
+            className={`doc-handle${spot.bead ? " is-bead" : ""}`}
             style={{ left: spot.left, top: spot.top }}
             aria-label="Move or change this block"
             title={
@@ -201,6 +225,11 @@ export function BlockHandle({
             onPointerDown={(e) => {
               e.preventDefault();
               const { pos, node } = spot;
+              const use = composedUseIn(node);
+              if (use && onLiftUse) {
+                onLiftUse(pos + 1 + use.offset, e.nativeEvent);
+                return;
+              }
               armDrag(e.nativeEvent, () => {
                 const item = node.type === schema.nodes.list_item;
                 const range =

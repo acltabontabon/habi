@@ -1,21 +1,23 @@
 /**
- * Where these rules would suggest the skill, in one line that stays in sight
- * while the skill is written. It asks again only when the rules change, and
- * keeps saying the last answer until the new one arrives. The Test sheet has
- * the reasons; this is the sentence.
+ * Where these rules would suggest the skill, without a sentence: your projects'
+ * marks, lit where it would be suggested. It asks again only when the rules change,
+ * and keeps showing the last answer until the new one arrives. A mark opens the
+ * reasons.
  */
-import { andList, plural } from "../../../lib/format";
+import { ProjectMark } from "../../../components/Weave";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import type { SkillDraft } from "./useSkillDraft";
 
-const NAMED = 3;
+const SHOWN = 6;
 
-/** "a, b and c", or "a, b, c and 2 more". */
-function named(list: string[]): string {
-  return list.length <= NAMED
-    ? andList(list)
-    : `${list.slice(0, NAMED).join(", ")} and ${list.length - NAMED} more`;
-}
+type Standing = "on" | "maybe" | "off";
+
+const SAYS: Record<Standing, string> = {
+  on: "would be suggested",
+  maybe: "can't tell yet",
+  off: "wouldn't be suggested",
+};
+const ORDER: Standing[] = ["on", "maybe", "off"];
 
 export function SuggestedStrip({
   draft,
@@ -32,42 +34,45 @@ export function SuggestedStrip({
     draft.previewRequest(null),
     `${draft.rulesKey}|${projectIds.join(",")}`,
   );
-  if (error) return null;
+  if (error || !preview) return null;
+  if (preview.problem) {
+    return (
+      <button type="button" className="sk-lit-problem" onClick={onRules}>
+        Can't check these rules
+      </button>
+    );
+  }
+  // With no rules there is nothing to light up.
+  if (!preview.appliesWhen && !preview.excludes) return null;
 
-  const results = preview?.projects ?? [];
-  const nameOf = (a: string) =>
-    results.filter((p) => p.result?.applicability === a).map((p) => p.project.name);
-  const applies = nameOf("applies");
-  const unknown = results.filter((p) => !p.result || p.result.applicability === "needsInformation");
-  const noRules = preview !== null && !preview.problem && !preview.appliesWhen && !preview.excludes;
-
-  const sentence = !preview ? (
-    "Checking your projects…"
-  ) : preview.problem ? (
-    "These rules cannot be evaluated yet."
-  ) : applies.length > 0 ? (
-    <>
-      Would be suggested in <strong>{named(applies)}</strong>
-      {unknown.length > 0 ? `, and maybe ${plural(unknown.length, "more project")}.` : "."}
-    </>
-  ) : unknown.length > 0 ? (
-    `Might be suggested in ${named(unknown.map((p) => p.project.name))}: Habi cannot tell yet.`
-  ) : (
-    `Would not be suggested in ${results.length === 1 ? "your project" : `any of your ${results.length} projects`}.`
-  );
-  // With no rules, the sentence beside this one has already said so.
-  if (noRules) return null;
-  const toRules = preview !== null && Boolean(preview.problem);
+  const marks = preview.projects
+    .map((p) => {
+      const a = p.result?.applicability;
+      const standing: Standing = a === "applies" ? "on" : !a || a === "needsInformation" ? "maybe" : "off";
+      return { project: p.project, standing };
+    })
+    .sort((a, b) => ORDER.indexOf(a.standing) - ORDER.indexOf(b.standing));
+  const more = marks.length - SHOWN;
 
   return (
-    <p className={`sk-suggested${busy ? " is-stale" : ""}`} aria-live="polite">
-      <span className={`sk-suggested-knot${applies.length > 0 ? " is-on" : ""}`} aria-hidden="true" />
-      <span className="sk-suggested-text">{sentence}</span>
-      {preview ? (
-        <button type="button" className="link-btn" onClick={toRules ? onRules : onTest}>
-          {toRules ? "When to use" : "See why"}
+    <div className={`sk-lit${busy ? " is-stale" : ""}`} aria-live="polite">
+      {marks.slice(0, SHOWN).map(({ project, standing }) => (
+        <button
+          key={project.id}
+          type="button"
+          className={`sk-lit-mark is-${standing}`}
+          title={`${project.name}: ${SAYS[standing]}`}
+          aria-label={`${project.name}: ${SAYS[standing]}`}
+          onClick={onTest}
+        >
+          <ProjectMark name={project.name} languages={project.summary?.languages ?? []} />
+        </button>
+      ))}
+      {more > 0 ? (
+        <button type="button" className="sk-lit-more" onClick={onTest}>
+          +{more}
         </button>
       ) : null}
-    </p>
+    </div>
   );
 }

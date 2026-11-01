@@ -13,7 +13,7 @@ import { overviewOf } from "../views/skills/studio/compose/overviewData";
 import { type InspectorTarget, RefInspector } from "../views/skills/studio/compose/RefInspector";
 import { occurrencesIn } from "../views/skills/studio/compose/roles";
 import { Shelf } from "../views/skills/studio/compose/Shelf";
-import { WhenSentence } from "../views/skills/studio/compose/WhenSentence";
+import { WhenTokens } from "../views/skills/studio/compose/WhenTokens";
 import { parseBody } from "../views/skills/studio/doc/markdown/parse";
 import type { SkillDraft } from "../views/skills/studio/useSkillDraft";
 
@@ -523,35 +523,41 @@ function Harness({ initial = form, onMore = () => {} }: { initial?: typeof form;
     document: { name: "n", description: "d", body: "Plain words." },
     skill: { metadataStatus: "undeclared" },
   } as unknown as SkillDraft;
-  return <WhenSentence draft={draft} onMore={onMore} />;
+  return <WhenTokens draft={draft} onMore={onMore} />;
 }
 
-describe("when a skill is used", () => {
-  it("reads as a sentence with no fields to fill in", () => {
+describe("what a skill is for", () => {
+  it("is tokens, with no sentence and no fields to fill in", () => {
     render(<Harness />);
-    expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByText(/Habi/)).toBeNull();
   });
 
-  it("is edited where it stands: type, choose, and it's part of the sentence", async () => {
+  it("type, choose, and it's a token", async () => {
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: "You bring this in when you want it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Suggest for…" }));
     const input = screen.getByRole("combobox");
     expect(input).toHaveFocus();
     await userEvent.type(input, "playwright{Enter}");
-    expect(screen.getByText(/Playwright is used/)).toBeInTheDocument();
-    expect(screen.getByText(/Habi suggests it when/)).toBeInTheDocument();
-  });
-
-  it("Backspace on an empty line takes out the last one, as in any text", async () => {
-    render(<Harness initial={{ ...form, appliesTags: ["tool:playwright"] }} />);
-    await userEvent.click(screen.getByRole("button", { name: "Add another" }));
-    await userEvent.keyboard("{Backspace}");
+    expect(screen.getByRole("button", { name: "Remove Playwright" })).toBeInTheDocument();
     expect(screen.queryByText(/is used/)).toBeNull();
   });
 
-  it("the words between conditions change what they mean when pressed", async () => {
+  it("Backspace on an empty line takes out the last one, as in any text", async () => {
+    render(<Harness initial={{ ...form, appliesTags: ["test:playwright"] }} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add another" }));
+    await userEvent.keyboard("{Backspace}");
+    expect(screen.queryByText("Playwright")).toBeNull();
+  });
+
+  it("a token's × takes it out", async () => {
+    render(<Harness initial={{ ...form, appliesTags: ["test:playwright"] }} />);
+    await userEvent.click(screen.getByRole("button", { name: "Remove Playwright" }));
+    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
+  });
+
+  it("the word between tokens changes what they mean when pressed", async () => {
     render(<Harness initial={{ ...form, appliesDependencies: ["a", "b"] }} />);
     await userEvent.click(screen.getByRole("button", { name: "and" }));
     expect(screen.getByRole("button", { name: "or" })).toBeInTheDocument();
@@ -561,23 +567,21 @@ describe("when a skill is used", () => {
     const onMore = vi.fn();
     render(<Harness onMore={onMore} />);
     expect(screen.queryByText("Exceptions and other rules")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "You bring this in when you want it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Suggest for…" }));
     await userEvent.click(screen.getByRole("button", { name: "Exceptions and other rules" }));
     expect(onMore).toHaveBeenCalled();
   });
 
   it("Escape leaves it as it was", async () => {
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: "You bring this in when you want it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Suggest for…" }));
     await userEvent.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
   });
 
-  it("hand-written rules aren't this sentence's to change", () => {
+  it("hand-written rules aren't these tokens' to change", () => {
     render(<Harness initial={{ ...form, conditionsEditable: false }} />);
-    expect(
-      screen.getByRole("button", { name: "Habi suggests it by rules written by hand" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom rules" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add another" })).toBeNull();
   });
 });

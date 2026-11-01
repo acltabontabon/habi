@@ -173,6 +173,11 @@ export function signalClause(s: Signal): string {
   return w.code ? `${text} ${w.code}` : text;
 }
 
+/** The same fact as a token: "Playwright", "express", or a file pattern. */
+export function signalToken(s: Signal): string {
+  return s.kind === "tag" ? (TAG_LABELS[s.value] ?? s.value) : s.value;
+}
+
 export type Proposal = Signal & { why: string };
 
 /**

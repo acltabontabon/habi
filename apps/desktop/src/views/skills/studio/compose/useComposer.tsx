@@ -51,7 +51,6 @@ import {
   sentenceFor,
 } from "./roles";
 import { Shelf } from "./Shelf";
-import { type ThreadStatus, Threads } from "./Threads";
 
 export type Panel =
   | { kind: "shelf"; query?: string; inline?: boolean; replace?: { pos: number; name: string; all: boolean } }
@@ -100,7 +99,6 @@ export function useComposer({
   const toast = useToast();
   const [panel, setPanel] = useState<Panel | null>(null);
   const [inspector, setInspector] = useState<InspectorTarget | null>(null);
-  const [tick, setTick] = useState(0);
   const [view, setView] = useState<EditorView | null>(null);
   const hadChip = useRef(new Set<string>());
   const loaded = useRef<ComposeEntry[]>(draft.composes);
@@ -138,7 +136,7 @@ export function useComposer({
   const titleOf = useCallback((name: string) => byName.get(name)?.[0]?.title ?? titleOfName(name), [byName]);
 
   const statusOf = useCallback(
-    (name: string): ThreadStatus => {
+    (name: string): SkillLook["status"] => {
       const dep = deps.get(name);
       if (dep) {
         if (dep.status === "missing") return "missing";
@@ -149,11 +147,6 @@ export function useComposer({
       return byName.has(name) ? "found" : "missing";
     },
     [deps, shelf, byName],
-  );
-
-  const look = useCallback(
-    (name: string) => ({ title: titleOf(name), status: statusOf(name) }),
-    [titleOf, statusOf],
   );
 
   // Chips show what's known: when that arrives or changes, they repaint.
@@ -187,7 +180,6 @@ export function useComposer({
         loaded.current = next;
         draft.setComposes(next);
       }
-      setTick((t) => t + 1);
     },
     [derived, draft.setComposes],
   );
@@ -218,7 +210,6 @@ export function useComposer({
       const current = editor.current?.view();
       if (current) {
         setView(current);
-        setTick((t) => t + 1);
         window.clearInterval(timer);
       }
     }, 60);
@@ -382,13 +373,14 @@ export function useComposer({
         dye: knotColor(name),
       }),
       onSkillClick: (name, pos, rect) => openInspector(name, pos, rect),
+      onLiftUse: (pos, event) => liftKnot(pos, event),
       onLinkSkill: (query) => setPanel({ kind: "shelf", query, inline: true }),
       onChoosePiece: (what) => {
         if (what === "skill") setPanel({ kind: "shelf", inline: false });
         else onAddFile();
       },
     }),
-    [titleOf, statusOf, openInspector, onAddFile],
+    [titleOf, statusOf, openInspector, onAddFile, liftKnot],
   );
 
   const slashExtras = useCallback(
@@ -616,18 +608,6 @@ export function useComposer({
     />
   ) : null;
 
-  const threads: ReactNode = (
-    <Threads
-      view={view}
-      tick={tick}
-      look={look}
-      onOpen={openUse}
-      onLift={liftKnot}
-      expanded={panel?.kind === "overview"}
-      onOverview={() => setPanel((p) => (p?.kind === "overview" ? null : { kind: "overview" }))}
-    />
-  );
-
   const liveComposes = useCallback(() => {
     const current = editor.current?.view();
     return current ? derived(current.state.doc) : loaded.current;
@@ -639,7 +619,6 @@ export function useComposer({
     panelNode,
     liftFile,
     inspectorNode,
-    threads,
     context,
     slashExtras,
     annotate,

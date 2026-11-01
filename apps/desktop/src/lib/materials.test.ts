@@ -9,6 +9,7 @@ import {
   mentions,
   proposeSignals,
   signalClause,
+  signalToken,
   technologiesIn,
 } from "./materials";
 
@@ -77,6 +78,13 @@ describe("materials", () => {
     expect(signalClause({ kind: "tag", value: "test:playwright" })).toBe("Playwright is used");
     expect(signalClause({ kind: "tag", value: "team:payments" })).toBe("it is tagged team:payments");
     expect(signalClause({ kind: "dependency", value: "express" })).toBe("it depends on express");
+  });
+
+  it("names every signal in a word or two as a token", () => {
+    expect(signalToken({ kind: "tag", value: "test:playwright" })).toBe("Playwright");
+    expect(signalToken({ kind: "tag", value: "team:payments" })).toBe("team:payments");
+    expect(signalToken({ kind: "dependency", value: "express" })).toBe("express");
+    expect(signalToken({ kind: "file", value: "**/db/**" })).toBe("**/db/**");
   });
 
   it("proposes signals from a few words, and finds what the instructions keep naming", () => {

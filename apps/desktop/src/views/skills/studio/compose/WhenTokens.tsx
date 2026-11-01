@@ -1,12 +1,16 @@
 /**
- * When a skill gets used, as a sentence you edit where it stands. Click it and
- * type a technology, a package or a file: Habi offers what that could mean, and
- * the choice becomes part of the sentence. Backspace takes the last one out, the
- * way it would in any line of text. The rarer rules are one step further, for
- * those who want them.
+ * What a skill is for, as tokens under its purpose: Java, Playwright, a file. Add
+ * one by typing, take one out with its × or with Backspace, the way a line of tags
+ * works anywhere. The rarer rules are one step further, for those who want them.
  */
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
-import { type Proposal, proposeSignals, type Signal, signalClause } from "../../../../lib/materials";
+import {
+  type Proposal,
+  proposeSignals,
+  type Signal,
+  signalClause,
+  signalToken,
+} from "../../../../lib/materials";
 import type { SkillDraft } from "../useSkillDraft";
 import { addSignal, inferredSignal, removeSignal, signalsOf } from "../WhenToUse";
 
@@ -14,7 +18,7 @@ const same = (a: Signal, b: Signal) => a.kind === b.kind && a.value === b.value;
 
 type Offer = Signal & { why: string };
 
-export function WhenSentence({
+export function WhenTokens({
   draft,
   onMore,
   children,
@@ -22,6 +26,7 @@ export function WhenSentence({
   draft: SkillDraft;
   /** Everything else: exceptions, required tools, rules by hand. */
   onMore: () => void;
+  /** Where it would be suggested. */
   children?: ReactNode;
 }) {
   const { form, setForm, trashed, skill } = draft;
@@ -46,7 +51,7 @@ export function WhenSentence({
     if (editing) input.current?.focus();
   }, [editing]);
 
-  // Clicking away leaves the sentence as it stands.
+  // Clicking away leaves the tokens as they stand.
   useEffect(() => {
     if (!editing) return;
     const away = (e: PointerEvent) => {
@@ -88,18 +93,18 @@ export function WhenSentence({
     }
   };
 
-  // Rules written by hand, or that can't be read, aren't this sentence's to change.
+  // Rules written by hand, or that can't be read, aren't these tokens' to change.
   if (!form.conditionsEditable || skill.metadataStatus === "invalid") {
+    const invalid = skill.metadataStatus === "invalid";
     return (
       <div className="sk-when">
-        <p>
-          <button type="button" className="sk-when-open" onClick={onMore}>
-            {skill.metadataStatus === "invalid"
-              ? "Its rules for when to suggest it need attention"
-              : "Habi suggests it by rules written by hand"}
-          </button>
-          .
-        </p>
+        <button
+          type="button"
+          className={`sk-when-token is-rules${invalid ? " is-bad" : ""}`}
+          onClick={onMore}
+        >
+          {invalid ? "Rules need attention" : "Custom rules"}
+        </button>
         {children}
       </div>
     );
@@ -108,82 +113,67 @@ export function WhenSentence({
   const joiner = form.matchMode === "all" ? "and" : "or";
   return (
     <div className="sk-when" ref={root}>
-      <p>
-        {applies.length === 0 && !editing ? (
-          <button type="button" className="sk-when-open" disabled={!canEdit} onClick={() => setEditing(true)}>
-            You bring this in when you want it
-          </button>
-        ) : (
-          <>
-            <span>Habi suggests it when </span>
-            {applies.map((s, i) => (
-              <span key={`${s.kind}:${s.value}`}>
-                {i > 0 ? (
-                  <button
-                    type="button"
-                    className="sk-when-join"
-                    disabled={!canEdit}
-                    title={joiner === "and" ? "All of these must be true" : "Any of these is enough"}
-                    onClick={() =>
-                      setForm((f) => ({ ...f, matchMode: f.matchMode === "all" ? "any" : "all" }))
-                    }
-                  >
-                    {joiner}
-                  </button>
-                ) : null}
-                <span className="sk-when-token">
-                  {signalClause(s)}
-                  {canEdit ? (
-                    <button
-                      type="button"
-                      aria-label={`Remove: ${signalClause(s)}`}
-                      onClick={() => setForm((f) => removeSignal(f, s))}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </span>
-              </span>
-            ))}
-            {editing ? (
-              <input
-                ref={input}
-                className="sk-when-input"
-                value={text}
-                placeholder={applies.length ? "and…" : "a tool, a package or a file is there"}
-                aria-label="When Habi should suggest this skill"
-                role="combobox"
-                aria-expanded={offers.length > 0}
-                aria-controls={`${id}-offers`}
-                aria-activedescendant={offers[at] ? `${id}-${at}` : undefined}
-                spellCheck={false}
-                autoComplete="off"
-                size={Math.max(text.length + 2, applies.length ? 6 : 30)}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  setAt(0);
-                }}
-                onKeyDown={onKey}
-              />
-            ) : canEdit ? (
-              <>
-                .
-                <button
-                  type="button"
-                  className="sk-when-more"
-                  aria-label="Add another"
-                  onClick={() => setEditing(true)}
-                >
-                  +
-                </button>
-              </>
-            ) : (
-              "."
-            )}
-          </>
-        )}
-        {applies.length === 0 && !editing ? "." : ""}
-      </p>
+      {applies.map((s, i) => (
+        <span key={`${s.kind}:${s.value}`} className="sk-when-item">
+          {i > 0 ? (
+            <button
+              type="button"
+              className="sk-when-join"
+              disabled={!canEdit}
+              title={joiner === "and" ? "All of these must be true" : "Any of these is enough"}
+              onClick={() => setForm((f) => ({ ...f, matchMode: f.matchMode === "all" ? "any" : "all" }))}
+            >
+              {joiner}
+            </button>
+          ) : null}
+          <span
+            className={`sk-when-token${s.kind === "tag" ? "" : " is-code"}`}
+            title={`Suggested when ${signalClause(s)}`}
+          >
+            {signalToken(s)}
+            {canEdit ? (
+              <button
+                type="button"
+                aria-label={`Remove ${signalToken(s)}`}
+                onClick={() => setForm((f) => removeSignal(f, s))}
+              >
+                ×
+              </button>
+            ) : null}
+          </span>
+        </span>
+      ))}
+      {editing ? (
+        <input
+          ref={input}
+          className="sk-when-input"
+          value={text}
+          placeholder="Java, a package, a file…"
+          aria-label="What this skill is for"
+          role="combobox"
+          aria-expanded={offers.length > 0}
+          aria-controls={`${id}-offers`}
+          aria-activedescendant={offers[at] ? `${id}-${at}` : undefined}
+          spellCheck={false}
+          autoComplete="off"
+          size={Math.max(text.length + 2, 22)}
+          onChange={(e) => {
+            setText(e.target.value);
+            setAt(0);
+          }}
+          onKeyDown={onKey}
+        />
+      ) : canEdit ? (
+        <button
+          type="button"
+          className={`sk-when-add${applies.length === 0 ? " is-empty" : ""}`}
+          aria-label={applies.length ? "Add another" : "Suggest for…"}
+          onClick={() => setEditing(true)}
+        >
+          <span aria-hidden="true">+</span>
+          {applies.length === 0 ? <span aria-hidden="true">Suggest for…</span> : null}
+        </button>
+      ) : null}
       {editing ? (
         <div className="sk-when-menu">
           {offers.length ? (
@@ -201,14 +191,12 @@ export function WhenSentence({
                   onMouseEnter={() => setAt(i)}
                   onClick={() => add(o)}
                 >
-                  <span>{signalClause(o)}</span>
+                  <span>{signalToken(o)}</span>
                   <em>{o.why}</em>
                 </button>
               ))}
             </div>
-          ) : (
-            <p className="sk-when-hint">Type a tool like Playwright, a package, or a file pattern.</p>
-          )}
+          ) : null}
           <button
             type="button"
             className="sk-when-advanced"

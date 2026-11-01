@@ -47,7 +47,7 @@ import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
 import { type Panel, useComposer } from "./compose/useComposer";
-import { WhenSentence } from "./compose/WhenSentence";
+import { WhenTokens } from "./compose/WhenTokens";
 import { markdownForFile } from "./doc/fileRefs";
 import type { DocEditorHandle } from "./doc/lazy";
 import { Materials, useDropToAdd } from "./files/Materials";
@@ -845,6 +845,16 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     },
                   ],
                   [
+                    ...(composer.used > 0
+                      ? [
+                          {
+                            label: "How the skills fit",
+                            icon: "layers" as const,
+                            hint: "Sections and the skills they use",
+                            onSelect: () => composer.setPanel({ kind: "overview" }),
+                          },
+                        ]
+                      : []),
                     {
                       label: "What's inside",
                       icon: "layers",
@@ -975,7 +985,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     />
                   )}
                   {fresh ? null : (
-                    <WhenSentence draft={draft} onMore={() => go("when")}>
+                    <WhenTokens draft={draft} onMore={() => go("when")}>
                       {!trashed && !broken && available.length > 0 ? (
                         <SuggestedStrip
                           draft={draft}
@@ -984,7 +994,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                           onRules={() => go("when")}
                         />
                       ) : null}
-                    </WhenSentence>
+                    </WhenTokens>
                   )}
                 </header>
                 {broken ? (

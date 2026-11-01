@@ -10,13 +10,13 @@ the lock file or data directory, minor for features, patch for fixes.
 ### Added
 
 - **The Skill Studio is now a real document.** Instructions are edited directly, with no Markdown on screen:
-  steps, checklists, code, notes and tables. Drag pieces onto the page from a tray or type `/`, and pick up any
+  steps on a thread you pick up by their numbers, files as named objects, checklists, code, notes and tables. Drag pieces onto the page from a tray or type `/`, and pick up any
   block or whole section by its handle while the page makes room. Your file stays ordinary Markdown, and only
   what you change is rewritten, so a Git diff shows your edit and nothing else. What the page can't show as
   rich text stays on it, kept exactly as written.
 - **Build a skill from other skills.** Drag skills in from yours, this machine, your projects and your
-  libraries, and each becomes a sentence an agent can read anywhere. A thread in the margin grows as you write;
-  drag a knot to move its sentence, or pull it away to take it out. A grid of sections and skills shows larger
+  libraries, and each becomes a sentence an agent can read anywhere, drawn as a tile on the page. Pick up a tile
+  by its knot to move it, or pull it away to take it out. A grid of sections and skills shows larger
   compositions: press a crossing to use a skill in that section. Habi says which agents would find each skill,
   and never installs one on its own.
 - **See inside a skill.** A panel shows what it holds in the order an agent meets it, with rough sizes, and

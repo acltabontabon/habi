@@ -14,15 +14,7 @@ import { EditorState, NodeSelection, TextSelection, type Transaction } from "pro
 import { tableEditing } from "prosemirror-tables";
 import { Transform } from "prosemirror-transform";
 import { EditorView, type NodeViewConstructor } from "prosemirror-view";
-import {
-  type ReactNode,
-  type Ref,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { type Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { LineMark, SourceEditorHandle } from "../../../../components/SourceEditor";
 import { BlockHandle, type BlockMenuTarget } from "./BlockHandle";
 import { BlockTools } from "./BlockTools";
@@ -53,6 +45,7 @@ import {
 import { SelectionBar } from "./SelectionBar";
 import { type SlashItem, SlashMenu, type SlashMenuHandle } from "./SlashMenu";
 import { syntaxPlugin } from "./syntax";
+import { usesPlugin } from "./uses";
 
 const PAUSE_MS = 200;
 
@@ -132,7 +125,6 @@ export function DocEditor({
   promptFor,
   slashExtras,
   context,
-  footer,
   annotate,
   onSettled,
 }: {
@@ -151,7 +143,6 @@ export function DocEditor({
   /** Skills and files the slash menu offers, for what's typed so far. */
   slashExtras?: (query: string) => SlashItem[];
   context: ViewContext;
-  footer?: ReactNode;
   /** What a freshly opened document's mentions are, by position: the roles the Markdown doesn't hold. */
   annotate?: (doc: PMNode) => Map<number, { role: string; from: string | null }>;
   /** The document after typing paused. */
@@ -264,6 +255,7 @@ export function DocEditor({
         invisiblesPlugin(),
         syntaxPlugin(),
         fileRefsPlugin(() => pathsRef.current()),
+        usesPlugin(),
       ],
     });
     if (!prior) return state;
@@ -497,7 +489,14 @@ export function DocEditor({
     <div className={`doc-editor${readOnly ? " is-readonly" : ""}`}>
       <div className="doc-host" ref={host} />
       {view && !readOnly ? (
-        <BlockHandle view={view} host={host} onMenu={setBlockMenu} menu={blockMenu} tick={selectionTick} />
+        <BlockHandle
+          view={view}
+          host={host}
+          onMenu={setBlockMenu}
+          menu={blockMenu}
+          tick={selectionTick}
+          onLiftUse={(pos, event) => contextRef.current.onLiftUse?.(pos, event)}
+        />
       ) : null}
       {view && !readOnly ? (
         <SelectionBar view={view} tick={selectionTick} onLinkSkill={context.onLinkSkill} />
@@ -533,7 +532,6 @@ export function DocEditor({
       {view && slash && !readOnly ? (
         <SlashMenu ref={slashMenu} view={view} slash={slash} extras={slashExtras} />
       ) : null}
-      {footer}
     </div>
   );
 }

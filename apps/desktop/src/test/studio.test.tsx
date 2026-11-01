@@ -154,7 +154,7 @@ describe("the Skill Studio", () => {
     expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
     // No tabs: the other layers are named, in a line each, at the head of the skill.
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
     // The package format stays out of sight.
     expect(screen.queryByText("habi.yaml")).not.toBeInTheDocument();
     expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
@@ -536,9 +536,7 @@ describe("the Skill Studio", () => {
     handlers.save_skill_metadata = save;
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
-    expect(
-      screen.getByRole("button", { name: "Habi suggests it by rules written by hand" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom rules" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     const layer = screen.getByRole("region", { name: "When to use" });
     expect(within(layer).getByText("it contains Java code")).toBeInTheDocument();
@@ -590,8 +588,8 @@ describe("the Skill Studio", () => {
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     await new Promise((r) => setTimeout(r, 400));
-    // The line under the bar says where it would be suggested, as the rules change.
-    expect(await screen.findByText(billing.name, { selector: "strong" })).toBeInTheDocument();
+    // Each project's mark says where it would be suggested, as the rules change.
+    expect(await screen.findByRole("button", { name: new RegExp(`^${billing.name}: `) })).toBeInTheDocument();
     // Editing the rules does not run diagnostics for one project, and offers no test station.
     const forOneProject = () =>
       preview.mock.calls.filter((c) => (c[0].request as { projectId?: string })?.projectId);

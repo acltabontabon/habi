@@ -296,161 +296,6 @@
 
 /* ---------- The thread in the margin ---------- */
 
-.threads {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  left: calc(100% + 24px);
-  width: clamp(92px, calc((100cqi - var(--measure)) / 2 - 52px), 180px);
-  height: 100%;
-  font-family: var(--font-ui);
-  pointer-events: none;
-}
-
-.threads ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.threads-line {
-  position: absolute;
-  left: 3.5px;
-  top: var(--thread-from);
-  height: calc(var(--thread-to) - var(--thread-from));
-  width: 1px;
-  background: var(--hairline-strong);
-  transition:
-    top 240ms var(--ease),
-    height 240ms var(--ease);
-}
-
-.thread-note {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: grid;
-  gap: 8px;
-  transform: translateY(-9px);
-  transition: top 240ms var(--ease);
-  animation: thread-in 260ms var(--ease);
-}
-
-@keyframes thread-in {
-  from {
-    opacity: 0;
-    transform: translate(-6px, -9px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .threads-line,
-  .thread-note {
-    transition: none;
-    animation: none;
-  }
-}
-
-.thread-item {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
-  gap: 9px;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.thread-knot {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 8px;
-  height: 8px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: var(--thread);
-  box-shadow: 0 0 0 3px var(--paper);
-  transition: transform var(--duration) var(--ease);
-}
-
-.thread-knot.is-count {
-  width: 15px;
-  height: 15px;
-  margin: 1px 0 0 -3.5px;
-  font-size: 9.5px;
-  font-weight: 650;
-  color: var(--paper);
-  background: var(--ink-soft);
-}
-
-.thread-item.is-missing .thread-knot {
-  background: var(--paper);
-  box-shadow:
-    0 0 0 3px var(--paper),
-    inset 0 0 0 1.25px var(--ink-faint);
-}
-
-.thread-item:hover .thread-knot,
-.thread-item:focus-visible .thread-knot {
-  transform: scale(1.35);
-}
-
-.thread-item:focus-visible {
-  outline: none;
-}
-
-.thread-words {
-  display: grid;
-  min-width: 0;
-}
-
-.thread-name {
-  overflow: hidden;
-  font-size: var(--text-xs);
-  font-weight: 540;
-  line-height: 1.4;
-  color: var(--ink-soft);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.thread-item:hover .thread-name,
-.thread-item:focus-visible .thread-name {
-  color: var(--ink);
-}
-
-.thread-role {
-  font-size: var(--text-2xs);
-  line-height: 1.35;
-  color: var(--ink-faint);
-}
-
-.threads-more {
-  position: absolute;
-  left: 16px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-  text-decoration: underline;
-  text-decoration-color: var(--hairline-strong);
-  text-underline-offset: 2.5px;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.threads-more:hover {
-  color: var(--ink);
-}
-
 /* Without room for words, the knots remain. */
 @container skstage (max-width: 930px) {
   .threads {
@@ -1012,21 +857,68 @@
 
 /* ---------- Files, named in the words ---------- */
 
+/* A file named in the words is the file: its name on a little tile. */
+.doc-page code:has(.doc-file),
+.doc-page code:has(.doc-file-dir) {
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.doc-page a:has(.doc-file) {
+  color: inherit;
+  text-decoration: none;
+}
+
+.doc-page .doc-file-dir {
+  font-size: 0;
+}
+
 .doc-page .doc-file {
+  padding: 0.2em 0.6em 0.22em 0.46em;
+  border-radius: 7px;
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  font-family: var(--font-ui);
+  font-size: 0.84em;
+  font-weight: 540;
+  color: var(--ink);
   cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: var(--hairline-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.doc-page .doc-file::before {
+  content: "";
+  display: inline-block;
+  width: 0.62em;
+  height: 0.8em;
+  margin-right: 0.42em;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1.25px var(--ink-muted);
+  vertical-align: -0.04em;
+}
+
+.doc-page .doc-file[data-kind="script"]::before {
+  content: "›";
+  width: auto;
+  height: auto;
+  box-shadow: none;
+  font-weight: 750;
+  color: var(--thread-strong);
+  vertical-align: baseline;
 }
 
 .doc-page .doc-file:hover {
-  text-decoration-color: var(--ink-muted);
+  box-shadow: inset 0 0 0 1px var(--ink-muted);
 }
 
 .doc-page .doc-file.is-absent {
-  text-decoration-style: dashed;
-  text-decoration-color: var(--thread);
+  background: none;
+  box-shadow: none;
+  outline: 1px dashed var(--thread);
+  outline-offset: -1px;
 }
 
 .file-peek {
@@ -1328,10 +1220,6 @@ body.is-lifting [role="tooltip"] {
   }
 }
 
-.thread-item {
-  touch-action: none;
-}
-
 /* ---------- The + beside the handle ---------- */
 
 .doc-add {
@@ -1588,80 +1476,84 @@ body.is-lifting [role="tooltip"] {
   position: relative;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px var(--s3);
-  margin-top: var(--s2);
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  margin-top: var(--s3);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
-  line-height: 1.7;
   color: var(--ink-muted);
 }
 
-.sk-when > p {
-  margin: 0;
-}
-
-.sk-when-open {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  cursor: text;
-  text-decoration: underline dotted var(--hairline-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-.sk-when-open:hover,
-.sk-when-open:focus-visible {
-  color: var(--ink);
-  text-decoration-color: var(--thread);
-  outline: none;
+.sk-when-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sk-when-token {
-  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  font: inherit;
+  font-weight: 560;
   color: var(--ink);
-  font-weight: 540;
+}
+
+.sk-when-token.is-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 450;
+}
+
+.sk-when-token.is-rules:hover {
+  box-shadow: inset 0 0 0 1px var(--ink-muted);
+}
+
+.sk-when-token.is-bad {
+  background: var(--warn-wash);
 }
 
 .sk-when-token button {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 100%;
-  translate: 0 -50%;
-  padding: 0 3px;
+  width: 0;
+  height: 18px;
+  margin-right: -4px;
+  padding: 0;
+  overflow: hidden;
   border: 0;
-  border-radius: 3px;
-  background: var(--paper);
+  border-radius: 50%;
+  background: none;
   font: inherit;
   font-weight: 400;
-  color: var(--ink-faint);
-  opacity: 0;
+  line-height: 1;
+  color: var(--ink-muted);
+  transition: width var(--duration) var(--ease);
 }
 
 .sk-when-token:hover button,
 .sk-when-token button:focus-visible {
-  opacity: 1;
+  width: 18px;
+  margin-left: 3px;
   outline: none;
 }
 
 .sk-when-token button:hover {
-  color: var(--ink);
   background: var(--paper-sunken);
+  color: var(--ink);
 }
 
 .sk-when-join {
-  margin: 0 4px;
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
-  color: inherit;
-  text-decoration: underline dotted var(--hairline-strong);
-  text-underline-offset: 3px;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
 }
 
 .sk-when-join:hover {
@@ -1669,9 +1561,8 @@ body.is-lifting [role="tooltip"] {
 }
 
 .sk-when-input {
-  min-width: 3ch;
-  margin-left: 4px;
-  padding: 0;
+  height: 26px;
+  padding: 0 4px;
   border: 0;
   background: none;
   font: inherit;
@@ -1682,33 +1573,107 @@ body.is-lifting [role="tooltip"] {
 
 .sk-when-input::placeholder {
   color: var(--ink-faint);
-  font-style: italic;
 }
 
-.sk-when:hover .sk-when-more {
-  opacity: 1;
-}
-
-.sk-when-more {
-  width: 18px;
-  height: 18px;
-  margin-left: 2px;
-  opacity: 0;
+.sk-when-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 26px;
+  height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 999px;
   background: none;
+  box-shadow: inset 0 0 0 1px transparent;
   font: inherit;
   line-height: 1;
   color: var(--ink-faint);
+  transition: box-shadow var(--duration) var(--ease);
 }
 
-.sk-when-more:hover,
-.sk-when-more:focus-visible {
-  opacity: 1;
-  background: var(--paper-sunken);
+.sk-when-add.is-empty {
+  padding: 0 11px 0 9px;
+}
+
+.sk-when-add:hover,
+.sk-when-add:focus-visible,
+.sk-when-add.is-empty {
+  color: var(--ink-muted);
+  outline: 1px dashed var(--hairline-strong);
+  outline-offset: -1px;
+}
+
+.sk-when-add:hover,
+.sk-when-add:focus-visible {
   color: var(--ink);
+}
+
+/* Your projects, lit where this would be suggested. */
+.sk-lit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.sk-lit.is-stale {
+  opacity: 0.55;
+}
+
+.sk-lit-mark {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  transition:
+    opacity var(--duration) var(--ease),
+    filter var(--duration) var(--ease);
+}
+
+.sk-lit-mark.is-on {
+  box-shadow: 0 0 0 1.5px var(--thread);
+}
+
+.sk-lit-mark.is-maybe {
+  opacity: 0.7;
+  outline: 1px dashed var(--hairline-strong);
+  outline-offset: -1px;
+}
+
+.sk-lit-mark.is-off {
+  opacity: 0.38;
+  filter: grayscale(1);
+}
+
+.sk-lit-mark:hover,
+.sk-lit-mark:focus-visible {
+  opacity: 1;
+  filter: none;
   outline: none;
+}
+
+.sk-lit-more,
+.sk-lit-problem {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.sk-lit-problem {
+  margin-left: auto;
+}
+
+.sk-lit-more:hover,
+.sk-lit-problem:hover {
+  color: var(--ink);
 }
 
 .sk-when-menu {
@@ -1749,12 +1714,6 @@ body.is-lifting [role="tooltip"] {
   font-style: normal;
   color: var(--ink-faint);
   white-space: nowrap;
-}
-
-.sk-when-hint {
-  margin: 0;
-  padding: 5px 9px;
-  color: var(--ink-faint);
 }
 
 .sk-when-advanced {
@@ -1901,23 +1860,6 @@ body.is-lifting [role="tooltip"] {
   z-index: 1;
   top: var(--s4);
   right: var(--s4);
-}
-
-/* What the rules mean for your projects carries on the sentence, not a band of its own. */
-.sk-when .sk-suggested {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: inherit;
-  color: inherit;
-}
-
-.sk-when .sk-suggested-knot {
-  display: none;
 }
 
 .sk-when-panel .layer-title {

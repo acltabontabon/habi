@@ -33,12 +33,13 @@ becomes the title, and the title becomes the identifier (until you change it or 
 
 ## The Skill Studio
 
-![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a sentence saying when it's used, and the instructions as a document with other skills woven in.](../media/skill-studio.jpg)
+![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a token saying what it's for, and the instructions with steps, files and other skills drawn as objects you can pick up.](../media/skill-studio.jpg)
 
-A skill is a page you write on. Title, purpose and instructions flow into each other, with one
-sentence between them saying when the skill is used. Click that sentence and type a tool, a package
-or a file, and Habi offers what you might mean; your choice becomes part of the sentence. Backspace
-takes the last one out, and pressing *and* changes it to *or*.
+A skill is a page you write on. Title, purpose and instructions flow into each other, with a line
+of tokens between them saying what the skill is for. Press **+** and type a tool, a package or a
+file, then choose what you meant. Backspace or a token's **×** takes one out, and pressing *and*
+changes it to *or*. Beside the tokens are your projects' marks, lit where the skill would be
+suggested. Press one to see why.
 
 **Instructions** — A real document. Headings, steps, checklists, code, notes and tables are
 what you see and edit, with no Markdown on screen. To add something:
@@ -73,8 +74,8 @@ runs them, including to preview them.
 
 *What's inside*, in the **•••** menu, shows what's in the skill in the order an agent meets it, with rough sizes.
 
-**When to use** — The sentence covers most of this. *Exceptions and other rules*, offered while you
-edit it, opens the full set beside the page. Signals are conditions that trigger recommendations:
+**When to use** — The tokens cover most of this. *Exceptions and other rules*, offered while you
+add one, opens the full set beside the page. Signals are conditions that trigger recommendations:
 - *Playwright is used*
 - *Depends on `@playwright/test`*
 - File patterns
@@ -102,14 +103,14 @@ The instructions are what an agent reads, so a skill is named in plain words:
 and decide for themselves when to use them, so this works anywhere and promises nothing about
 what an agent will do.
 
-A skill you add is **part of this skill**, shown with a coloured underline and a knot in the
-margin. One that's only named in the words is **mentioned**, shown with a dotted underline, and
+A skill you add is **part of this skill**: its name is a coloured token, and a sentence that uses it
+becomes a tile with a knot. One that's only named in the words is **mentioned**, shown with a dotted underline, and
 isn't counted until you press it and choose *Make it part of this skill*. Press a skill to say
 how it's used, see which agents would find it, or replace it. Each use is separate: changing one
 leaves the others alone.
 
-Drag a knot along the margin to move its sentence, or pull it away to take it out. **See how they
-fit** opens the whole composition as a grid of sections and skills: press an empty crossing to use
+Pick up a tile by its knot to move it, or pull it off to the right to take it out. A step moves
+by its number. **How the skills fit**, in the **•••** menu, opens the whole composition as a grid of sections and skills: press an empty crossing to use
 that skill in that section, drag a knot to another section, drag a section to reorder it. A dashed
 thread means Habi can't find that skill here.
 
