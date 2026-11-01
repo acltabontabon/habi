@@ -230,14 +230,6 @@
   letter-spacing: -0.01em;
 }
 
-.ws-optional {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  color: var(--ink-faint);
-}
-
 .ws-tool-purpose {
   color: var(--ink-muted);
   font-size: var(--text-sm);

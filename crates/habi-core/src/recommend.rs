@@ -714,6 +714,8 @@ pub fn recommend(
 ) -> Vec<Recommendation> {
     let views = Views::new(inspection, declarations);
     let folders = crate::install::status::SkillFolders::of(root);
+    // Looks at the disk, and every candidate that is not installed asks.
+    let project_clients = std::cell::OnceCell::new();
     let mut out: Vec<Recommendation> = candidates
         .iter()
         .map(|c| {
@@ -776,11 +778,11 @@ pub fn recommend(
                 .collect();
             let key = lock_key(c.source_identity, &item.id);
             let installation = installations.iter().find(|i| i.key == key).cloned();
-            let clients = installation
-                .as_ref()
-                .map(|i| i.clients.clone())
-                .unwrap_or_else(|| crate::clients::in_project(root));
-            let readiness = readiness_for_clients(root, item, &modules, &clients);
+            let clients = match &installation {
+                Some(i) => i.clients.as_slice(),
+                None => project_clients.get_or_init(|| crate::clients::in_project(root)),
+            };
+            let readiness = readiness_for_clients(root, item, &modules, clients);
             let check_modules: Vec<String> = if modules.is_empty() {
                 inspection.modules.iter().map(|m| m.id.clone()).collect()
             } else {

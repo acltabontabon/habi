@@ -33,6 +33,8 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Changed
 
+- **Habi is a third smaller and much faster.** Screens that read a project or your libraries answer several
+  times faster, and the app no longer waits for your shell's startup files each time it opens.
 - **Shell scripts in a skill are read as the shell reads them.** A `curl … | sh` split over several lines is one
   command and is flagged, a `#` inside a string no longer hides what follows it, and a comment is not a command.
 - **Where to start.** Among the skills that fit, *Fits this project* now leads with up to three: each

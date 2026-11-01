@@ -5477,36 +5477,6 @@ dl.facets,
 }
 
 /* What a skill is, before its documentation (the community preview). */
-.skill-facts {
-  display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
-  gap: 5px var(--s4);
-  margin: 0;
-}
-
-.skill-facts dt {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  padding-top: 2px;
-}
-
-.skill-facts dd {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  overflow-wrap: anywhere;
-}
-
-.skill-title {
-  font-size: clamp(26px, 2.6vw, 34px);
-  font-weight: 620;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  overflow-wrap: break-word;
-}
 
 /* A file, read in place of the skill: where it sits, and the way back. */
 .reader-crumb {

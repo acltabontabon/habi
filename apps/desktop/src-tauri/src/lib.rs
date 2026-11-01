@@ -40,12 +40,9 @@ fn init_logging(paths: &AppPaths) -> Option<tracing_appender::non_blocking::Work
     Some(guard)
 }
 
-/// Apps opened from the Finder get launchd's minimal PATH, so `gh`, `glab`
-/// and a Homebrew `git` are not found. Adds the login shell's PATH (waiting
-/// at most a moment for it) and the usual Homebrew folders. Returns what was
-/// added, for the log.
+/// What the login shell prints for its PATH, waiting at most a moment for it.
 #[cfg(target_os = "macos")]
-fn merge_login_path() -> Vec<String> {
+fn login_shell_path() -> String {
     use std::io::Read;
     use std::process::{Command, Stdio};
     use std::time::Duration;
@@ -54,7 +51,7 @@ fn merge_login_path() -> Vec<String> {
         .ok()
         .filter(|s| s.starts_with('/'))
         .unwrap_or_else(|| "/bin/zsh".into());
-    let login = Command::new(shell)
+    Command::new(shell)
         .args(["-lc", "printf %s \"$PATH\""])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -74,7 +71,36 @@ fn merge_login_path() -> Vec<String> {
             let _ = child.wait();
             text
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+/// Keeps what the login shell printed for the next launch, whole or not at all.
+#[cfg(target_os = "macos")]
+fn remember_login_path(file: Option<&std::path::Path>, login: &str) {
+    let Some(file) = file.filter(|_| !login.is_empty()) else {
+        return;
+    };
+    let partial = file.with_extension("tmp");
+    let saved = std::fs::write(&partial, login).and_then(|()| std::fs::rename(&partial, file));
+    if let Err(e) = saved {
+        tracing::warn!(error = %e, "could not remember the login shell's PATH");
+    }
+}
+
+/// Apps opened from the Finder get launchd's minimal PATH, so `gh`, `glab`
+/// and a Homebrew `git` are not found. Adds the login shell's PATH and the
+/// usual Homebrew folders. A shell can take a second to start and this happens
+/// before the window opens, so only the first launch waits for it: later ones
+/// use what the previous launch learned, and ask the shell again in the
+/// background for the next one. Returns what was added, for the log.
+#[cfg(target_os = "macos")]
+fn merge_login_path(remembered: Option<std::path::PathBuf>) -> Vec<String> {
+    let known = remembered
+        .as_deref()
+        .and_then(|file| std::fs::read_to_string(file).ok())
+        .filter(|text| !text.is_empty());
+    let first_launch = known.is_none();
+    let login = known.unwrap_or_else(login_shell_path);
 
     let current = std::env::var("PATH").unwrap_or_default();
     let mut entries: Vec<String> = current
@@ -97,13 +123,20 @@ fn merge_login_path() -> Vec<String> {
         }
     }
     if !added.is_empty() {
-        // SAFETY: called first thing in `run`, before Habi starts any other
+        // SAFETY: called early in `run`, before Habi starts any other
         // thread that could read the environment (the reader thread above
         // only reads a pipe).
         #[allow(unsafe_code)] // Setting the environment is unsafe since Rust 2024.
         unsafe {
             std::env::set_var("PATH", entries.join(":"))
         };
+    }
+    if first_launch {
+        remember_login_path(remembered.as_deref(), &login);
+    } else {
+        std::thread::spawn(move || {
+            remember_login_path(remembered.as_deref(), &login_shell_path());
+        });
     }
     added
 }
@@ -179,19 +212,29 @@ fn fit_to_screen(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Stops background work and file watching, and leaves the database whole on disk.
+fn shut_down(state: &AppState) {
+    state.cancel_all();
+    watch::stop(state, None);
+    state.wait_for_jobs(std::time::Duration::from_secs(3));
+    if let Ok(habi) = state.habi() {
+        habi.close_connections();
+    }
+}
+
 pub fn run() {
-    #[cfg(target_os = "macos")]
-    let added_to_path = merge_login_path();
     // Without a home folder there is nowhere to keep data or logs: the UI
     // explains that instead of the app failing to open.
     let (paths, paths_error) = match AppPaths::from_env() {
         Ok(paths) => (Some(paths), None),
         Err(e) => (None, Some(e.to_info())),
     };
-    let guard = paths.as_ref().and_then(|p| {
+    if let Some(p) = &paths {
         let _ = p.ensure();
-        init_logging(p)
-    });
+    }
+    #[cfg(target_os = "macos")]
+    let added_to_path = merge_login_path(paths.as_ref().map(|p| p.root.join("login-path")));
+    let guard = paths.as_ref().and_then(init_logging);
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "starting Habi");
     #[cfg(target_os = "macos")]
     if !added_to_path.is_empty() {
@@ -235,11 +278,7 @@ pub fn run() {
                 window.state::<AppState>().remember_dropped(paths);
             }
             if let tauri::WindowEvent::Destroyed = event {
-                // Stop background work and file watching when the window closes.
-                let state = window.state::<AppState>();
-                state.cancel_all();
-                watch::stop(&state, None);
-                state.wait_for_jobs(std::time::Duration::from_secs(3));
+                shut_down(&window.state::<AppState>());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -269,7 +308,6 @@ pub fn run() {
             commands::declare,
             commands::retract,
             commands::list_sources,
-            commands::get_source,
             commands::pick_library_folder,
             commands::add_source,
             commands::remove_source,
@@ -281,9 +319,7 @@ pub fn run() {
             commands::dismiss_update_report,
             commands::catalog,
             commands::catalog_repo_facts,
-            commands::preview_catalog_entry,
             commands::connect_catalog_entry,
-            commands::forget_catalog_preview,
             commands::catalog_fits,
             commands::library,
             commands::item_detail,
@@ -362,8 +398,16 @@ pub fn run() {
             commands::diagnostics_save,
             commands::free_up_space,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Habi");
+        .build(tauri::generate_context!())
+        .expect("error while running Habi")
+        .run(|app, event| {
+            // Quitting from the menu ends the app without destroying the window first.
+            if let tauri::RunEvent::Exit = event
+                && let Some(state) = app.try_state::<AppState>()
+            {
+                shut_down(&state);
+            }
+        });
 }
 
 #[cfg(test)]

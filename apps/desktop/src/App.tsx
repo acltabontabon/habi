@@ -18,16 +18,22 @@ import { isMac } from "./lib/platform";
 import { invalidateSkills, keys, useAppInfo, useSettings } from "./lib/queries";
 import { useScheduledRefresh } from "./lib/schedule";
 import { UpdatesProvider } from "./lib/updates";
-import { CommandPalette } from "./views/CommandPalette";
 import { ProjectChooser, SkillsFolderCaught } from "./views/OpenProject";
-import { ProjectView } from "./views/project/ProjectView";
 import { Sidebar } from "./views/Sidebar";
 import type { AddSkillsStart } from "./views/skills/AddSkillsDialog";
-import { SkillsView } from "./views/skills/SkillsView";
 import { Welcome } from "./views/Welcome";
-import { WelcomeOverlay } from "./views/WelcomeOverlay";
 
 // Screens off the launch path arrive when first visited, so the first screen does not wait for them.
+const ProjectView = lazy(() =>
+  import("./views/project/ProjectView").then((m) => ({ default: m.ProjectView })),
+);
+const SkillsView = lazy(() => import("./views/skills/SkillsView").then((m) => ({ default: m.SkillsView })));
+const CommandPalette = lazy(() =>
+  import("./views/CommandPalette").then((m) => ({ default: m.CommandPalette })),
+);
+const WelcomeOverlay = lazy(() =>
+  import("./views/WelcomeOverlay").then((m) => ({ default: m.WelcomeOverlay })),
+);
 const SourcesView = lazy(() =>
   import("./views/sources/SourcesView").then((m) => ({ default: m.SourcesView })),
 );
@@ -367,13 +373,21 @@ function Shell() {
             </Suspense>
           </ErrorBoundary>
         </main>
-        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        {paletteOpen ? (
+          <Suspense fallback={null}>
+            <CommandPalette open onOpenChange={setPaletteOpen} />
+          </Suspense>
+        ) : null}
         {adding ? (
           <Suspense fallback={null}>
             <AddSkillsDialog start={adding} onClose={() => setAdding(null)} />
           </Suspense>
         ) : null}
-        {welcomeOpen ? <WelcomeOverlay onClose={closeWelcome} /> : null}
+        {welcomeOpen ? (
+          <Suspense fallback={null}>
+            <WelcomeOverlay onClose={closeWelcome} />
+          </Suspense>
+        ) : null}
         {opening?.step === "chooser" ? (
           <ProjectChooser
             onOpen={(path) => void openFolder(api.openBrowsedProject(path), opening.stay)}

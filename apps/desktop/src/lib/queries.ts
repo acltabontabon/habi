@@ -191,14 +191,6 @@ export function useOverview(projectId: string | undefined) {
   return { ...query, rescan, cancel };
 }
 
-export function useHistory(projectId: string | undefined) {
-  return useQuery({
-    queryKey: keys.history(projectId ?? ""),
-    queryFn: () => api.history(projectId ?? ""),
-    enabled: Boolean(projectId),
-  });
-}
-
 export function useContributions() {
   return useQuery({ queryKey: keys.contributions, queryFn: api.listContributions });
 }

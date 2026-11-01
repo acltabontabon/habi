@@ -3,12 +3,8 @@
 
 /// Display name.
 pub const APP_NAME: &str = "Habi";
-/// Lowercase identifier used for files, markers, refs and environment variables.
-pub const SLUG: &str = "habi";
 /// Overrides the data directory (useful for tests and portable setups).
 pub const HOME_ENV: &str = "HABI_HOME";
-/// Directory inside a project for Habi's portable, committable state.
-pub const PROJECT_DIR: &str = ".habi";
 /// Lock file recording what Habi installed in a project.
 pub const LOCK_FILE: &str = ".habi/lock.json";
 /// Git ref namespace used inside Habi-managed caches.

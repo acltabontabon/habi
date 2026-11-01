@@ -23,7 +23,6 @@ clap = { version = "4.6.7", features = ["derive"] }
 globset = "0.4.20"
 hex = "0.4.3"
 ignore = "0.4.33"
-jsonschema = { version = "0.60.2", default-features = false }
 libc = "0.2.189"
 regex = "1.13.1"
 roxmltree = "0.21.1"
@@ -40,7 +39,7 @@ time = { version = "0.3.55", features = ["formatting", "parsing", "serde", "macr
 toml = "1.1.6"
 toml_edit = "0.25.15"
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tracing-appender = "0.2.5"
 tree-sitter = "0.27.1"
 tree-sitter-bash = "0.25.1"
@@ -57,7 +56,9 @@ unicode-normalization = "0.1.25"
 uuid = { version = "1.26.1", features = ["v4"] }
 directories = "6.0.0"
 which = "8.0.6"
-tauri = "2.12.1"
+# Without the default `dynamic-acl`: capabilities are fixed when the app is built. Linux, which
+# the other defaults are for, is not supported for the desktop app.
+tauri = { version = "2.12.1", default-features = false, features = ["wry", "compression", "common-controls-v6"] }
 tauri-build = "2.7.1"
 tauri-plugin-dialog = "2.8.1"
 tauri-plugin-opener = "2.7.0"
@@ -72,6 +73,9 @@ ctrlc = "3.5.2"
 unsafe_code = "deny"
 
 [profile.release]
-lto = "thin"
+# 3.5 MB smaller than optimizing for speed, for 10-15% on work that is mostly file and database
+# access. Panics still unwind: `Habi::open` relies on it to survive a bug in what it reads at start.
+opt-level = "s"
+lto = "fat"
 codegen-units = 1
-strip = "debuginfo"
+strip = true

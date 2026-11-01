@@ -579,6 +579,11 @@ impl Habi {
         &self.sources
     }
 
+    /// For when the app is about to quit. See [`Store::close_connections`].
+    pub fn close_connections(&self) {
+        self.store.close_connections();
+    }
+
     fn applier(&self) -> Applier<'_> {
         Applier {
             paths: &self.paths,
@@ -1645,15 +1650,6 @@ impl Habi {
             .into_iter()
             .find(|i| i.id == id)
             .ok_or_else(|| HabiError::NotFound(format!("item {key}")))
-    }
-
-    /// What a preview id would run, without using it up.
-    pub fn check_preview(&self, preview_id: &str) -> Option<CheckPreview> {
-        self.check_previews
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(preview_id)
-            .map(|stored| stored.preview.clone())
     }
 
     pub fn prepare_check(

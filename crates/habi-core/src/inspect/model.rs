@@ -337,11 +337,6 @@ impl ProjectInspection {
         self.facts.iter().find(|f| f.id == id)
     }
 
-    /// The deepest module whose directory contains `path`.
-    pub fn owning_module(&self, path: &str) -> String {
-        self.index().lookup.owner(path).to_string()
-    }
-
     /// Per-module groupings of facts, coverage and files. Computed on first
     /// use and cached with the inspection (clones share it).
     pub fn index(&self) -> &ModuleIndex {
@@ -456,7 +451,6 @@ impl ModuleLookup {
 /// indices into the inspection's vectors).
 #[derive(Debug, Default)]
 pub struct ModuleIndex {
-    lookup: ModuleLookup,
     modules: HashMap<String, u32>,
     files: HashMap<String, Vec<u32>>,
     facts: HashMap<String, Vec<u32>>,
@@ -501,7 +495,6 @@ impl ModuleIndex {
             coverage.entry(c.module.clone()).or_default().push(i as u32);
         }
         ModuleIndex {
-            lookup,
             modules,
             files,
             facts,
