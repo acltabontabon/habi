@@ -3,3 +3,6 @@
 TS_RS_EXPORT_DIR = { value = "apps/desktop/src/bindings", relative = true }
 # Sizes and timestamps in Habi stay well below 2^53, so JavaScript numbers are exact.
 TS_RS_LARGE_INT = "number"
+# SQLite features Habi does not use (full-text search, R-trees, loadable extensions), left out of
+# the bundled build, and its memory statistics, which every allocation would otherwise update.
+LIBSQLITE3_FLAGS = "-USQLITE_ENABLE_FTS3 -USQLITE_ENABLE_FTS3_PARENTHESIS -USQLITE_ENABLE_FTS5 -USQLITE_ENABLE_RTREE -USQLITE_ENABLE_DBSTAT_VTAB -USQLITE_ENABLE_STAT4 -USQLITE_SOUNDEX -USQLITE_ENABLE_COLUMN_METADATA -USQLITE_ENABLE_LOAD_EXTENSION -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_DEPRECATED -DSQLITE_OMIT_SHARED_CACHE -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_LIKE_DOESNT_MATCH_BLOBS"

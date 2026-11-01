@@ -3,7 +3,7 @@
 //! libraries does not have to read every library to describe it.
 
 use super::model::{DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem};
-use super::signals::{SignalCounts, SignalSeverity};
+use super::signals::SignalCounts;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use ts_rs::TS;
@@ -117,11 +117,6 @@ pub fn summarize(
         .map(|(name, items)| GroupCount { name, items })
         .collect();
     summary
-}
-
-/// The most serious signal an item carries, if any.
-pub fn worst_signal(item: &LibraryItem) -> Option<SignalSeverity> {
-    item.signals.iter().map(|s| s.severity).max()
 }
 
 /// The SPDX identifier of a licence text, when it is one of a few common

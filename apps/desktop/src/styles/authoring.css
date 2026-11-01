@@ -199,18 +199,6 @@
   margin-inline: auto;
 }
 
-.skills-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--s4);
-  margin-bottom: var(--s3);
-}
-
-.skills-head .lead-sm {
-  margin-bottom: 0;
-}
-
 /* ---------- My skills: before the first skill ---------- */
 
 /* Empty, the page opens up and uses the whole width. */
@@ -694,7 +682,6 @@
   border-top: 1px solid var(--hairline-strong);
 }
 
-.skill-row,
 .trash-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -709,10 +696,6 @@
   transition: background var(--duration) var(--ease);
 }
 
-.skill-row:hover {
-  background: var(--paper-raised);
-}
-
 .skill-row-main {
   display: grid;
   gap: 2px;
@@ -724,21 +707,6 @@
   font-weight: 580;
   overflow-wrap: anywhere;
   letter-spacing: -0.012em;
-}
-
-.skill-row-desc {
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.skill-row-side {
-  display: grid;
-  gap: 2px;
-  justify-items: end;
-  text-align: right;
 }
 
 .skill-row-meta {
@@ -1500,16 +1468,10 @@
   .picker {
     grid-template-columns: minmax(0, 1fr);
   }
-  .skills-head,
   .found-row,
-  .skill-row,
   .trash-row {
     grid-template-columns: minmax(0, 1fr);
     display: grid;
-  }
-  .skill-row-side {
-    justify-items: start;
-    text-align: left;
   }
 }
 

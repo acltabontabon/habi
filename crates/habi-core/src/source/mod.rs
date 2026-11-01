@@ -935,7 +935,7 @@ impl Sources {
             // library itself reports the problem when it is opened.
             match self.index_at(&id, &snapshot) {
                 Ok(index) => {
-                    set_item_count(&self.store.conn()?, &id, &snapshot, index.items.len())?
+                    set_item_count(&*self.store.conn()?, &id, &snapshot, index.items.len())?
                 }
                 Err(e) => tracing::warn!(source = %id, error = %e, "could not count library items"),
             }
@@ -1012,7 +1012,7 @@ impl Sources {
     /// `name`, or with a number after it if a source goes by that name already:
     /// for a connection the user confirmed without choosing a name.
     pub fn available_name(&self, name: &str) -> Result<String> {
-        free_name(&self.store.conn()?, name, None)
+        free_name(&*self.store.conn()?, name, None)
     }
 
     /// Registers a source. Does not fetch: fetching is an explicit action.

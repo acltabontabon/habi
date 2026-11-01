@@ -109,8 +109,6 @@ fn webview_contract_end_to_end() {
             commands::refresh_source,
             commands::catalog,
             commands::catalog_repo_facts,
-            commands::preview_catalog_entry,
-            commands::forget_catalog_preview,
             commands::project_overview,
             commands::plan_install,
             commands::apply_plan,
@@ -201,20 +199,6 @@ fn webview_contract_end_to_end() {
         && e["contents"].is_null()
         && e["review"].is_null()));
     assert!(entries.iter().any(|e| e["id"] == "openai"));
-    // An id the catalog does not have is a plain not-found, not a fetch.
-    let unknown = call(
-        &webview,
-        "preview_catalog_entry",
-        json!({ "entryId": "nope", "refresh": false, "jobId": null }),
-    )
-    .unwrap_err();
-    assert_eq!(unknown["code"], "notFound");
-    call(
-        &webview,
-        "forget_catalog_preview",
-        json!({ "entryId": "openai" }),
-    )
-    .unwrap();
 
     // Untrusted input is refused.
     let local = call(

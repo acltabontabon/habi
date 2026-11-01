@@ -492,13 +492,6 @@ pub async fn list_sources(state: State<'_, AppState>) -> CmdResult<Vec<Source>> 
     blocking(habi, |h| h.sources().list()).await
 }
 
-/// One source by id, including a library that is only being previewed.
-#[tauri::command]
-pub async fn get_source(state: State<'_, AppState>, source_id: String) -> CmdResult<Source> {
-    let habi = state.habi()?;
-    blocking(habi, move |h| h.sources().get(&source_id)).await
-}
-
 #[tauri::command]
 pub async fn pick_library_folder(
     app: AppHandle,
@@ -623,24 +616,6 @@ pub async fn catalog(state: State<'_, AppState>) -> CmdResult<Vec<CatalogEntry>>
     blocking(habi, |h| h.catalog().entries()).await
 }
 
-/// Fetches a catalog library so it can be inspected (nothing is connected,
-/// installed or run). Opening one fetched before downloads nothing, unless
-/// `refresh` asks for a check.
-#[tauri::command]
-pub async fn preview_catalog_entry(
-    state: State<'_, AppState>,
-    entry_id: String,
-    refresh: bool,
-    job_id: Option<String>,
-) -> CmdResult<CatalogEntry> {
-    let habi = state.habi()?;
-    let (cancel, _guard) = state.job(job_id);
-    blocking(habi, move |h| {
-        h.catalog().preview(&entry_id, refresh, &cancel)
-    })
-    .await
-}
-
 /// Connects a catalog library as a community library.
 #[tauri::command]
 pub async fn connect_catalog_entry(
@@ -665,13 +640,6 @@ pub async fn catalog_repo_facts(
     let habi = state.habi()?;
     let (cancel, _guard) = state.job(job_id);
     blocking(habi, move |h| h.catalog().repo_facts(&entry_id, &cancel)).await
-}
-
-/// Discards a fetched preview. A connected library is not touched.
-#[tauri::command]
-pub async fn forget_catalog_preview(state: State<'_, AppState>, entry_id: String) -> CmdResult<()> {
-    let habi = state.habi()?;
-    blocking(habi, move |h| h.catalog().forget(&entry_id)).await
 }
 
 /// Skills of already fetched catalog libraries that fit a project.

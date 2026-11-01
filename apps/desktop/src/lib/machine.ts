@@ -116,8 +116,3 @@ export function homeMention(skill: Pick<MachineSkill, "mentionsHome">): string |
   const more = skill.mentionsHome.length > 3 ? ` and ${skill.mentionsHome.length - 3} more` : "";
   return `${files}${more}`;
 }
-
-/** The folder a project copy sits in, from its project-relative path ("a/b/skill" → "a/b"). */
-export function copyFolder(copy: ProjectCopy): string {
-  return copy.path.split("/").slice(0, -1).join("/");
-}
