@@ -18,6 +18,11 @@
   padding: var(--s2) var(--gutter) var(--s3);
 }
 
+/* A message waits above the tray rather than lying over its pieces. */
+body:has(.sk-tray-dock:not([hidden]) > .doc-tray) .toasts {
+  bottom: 76px;
+}
+
 .sk-tray-dock:empty,
 .sk-tray-dock[hidden] {
   display: none;
@@ -219,7 +224,7 @@
 .shelf-row {
   position: relative;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: start;
   padding: 7px 8px;
@@ -233,13 +238,6 @@
 
 .shelf-row.is-active {
   background: var(--paper-sunken);
-}
-
-.shelf-knot {
-  width: 7px;
-  height: 7px;
-  margin: 6px 0 0 3px;
-  border-radius: 50%;
 }
 
 .shelf-words {

@@ -6,7 +6,6 @@
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ShelfSkill } from "../../../../bindings/ShelfSkill";
 import { Icon } from "../../../../components/Icon";
-import { KNOT } from "./knots";
 
 const ORDER: Record<string, number> = { mine: 0, machine: 1, project: 2, library: 3, community: 4 };
 
@@ -170,7 +169,6 @@ export function Shelf({
                     if (e.key === "Enter") onPick(s);
                   }}
                 >
-                  <span className="shelf-knot" style={{ background: KNOT }} aria-hidden="true" />
                   <span className="shelf-words">
                     <span className="shelf-name">{s.title || s.name || "Untitled skill"}</span>
                     <span className={`shelf-what${expanded ? " is-open" : ""}`}>
@@ -215,7 +213,7 @@ export function Shelf({
         ))}
       </div>
       <footer className="shelf-foot">
-        Choosing adds it to these instructions. It doesn't install or run anything.
+        Drag one to where it applies, or press it. It's only a link: nothing is installed or run.
       </footer>
     </aside>
   );

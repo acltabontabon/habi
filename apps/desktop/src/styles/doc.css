@@ -370,6 +370,10 @@
 
 /* ---------- Tables ---------- */
 
+.doc-page > table {
+  margin-bottom: 1.2em;
+}
+
 .doc-page .tableWrapper {
   margin: 0 0 1.2em;
   overflow-x: auto;

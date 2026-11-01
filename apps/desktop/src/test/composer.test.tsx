@@ -149,9 +149,9 @@ describe("the shelf", () => {
     expect(screen.getByText("Runs a downloaded script")).toBeInTheDocument();
   });
 
-  it("says that choosing doesn't install or run anything", () => {
+  it("says that a link installs and runs nothing", () => {
     render(<Shelf {...shelfProps} skills={skills} />);
-    expect(screen.getByText(/doesn't install or run anything/)).toBeInTheDocument();
+    expect(screen.getByText(/nothing is installed or run/)).toBeInTheDocument();
   });
 
   it("can be picked up as well as pressed", () => {
