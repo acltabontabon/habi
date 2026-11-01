@@ -516,6 +516,7 @@ export function DocEditor({
       {view && !readOnly ? (
         <Pieces
           view={view}
+          files={() => contextRef.current.files?.() ?? []}
           onChoose={(what) => contextRef.current.onChoosePiece?.(what)}
           landInto={(event, ghost, land) =>
             armDrag(event, () => ({

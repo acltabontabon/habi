@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { Transform } from "prosemirror-transform";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Composition } from "../bindings/Composition";
 import type { Dependency } from "../bindings/Dependency";
@@ -12,7 +13,9 @@ import { overviewOf } from "../views/skills/studio/compose/overviewData";
 import { type InspectorTarget, RefInspector } from "../views/skills/studio/compose/RefInspector";
 import { occurrencesIn } from "../views/skills/studio/compose/roles";
 import { Shelf } from "../views/skills/studio/compose/Shelf";
+import { WhenSentence } from "../views/skills/studio/compose/WhenSentence";
 import { parseBody } from "../views/skills/studio/doc/markdown/parse";
+import type { SkillDraft } from "../views/skills/studio/useSkillDraft";
 
 Element.prototype.scrollIntoView = () => {};
 
@@ -494,5 +497,87 @@ describe("what's inside", () => {
     );
     expect(screen.getByText("Release checks")).toBeInTheDocument();
     expect(screen.getByText(/won't change them for you/)).toBeInTheDocument();
+  });
+});
+
+const form = {
+  title: "T",
+  owner: "",
+  repositoryScope: false,
+  conditionsEditable: true,
+  matchMode: "all",
+  appliesTags: [] as string[],
+  appliesDependencies: [] as string[],
+  appliesFiles: [] as string[],
+  excludeTags: [],
+  excludeDependencies: [],
+  tools: [],
+  examples: [],
+};
+function Harness({ initial = form, onMore = () => {} }: { initial?: typeof form; onMore?: () => void }) {
+  const [current, setForm] = useState(initial);
+  const draft = {
+    form: current,
+    setForm,
+    trashed: false,
+    document: { name: "n", description: "d", body: "Plain words." },
+    skill: { metadataStatus: "undeclared" },
+  } as unknown as SkillDraft;
+  return <WhenSentence draft={draft} onMore={onMore} />;
+}
+
+describe("when a skill is used", () => {
+  it("reads as a sentence with no fields to fill in", () => {
+    render(<Harness />);
+    expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
+
+  it("is edited where it stands: type, choose, and it's part of the sentence", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "You bring this in when you want it" }));
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveFocus();
+    await userEvent.type(input, "playwright{Enter}");
+    expect(screen.getByText(/Playwright is used/)).toBeInTheDocument();
+    expect(screen.getByText(/Habi suggests it when/)).toBeInTheDocument();
+  });
+
+  it("Backspace on an empty line takes out the last one, as in any text", async () => {
+    render(<Harness initial={{ ...form, appliesTags: ["tool:playwright"] }} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add another" }));
+    await userEvent.keyboard("{Backspace}");
+    expect(screen.queryByText(/is used/)).toBeNull();
+  });
+
+  it("the words between conditions change what they mean when pressed", async () => {
+    render(<Harness initial={{ ...form, appliesDependencies: ["a", "b"] }} />);
+    await userEvent.click(screen.getByRole("button", { name: "and" }));
+    expect(screen.getByRole("button", { name: "or" })).toBeInTheDocument();
+  });
+
+  it("keeps the rarer rules one step away, not on the page", async () => {
+    const onMore = vi.fn();
+    render(<Harness onMore={onMore} />);
+    expect(screen.queryByText("Exceptions and other rules")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "You bring this in when you want it" }));
+    await userEvent.click(screen.getByRole("button", { name: "Exceptions and other rules" }));
+    expect(onMore).toHaveBeenCalled();
+  });
+
+  it("Escape leaves it as it was", async () => {
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "You bring this in when you want it" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
+  });
+
+  it("hand-written rules aren't this sentence's to change", () => {
+    render(<Harness initial={{ ...form, conditionsEditable: false }} />);
+    expect(
+      screen.getByRole("button", { name: "Habi suggests it by rules written by hand" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add another" })).toBeNull();
   });
 });

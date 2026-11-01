@@ -5,8 +5,10 @@
  */
 import type { Node as PMNode } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
-import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
+import { type ReactNode, type PointerEvent as ReactPointerEvent, useEffect, useState } from "react";
 import { ghostLabel } from "./drag";
+import { markdownForFile } from "./fileRefs";
+import { parseBody } from "./markdown/parse";
 import { schema } from "./markdown/schema";
 import { placeBlocks } from "./moves";
 
@@ -147,16 +149,54 @@ const PIECES: Piece[] = [
 
 export function Pieces({
   view,
+  files,
   onChoose,
   landInto,
 }: {
   view: EditorView;
+  /** The skill's own files, for the File piece to offer. */
+  files: () => { path: string; name: string; referenced: boolean }[];
   /** The caret is where it should go: let the author choose which. */
   onChoose: (what: "skill" | "file") => void;
   /** Runs a drag for a new piece, with where it lands. */
   landInto: (event: PointerEvent, ghost: HTMLElement, land: (at: number) => void) => void;
 }) {
+  const [filesOpen, setFilesOpen] = useState(false);
+
+  useEffect(() => {
+    if (!filesOpen) return;
+    const away = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest?.(".doc-tray")) setFilesOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilesOpen(false);
+    };
+    window.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [filesOpen]);
+
+  const blocksFor = (path: string) => {
+    const blocks: PMNode[] = [];
+    parseBody(markdownForFile(path)).doc.forEach((child) => {
+      blocks.push(child);
+    });
+    return blocks;
+  };
+
+  const caretSlot = () => {
+    const $from = view.state.selection.$from;
+    return $from.depth > 0 ? $from.after(1) : view.state.doc.content.size;
+  };
+
   const atCaret = (piece: Piece) => {
+    if (piece.choose === "file") {
+      setFilesOpen((open) => !open);
+      return;
+    }
     if (piece.make) {
       const $from = view.state.selection.$from;
       const at = view.hasFocus() && $from.depth > 0 ? $from.after(1) : view.state.doc.content.size;
@@ -173,13 +213,48 @@ export function Pieces({
       if (piece.make) placeBlocks(view, at, piece.make());
       else if (piece.choose) {
         placeBlocks(view, at, [para()]);
-        onChoose(piece.choose);
+        if (piece.choose === "file") setFilesOpen(true);
+        else onChoose(piece.choose);
       }
     });
   };
 
   return (
     <div className="doc-tray" role="toolbar" aria-label="Add to the page">
+      {filesOpen ? (
+        <div className="doc-tray-files">
+          {files().map((f) => (
+            <button
+              key={f.path}
+              type="button"
+              className="sk-file"
+              title="Drag it to where it belongs, or press to add it at the caret"
+              onPointerDown={(e) =>
+                landInto(e.nativeEvent, ghostLabel(f.name), (at) => {
+                  setFilesOpen(false);
+                  placeBlocks(view, at, blocksFor(f.path));
+                })
+              }
+              onClick={() => {
+                setFilesOpen(false);
+                placeBlocks(view, caretSlot(), blocksFor(f.path));
+              }}
+            >
+              {f.name}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="sk-file-more"
+            onClick={() => {
+              setFilesOpen(false);
+              onChoose("file");
+            }}
+          >
+            Bring in a new file…
+          </button>
+        </div>
+      ) : null}
       {PIECES.map((piece) => (
         <button
           key={piece.id}

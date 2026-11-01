@@ -29,7 +29,6 @@ import {
   type Proposal,
   proposeSignals,
   type Signal,
-  signalClause,
   signalWords,
   technologiesIn,
 } from "../../../lib/materials";
@@ -292,7 +291,7 @@ function Rows({
 
 const without = (list: string[], value: string) => list.filter((v) => v !== value);
 
-function signalsOf(form: ShareForm) {
+export function signalsOf(form: ShareForm) {
   const applies: Signal[] = [
     ...form.appliesTags.map((value): Signal => ({ kind: "tag", value })),
     ...form.appliesDependencies.map((value): Signal => ({ kind: "dependency", value })),
@@ -329,18 +328,6 @@ export function inferredSignal(draft: SkillDraft): Signal | null {
 }
 
 /** "Playwright is used · 2 signals" — the rules in a line, for the head of the skill. */
-export function whenLine(draft: SkillDraft): string | null {
-  const { form, skill } = draft;
-  if (skill.metadataStatus === "invalid") return "Needs attention";
-  if (!form.conditionsEditable) return skill.summary.hasApplicability ? "Written as YAML" : null;
-  const { applies } = signalsOf(form);
-  if (applies.length === 0) return null;
-  const lead = signalClause(applies[0] as Signal);
-  return applies.length === 1
-    ? lead
-    : `${lead} ${form.matchMode === "all" ? "and" : "or"} ${applies.length - 1} more`;
-}
-
 export function WhenToUse({
   draft,
   projects,

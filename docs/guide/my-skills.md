@@ -35,10 +35,10 @@ becomes the title, and the title becomes the identifier (until you change it or 
 
 ![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a sentence saying when it's used, its files, and the instructions as a document with other skills woven in.](../media/skill-studio.jpg)
 
-A skill is a page you write on. Title, purpose and instructions flow into each other. Between
-them, one sentence says when the skill is used, and its files sit beside it. Drag a file into the
-instructions to say what it's for; one the words don't mention yet has a dashed outline. Press the
-sentence to change when Habi suggests the skill, and the rules open beside the page.
+A skill is a page you write on. Title, purpose and instructions flow into each other, with one
+sentence between them saying when the skill is used. Click that sentence and type a tool, a package
+or a file, and Habi offers what you might mean; your choice becomes part of the sentence. Backspace
+takes the last one out, and pressing *and* changes it to *or*.
 
 **Instructions** — A real document. Headings, steps, checklists, code, notes and tables are
 what you see and edit, with no Markdown on screen. To add something:
@@ -57,21 +57,24 @@ An empty page suggests one thing at a time and offers starting patterns: **Step 
 **Troubleshooting**, **Coordinate expertise**, and **Tool-assisted**. These are starting text;
 they do not change how an agent runs the skill.
 
-**Markdown** in the top bar shows the same instructions as the text an agent receives. Your file
+*Show as Markdown* in the **•••** menu shows the same instructions as the text an agent receives. Your file
 stays ordinary Markdown: only what you change is rewritten, so a Git diff shows your edit and
 nothing else. Anything the page can't show as rich text (HTML, for instance) stays on the page
 as a block marked *kept as written*, and you can edit it as it is. Hidden characters are marked
 for you to decide about, never removed on their own.
 
 Files named in the instructions open a preview where they're named, and one that doesn't exist
-yet can be created there. Pictures from the skill show on the page; drop a file on the page to
-add it to the skill at that spot. Pictures from the web aren't fetched. Scripts are supporting
+yet can be created there. The tray's **File** piece lists the skill's files and brings in new ones.
+Files the words don't mention wait at the end of the page, because an agent won't know about them
+until they do: drag one to where it belongs. Pictures from the skill show on the page; drop a file
+on the page to add it to the skill at that spot. Pictures from the web aren't fetched. Scripts are supporting
 files an agent may inspect or run, depending on the instructions and its permissions. Habi never
 runs them, including to preview them.
 
-**Inside** shows what's in the skill in the order an agent meets it, with rough sizes.
+*What's inside*, in the **•••** menu, shows what's in the skill in the order an agent meets it, with rough sizes.
 
-**When to use** — Define signals (conditions that trigger recommendations). Examples:
+**When to use** — The sentence covers most of this. *Exceptions and other rules*, offered while you
+edit it, opens the full set beside the page. Signals are conditions that trigger recommendations:
 - *Playwright is used*
 - *Depends on `@playwright/test`*
 - File patterns
@@ -79,17 +82,17 @@ runs them, including to preview them.
 Also set exceptions (*Avoid when*), scope (*Check within*), and required tools. These write
 `habi.yaml` for recommendations. See [Habi metadata](../library-authors/metadata-schema.md).
 
-**Materials** — Scripts, examples, references, assets. Say what each does in your instructions.
+**All files**, in the **•••** menu — Scripts, examples, references, assets. Say what each does in your instructions.
 Files are auto-organized by type; scripts are stored but never run.
 
 **Skills without signals** are manual only—never recommended. Habi never auto-adds signals;
 you choose when to add them.
 
-Top bar shows **Ready** / **Draft** status and actions: **Use**, **Share**, and more (**•••**).
+The top bar shows **Ready** or **Draft** and what to do next, with the rest in **•••**.
 
 ### Using other skills
 
-Press **Skills** (or **⌘⇧K**) to see every skill within reach: yours, the ones on this machine,
+Press the tray's **Skill** piece (or **⌘⇧K**) to see every skill within reach: yours, the ones on this machine,
 in your projects and in your libraries. Drag one onto the page. Between blocks it brings a
 sentence with the part only you can say selected, ready to type over; inside a sentence it joins
 the words. Choosing a skill only changes your draft. Nothing is installed or run.

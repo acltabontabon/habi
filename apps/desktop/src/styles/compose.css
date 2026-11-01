@@ -1582,50 +1582,235 @@ body.is-lifting [role="tooltip"] {
   color: var(--ink-muted);
 }
 
-/* ---------- When it's used, and what comes with it ---------- */
+/* ---------- When it's used: a sentence you edit where it stands ---------- */
 
-.sk-line {
+.sk-when {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--s2) var(--s4);
-  margin-top: var(--s3);
+  gap: 2px var(--s3);
+  margin-top: var(--s2);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
+  line-height: 1.7;
   color: var(--ink-muted);
 }
 
-.sk-line-when {
+.sk-when > p {
   margin: 0;
 }
 
-.sk-line-when button {
+.sk-when-open {
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
-  color: var(--ink-soft);
-  text-decoration: underline;
-  text-decoration-color: var(--hairline-strong);
+  color: inherit;
+  cursor: text;
+  text-decoration: underline dotted var(--hairline-strong);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
-.sk-line-when button:hover,
-.sk-line-when button:focus-visible {
+.sk-when-open:hover,
+.sk-when-open:focus-visible {
   color: var(--ink);
   text-decoration-color: var(--thread);
   outline: none;
 }
 
-.sk-files {
+.sk-when-token {
+  position: relative;
+  color: var(--ink);
+  font-weight: 540;
+}
+
+.sk-when-token button {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 100%;
+  translate: 0 -50%;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--paper);
+  font: inherit;
+  font-weight: 400;
+  color: var(--ink-faint);
+  opacity: 0;
+}
+
+.sk-when-token:hover button,
+.sk-when-token button:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.sk-when-token button:hover {
+  color: var(--ink);
+  background: var(--paper-sunken);
+}
+
+.sk-when-join {
+  margin: 0 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline dotted var(--hairline-strong);
+  text-underline-offset: 3px;
+}
+
+.sk-when-join:hover {
+  color: var(--ink);
+}
+
+.sk-when-input {
+  min-width: 3ch;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  caret-color: var(--thread-strong);
+  outline: none;
+}
+
+.sk-when-input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.sk-when:hover .sk-when-more {
+  opacity: 1;
+}
+
+.sk-when-more {
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  opacity: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+.sk-when-more:hover,
+.sk-when-more:focus-visible {
+  opacity: 1;
+  background: var(--paper-sunken);
+  color: var(--ink);
+  outline: none;
+}
+
+.sk-when-menu {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(420px, 100%);
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 10px 30px -8px rgb(0 0 0 / 0.22);
+  animation: sk-pop-in 140ms var(--ease);
+}
+
+.sk-when-menu [role="option"] {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+}
+
+.sk-when-menu [role="option"].is-active {
+  background: var(--paper-sunken);
+}
+
+.sk-when-menu em {
+  font-size: var(--text-xs);
+  font-style: normal;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.sk-when-hint {
+  margin: 0;
+  padding: 5px 9px;
+  color: var(--ink-faint);
+}
+
+.sk-when-advanced {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 5px 9px;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: none;
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+  color: var(--ink-muted);
+}
+
+.sk-when-advanced:hover {
+  color: var(--ink);
+}
+
+/* Files the words don't mention wait at the end of the page, to be put somewhere. */
+.doc-loose {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 var(--s4);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.doc-loose ul {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.doc-tray-files {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: max-content;
+  max-width: 460px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 12px 30px -14px rgb(0 0 0 / 0.36);
+  animation: sk-pop-in 140ms var(--ease);
 }
 
 .sk-file {
@@ -1719,7 +1904,7 @@ body.is-lifting [role="tooltip"] {
 }
 
 /* What the rules mean for your projects carries on the sentence, not a band of its own. */
-.sk-line .sk-suggested {
+.sk-when .sk-suggested {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
@@ -1731,12 +1916,8 @@ body.is-lifting [role="tooltip"] {
   color: inherit;
 }
 
-.sk-line .sk-suggested-knot {
+.sk-when .sk-suggested-knot {
   display: none;
-}
-
-.sk-line .sk-files {
-  flex-basis: 100%;
 }
 
 .sk-when-panel .layer-title {

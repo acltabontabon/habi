@@ -14,6 +14,7 @@ import { Button } from "../../../components/ui";
 import { api } from "../../../lib/api";
 import { unfinishedLines } from "../../../lib/coach";
 import { markdownOutline, type OutlineHeading, sectionAt } from "../../../lib/markdownOutline";
+import { KIND_GLYPH, materialsOf } from "../../../lib/materials";
 import { packageCompletions } from "../../../lib/packageCompletions";
 import { useSkillTemplates } from "../../../lib/queries";
 import type { Composer } from "./compose/useComposer";
@@ -128,7 +129,6 @@ export function Instructions({
   editor,
   sourceMode,
   composer,
-  peekFile,
   onCursorLine,
   onOpenFile,
 }: {
@@ -137,8 +137,6 @@ export function Instructions({
   /** The same text, as text: for those who want the Markdown itself. */
   sourceMode: boolean;
   composer: Composer;
-  /** How the head of the page opens a file's peek. */
-  peekFile: RefObject<((path: string, rect: DOMRect) => void) | null>;
   onCursorLine: (line: number) => void;
   /** A reference to one of the package's files was ⌘-clicked. */
   onOpenFile: (path: string) => void;
@@ -171,12 +169,19 @@ export function Instructions({
   const [hidden, setHidden] = useState<{ count: number } | null>(null);
 
   const [peek, setPeek] = useState<PeekTarget | null>(null);
-  peekFile.current = (path, rect) =>
-    setPeek({ path, absent: false, rect: { left: rect.left, top: rect.top, bottom: rect.bottom } });
+  const filesRef = useRef(skill.files);
+  filesRef.current = skill.files;
+  const bodyRef = useRef(document.body);
+  bodyRef.current = document.body;
+  const unmentioned = useMemo(
+    () => (empty ? [] : materialsOf(skill.files, document.body).filter((m) => !m.referenced)),
+    [skill.files, document.body, empty],
+  );
   const composerContext = composer.context;
   const context = useMemo(
     () => ({
       ...composerContext,
+      files: () => materialsOf(filesRef.current, bodyRef.current),
       onFileClick: (path: string, rect: DOMRect, absent: boolean) =>
         setPeek({ path, absent, rect: { left: rect.left, top: rect.top, bottom: rect.bottom } }),
       imageData: async (path: string) => {
@@ -292,6 +297,39 @@ export function Instructions({
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       </div>
+      {unmentioned.length && !sourceMode ? (
+        <div className="doc-loose">
+          <span>
+            An agent won't know about these until the words mention them. Drag one to where it belongs:
+          </span>
+          <ul>
+            {unmentioned.map((m) => (
+              <li key={m.path}>
+                <button
+                  type="button"
+                  className="sk-file is-loose"
+                  onPointerDown={(e) => {
+                    if (!trashed) composer.liftFile(m.path, m.name, e.nativeEvent);
+                  }}
+                  onClick={(e) => {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    setPeek({
+                      path: m.path,
+                      absent: false,
+                      rect: { left: r.left, top: r.top, bottom: r.bottom },
+                    });
+                  }}
+                >
+                  <span className="sk-file-glyph" aria-hidden="true">
+                    {KIND_GLYPH[m.kind]}
+                  </span>
+                  {m.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {hidden && !sourceMode ? (
         <p className="doc-invisibles-note" role="status">
           {hidden.count === 1 ? "A hidden character is" : `${hidden.count} hidden characters are`} marked on

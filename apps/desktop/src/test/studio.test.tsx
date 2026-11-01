@@ -155,11 +155,6 @@ describe("the Skill Studio", () => {
     // No tabs: the other layers are named, in a line each, at the head of the skill.
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("list", { name: "Files that come with it" })).getByRole("button", {
-        name: /check\.py/,
-      }),
-    ).toBeInTheDocument();
     // The package format stays out of sight.
     expect(screen.queryByText("habi.yaml")).not.toBeInTheDocument();
     expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
@@ -226,6 +221,15 @@ describe("the Skill Studio", () => {
     await waitFor(() => expect(formOf(rules.mock.calls)).toMatchObject({ appliesTags: ["db:liquibase"] }), {
       timeout: 2000,
     });
+  });
+
+  it("keeps a file the words don't mention at the end of the page, to be put somewhere", async () => {
+    handlers.get_skill = () => skill({ body: "## Steps\n\nDo it.\n" });
+    wrap(<SkillStudio id="k" />);
+    expect(
+      await screen.findByText(/won't know about these until the words mention them/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /check\.py/ })).toBeInTheDocument();
   });
 
   it("moves between layers with ⌘1–3 and keeps the instructions mounted", async () => {
@@ -532,7 +536,9 @@ describe("the Skill Studio", () => {
     handlers.save_skill_metadata = save;
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
-    expect(screen.getByRole("button", { name: "by rules written by hand" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Habi suggests it by rules written by hand" }),
+    ).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     const layer = screen.getByRole("region", { name: "When to use" });
     expect(within(layer).getByText("it contains Java code")).toBeInTheDocument();

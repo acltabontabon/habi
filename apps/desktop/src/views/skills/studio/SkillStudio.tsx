@@ -46,8 +46,8 @@ import { tagLabel } from "../../../lib/tags";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
-import { SkillLine } from "./compose/SkillLine";
 import { type Panel, useComposer } from "./compose/useComposer";
+import { WhenSentence } from "./compose/WhenSentence";
 import { markdownForFile } from "./doc/fileRefs";
 import type { DocEditorHandle } from "./doc/lazy";
 import { Materials, useDropToAdd } from "./files/Materials";
@@ -57,7 +57,7 @@ import { isCopy, onward, Provenance, ProvenanceSheet } from "./Provenance";
 import { nextStep, Readiness } from "./Readiness";
 import { SuggestedStrip } from "./SuggestedStrip";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
-import { addSignal, removeSignal, WhenToUse, whenLine } from "./WhenToUse";
+import { addSignal, removeSignal, WhenToUse } from "./WhenToUse";
 
 const LAYER_NAME: Record<StudioLayer, string> = {
   skill: "Instructions",
@@ -232,7 +232,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const openFileRef = useRef<(path: string) => void>(() => undefined);
   const goRef = useRef<(next: StudioLayer) => void>(() => undefined);
   const addFileRef = useRef<() => void>(() => undefined);
-  const peekFile = useRef<((path: string, rect: DOMRect) => void) | null>(null);
   const setPanelRef = useRef<(panel: Panel | null) => void>(() => undefined);
   const editor = useRef<DocEditorHandle>(null);
   const { outline, current } = useOutline(document.body, cursorLine);
@@ -684,7 +683,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
   );
   useRegisterScreenCommands(title ? `In ${title}` : "In this skill", commands);
 
-  const when = whenLine(draft);
   const filePath = layer === "materials" || layer === "source" ? file.path : null;
   const purposeLength = document.description.length;
   const cameFrom = isCopy(origin) || origin.type === "instructions" || standing?.upstream != null;
@@ -781,42 +779,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
           </nav>
         </div>
         <div className="sk-acts">
-          {layer === "skill" && !broken && !sourceMode ? (
-            <>
-              <button
-                type="button"
-                className="sk-tool"
-                aria-pressed={composer.panel?.kind === "shelf"}
-                title={`Use another skill here (${modShortcut("⇧K")})`}
-                disabled={trashed}
-                onClick={() => composer.setPanel((p) => (p?.kind === "shelf" ? null : { kind: "shelf" }))}
-              >
-                Skills
-              </button>
-              <button
-                type="button"
-                className="sk-tool"
-                aria-pressed={composer.panel?.kind === "inside"}
-                title="What's in this skill, and when an agent would read it"
-                onClick={() => composer.setPanel((p) => (p?.kind === "inside" ? null : { kind: "inside" }))}
-              >
-                Inside
-              </button>
-            </>
-          ) : null}
-          {layer === "skill" && !broken ? (
-            <button
-              type="button"
-              className="sk-mode"
-              aria-pressed={sourceMode}
-              title="The same instructions, as the Markdown an agent receives"
-              onClick={() => {
-                // The page's latest words go first, so nothing is left behind on either side.
-                editor.current?.text();
-                setSourceMode((on) => !on);
-              }}
-            >
-              {sourceMode ? "Back to the page" : "Markdown"}
+          {layer === "skill" && sourceMode ? (
+            <button type="button" className="sk-mode" onClick={() => setSourceMode(false)}>
+              Back to the page
             </button>
           ) : null}
           {!trashed ? (
@@ -878,6 +843,24 @@ function Studio({ initial }: { initial: LocalSkill }) {
                       disabled: busy === "export",
                       onSelect: () => void exportZip(),
                     },
+                  ],
+                  [
+                    {
+                      label: "What's inside",
+                      icon: "layers",
+                      hint: "What an agent reads, and when",
+                      onSelect: () => composer.setPanel({ kind: "inside" }),
+                    },
+                    {
+                      label: "Show as Markdown",
+                      icon: "file",
+                      hint: "What an agent receives",
+                      onSelect: () => {
+                        editor.current?.text();
+                        setSourceMode(true);
+                      },
+                    },
+                    { label: "All files", icon: "folder", onSelect: () => go("materials") },
                   ],
                   [
                     { label: "Where it came from", icon: "branch", onSelect: () => openSheet("provenance") },
@@ -992,16 +975,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     />
                   )}
                   {fresh ? null : (
-                    <SkillLine
-                      when={when}
-                      materials={materials}
-                      readOnly={trashed}
-                      onWhen={() => go("when")}
-                      onPeek={(path, rect) => peekFile.current?.(path, rect)}
-                      onLift={(m, event) => composer.liftFile(m.path, m.name, event)}
-                      onAddFile={addFile}
-                      onAllFiles={() => go("materials")}
-                    >
+                    <WhenSentence draft={draft} onMore={() => go("when")}>
                       {!trashed && !broken && available.length > 0 ? (
                         <SuggestedStrip
                           draft={draft}
@@ -1010,7 +984,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                           onRules={() => go("when")}
                         />
                       ) : null}
-                    </SkillLine>
+                    </WhenSentence>
                   )}
                 </header>
                 {broken ? (
@@ -1026,7 +1000,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     editor={editor}
                     sourceMode={sourceMode}
                     composer={composer}
-                    peekFile={peekFile}
                     onCursorLine={setCursorLine}
                     onOpenFile={openFile}
                   />

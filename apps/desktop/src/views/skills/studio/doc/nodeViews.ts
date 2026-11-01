@@ -23,7 +23,9 @@ export type ViewContext = {
   skillLook?: (name: string, role: string | null) => SkillLook;
   onSkillClick?: (name: string, pos: number, rect: DOMRect) => void;
   onLinkSkill?: (query: string) => void;
-  /** A piece from the tray needs a choice: which skill, or which file. */
+  /** The skill's own files, for the tray to offer. */
+  files?: () => { path: string; name: string; referenced: boolean }[];
+  /** A piece from the tray needs a choice: which skill, or a new file to bring in. */
   onChoosePiece?: (what: "skill" | "file") => void;
   /** A file named in the words was clicked. */
   onFileClick?: (path: string, rect: DOMRect, absent: boolean) => void;
