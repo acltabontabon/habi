@@ -30,6 +30,27 @@ export function ComposeNote({
   const libraries = [
     ...new Set(skill.composes.map((e) => e.from?.library).filter((l): l is string => Boolean(l))),
   ];
+  // Skills an agent can reach alike are said once, not once each.
+  const groups: { where: string; short: boolean; names: string[] }[] = [];
+  for (const d of deps.length
+    ? deps
+    : skill.composes.map((e) => ({ name: e.skill, availability: [], status: null }))) {
+    const found = d.availability.filter((a) => a.state === "found").map((a) => clientName(a.client));
+    const missing = d.availability.filter((a) => a.state === "notFound").map((a) => clientName(a.client));
+    let where = "";
+    if (mode === "install" && d.availability.length) {
+      where =
+        missing.length === 0
+          ? "Found"
+          : found.length === 0
+            ? "Not found"
+            : `Found for ${found.join(", ")}; not for ${missing.join(", ")}`;
+    } else if (d.status === "missing") where = "Not found here";
+    const short = where !== "" && where !== "Found";
+    const group = groups.find((g) => g.where === where);
+    if (group) group.names.push(titleOfName(d.name));
+    else groups.push({ where, short, names: [titleOfName(d.name)] });
+  }
   return (
     <div className="field compose-note">
       <p className="field-label">
@@ -41,31 +62,14 @@ export function ComposeNote({
           : "They aren't included. The instructions name them in words, so anyone can see what's expected."}
       </p>
       <ul>
-        {(deps.length
-          ? deps
-          : skill.composes.map((e) => ({ name: e.skill, availability: [], status: null }))
-        ).map((d) => {
-          const found = d.availability.filter((a) => a.state === "found").map((a) => clientName(a.client));
-          const missing = d.availability
-            .filter((a) => a.state === "notFound")
-            .map((a) => clientName(a.client));
-          return (
-            <li key={d.name}>
-              <span className="compose-note-name">{titleOfName(d.name)}</span>
-              {mode === "install" && d.availability.length ? (
-                <span className={`compose-note-where${missing.length ? " is-short" : ""}`}>
-                  {missing.length === 0
-                    ? "found"
-                    : found.length === 0
-                      ? "not found"
-                      : `found for ${found.join(", ")}; not for ${missing.join(", ")}`}
-                </span>
-              ) : d.status === "missing" ? (
-                <span className="compose-note-where is-short">not found here</span>
-              ) : null}
-            </li>
-          );
-        })}
+        {groups.map((g) => (
+          <li key={g.where}>
+            <span className="compose-note-name">{g.names.join(", ")}</span>
+            {g.where ? (
+              <span className={`compose-note-where${g.short ? " is-short" : ""}`}>{g.where}</span>
+            ) : null}
+          </li>
+        ))}
       </ul>
       {mode === "share" && libraries.length ? (
         <p className="field-hint">
