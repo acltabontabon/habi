@@ -2099,7 +2099,7 @@ fn saving_changes_only_the_frontmatter_lines_it_must() {
                 &SkillDocument {
                     name: name.into(),
                     description: description.into(),
-                    body: "Body.\n".into(),
+                    body: current.document.body.clone(),
                 },
                 current.document_digest.as_deref(),
             )
@@ -2150,12 +2150,9 @@ fn saving_changes_only_the_frontmatter_lines_it_must() {
     let crlf = "---\r\nname: zeta\r\ndescription: Back.\r\nmetadata:\r\n  version: 1.10\r\n---\r\n\r\nBody.\r\n";
     std::fs::write(&path, crlf).unwrap();
     save("zeta", "Again.");
-    assert!(
-        read().starts_with(
-            "---\nname: zeta\r\ndescription: Again.\r\nmetadata:\r\n  version: 1.10\n---\n"
-        ),
-        "{:?}",
-        read()
+    assert_eq!(
+        read(),
+        crlf.replace("description: Back.", "description: Again.")
     );
 }
 
@@ -2332,7 +2329,7 @@ fn restoring_under_a_taken_identifier_keeps_both_skills_working() {
     // Things only a line-by-line rename keeps.
     let path = package(&habi, &id).join("SKILL.md");
     let text = std::fs::read_to_string(&path).unwrap();
-    std::fs::write(&path, text.replace("---\n\n", "# kept\n---\n\n")).unwrap();
+    std::fs::write(&path, text.replace("\n---\n", "\n# kept\n---\n")).unwrap();
     habi.skills().trash(&id).unwrap();
     let second = draft(&habi, "Same name", description, "Second.\n");
     assert_eq!(first.summary.name, second.summary.name);
@@ -2473,4 +2470,170 @@ fn names_that_read_as_something_else_are_refused() {
         )
         .unwrap();
     assert!(!found.candidates[0].complete);
+}
+
+#[test]
+fn document_saves_preserve_the_original_envelope_and_body_bytes() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(&habi, "Envelope", "Old description.", "Body.");
+    let id = &skill.summary.id;
+    let path = package(&habi, id).join("SKILL.md");
+    for (bom, newline, gap, ending) in [
+        ("", "\n", "\n", "\n"),
+        ("", "\r\n", "\r\n", "\r\n"),
+        ("\u{feff}", "\r\n", "", ""),
+        ("", "\n", "", "\n"),
+        ("", "\n", "\n\n\n", "\n"),
+        ("", "\n", "\n", ""),
+    ] {
+        let envelope = format!(
+            "{bom}---{newline}# keep this comment{newline}name: envelope{newline}description: Old description.{newline}version: 1.10{newline}license: 'MIT'{newline}---{newline}{gap}"
+        );
+        let body = format!("Body.{newline}---{newline}More.{newline}---{ending}");
+        let original = format!("{envelope}{body}");
+        std::fs::write(&path, &original).unwrap();
+        let loaded = habi.skills().get(id).unwrap();
+        assert_eq!(loaded.document.body, body);
+        let saved = habi
+            .skills()
+            .save_document(
+                id,
+                "Envelope",
+                &loaded.document,
+                loaded.document_digest.as_deref(),
+            )
+            .unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+
+        let mut document = saved.document.clone();
+        document.body = body.replace("More.", "Changed.");
+        let saved = habi
+            .skills()
+            .save_document(id, "Envelope", &document, saved.document_digest.as_deref())
+            .unwrap();
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            format!("{envelope}{}", document.body).as_bytes()
+        );
+
+        for (key, old, new) in [
+            ("description", "Old description.", "New description."),
+            ("name", "envelope", "envelope-two"),
+        ] {
+            std::fs::write(&path, &original).unwrap();
+            let loaded = habi.skills().get(id).unwrap();
+            let mut document = loaded.document.clone();
+            if key == "name" {
+                document.name = new.into();
+            } else {
+                document.description = new.into();
+            }
+            habi.skills()
+                .save_document(id, "Envelope", &document, loaded.document_digest.as_deref())
+                .unwrap();
+            let expected = original.replace(
+                &format!("{key}: {old}{newline}"),
+                &format!("{key}: {new}{newline}"),
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+        }
+
+        // The digest from before another write still prevents any replacement.
+        let before = std::fs::read(&path).unwrap();
+        assert!(matches!(
+            habi.skills().save_document(
+                id,
+                "Envelope",
+                &saved.document,
+                saved.document_digest.as_deref()
+            ),
+            Err(HabiError::Conflict(_))
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+    }
+}
+
+#[test]
+fn unverified_frontmatter_edits_require_the_source_view() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(&habi, "Quoted", "Description.", "Body.");
+    let id = &skill.summary.id;
+    let path = package(&habi, id).join("SKILL.md");
+    for comment in ["# author comment\n", ""] {
+        let original =
+            format!("---\n{comment}'name': quoted\ndescription: Description.\n---\n\nBody.");
+        std::fs::write(&path, &original).unwrap();
+        let loaded = habi.skills().get(id).unwrap();
+        let mut document = loaded.document.clone();
+        document.name = "changed".into();
+        let err = habi
+            .skills()
+            .save_document(id, "Quoted", &document, loaded.document_digest.as_deref())
+            .unwrap_err();
+        assert!(matches!(err, HabiError::InvalidInput(_)));
+        assert!(err.to_string().contains("source view"));
+        assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+    }
+
+    // Restoring under a taken identifier uses rename_in_skill_md.
+    let original =
+        "\u{feff}---\r\n# keep me\r\n'name': quoted\r\ndescription: Description.\r\n---\r\nBody.";
+    std::fs::write(&path, original).unwrap();
+    habi.skills().trash(id).unwrap();
+    draft(&habi, "Quoted", "Description.", "Other.");
+    let err = habi.skills().restore(id).unwrap_err();
+    assert!(matches!(err, HabiError::InvalidInput(_)));
+    assert!(err.to_string().contains("source view"));
+    assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+
+    let editable = original.replace("'name':", "name:");
+    std::fs::write(&path, &editable).unwrap();
+    let restored = habi.skills().restore(id).unwrap();
+    let expected = editable.replace(
+        "name: quoted\r\n",
+        &format!("name: {}\r\n", restored.document.name),
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+}
+
+#[test]
+fn applicability_saves_preserve_comments_and_unknown_keys() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(&habi, "Metadata", "Description.", "Body.");
+    let id = &skill.summary.id;
+    let path = package(&habi, id).join("habi.yaml");
+    let original = "# Team metadata\r\n# Keep these notes\r\nhabi: 1\r\ncomposes: [{skill: x}] # future use\r\n# Applicability notes\r\n";
+    std::fs::write(&path, original).unwrap();
+    let loaded = habi.skills().get(id).unwrap();
+    let mut form = loaded.form.clone();
+    form.applies_tags = vec!["language:rust".into()];
+    form.conditions_editable = true;
+    let saved = habi
+        .skills()
+        .save_applicability(id, &form, loaded.metadata_digest.as_deref())
+        .unwrap();
+    let expected = format!("{original}applies_when:\r\n  tag: language:rust\r\n");
+    assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+    habi.skills()
+        .save_applicability(id, &saved.form, saved.metadata_digest.as_deref())
+        .unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+
+    form.applies_tags = vec!["language:go".into()];
+    let saved = habi
+        .skills()
+        .save_applicability(id, &form, saved.metadata_digest.as_deref())
+        .unwrap();
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        expected.replace("language:rust", "language:go").as_bytes()
+    );
+    form.applies_tags.clear();
+    habi.skills()
+        .save_applicability(id, &form, saved.metadata_digest.as_deref())
+        .unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
 }

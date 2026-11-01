@@ -965,25 +965,106 @@ fn edit_frontmatter(
     intact.then_some(text)
 }
 
+/// Edits changed top-level metadata entries without rewriting unrelated text.
+fn edit_sidecar(text: &str, old: &Value, new: &Value) -> Result<String> {
+    let mut out = text.to_string();
+    let empty = Map::new();
+    let old = old.as_object().unwrap_or(&empty);
+    let new = new.as_object().unwrap_or(&empty);
+    let newline = if text.contains("\r\n") { "\r\n" } else { "\n" };
+    for key in old
+        .keys()
+        .chain(new.keys().filter(|key| !old.contains_key(*key)))
+    {
+        if old.get(key) == new.get(key) {
+            continue;
+        }
+        let lines: Vec<&str> = out.split_inclusive('\n').collect();
+        let prefix = format!("{key}:");
+        let start = lines.iter().position(|line| line.starts_with(&prefix));
+        let mut end = start.map_or(lines.len(), |i| i + 1);
+        if let Some(start) = start {
+            while let Some(line) = lines.get(end) {
+                // A list under a key may sit at the key's own indent.
+                let nested = line.starts_with([' ', '\t'])
+                    || line.starts_with("- ")
+                    || line.trim_end() == "-";
+                if !nested || line.trim_start().starts_with('#') {
+                    break;
+                }
+                end += 1;
+            }
+            // A comment attached to a changed value needs the source editor. Only a `#` that
+            // starts a word is a comment: `C#` and URL fragments are values.
+            if lines.iter().take(end).skip(start).any(|line| {
+                line.trim_start().starts_with('#') || line.contains(" #") || line.contains("\t#")
+            }) {
+                return Err(HabiError::invalid(
+                    "Edit this habi.yaml value in the source view to keep its comments; nothing was overwritten.",
+                ));
+            }
+        } else if old.contains_key(key) {
+            return Err(HabiError::invalid(
+                "Edit habi.yaml in the source view; Habi could not safely change its keys.",
+            ));
+        }
+        let mut edited: String = lines
+            .iter()
+            .take(start.unwrap_or(lines.len()))
+            .copied()
+            .collect();
+        if let Some(value) = new.get(key) {
+            if !edited.is_empty() && !edited.ends_with('\n') {
+                edited.push_str(newline);
+            }
+            let mut entry = Map::new();
+            entry.insert(key.clone(), value.clone());
+            let yaml = serde_saphyr::to_string(&Value::Object(entry))
+                .map_err(|e| HabiError::Internal(e.to_string()))?;
+            edited.push_str(&yaml.replace('\n', newline));
+        }
+        edited.extend(lines.iter().skip(end).copied());
+        out = edited;
+    }
+    if library::parse_yaml(&out).ok().as_ref() != Some(&Value::Object(new.clone())) {
+        return Err(HabiError::invalid(
+            "Edit habi.yaml in the source view; Habi could not safely change its keys.",
+        ));
+    }
+    Ok(out)
+}
+
+/// Replaces the YAML and the visible body, preserving the original envelope.
+#[allow(
+    clippy::string_slice,
+    reason = "slices returned by split_frontmatter and trim_start_matches belong to text"
+)]
+fn splice_skill_md(text: &str, yaml: &str, body: &str) -> Result<String> {
+    let (old_yaml, old_body) = library::split_frontmatter(text).map_err(HabiError::invalid)?;
+    let yaml_start = old_yaml.as_ptr() as usize - text.as_ptr() as usize;
+    let yaml_end = yaml_start + old_yaml.len();
+    let visible_body = old_body.trim_start_matches(['\n', '\r']);
+    let body_start = text.len() - visible_body.len();
+    Ok(format!(
+        "{}{yaml}{}{body}",
+        &text[..yaml_start],
+        &text[yaml_end..body_start]
+    ))
+}
+
+fn frontmatter_source_error() -> HabiError {
+    HabiError::invalid(
+        "Habi could not safely change this frontmatter. Edit the frontmatter in the source view; nothing was overwritten.",
+    )
+}
+
 /// Replaces `name` in a SKILL.md, keeping everything else.
 pub(crate) fn rename_in_skill_md(text: &str, name: &str) -> Result<String> {
     let (front, body) = library::parse_frontmatter(text).map_err(HabiError::invalid)?;
-    if let Ok((yaml, _)) = library::split_frontmatter(text)
-        && let Some(edited) = edit_frontmatter(yaml, &front.raw, &[("name", name)])
-    {
-        return Ok(compose_skill_md(&edited, body));
-    }
-    let mut raw = front.raw;
-    raw.insert("name".into(), json!(name));
-    // Keep `name` first, where readers expect it.
-    let mut ordered = Map::new();
-    ordered.insert("name".into(), json!(name));
-    for (k, v) in raw {
-        if k != "name" {
-            ordered.insert(k, v);
-        }
-    }
-    render_skill_md(&ordered, body)
+    let (yaml, _) = library::split_frontmatter(text).map_err(HabiError::invalid)?;
+    let edited = edit_frontmatter(yaml, &front.raw, &[("name", name)])
+        .ok_or_else(frontmatter_source_error)?;
+    splice_skill_md(text, &edited, body.trim_start_matches(['\n', '\r']))
 }
 
 /// One file of an imported copy as it was when Habi made it (or when it last
@@ -1518,27 +1599,13 @@ impl<'a> Skills<'a> {
                 if front.name.as_deref().unwrap_or("") == name
                     && front.description.as_deref().unwrap_or("") == description =>
             {
-                compose_skill_md(yaml, &document.body)
+                splice_skill_md(&existing, yaml, &document.body)?
             }
             Ok((yaml, front)) => {
                 let changes = [("name", name), ("description", description)];
                 match edit_frontmatter(yaml, &front.raw, &changes) {
-                    Some(edited) => compose_skill_md(&edited, &document.body),
-                    None => {
-                        let mut ordered = Map::new();
-                        if !name.is_empty() {
-                            ordered.insert("name".into(), json!(name));
-                        }
-                        if !description.is_empty() {
-                            ordered.insert("description".into(), json!(description));
-                        }
-                        for (k, v) in front.raw {
-                            if k != "name" && k != "description" {
-                                ordered.insert(k, v);
-                            }
-                        }
-                        render_skill_md(&ordered, &document.body)?
-                    }
+                    Some(edited) => splice_skill_md(&existing, &edited, &document.body)?,
+                    None => return Err(frontmatter_source_error()),
                 }
             }
             Err(_) if existing.trim().is_empty() => {
@@ -1622,8 +1689,8 @@ impl<'a> Skills<'a> {
     }
 
     /// Saves applicability from the condition builder into `habi.yaml`.
-    /// When the form is empty, no metadata file is kept: the skill stays a
-    /// plain, portable package.
+    /// An empty form removes the file unless comments or unknown keys need
+    /// keeping.
     pub fn save_applicability(
         &self,
         id: &str,
@@ -1640,6 +1707,7 @@ impl<'a> Skills<'a> {
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
+        let mut existing_text = None;
         let existing = match std::fs::read(&path) {
             Ok(bytes) => {
                 let text = String::from_utf8(bytes)
@@ -1654,25 +1722,33 @@ impl<'a> Skills<'a> {
                         "{file} does not hold a mapping of keys and values; fix it in {file} before changing the form"
                     )));
                 }
+                existing_text = Some(text);
                 Some(value)
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(HabiError::io(format!("reading {file}"), e)),
         };
         let name = self.names()?.remove(id).unwrap_or_default();
-        match Self::form_to_sidecar(existing, form, &name)? {
+        let value = Self::form_to_sidecar(existing.clone(), form, &name)?;
+        match value {
             Some(value) => {
-                let yaml = serde_saphyr::to_string(&value)
-                    .map_err(|e| HabiError::Internal(e.to_string()))?;
-                atomic_write_mode(
-                    &path,
-                    format!("# Habi metadata — optional; the skill works without it\n{yaml}")
-                        .as_bytes(),
-                    None,
-                )?;
+                let yaml = match (&existing_text, &existing) {
+                    (Some(text), Some(old)) => edit_sidecar(text, old, &value)?,
+                    _ => {
+                        let yaml = serde_saphyr::to_string(&value)
+                            .map_err(|e| HabiError::Internal(e.to_string()))?;
+                        format!("# Habi metadata — optional; the skill works without it\n{yaml}")
+                    }
+                };
+                atomic_write_mode(&path, yaml.as_bytes(), None)?;
             }
             None => {
-                if path.exists() {
+                if let (Some(text), Some(old)) = (&existing_text, &existing)
+                    && text.contains('#')
+                {
+                    let yaml = edit_sidecar(text, old, &json!({"habi": 1}))?;
+                    atomic_write_mode(&path, yaml.as_bytes(), None)?;
+                } else if path.exists() {
                     std::fs::remove_file(&path)
                         .map_err(|e| HabiError::io("removing habi.yaml", e))?;
                 }
