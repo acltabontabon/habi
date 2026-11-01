@@ -95,6 +95,38 @@ excludes:
       version: ">=3.18, <4"          # semver requirement
 ```
 
+### Conditions on source code
+
+`code` asks what the project's source does, not what it declares. It is the sharpest condition for a
+skill about one part of a library, or for code no manifest describes:
+
+```yaml
+applies_when:
+  all:
+    - tag: framework:spring-boot
+    - code: { annotation: Transactional }     # @Transactional, in any language Habi reads
+excludes:
+  code:
+    import: org.jooq                          # org.jooq and anything beneath it
+    language: java                            # java|kotlin|javascript|typescript|python|go|rust|php
+```
+
+- **`import`** matches a whole name or a parent of it: `react` holds `react/jsx-runtime` but not
+  `react-dom`, and `org.jooq` holds `org.jooq.DSLContext`. Use `*` for anything else (`org.*.jdbc`, up to
+  three). Write the name as the source does: `github.com/gin-gonic/gin`, `tokio::sync`,
+  `Symfony\Component\Console`.
+- **`annotation`** matches as written (`pytest.fixture`, `tokio::main`), or by its last part when you
+  give no qualifier (`Transactional` holds `org.springframework.transaction.annotation.Transactional`).
+  A leading `@` is ignored. It also means decorators and attributes.
+- **`language`** is optional. Without it, a module holding C# or Scala answers *unknown* rather than
+  *false*, because Habi does not read them.
+
+Names are looked up in what inspection found; nothing searches the repository for your rule. Rules that
+use `code` can be written in the Skill Studio's `habi.yaml` view, but not with its condition builder.
+See what Habi reads in [Detectors](detectors.md#source-code).
+
+### How conditions evaluate
+
 **Three-valued logic** (true / false / unknown):
 - Found → *true* (with evidence)
 - Absence (complete evidence) → *false*; otherwise *unknown*

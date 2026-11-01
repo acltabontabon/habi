@@ -174,7 +174,15 @@ fn true_leaves(node: &EvalNode) -> Vec<String> {
                 if node.summary.ends_with(file) {
                     node.summary.clone()
                 } else {
-                    format!("{} ({file})", node.summary)
+                    // What is declared in one file and used in another says both.
+                    match node.code.first() {
+                        Some(used) if !matches!(node.condition, Condition::Code { .. }) => {
+                            let name = used.file.rsplit('/').next().unwrap_or(&used.file);
+                            let line = used.line.unwrap_or(1);
+                            format!("{} ({file}, used in {name}:{line})", node.summary)
+                        }
+                        _ => format!("{} ({file})", node.summary),
+                    }
                 }
             }
             None => node.summary.clone(),

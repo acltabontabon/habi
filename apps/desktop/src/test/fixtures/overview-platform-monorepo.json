@@ -1,17 +1,17 @@
 {
   "project": {
-    "id": "57ed8f4e321e08e3",
+    "id": "d95ca597d09af998",
     "name": "platform-monorepo",
     "path": "~/work/platform-monorepo",
     "exists": true,
-    "lastOpenedAt": "2026-10-31T21:54:57Z",
+    "lastOpenedAt": "2026-10-31T23:23:41Z",
     "exclusions": [],
     "summary": {
       "fits": 7,
       "described": 0,
       "needsInformation": 0,
       "sources": [
-        "93c7fc98d13b"
+        "493146de0bc6"
       ],
       "installed": 0,
       "languages": [
@@ -20,7 +20,7 @@
       ],
       "tally": [
         {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "fits": 7,
           "described": 0,
           "installed": []
@@ -32,7 +32,7 @@
         "addyosmani",
         "mattpocock"
       ],
-      "at": "2026-10-31T21:54:57Z"
+      "at": "2026-10-31T23:23:41Z"
     }
   },
   "inspection": {
@@ -41,8 +41,8 @@
     "description": "Mixed repository: a React web app (apps/web) and two Java services (services/*).",
     "repository": {
       "kind": "gitSubdirectory",
-      "branch": "feat/skill-matching-ranking-723750",
-      "repositoryRoot": "~/Workspace/habi/.claude/worktrees/skill-matching-ranking-723750",
+      "branch": "feat/habi-rust-features-0baadf",
+      "repositoryRoot": "~/Workspace/habi/.claude/worktrees/habi-rust-features-0baadf",
       "isMonorepo": true,
       "workspaceSignals": [
         "npm workspaces in package.json"
@@ -816,6 +816,12 @@
         "notes": []
       },
       {
+        "module": ".",
+        "area": "code",
+        "status": "complete",
+        "notes": []
+      },
+      {
         "module": "apps/web",
         "area": "files",
         "status": "complete",
@@ -824,6 +830,12 @@
       {
         "module": "apps/web",
         "area": "content",
+        "status": "complete",
+        "notes": []
+      },
+      {
+        "module": "apps/web",
+        "area": "code",
         "status": "complete",
         "notes": []
       },
@@ -840,6 +852,12 @@
         "notes": []
       },
       {
+        "module": "services/catalog",
+        "area": "code",
+        "status": "complete",
+        "notes": []
+      },
+      {
         "module": "services/inventory",
         "area": "files",
         "status": "complete",
@@ -848,6 +866,12 @@
       {
         "module": "services/inventory",
         "area": "content",
+        "status": "complete",
+        "notes": []
+      },
+      {
+        "module": "services/inventory",
+        "area": "code",
         "status": "complete",
         "notes": []
       }
@@ -860,17 +884,18 @@
       "unreadable": [],
       "symlinksSkipped": 0,
       "largeFilesSkipped": 0,
-      "elapsedMs": 2
+      "elapsedMs": 6,
+      "sourceFilesRead": 3
     },
-    "fingerprint": "sha256:1ca8735ab35e33704b22d970dc9292fd04b32ec8360408ca657283d35fa8ed42",
-    "inspectedAt": "2026-10-31T21:54:57Z"
+    "fingerprint": "sha256:2ecb0978c94ee46e3a90f79998a92e279cedfb47d88693f3bcc0f577b8ac349d",
+    "inspectedAt": "2026-10-31T23:23:41Z"
   },
   "declarations": [],
   "recommendations": [
     {
       "item": {
-        "key": "93c7fc98d13b/service-observability",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/service-observability",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "service-observability",
         "title": "Service observability",
@@ -880,7 +905,7 @@
         "owner": "SRE (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -912,6 +937,7 @@
               "declarations": [],
               "files": [],
               "location": "services/catalog/pom.xml:12",
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -939,6 +965,7 @@
               "declarations": [],
               "files": [],
               "location": "services/inventory/pom.xml:4",
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -961,6 +988,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -983,6 +1011,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -1057,8 +1086,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/java-service-conventions",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/java-service-conventions",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "java-service-conventions",
         "title": "Java service conventions",
@@ -1068,7 +1097,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "required",
         "priority": 0,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -1108,6 +1137,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -1124,6 +1154,7 @@
                   "declarations": [],
                   "files": [],
                   "location": "services/catalog/src/main/java/com/example/catalog/CatalogApplication.java",
+                  "code": [],
                   "children": []
                 },
                 {
@@ -1145,6 +1176,7 @@
                   "declarations": [],
                   "files": [],
                   "location": "services/catalog/pom.xml:12",
+                  "code": [],
                   "children": []
                 }
               ]
@@ -1221,8 +1253,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/liquibase-migration-review",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/liquibase-migration-review",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "liquibase-migration-review",
         "title": "Liquibase migration review",
@@ -1232,7 +1264,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 20,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1285,6 +1317,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -1303,6 +1336,7 @@
                   "declarations": [],
                   "files": [],
                   "location": "services/inventory/pom.xml:4",
+                  "code": [],
                   "children": []
                 },
                 {
@@ -1328,6 +1362,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -1345,6 +1380,7 @@
                       "declarations": [],
                       "files": [],
                       "location": "services/inventory/pom.xml:22",
+                      "code": [],
                       "children": []
                     },
                     {
@@ -1363,6 +1399,7 @@
                       "declarations": [],
                       "files": [],
                       "location": "services/inventory/pom.xml:22",
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -1409,6 +1446,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -1425,6 +1463,7 @@
                   "declarations": [],
                   "files": [],
                   "location": "services/catalog/pom.xml:12",
+                  "code": [],
                   "children": []
                 },
                 {
@@ -1450,6 +1489,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -1465,6 +1505,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     },
                     {
@@ -1479,6 +1520,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -1525,6 +1567,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -1538,6 +1581,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": []
                 },
                 {
@@ -1563,6 +1607,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -1578,6 +1623,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     },
                     {
@@ -1592,6 +1638,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -1638,6 +1685,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -1651,6 +1699,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": []
                 },
                 {
@@ -1676,6 +1725,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -1691,6 +1741,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     },
                     {
@@ -1705,6 +1756,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -1807,8 +1859,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/react-component-review",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/react-component-review",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "react-component-review",
         "title": "React component review",
@@ -1818,7 +1870,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": [
@@ -1854,6 +1906,7 @@
               "declarations": [],
               "files": [],
               "location": "apps/web/package.json:5",
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -1876,6 +1929,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -1898,6 +1952,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -1920,6 +1975,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -1982,8 +2038,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/jooq-query-review",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/jooq-query-review",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "jooq-query-review",
         "title": "jOOQ query review",
@@ -1993,7 +2049,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2025,6 +2081,7 @@
               "declarations": [],
               "files": [],
               "location": "services/catalog/pom.xml:16",
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -2047,6 +2104,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -2069,6 +2127,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -2091,6 +2150,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -2165,8 +2225,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/frontend-test-practices",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/frontend-test-practices",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "frontend-test-practices",
         "title": "Front-end test practices",
@@ -2176,7 +2236,7 @@
         "owner": "Web Guild (example)",
         "requirement": "recommended",
         "priority": 5,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2223,6 +2283,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -2245,6 +2306,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -2261,6 +2323,7 @@
                       "declarations": [],
                       "files": [],
                       "location": "apps/web/package.json:5",
+                      "code": [],
                       "children": []
                     },
                     {
@@ -2275,6 +2338,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -2294,6 +2358,7 @@
                   "declarations": [],
                   "files": [],
                   "location": "apps/web/package.json:6",
+                  "code": [],
                   "children": []
                 }
               ]
@@ -2336,6 +2401,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -2358,6 +2424,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -2371,6 +2438,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     },
                     {
@@ -2385,6 +2453,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -2401,6 +2470,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": []
                 }
               ]
@@ -2443,6 +2513,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -2465,6 +2536,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -2478,6 +2550,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     },
                     {
@@ -2492,6 +2565,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -2508,6 +2582,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": []
                 }
               ]
@@ -2550,6 +2625,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": [
                 {
                   "condition": {
@@ -2572,6 +2648,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": [
                     {
                       "condition": {
@@ -2585,6 +2662,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     },
                     {
@@ -2599,6 +2677,7 @@
                       "declarations": [],
                       "files": [],
                       "location": null,
+                      "code": [],
                       "children": []
                     }
                   ]
@@ -2615,6 +2694,7 @@
                   "declarations": [],
                   "files": [],
                   "location": null,
+                  "code": [],
                   "children": []
                 }
               ]
@@ -2691,8 +2771,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/github-pr-summary",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/github-pr-summary",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "github-pr-summary",
         "title": "GitHub PR summary",
@@ -2702,7 +2782,7 @@
         "owner": "Developer Experience (example)",
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -2734,6 +2814,7 @@
               "declarations": [],
               "files": [],
               "location": ".github/workflows/ci.yml",
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -2944,8 +3025,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/incident-notes",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/incident-notes",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "incident-notes",
         "title": "Incident notes",
@@ -2955,7 +3036,7 @@
         "owner": null,
         "requirement": "recommended",
         "priority": 0,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "undeclared",
         "diagnostics": 0,
         "clients": null,
@@ -3035,8 +3116,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/api-contract-review",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/api-contract-review",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "api-contract-review",
         "title": "API contract review",
@@ -3046,7 +3127,7 @@
         "owner": "API Guild (example)",
         "requirement": "recommended",
         "priority": 15,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -3075,6 +3156,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -3097,6 +3179,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -3119,6 +3202,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -3141,6 +3225,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": null,
@@ -3223,8 +3308,8 @@
     },
     {
       "item": {
-        "key": "93c7fc98d13b/jpa-entity-review",
-        "sourceId": "93c7fc98d13b",
+        "key": "493146de0bc6/jpa-entity-review",
+        "sourceId": "493146de0bc6",
         "sourceName": "Example team library",
         "id": "jpa-entity-review",
         "title": "JPA entity review",
@@ -3234,7 +3319,7 @@
         "owner": "Platform Guild (example)",
         "requirement": "recommended",
         "priority": 10,
-        "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
+        "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
         "metadataStatus": "declared",
         "diagnostics": 0,
         "clients": null,
@@ -3263,6 +3348,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": {
@@ -3277,6 +3363,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "specificity": 0,
@@ -3298,6 +3385,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": {
@@ -3312,6 +3400,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "specificity": 0,
@@ -3333,6 +3422,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": {
@@ -3350,6 +3440,7 @@
               "declarations": [],
               "files": [],
               "location": "services/catalog/pom.xml:16",
+              "code": [],
               "children": []
             },
             "specificity": 0,
@@ -3371,6 +3462,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "excludes": {
@@ -3385,6 +3477,7 @@
               "declarations": [],
               "files": [],
               "location": null,
+              "code": [],
               "children": []
             },
             "specificity": 0,
@@ -3459,7 +3552,7 @@
   ],
   "sources": [
     {
-      "id": "93c7fc98d13b",
+      "id": "493146de0bc6",
       "name": "Example team library",
       "kind": "git",
       "role": "team",
@@ -3469,11 +3562,11 @@
         "kind": "branch",
         "name": "main"
       },
-      "createdAt": "2026-10-31T21:54:56Z",
-      "snapshot": "d8270090cbfda663c348eccdb4c3664b237496c6",
-      "snapshotAt": "2026-10-31T21:54:56Z",
+      "createdAt": "2026-10-31T23:23:39Z",
+      "snapshot": "ee7fb1c7da75df72ab24ade8004e3fe4b03ae055",
+      "snapshotAt": "2026-10-31T23:23:39Z",
       "commitSummary": "Example library — Example, 2026-11-01",
-      "lastAttemptAt": "2026-10-31T21:54:56Z",
+      "lastAttemptAt": "2026-10-31T23:23:39Z",
       "lastError": null,
       "warning": null,
       "freshness": "current",
@@ -3489,7 +3582,7 @@
   "kit": {
     "suggestions": [
       {
-        "key": "93c7fc98d13b/service-observability",
+        "key": "493146de0bc6/service-observability",
         "group": "required",
         "title": "Service observability",
         "name": "service-observability",
@@ -3497,13 +3590,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "service-observability"
         },
         "installed": false,
@@ -3532,6 +3625,7 @@
                 "declarations": [],
                 "files": [],
                 "location": "services/catalog/pom.xml:12",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -3559,6 +3653,7 @@
                 "declarations": [],
                 "files": [],
                 "location": "services/inventory/pom.xml:4",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -3581,6 +3676,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -3603,6 +3699,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -3620,7 +3717,7 @@
         "chosen": true
       },
       {
-        "key": "93c7fc98d13b/java-service-conventions",
+        "key": "493146de0bc6/java-service-conventions",
         "group": "required",
         "title": "Java service conventions",
         "name": "java-service-conventions",
@@ -3628,13 +3725,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "java-service-conventions"
         },
         "installed": false,
@@ -3671,6 +3768,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -3687,6 +3785,7 @@
                     "declarations": [],
                     "files": [],
                     "location": "services/catalog/src/main/java/com/example/catalog/CatalogApplication.java",
+                    "code": [],
                     "children": []
                   },
                   {
@@ -3708,6 +3807,7 @@
                     "declarations": [],
                     "files": [],
                     "location": "services/catalog/pom.xml:12",
+                    "code": [],
                     "children": []
                   }
                 ]
@@ -3727,7 +3827,7 @@
         "chosen": true
       },
       {
-        "key": "93c7fc98d13b/liquibase-migration-review",
+        "key": "493146de0bc6/liquibase-migration-review",
         "group": "stack",
         "title": "Liquibase migration review",
         "name": "liquibase-migration-review",
@@ -3735,13 +3835,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "liquibase-migration-review"
         },
         "installed": false,
@@ -3787,6 +3887,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -3805,6 +3906,7 @@
                     "declarations": [],
                     "files": [],
                     "location": "services/inventory/pom.xml:4",
+                    "code": [],
                     "children": []
                   },
                   {
@@ -3830,6 +3932,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -3847,6 +3950,7 @@
                         "declarations": [],
                         "files": [],
                         "location": "services/inventory/pom.xml:22",
+                        "code": [],
                         "children": []
                       },
                       {
@@ -3865,6 +3969,7 @@
                         "declarations": [],
                         "files": [],
                         "location": "services/inventory/pom.xml:22",
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -3911,6 +4016,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -3927,6 +4033,7 @@
                     "declarations": [],
                     "files": [],
                     "location": "services/catalog/pom.xml:12",
+                    "code": [],
                     "children": []
                   },
                   {
@@ -3952,6 +4059,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -3967,6 +4075,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       },
                       {
@@ -3981,6 +4090,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4027,6 +4137,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -4040,6 +4151,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": []
                   },
                   {
@@ -4065,6 +4177,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -4080,6 +4193,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       },
                       {
@@ -4094,6 +4208,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4140,6 +4255,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -4153,6 +4269,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": []
                   },
                   {
@@ -4178,6 +4295,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -4193,6 +4311,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       },
                       {
@@ -4207,6 +4326,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4228,7 +4348,7 @@
         "chosen": true
       },
       {
-        "key": "93c7fc98d13b/frontend-test-practices",
+        "key": "493146de0bc6/frontend-test-practices",
         "group": "stack",
         "title": "Front-end test practices",
         "name": "frontend-test-practices",
@@ -4236,13 +4356,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "frontend-test-practices"
         },
         "installed": false,
@@ -4286,6 +4406,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -4308,6 +4429,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -4324,6 +4446,7 @@
                         "declarations": [],
                         "files": [],
                         "location": "apps/web/package.json:5",
+                        "code": [],
                         "children": []
                       },
                       {
@@ -4338,6 +4461,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4357,6 +4481,7 @@
                     "declarations": [],
                     "files": [],
                     "location": "apps/web/package.json:6",
+                    "code": [],
                     "children": []
                   }
                 ]
@@ -4399,6 +4524,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -4421,6 +4547,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -4434,6 +4561,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       },
                       {
@@ -4448,6 +4576,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4464,6 +4593,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": []
                   }
                 ]
@@ -4506,6 +4636,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -4528,6 +4659,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -4541,6 +4673,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       },
                       {
@@ -4555,6 +4688,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4571,6 +4705,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": []
                   }
                 ]
@@ -4613,6 +4748,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": [
                   {
                     "condition": {
@@ -4635,6 +4771,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": [
                       {
                         "condition": {
@@ -4648,6 +4785,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       },
                       {
@@ -4662,6 +4800,7 @@
                         "declarations": [],
                         "files": [],
                         "location": null,
+                        "code": [],
                         "children": []
                       }
                     ]
@@ -4678,6 +4817,7 @@
                     "declarations": [],
                     "files": [],
                     "location": null,
+                    "code": [],
                     "children": []
                   }
                 ]
@@ -4697,7 +4837,7 @@
         "chosen": true
       },
       {
-        "key": "93c7fc98d13b/jooq-query-review",
+        "key": "493146de0bc6/jooq-query-review",
         "group": "stack",
         "title": "jOOQ query review",
         "name": "jooq-query-review",
@@ -4705,13 +4845,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "jooq-query-review"
         },
         "installed": false,
@@ -4740,6 +4880,7 @@
                 "declarations": [],
                 "files": [],
                 "location": "services/catalog/pom.xml:16",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4762,6 +4903,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4784,6 +4926,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4806,6 +4949,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4823,7 +4967,7 @@
         "chosen": true
       },
       {
-        "key": "93c7fc98d13b/react-component-review",
+        "key": "493146de0bc6/react-component-review",
         "group": "stack",
         "title": "React component review",
         "name": "react-component-review",
@@ -4831,13 +4975,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "react-component-review"
         },
         "installed": false,
@@ -4866,6 +5010,7 @@
                 "declarations": [],
                 "files": [],
                 "location": "apps/web/package.json:5",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4888,6 +5033,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4910,6 +5056,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4932,6 +5079,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -4949,7 +5097,7 @@
         "chosen": true
       },
       {
-        "key": "93c7fc98d13b/github-pr-summary",
+        "key": "493146de0bc6/github-pr-summary",
         "group": "stack",
         "title": "GitHub PR summary",
         "name": "github-pr-summary",
@@ -4957,13 +5105,13 @@
         "library": {
           "name": "Example team library",
           "entryId": null,
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "community": false,
           "builder": false,
           "connected": true
         },
         "item": {
-          "sourceId": "93c7fc98d13b",
+          "sourceId": "493146de0bc6",
           "itemId": "github-pr-summary"
         },
         "installed": false,
@@ -4992,6 +5140,7 @@
                 "declarations": [],
                 "files": [],
                 "location": ".github/workflows/ci.yml",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -5049,6 +5198,7 @@
                 "declarations": [],
                 "files": [],
                 "location": "services/catalog/pom.xml:12",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -5076,6 +5226,7 @@
                 "declarations": [],
                 "files": [],
                 "location": "services/inventory/pom.xml:4",
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -5098,6 +5249,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,
@@ -5120,6 +5272,7 @@
                 "declarations": [],
                 "files": [],
                 "location": null,
+                "code": [],
                 "children": []
               },
               "excludes": null,

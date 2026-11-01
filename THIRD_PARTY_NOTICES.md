@@ -13,7 +13,7 @@ Notes:
 - The bundled fonts (IBM Plex Sans, IBM Plex Mono) are under the SIL Open Font
   License 1.1 and are distributed unmodified. "Plex" is a Reserved Font Name.
 
-## Rust components (552)
+## Rust components (564)
 
 | Component | Version | License | Source | Texts |
 |---|---|---|---|---|
@@ -405,48 +405,49 @@ Notes:
 | soup3-sys | 0.5.0 | MIT | https://gitlab.gnome.org/World/Rust/soup3-rs | [T136](#t136) |
 | sqlite-wasm-rs | 0.5.5 | MIT | https://github.com/Spxg/sqlite-wasm-rs | [T219](#t219) |
 | stable_deref_trait | 1.2.1 | MIT OR Apache-2.0 | https://github.com/storyyeller/stable_deref_trait | [T4](#t4) [T220](#t220) |
+| streaming-iterator | 0.1.9 | MIT OR Apache-2.0 | https://github.com/sfackler/streaming-iterator | [T13](#t13) [T221](#t221) |
 | string_cache | 0.9.0 | MIT OR Apache-2.0 | https://github.com/servo/string-cache | [T4](#t4) [T49](#t49) |
-| strsim | 0.11.1 | MIT | https://github.com/rapidfuzz/strsim-rs | [T221](#t221) |
-| strum | 0.28.0 | MIT | https://github.com/Peternator7/strum | [T222](#t222) |
-| strum_macros | 0.28.0 | MIT | https://github.com/Peternator7/strum | [T222](#t222) |
-| swift-rs | 1.0.8 | MIT OR Apache-2.0 | https://github.com/Brendonovich/swift-rs | [T223](#t223) [T224](#t224) |
-| symlink | 0.1.0 | MIT/Apache-2.0 | https://gitlab.com/chris-morgan/symlink | [T225](#t225) [T4](#t4) [T226](#t226) |
+| strsim | 0.11.1 | MIT | https://github.com/rapidfuzz/strsim-rs | [T222](#t222) |
+| strum | 0.28.0 | MIT | https://github.com/Peternator7/strum | [T223](#t223) |
+| strum_macros | 0.28.0 | MIT | https://github.com/Peternator7/strum | [T223](#t223) |
+| swift-rs | 1.0.8 | MIT OR Apache-2.0 | https://github.com/Brendonovich/swift-rs | [T224](#t224) [T225](#t225) |
+| symlink | 0.1.0 | MIT/Apache-2.0 | https://gitlab.com/chris-morgan/symlink | [T226](#t226) [T4](#t4) [T227](#t227) |
 | syn | 1.0.109 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn | [T4](#t4) [T3](#t3) |
 | syn | 2.0.119 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn | [T10](#t10) [T3](#t3) |
 | syn | 3.0.6 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn | [T10](#t10) [T3](#t3) |
 | sync_wrapper | 1.0.2 | Apache-2.0 | https://github.com/Actyx/sync_wrapper | [T92](#t92) |
-| synstructure | 0.14.0 | MIT | https://github.com/mystor/synstructure | [T227](#t227) |
-| system-configuration | 0.7.0 | MIT OR Apache-2.0 | https://github.com/mullvad/system-configuration-rs | [T4](#t4) [T228](#t228) |
-| system-configuration-sys | 0.6.0 | MIT OR Apache-2.0 | https://github.com/mullvad/system-configuration-rs | [T4](#t4) [T228](#t228) |
-| tao | 0.37.1 | Apache-2.0 | https://github.com/tauri-apps/tao | [T13](#t13) [T229](#t229) |
-| tao-macros | 0.1.4 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tao | [T4](#t4) [T230](#t230) [T231](#t231) |
-| tar | 0.4.46 | MIT OR Apache-2.0 | https://github.com/composefs/tar-rs | [T4](#t4) [T232](#t232) |
-| tauri | 2.12.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tauri-codegen | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tauri-macros | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tauri-plugin-dialog | 2.8.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-plugin-opener | 2.7.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T233](#t233) [T234](#t234) |
-| tauri-runtime | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tauri-utils | 2.10.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T233](#t233) |
-| tempfile | 3.27.0 | MIT OR Apache-2.0 | https://github.com/Stebalien/tempfile | [T4](#t4) [T235](#t235) |
-| tendril | 0.5.1 | MIT OR Apache-2.0 | https://github.com/servo/html5ever | [T4](#t4) [T236](#t236) |
+| synstructure | 0.14.0 | MIT | https://github.com/mystor/synstructure | [T228](#t228) |
+| system-configuration | 0.7.0 | MIT OR Apache-2.0 | https://github.com/mullvad/system-configuration-rs | [T4](#t4) [T229](#t229) |
+| system-configuration-sys | 0.6.0 | MIT OR Apache-2.0 | https://github.com/mullvad/system-configuration-rs | [T4](#t4) [T229](#t229) |
+| tao | 0.37.1 | Apache-2.0 | https://github.com/tauri-apps/tao | [T13](#t13) [T230](#t230) |
+| tao-macros | 0.1.4 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tao | [T4](#t4) [T231](#t231) [T232](#t232) |
+| tar | 0.4.46 | MIT OR Apache-2.0 | https://github.com/composefs/tar-rs | [T4](#t4) [T233](#t233) |
+| tauri | 2.12.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T234](#t234) |
+| tauri-codegen | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T234](#t234) |
+| tauri-macros | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T234](#t234) |
+| tauri-plugin-dialog | 2.8.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T234](#t234) [T235](#t235) |
+| tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T234](#t234) [T235](#t235) |
+| tauri-plugin-opener | 2.7.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T234](#t234) [T235](#t235) |
+| tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | [T92](#t92) [T234](#t234) [T235](#t235) |
+| tauri-runtime | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T234](#t234) |
+| tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T234](#t234) |
+| tauri-utils | 2.10.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | [T92](#t92) [T234](#t234) |
+| tempfile | 3.27.0 | MIT OR Apache-2.0 | https://github.com/Stebalien/tempfile | [T4](#t4) [T236](#t236) |
+| tendril | 0.5.1 | MIT OR Apache-2.0 | https://github.com/servo/html5ever | [T4](#t4) [T237](#t237) |
 | termcolor | 1.4.1 | Unlicense OR MIT | https://github.com/BurntSushi/termcolor | [T6](#t6) [T7](#t7) [T8](#t8) |
 | thiserror | 1.0.69 | MIT OR Apache-2.0 | https://github.com/dtolnay/thiserror | [T10](#t10) [T3](#t3) |
 | thiserror | 2.0.21 | MIT OR Apache-2.0 | https://github.com/dtolnay/thiserror | [T10](#t10) [T3](#t3) |
 | thiserror-impl | 1.0.69 | MIT OR Apache-2.0 | https://github.com/dtolnay/thiserror | [T10](#t10) [T3](#t3) |
 | thiserror-impl | 2.0.21 | MIT OR Apache-2.0 | https://github.com/dtolnay/thiserror | [T10](#t10) [T3](#t3) |
 | thread_local | 1.1.10 | MIT OR Apache-2.0 | https://github.com/Amanieu/thread_local-rs | [T4](#t4) [T152](#t152) |
-| time | 0.3.55 | MIT OR Apache-2.0 | https://github.com/time-rs/time | [T92](#t92) [T237](#t237) |
-| time-core | 0.1.9 | MIT OR Apache-2.0 | https://github.com/time-rs/time | [T92](#t92) [T237](#t237) |
-| time-macros | 0.2.32 | MIT OR Apache-2.0 | https://github.com/time-rs/time | [T92](#t92) [T237](#t237) |
+| time | 0.3.55 | MIT OR Apache-2.0 | https://github.com/time-rs/time | [T92](#t92) [T238](#t238) |
+| time-core | 0.1.9 | MIT OR Apache-2.0 | https://github.com/time-rs/time | [T92](#t92) [T238](#t238) |
+| time-macros | 0.2.32 | MIT OR Apache-2.0 | https://github.com/time-rs/time | [T92](#t92) [T238](#t238) |
 | tinystr | 0.8.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT | https://github.com/Lokathor/tinyvec | [T77](#t77) [T58](#t58) [T38](#t38) |
-| tokio | 1.53.1 | MIT | https://github.com/tokio-rs/tokio | [T238](#t238) |
-| tokio-native-tls | 0.3.1 | MIT | https://github.com/tokio-rs/tls | [T239](#t239) |
-| tokio-util | 0.7.19 | MIT | https://github.com/tokio-rs/tokio | [T238](#t238) |
+| tokio | 1.53.1 | MIT | https://github.com/tokio-rs/tokio | [T239](#t239) |
+| tokio-native-tls | 0.3.1 | MIT | https://github.com/tokio-rs/tls | [T240](#t240) |
+| tokio-util | 0.7.19 | MIT | https://github.com/tokio-rs/tokio | [T239](#t239) |
 | toml | 1.1.6+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
 | toml_datetime | 0.6.3 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T4](#t4) [T42](#t42) |
 | toml_datetime | 1.1.1+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
@@ -455,38 +456,49 @@ Notes:
 | toml_edit | 0.25.15+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
 | toml_parser | 1.1.3+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
 | toml_writer | 1.1.2+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml | [T13](#t13) [T14](#t14) |
-| tower | 0.5.3 | MIT | https://github.com/tower-rs/tower | [T240](#t240) |
-| tower-http | 0.6.11 | MIT | https://github.com/tower-rs/tower-http | [T241](#t241) |
-| tower-layer | 0.3.3 | MIT | https://github.com/tower-rs/tower | [T240](#t240) |
-| tower-service | 0.3.3 | MIT | https://github.com/tower-rs/tower | [T240](#t240) |
-| tracing | 0.1.44 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tracing-appender | 0.2.5 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tracing-attributes | 0.1.31 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tracing-core | 0.1.36 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tracing-log | 0.2.0 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tracing-serde | 0.2.0 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tracing-subscriber | 0.3.23 | MIT | https://github.com/tokio-rs/tracing | [T239](#t239) |
-| tray-icon | 0.25.1 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tray-icon | [T4](#t4) [T162](#t162) [T242](#t242) |
-| try-lock | 0.2.5 | MIT | https://github.com/seanmonstar/try-lock | [T243](#t243) |
+| tower | 0.5.3 | MIT | https://github.com/tower-rs/tower | [T241](#t241) |
+| tower-http | 0.6.11 | MIT | https://github.com/tower-rs/tower-http | [T242](#t242) |
+| tower-layer | 0.3.3 | MIT | https://github.com/tower-rs/tower | [T241](#t241) |
+| tower-service | 0.3.3 | MIT | https://github.com/tower-rs/tower | [T241](#t241) |
+| tracing | 0.1.44 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tracing-appender | 0.2.5 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tracing-attributes | 0.1.31 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tracing-core | 0.1.36 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tracing-log | 0.2.0 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tracing-serde | 0.2.0 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tracing-subscriber | 0.3.23 | MIT | https://github.com/tokio-rs/tracing | [T240](#t240) |
+| tray-icon | 0.25.1 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tray-icon | [T4](#t4) [T162](#t162) [T243](#t243) |
+| tree-sitter | 0.27.1 | MIT | https://github.com/tree-sitter/tree-sitter | [T244](#t244) |
+| tree-sitter-bash | 0.25.1 | MIT | https://github.com/tree-sitter/tree-sitter-bash | [T245](#t245) |
+| tree-sitter-go | 0.25.0 | MIT | https://github.com/tree-sitter/tree-sitter-go | [T246](#t246) |
+| tree-sitter-java | 0.23.5 | MIT | https://github.com/tree-sitter/tree-sitter-java | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
+| tree-sitter-javascript | 0.25.0 | MIT | https://github.com/tree-sitter/tree-sitter-javascript | [T246](#t246) |
+| tree-sitter-kotlin-ng | 1.1.0 | MIT | https://github.com/tree-sitter-grammars/tree-sitter-kotlin | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
+| tree-sitter-language | 0.1.9 | MIT | https://github.com/tree-sitter/tree-sitter | [T244](#t244) |
+| tree-sitter-php | 0.25.1 | MIT | https://github.com/tree-sitter/tree-sitter-php | [T247](#t247) |
+| tree-sitter-python | 0.25.0 | MIT | https://github.com/tree-sitter/tree-sitter-python | [T248](#t248) |
+| tree-sitter-rust | 0.24.2 | MIT | https://github.com/tree-sitter/tree-sitter-rust | [T249](#t249) |
+| tree-sitter-typescript | 0.23.2 | MIT | https://github.com/tree-sitter/tree-sitter-typescript | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
+| try-lock | 0.2.5 | MIT | https://github.com/seanmonstar/try-lock | [T250](#t250) |
 | ts-rs | 12.0.1 | MIT | https://github.com/Aleph-Alpha/ts-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | ts-rs-macros | 12.0.1 | MIT | https://github.com/Aleph-Alpha/ts-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | typeid | 1.0.3 | MIT OR Apache-2.0 | https://github.com/dtolnay/typeid | [T10](#t10) [T3](#t3) |
-| typenum | 1.20.1 | MIT OR Apache-2.0 | https://github.com/paholg/typenum | [T244](#t244) [T245](#t245) [T246](#t246) |
-| uds_windows | 1.2.1 | MIT | https://github.com/haraldh/rust_uds_windows | [T247](#t247) |
+| typenum | 1.20.1 | MIT OR Apache-2.0 | https://github.com/paholg/typenum | [T251](#t251) [T252](#t252) [T253](#t253) |
+| uds_windows | 1.2.1 | MIT | https://github.com/haraldh/rust_uds_windows | [T254](#t254) |
 | unicode-general-category | 1.1.0 | Apache-2.0 | https://github.com/yeslogic/unicode-general-category | [T13](#t13) |
-| unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident | [T10](#t10) [T3](#t3) [T248](#t248) |
-| unicode-normalization | 0.1.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/unicode-rs/unicode-normalization | [T249](#t249) [T4](#t4) [T111](#t111) [T248](#t248) |
-| unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-segmentation | [T249](#t249) [T4](#t4) [T111](#t111) |
-| unicode-width | 0.2.2 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-width | [T249](#t249) [T4](#t4) [T111](#t111) |
+| unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident | [T10](#t10) [T3](#t3) [T255](#t255) |
+| unicode-normalization | 0.1.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/unicode-rs/unicode-normalization | [T256](#t256) [T4](#t4) [T111](#t111) [T255](#t255) |
+| unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-segmentation | [T256](#t256) [T4](#t4) [T111](#t111) |
+| unicode-width | 0.2.2 | MIT OR Apache-2.0 | https://github.com/unicode-rs/unicode-width | [T256](#t256) [T4](#t4) [T111](#t111) |
 | url | 2.5.8 | MIT OR Apache-2.0 | https://github.com/servo/rust-url | [T4](#t4) [T127](#t127) |
-| urlpattern | 0.6.0 | MIT | https://github.com/denoland/rust-urlpattern | [T250](#t250) |
-| utf8_iter | 1.0.4 | Apache-2.0 OR MIT | https://github.com/hsivonen/utf8_iter | [T251](#t251) [T77](#t77) [T80](#t80) |
-| uuid | 1.29.0 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid | [T4](#t4) [T252](#t252) |
+| urlpattern | 0.6.0 | MIT | https://github.com/denoland/rust-urlpattern | [T257](#t257) |
+| utf8_iter | 1.0.4 | Apache-2.0 OR MIT | https://github.com/hsivonen/utf8_iter | [T258](#t258) [T77](#t77) [T80](#t80) |
+| uuid | 1.29.0 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid | [T4](#t4) [T259](#t259) |
 | uuid-simd | 0.8.0 | MIT | https://github.com/Nugine/simd | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | valuable | 0.1.1 | MIT | https://github.com/tokio-rs/valuable | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | vsimd | 0.8.0 | MIT | https://github.com/Nugine/simd | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | walkdir | 2.5.0 | Unlicense/MIT | https://github.com/BurntSushi/walkdir | [T6](#t6) [T7](#t7) [T8](#t8) |
-| want | 0.3.1 | MIT | https://github.com/seanmonstar/want | [T253](#t253) |
+| want | 0.3.1 | MIT | https://github.com/seanmonstar/want | [T260](#t260) |
 | wasi | 0.11.1+wasi-snapshot-preview1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/wasi | [T4](#t4) [T151](#t151) [T3](#t3) |
 | wasip2 | 1.0.4+wasi-0.2.12 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/wasi-rs | [T4](#t4) [T151](#t151) [T3](#t3) |
 | wasm-bindgen | 0.2.129 | MIT OR Apache-2.0 | https://github.com/wasm-bindgen/wasm-bindgen | [T4](#t4) [T42](#t42) |
@@ -497,263 +509,263 @@ Notes:
 | wasm-streams | 0.5.0 | MIT OR Apache-2.0 | https://github.com/MattiasBuelens/wasm-streams/ | [T10](#t10) [T3](#t3) |
 | web_atoms | 0.2.6 | MIT OR Apache-2.0 | https://github.com/servo/html5ever | [T4](#t4) [T113](#t113) |
 | web-sys | 0.3.106 | MIT OR Apache-2.0 | https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys | [T4](#t4) [T42](#t42) |
-| web-time | 1.1.0 | MIT OR Apache-2.0 | https://github.com/daxpedda/web-time | [T254](#t254) [T255](#t255) |
-| webkit2gtk | 2.0.2 | MIT | https://github.com/tauri-apps/webkit2gtk-rs | [T256](#t256) |
-| webkit2gtk-sys | 2.0.2 | MIT | https://github.com/tauri-apps/webkit2gtk-rs | [T257](#t257) |
+| web-time | 1.1.0 | MIT OR Apache-2.0 | https://github.com/daxpedda/web-time | [T261](#t261) [T262](#t262) |
+| webkit2gtk | 2.0.2 | MIT | https://github.com/tauri-apps/webkit2gtk-rs | [T263](#t263) |
+| webkit2gtk-sys | 2.0.2 | MIT | https://github.com/tauri-apps/webkit2gtk-rs | [T264](#t264) |
 | webview2-com | 0.39.1 | MIT | https://github.com/wravery/webview2-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | webview2-com-macros | 0.8.1 | MIT | https://github.com/wravery/webview2-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
 | webview2-com-sys | 0.39.1 | MIT | https://github.com/wravery/webview2-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
-| which | 8.0.6 | MIT | https://github.com/harryfei/which-rs.git | [T258](#t258) |
-| winapi | 0.3.9 | MIT/Apache-2.0 | https://github.com/retep998/winapi-rs | [T13](#t13) [T259](#t259) |
+| which | 8.0.6 | MIT | https://github.com/harryfei/which-rs.git | [T265](#t265) |
+| winapi | 0.3.9 | MIT/Apache-2.0 | https://github.com/retep998/winapi-rs | [T13](#t13) [T266](#t266) |
 | winapi-i686-pc-windows-gnu | 0.4.0 | MIT/Apache-2.0 | https://github.com/retep998/winapi-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html), [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html) |
 | winapi-util | 0.1.11 | Unlicense OR MIT | https://github.com/BurntSushi/winapi-util | [T6](#t6) [T202](#t202) [T8](#t8) |
 | winapi-x86_64-pc-windows-gnu | 0.4.0 | MIT/Apache-2.0 | https://github.com/retep998/winapi-rs | standard text: [MIT](https://spdx.org/licenses/MIT.html), [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html) |
-| window-vibrancy | 0.8.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri-plugin-vibrancy | [T4](#t4) [T260](#t260) [T261](#t261) |
-| windows | 0.62.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_aarch64_gnullvm | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_aarch64_gnullvm | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_aarch64_msvc | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_aarch64_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_i686_gnu | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_i686_gnu | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_i686_gnullvm | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_i686_msvc | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_i686_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_x86_64_gnu | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_x86_64_gnu | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_x86_64_gnullvm | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_x86_64_gnullvm | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_x86_64_msvc | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows_x86_64_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-collections | 0.3.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-core | 0.62.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-future | 0.3.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-implement | 0.60.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-interface | 0.59.3 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-link | 0.2.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-numerics | 0.3.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-registry | 0.6.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-result | 0.4.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-strings | 0.5.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-sys | 0.45.0 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-sys | 0.60.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-sys | 0.61.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-targets | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-targets | 0.53.5 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-threading | 0.2.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| windows-version | 0.1.7 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T262](#t262) [T263](#t263) |
-| winnow | 0.5.40 | MIT | https://github.com/winnow-rs/winnow | [T264](#t264) |
-| winnow | 1.0.4 | MIT | https://github.com/winnow-rs/winnow | [T264](#t264) |
+| window-vibrancy | 0.8.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri-plugin-vibrancy | [T4](#t4) [T267](#t267) [T268](#t268) |
+| windows | 0.62.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_aarch64_gnullvm | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_aarch64_gnullvm | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_aarch64_msvc | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_aarch64_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_i686_gnu | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_i686_gnu | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_i686_gnullvm | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_i686_msvc | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_i686_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_x86_64_gnu | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_x86_64_gnu | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_x86_64_gnullvm | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_x86_64_gnullvm | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_x86_64_msvc | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows_x86_64_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-collections | 0.3.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-core | 0.62.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-future | 0.3.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-implement | 0.60.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-interface | 0.59.3 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-link | 0.2.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-numerics | 0.3.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-registry | 0.6.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-result | 0.4.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-strings | 0.5.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-sys | 0.45.0 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-sys | 0.60.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-sys | 0.61.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-targets | 0.42.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-targets | 0.53.5 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-threading | 0.2.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| windows-version | 0.1.7 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs | [T269](#t269) [T270](#t270) |
+| winnow | 0.5.40 | MIT | https://github.com/winnow-rs/winnow | [T271](#t271) |
+| winnow | 1.0.4 | MIT | https://github.com/winnow-rs/winnow | [T271](#t271) |
 | wit-bindgen | 0.57.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/wit-bindgen | [T4](#t4) [T151](#t151) [T3](#t3) |
 | writeable | 0.6.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
-| wry | 0.57.0 | Apache-2.0 OR MIT | https://github.com/tauri-apps/wry | [T4](#t4) [T265](#t265) [T266](#t266) |
+| wry | 0.57.0 | Apache-2.0 OR MIT | https://github.com/tauri-apps/wry | [T4](#t4) [T272](#t272) [T273](#t273) |
 | x11 | 2.21.0 | MIT | https://github.com/AltF02/x11-rs.git | [T3](#t3) |
 | x11-dl | 2.21.0 | MIT | https://github.com/AltF02/x11-rs.git | [T3](#t3) |
-| xattr | 1.6.1 | MIT OR Apache-2.0 | https://github.com/Stebalien/xattr | [T4](#t4) [T235](#t235) |
+| xattr | 1.6.1 | MIT OR Apache-2.0 | https://github.com/Stebalien/xattr | [T4](#t4) [T236](#t236) |
 | yoke | 0.8.3 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
 | yoke-derive | 0.8.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
-| zbus | 5.19.0 | MIT | https://github.com/z-galaxy/zbus/ | [T267](#t267) |
-| zbus_macros | 5.19.0 | MIT | https://github.com/z-galaxy/zbus/ | [T267](#t267) |
-| zbus_names | 4.3.4 | MIT | https://github.com/z-galaxy/zbus/ | [T267](#t267) |
-| zcheapstr | 1.1.0 | MIT | https://github.com/z-galaxy/zcheapstr/ | [T268](#t268) |
-| zerocopy | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | https://github.com/google/zerocopy | [T269](#t269) [T270](#t270) [T271](#t271) |
-| zerocopy-derive | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | https://github.com/google/zerocopy | [T269](#t269) [T270](#t270) [T271](#t271) |
+| zbus | 5.19.0 | MIT | https://github.com/z-galaxy/zbus/ | [T274](#t274) |
+| zbus_macros | 5.19.0 | MIT | https://github.com/z-galaxy/zbus/ | [T274](#t274) |
+| zbus_names | 4.3.4 | MIT | https://github.com/z-galaxy/zbus/ | [T274](#t274) |
+| zcheapstr | 1.1.0 | MIT | https://github.com/z-galaxy/zcheapstr/ | [T275](#t275) |
+| zerocopy | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | https://github.com/google/zerocopy | [T276](#t276) [T277](#t277) [T278](#t278) |
+| zerocopy-derive | 0.8.59 | BSD-2-Clause OR Apache-2.0 OR MIT | https://github.com/google/zerocopy | [T276](#t276) [T277](#t277) [T278](#t278) |
 | zerofrom | 0.1.8 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
 | zerofrom-derive | 0.1.8 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
-| zeroize | 1.9.0 | Apache-2.0 OR MIT | https://github.com/RustCrypto/utils | [T77](#t77) [T272](#t272) |
+| zeroize | 1.9.0 | Apache-2.0 OR MIT | https://github.com/RustCrypto/utils | [T77](#t77) [T279](#t279) |
 | zerotrie | 0.2.5 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
 | zerovec | 0.11.8 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
 | zerovec-derive | 0.11.6 | Unicode-3.0 | https://github.com/unicode-org/icu4x | [T125](#t125) |
-| zlib-rs | 0.6.8 | Zlib | https://github.com/trifectatechfoundation/zlib-rs | [T273](#t273) |
+| zlib-rs | 0.6.8 | Zlib | https://github.com/trifectatechfoundation/zlib-rs | [T280](#t280) |
 | zmij | 1.0.23 | MIT | https://github.com/dtolnay/zmij | [T3](#t3) |
-| zvariant | 5.15.0 | MIT | https://github.com/z-galaxy/zbus/ | [T267](#t267) |
-| zvariant_derive | 5.15.0 | MIT | https://github.com/z-galaxy/zbus/ | [T267](#t267) |
+| zvariant | 5.15.0 | MIT | https://github.com/z-galaxy/zbus/ | [T274](#t274) |
+| zvariant_derive | 5.15.0 | MIT | https://github.com/z-galaxy/zbus/ | [T274](#t274) |
 | zvariant_utils | 4.2.0 | MIT | https://github.com/z-galaxy/zbus/ | [T3](#t3) |
 
 ## JavaScript components (180)
 
 | Component | Version | License | Source | Texts |
 |---|---|---|---|---|
-| @codemirror/autocomplete | 6.20.4 | MIT | https://code.haverbeke.berlin/codemirror/autocomplete.git | [T274](#t274) |
-| @codemirror/commands | 6.11.1 | MIT | https://code.haverbeke.berlin/codemirror/commands.git | [T274](#t274) |
-| @codemirror/lang-css | 6.3.1 | MIT | https://github.com/codemirror/lang-css.git | [T274](#t274) |
-| @codemirror/lang-html | 6.4.12 | MIT | https://code.haverbeke.berlin/codemirror/lang-html.git | [T274](#t274) |
-| @codemirror/lang-javascript | 6.2.5 | MIT | https://github.com/codemirror/lang-javascript.git | [T274](#t274) |
-| @codemirror/lang-json | 6.0.2 | MIT | https://github.com/codemirror/lang-json.git | [T274](#t274) |
-| @codemirror/lang-markdown | 6.5.2 | MIT | https://code.haverbeke.berlin/codemirror/lang-markdown.git | [T274](#t274) |
-| @codemirror/lang-python | 6.2.1 | MIT | https://github.com/codemirror/lang-python.git | [T274](#t274) |
-| @codemirror/lang-yaml | 6.1.3 | MIT | https://github.com/codemirror/lang-yaml.git | [T275](#t275) |
-| @codemirror/language | 6.13.1 | MIT | https://code.haverbeke.berlin/codemirror/language.git | [T274](#t274) |
-| @codemirror/legacy-modes | 6.5.5 | MIT | https://code.haverbeke.berlin/codemirror/legacy-modes.git | [T274](#t274) |
-| @codemirror/lint | 6.9.7 | MIT | https://code.haverbeke.berlin/codemirror/lint.git | [T274](#t274) |
-| @codemirror/state | 6.7.6 | MIT | https://code.haverbeke.berlin/codemirror/state.git | [T274](#t274) |
-| @codemirror/streamparser | 6.0.0 | MIT | https://code.haverbeke.berlin/codemirror/streamparser.git | [T274](#t274) |
-| @codemirror/view | 6.43.15 | MIT | https://code.haverbeke.berlin/codemirror/view.git | [T274](#t274) |
-| @floating-ui/core | 1.8.0 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
-| @floating-ui/dom | 1.8.0 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
-| @floating-ui/react-dom | 2.1.9 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
-| @floating-ui/utils | 0.2.12 | MIT | https://github.com/floating-ui/floating-ui.git | [T276](#t276) |
-| @fontsource-variable/ibm-plex-sans | 5.3.0 | OFL-1.1 | https://github.com/fontsource/font-files.git | [T277](#t277) |
-| @fontsource/ibm-plex-mono | 5.3.0 | OFL-1.1 | https://github.com/fontsource/font-files.git | [T278](#t278) |
-| @lezer/common | 1.5.3 | MIT | https://code.haverbeke.berlin/lezer/common.git | [T279](#t279) |
-| @lezer/css | 1.3.8 | MIT | https://code.haverbeke.berlin/lezer/css.git | [T279](#t279) |
-| @lezer/highlight | 1.2.5 | MIT | https://code.haverbeke.berlin/lezer/highlight.git | [T279](#t279) |
-| @lezer/html | 1.3.13 | MIT | https://github.com/lezer-parser/html.git | [T279](#t279) |
-| @lezer/javascript | 1.5.6 | MIT | https://code.haverbeke.berlin/lezer/javascript.git | [T279](#t279) |
-| @lezer/json | 1.0.3 | MIT | https://github.com/lezer-parser/json.git | [T280](#t280) |
-| @lezer/lr | 1.4.10 | MIT | https://code.haverbeke.berlin/lezer/lr.git | [T279](#t279) |
-| @lezer/markdown | 1.8.1 | MIT | https://code.haverbeke.berlin/lezer/markdown.git | [T281](#t281) |
-| @lezer/python | 1.1.19 | MIT | https://code.haverbeke.berlin/lezer/python.git | [T281](#t281) |
-| @lezer/yaml | 1.0.4 | MIT | https://github.com/lezer-parser/yaml.git | [T282](#t282) |
-| @marijn/find-cluster-break | 1.0.4 | MIT | https://code.haverbeke.berlin/marijn/find-cluster-break.git | [T283](#t283) |
-| @radix-ui/primitive | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-arrow | 1.1.17 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-compose-refs | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-context | 1.3.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-dialog | 1.3.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-dismissable-layer | 1.2.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-focus-guards | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-focus-scope | 1.3.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-id | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-popper | 1.4.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-portal | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-presence | 1.1.11 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-primitive | 2.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-slot | 1.5.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-tooltip | 1.4.1 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-callback-ref | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-controllable-state | 1.3.0 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-effect-event | 0.0.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-layout-effect | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-rect | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-use-size | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/react-visually-hidden | 1.2.13 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @radix-ui/rect | 1.1.3 | MIT | https://github.com/radix-ui/primitives.git | [T284](#t284) |
-| @tanstack/query-core | 5.105.0 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
-| @tanstack/react-query | 5.105.0 | MIT | https://github.com/TanStack/query.git | [T285](#t285) |
-| @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri.git | [T92](#t92) [T233](#t233) [T286](#t286) |
-| @types/debug | 4.1.13 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/estree | 1.0.9 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/estree-jsx | 1.0.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/hast | 3.0.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/mdast | 4.0.4 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/ms | 2.1.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/react | 19.3.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/react-dom | 19.3.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/unist | 3.0.3 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @types/unist | 2.0.11 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T263](#t263) |
-| @ungap/structured-clone | 1.4.0 | ISC | https://github.com/ungap/structured-clone.git | [T287](#t287) |
-| aria-hidden | 1.2.6 | MIT | https://github.com/theKashey/aria-hidden.git | [T288](#t288) |
-| bail | 2.0.2 | MIT | wooorm/bail | [T289](#t289) |
-| ccount | 2.0.1 | MIT | wooorm/ccount | [T289](#t289) |
-| character-entities | 2.0.2 | MIT | wooorm/character-entities | [T289](#t289) |
-| character-entities-html4 | 2.1.0 | MIT | wooorm/character-entities-html4 | [T289](#t289) |
-| character-entities-legacy | 3.0.0 | MIT | wooorm/character-entities-legacy | [T289](#t289) |
-| character-reference-invalid | 2.0.1 | MIT | wooorm/character-reference-invalid | [T289](#t289) |
-| cmdk | 1.1.1 | MIT | https://github.com/pacocoursey/cmdk.git | [T290](#t290) |
-| comma-separated-tokens | 2.0.3 | MIT | wooorm/comma-separated-tokens | [T291](#t291) |
-| crelt | 1.0.7 | MIT | https://code.haverbeke.berlin/marijn/crelt.git | [T292](#t292) |
-| csstype | 3.2.3 | MIT | https://github.com/frenic/csstype | [T293](#t293) |
-| debug | 4.4.3 | MIT | git://github.com/debug-js/debug.git | [T294](#t294) |
-| decode-named-character-reference | 1.3.0 | MIT | wooorm/decode-named-character-reference | [T295](#t295) |
-| dequal | 2.0.3 | MIT | lukeed/dequal | [T296](#t296) |
-| detect-node-es | 1.1.0 | MIT | https://github.com/thekashey/detect-node | [T297](#t297) |
-| devlop | 1.1.0 | MIT | wooorm/devlop | [T298](#t298) |
-| escape-string-regexp | 5.0.0 | MIT | sindresorhus/escape-string-regexp | [T299](#t299) |
-| estree-util-is-identifier-name | 3.0.0 | MIT | syntax-tree/estree-util-is-identifier-name | [T300](#t300) |
-| extend | 3.0.2 | MIT | https://github.com/justmoon/node-extend.git | [T301](#t301) |
-| get-nonce | 1.0.1 | MIT | git@github.com:theKashey/get-nonce.git | [T302](#t302) |
-| hast-util-sanitize | 5.0.2 | MIT | syntax-tree/hast-util-sanitize | [T295](#t295) |
-| hast-util-to-jsx-runtime | 2.3.6 | MIT | syntax-tree/hast-util-to-jsx-runtime | [T295](#t295) |
-| hast-util-whitespace | 3.0.0 | MIT | syntax-tree/hast-util-whitespace | [T291](#t291) |
-| html-url-attributes | 3.0.1 | MIT | https://github.com/rehypejs/rehype-minify/tree/main/packages/html-url-attributes | [T303](#t303) |
-| inline-style-parser | 0.2.7 | MIT | https://github.com/remarkablemark/inline-style-parser.git | [T304](#t304) |
-| is-alphabetical | 2.0.1 | MIT | wooorm/is-alphabetical | [T291](#t291) |
-| is-alphanumerical | 2.0.1 | MIT | wooorm/is-alphanumerical | [T291](#t291) |
-| is-decimal | 2.0.1 | MIT | wooorm/is-decimal | [T291](#t291) |
-| is-hexadecimal | 2.0.1 | MIT | wooorm/is-hexadecimal | [T291](#t291) |
-| is-plain-obj | 4.1.0 | MIT | sindresorhus/is-plain-obj | [T299](#t299) |
-| longest-streak | 3.1.0 | MIT | wooorm/longest-streak | [T305](#t305) |
-| markdown-table | 3.0.4 | MIT | wooorm/markdown-table | [T295](#t295) |
-| mdast-util-find-and-replace | 3.0.2 | MIT | syntax-tree/mdast-util-find-and-replace | [T295](#t295) |
-| mdast-util-from-markdown | 2.0.3 | MIT | syntax-tree/mdast-util-from-markdown | [T295](#t295) |
-| mdast-util-gfm | 3.1.0 | MIT | syntax-tree/mdast-util-gfm | [T295](#t295) |
-| mdast-util-gfm-autolink-literal | 2.0.1 | MIT | syntax-tree/mdast-util-gfm-autolink-literal | [T300](#t300) |
-| mdast-util-gfm-footnote | 2.1.0 | MIT | syntax-tree/mdast-util-gfm-footnote | [T295](#t295) |
-| mdast-util-gfm-strikethrough | 2.0.1 | MIT | syntax-tree/mdast-util-gfm-strikethrough | [T295](#t295) |
-| mdast-util-gfm-table | 2.0.0 | MIT | syntax-tree/mdast-util-gfm-table | [T300](#t300) |
-| mdast-util-gfm-task-list-item | 2.0.0 | MIT | syntax-tree/mdast-util-gfm-task-list-item | [T300](#t300) |
-| mdast-util-mdx-expression | 2.0.1 | MIT | syntax-tree/mdast-util-mdx-expression | [T300](#t300) |
-| mdast-util-mdx-jsx | 3.2.0 | MIT | syntax-tree/mdast-util-mdx-jsx | [T300](#t300) |
-| mdast-util-mdxjs-esm | 2.0.1 | MIT | syntax-tree/mdast-util-mdxjs-esm | [T300](#t300) |
-| mdast-util-phrasing | 4.1.0 | MIT | syntax-tree/mdast-util-phrasing | [T306](#t306) |
-| mdast-util-to-hast | 13.2.1 | MIT | syntax-tree/mdast-util-to-hast | [T291](#t291) |
-| mdast-util-to-markdown | 2.1.3 | MIT | syntax-tree/mdast-util-to-markdown | [T295](#t295) |
-| mdast-util-to-string | 4.0.0 | MIT | syntax-tree/mdast-util-to-string | [T289](#t289) |
-| micromark | 4.0.3 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark | [T295](#t295) |
-| micromark-core-commonmark | 2.0.4 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-core-commonmark | [T295](#t295) |
-| micromark-extension-gfm | 3.0.0 | MIT | micromark/micromark-extension-gfm | [T300](#t300) |
-| micromark-extension-gfm-autolink-literal | 2.1.0 | MIT | micromark/micromark-extension-gfm-autolink-literal | [T300](#t300) |
-| micromark-extension-gfm-footnote | 2.1.0 | MIT | micromark/micromark-extension-gfm-footnote | [T307](#t307) |
-| micromark-extension-gfm-strikethrough | 2.1.0 | MIT | micromark/micromark-extension-gfm-strikethrough | [T300](#t300) |
-| micromark-extension-gfm-table | 2.1.2 | MIT | micromark/micromark-extension-gfm-table | [T295](#t295) |
-| micromark-extension-gfm-tagfilter | 2.0.0 | MIT | micromark/micromark-extension-gfm-tagfilter | [T300](#t300) |
-| micromark-extension-gfm-task-list-item | 2.1.0 | MIT | micromark/micromark-extension-gfm-task-list-item | [T300](#t300) |
-| micromark-factory-destination | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-destination | [T295](#t295) |
-| micromark-factory-label | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-label | [T295](#t295) |
-| micromark-factory-space | 2.1.0 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-space | [T295](#t295) |
-| micromark-factory-title | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-title | [T295](#t295) |
-| micromark-factory-whitespace | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-whitespace | [T295](#t295) |
-| micromark-util-character | 2.1.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-character | [T295](#t295) |
-| micromark-util-chunked | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-chunked | [T295](#t295) |
-| micromark-util-classify-character | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-classify-character | [T295](#t295) |
-| micromark-util-combine-extensions | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-combine-extensions | [T295](#t295) |
-| micromark-util-decode-numeric-character-reference | 2.0.2 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-decode-numeric-character-reference | [T295](#t295) |
-| micromark-util-decode-string | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-decode-string | [T295](#t295) |
-| micromark-util-edit-map | 1.0.0 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-edit-map | [T295](#t295) |
-| micromark-util-encode | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-encode | [T295](#t295) |
-| micromark-util-html-tag-name | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-html-tag-name | [T295](#t295) |
-| micromark-util-normalize-identifier | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-normalize-identifier | [T295](#t295) |
-| micromark-util-resolve-all | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-resolve-all | [T295](#t295) |
-| micromark-util-sanitize-uri | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-sanitize-uri | [T295](#t295) |
-| micromark-util-subtokenize | 2.1.0 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-subtokenize | [T295](#t295) |
-| micromark-util-symbol | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-symbol | [T295](#t295) |
-| micromark-util-types | 2.0.3 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-types | [T295](#t295) |
-| ms | 2.1.3 | MIT | vercel/ms | [T308](#t308) |
-| parse-entities | 4.0.2 | MIT | wooorm/parse-entities | [T309](#t309) |
-| property-information | 7.2.0 | MIT | wooorm/property-information | [T309](#t309) |
-| react | 19.3.1 | MIT | https://github.com/react/react.git | [T310](#t310) |
-| react-dom | 19.3.1 | MIT | https://github.com/react/react.git | [T310](#t310) |
-| react-markdown | 10.1.0 | MIT | remarkjs/react-markdown | [T311](#t311) |
-| react-remove-scroll | 2.7.2 | MIT | https://github.com/theKashey/react-remove-scroll | [T288](#t288) |
+| @codemirror/autocomplete | 6.20.4 | MIT | https://code.haverbeke.berlin/codemirror/autocomplete.git | [T281](#t281) |
+| @codemirror/commands | 6.11.1 | MIT | https://code.haverbeke.berlin/codemirror/commands.git | [T281](#t281) |
+| @codemirror/lang-css | 6.3.1 | MIT | https://github.com/codemirror/lang-css.git | [T281](#t281) |
+| @codemirror/lang-html | 6.4.12 | MIT | https://code.haverbeke.berlin/codemirror/lang-html.git | [T281](#t281) |
+| @codemirror/lang-javascript | 6.2.5 | MIT | https://github.com/codemirror/lang-javascript.git | [T281](#t281) |
+| @codemirror/lang-json | 6.0.2 | MIT | https://github.com/codemirror/lang-json.git | [T281](#t281) |
+| @codemirror/lang-markdown | 6.5.2 | MIT | https://code.haverbeke.berlin/codemirror/lang-markdown.git | [T281](#t281) |
+| @codemirror/lang-python | 6.2.1 | MIT | https://github.com/codemirror/lang-python.git | [T281](#t281) |
+| @codemirror/lang-yaml | 6.1.3 | MIT | https://github.com/codemirror/lang-yaml.git | [T282](#t282) |
+| @codemirror/language | 6.13.1 | MIT | https://code.haverbeke.berlin/codemirror/language.git | [T281](#t281) |
+| @codemirror/legacy-modes | 6.5.5 | MIT | https://code.haverbeke.berlin/codemirror/legacy-modes.git | [T281](#t281) |
+| @codemirror/lint | 6.9.7 | MIT | https://code.haverbeke.berlin/codemirror/lint.git | [T281](#t281) |
+| @codemirror/state | 6.7.6 | MIT | https://code.haverbeke.berlin/codemirror/state.git | [T281](#t281) |
+| @codemirror/streamparser | 6.0.0 | MIT | https://code.haverbeke.berlin/codemirror/streamparser.git | [T281](#t281) |
+| @codemirror/view | 6.43.15 | MIT | https://code.haverbeke.berlin/codemirror/view.git | [T281](#t281) |
+| @floating-ui/core | 1.8.0 | MIT | https://github.com/floating-ui/floating-ui.git | [T283](#t283) |
+| @floating-ui/dom | 1.8.0 | MIT | https://github.com/floating-ui/floating-ui.git | [T283](#t283) |
+| @floating-ui/react-dom | 2.1.9 | MIT | https://github.com/floating-ui/floating-ui.git | [T283](#t283) |
+| @floating-ui/utils | 0.2.12 | MIT | https://github.com/floating-ui/floating-ui.git | [T283](#t283) |
+| @fontsource-variable/ibm-plex-sans | 5.3.0 | OFL-1.1 | https://github.com/fontsource/font-files.git | [T284](#t284) |
+| @fontsource/ibm-plex-mono | 5.3.0 | OFL-1.1 | https://github.com/fontsource/font-files.git | [T285](#t285) |
+| @lezer/common | 1.5.3 | MIT | https://code.haverbeke.berlin/lezer/common.git | [T286](#t286) |
+| @lezer/css | 1.3.8 | MIT | https://code.haverbeke.berlin/lezer/css.git | [T286](#t286) |
+| @lezer/highlight | 1.2.5 | MIT | https://code.haverbeke.berlin/lezer/highlight.git | [T286](#t286) |
+| @lezer/html | 1.3.13 | MIT | https://github.com/lezer-parser/html.git | [T286](#t286) |
+| @lezer/javascript | 1.5.6 | MIT | https://code.haverbeke.berlin/lezer/javascript.git | [T286](#t286) |
+| @lezer/json | 1.0.3 | MIT | https://github.com/lezer-parser/json.git | [T287](#t287) |
+| @lezer/lr | 1.4.10 | MIT | https://code.haverbeke.berlin/lezer/lr.git | [T286](#t286) |
+| @lezer/markdown | 1.8.1 | MIT | https://code.haverbeke.berlin/lezer/markdown.git | [T288](#t288) |
+| @lezer/python | 1.1.19 | MIT | https://code.haverbeke.berlin/lezer/python.git | [T288](#t288) |
+| @lezer/yaml | 1.0.4 | MIT | https://github.com/lezer-parser/yaml.git | [T289](#t289) |
+| @marijn/find-cluster-break | 1.0.4 | MIT | https://code.haverbeke.berlin/marijn/find-cluster-break.git | [T290](#t290) |
+| @radix-ui/primitive | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-arrow | 1.1.17 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-compose-refs | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-context | 1.3.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-dialog | 1.3.1 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-dismissable-layer | 1.2.1 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-focus-guards | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-focus-scope | 1.3.1 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-id | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-popper | 1.4.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-portal | 1.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-presence | 1.1.11 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-primitive | 2.2.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-slot | 1.5.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-tooltip | 1.4.1 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-use-callback-ref | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-use-controllable-state | 1.3.0 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-use-effect-event | 0.0.5 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-use-layout-effect | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-use-rect | 1.1.4 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-use-size | 1.1.5 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/react-visually-hidden | 1.2.13 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @radix-ui/rect | 1.1.3 | MIT | https://github.com/radix-ui/primitives.git | [T291](#t291) |
+| @tanstack/query-core | 5.105.0 | MIT | https://github.com/TanStack/query.git | [T292](#t292) |
+| @tanstack/react-query | 5.105.0 | MIT | https://github.com/TanStack/query.git | [T292](#t292) |
+| @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri.git | [T92](#t92) [T234](#t234) [T293](#t293) |
+| @types/debug | 4.1.13 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/estree | 1.0.9 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/estree-jsx | 1.0.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/hast | 3.0.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/mdast | 4.0.4 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/ms | 2.1.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/react | 19.3.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/react-dom | 19.3.0 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/unist | 3.0.3 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @types/unist | 2.0.11 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped.git | [T270](#t270) |
+| @ungap/structured-clone | 1.4.0 | ISC | https://github.com/ungap/structured-clone.git | [T294](#t294) |
+| aria-hidden | 1.2.6 | MIT | https://github.com/theKashey/aria-hidden.git | [T295](#t295) |
+| bail | 2.0.2 | MIT | wooorm/bail | [T296](#t296) |
+| ccount | 2.0.1 | MIT | wooorm/ccount | [T296](#t296) |
+| character-entities | 2.0.2 | MIT | wooorm/character-entities | [T296](#t296) |
+| character-entities-html4 | 2.1.0 | MIT | wooorm/character-entities-html4 | [T296](#t296) |
+| character-entities-legacy | 3.0.0 | MIT | wooorm/character-entities-legacy | [T296](#t296) |
+| character-reference-invalid | 2.0.1 | MIT | wooorm/character-reference-invalid | [T296](#t296) |
+| cmdk | 1.1.1 | MIT | https://github.com/pacocoursey/cmdk.git | [T297](#t297) |
+| comma-separated-tokens | 2.0.3 | MIT | wooorm/comma-separated-tokens | [T298](#t298) |
+| crelt | 1.0.7 | MIT | https://code.haverbeke.berlin/marijn/crelt.git | [T299](#t299) |
+| csstype | 3.2.3 | MIT | https://github.com/frenic/csstype | [T300](#t300) |
+| debug | 4.4.3 | MIT | git://github.com/debug-js/debug.git | [T301](#t301) |
+| decode-named-character-reference | 1.3.0 | MIT | wooorm/decode-named-character-reference | [T302](#t302) |
+| dequal | 2.0.3 | MIT | lukeed/dequal | [T303](#t303) |
+| detect-node-es | 1.1.0 | MIT | https://github.com/thekashey/detect-node | [T304](#t304) |
+| devlop | 1.1.0 | MIT | wooorm/devlop | [T305](#t305) |
+| escape-string-regexp | 5.0.0 | MIT | sindresorhus/escape-string-regexp | [T306](#t306) |
+| estree-util-is-identifier-name | 3.0.0 | MIT | syntax-tree/estree-util-is-identifier-name | [T307](#t307) |
+| extend | 3.0.2 | MIT | https://github.com/justmoon/node-extend.git | [T308](#t308) |
+| get-nonce | 1.0.1 | MIT | git@github.com:theKashey/get-nonce.git | [T309](#t309) |
+| hast-util-sanitize | 5.0.2 | MIT | syntax-tree/hast-util-sanitize | [T302](#t302) |
+| hast-util-to-jsx-runtime | 2.3.6 | MIT | syntax-tree/hast-util-to-jsx-runtime | [T302](#t302) |
+| hast-util-whitespace | 3.0.0 | MIT | syntax-tree/hast-util-whitespace | [T298](#t298) |
+| html-url-attributes | 3.0.1 | MIT | https://github.com/rehypejs/rehype-minify/tree/main/packages/html-url-attributes | [T310](#t310) |
+| inline-style-parser | 0.2.7 | MIT | https://github.com/remarkablemark/inline-style-parser.git | [T311](#t311) |
+| is-alphabetical | 2.0.1 | MIT | wooorm/is-alphabetical | [T298](#t298) |
+| is-alphanumerical | 2.0.1 | MIT | wooorm/is-alphanumerical | [T298](#t298) |
+| is-decimal | 2.0.1 | MIT | wooorm/is-decimal | [T298](#t298) |
+| is-hexadecimal | 2.0.1 | MIT | wooorm/is-hexadecimal | [T298](#t298) |
+| is-plain-obj | 4.1.0 | MIT | sindresorhus/is-plain-obj | [T306](#t306) |
+| longest-streak | 3.1.0 | MIT | wooorm/longest-streak | [T312](#t312) |
+| markdown-table | 3.0.4 | MIT | wooorm/markdown-table | [T302](#t302) |
+| mdast-util-find-and-replace | 3.0.2 | MIT | syntax-tree/mdast-util-find-and-replace | [T302](#t302) |
+| mdast-util-from-markdown | 2.0.3 | MIT | syntax-tree/mdast-util-from-markdown | [T302](#t302) |
+| mdast-util-gfm | 3.1.0 | MIT | syntax-tree/mdast-util-gfm | [T302](#t302) |
+| mdast-util-gfm-autolink-literal | 2.0.1 | MIT | syntax-tree/mdast-util-gfm-autolink-literal | [T307](#t307) |
+| mdast-util-gfm-footnote | 2.1.0 | MIT | syntax-tree/mdast-util-gfm-footnote | [T302](#t302) |
+| mdast-util-gfm-strikethrough | 2.0.1 | MIT | syntax-tree/mdast-util-gfm-strikethrough | [T302](#t302) |
+| mdast-util-gfm-table | 2.0.0 | MIT | syntax-tree/mdast-util-gfm-table | [T307](#t307) |
+| mdast-util-gfm-task-list-item | 2.0.0 | MIT | syntax-tree/mdast-util-gfm-task-list-item | [T307](#t307) |
+| mdast-util-mdx-expression | 2.0.1 | MIT | syntax-tree/mdast-util-mdx-expression | [T307](#t307) |
+| mdast-util-mdx-jsx | 3.2.0 | MIT | syntax-tree/mdast-util-mdx-jsx | [T307](#t307) |
+| mdast-util-mdxjs-esm | 2.0.1 | MIT | syntax-tree/mdast-util-mdxjs-esm | [T307](#t307) |
+| mdast-util-phrasing | 4.1.0 | MIT | syntax-tree/mdast-util-phrasing | [T313](#t313) |
+| mdast-util-to-hast | 13.2.1 | MIT | syntax-tree/mdast-util-to-hast | [T298](#t298) |
+| mdast-util-to-markdown | 2.1.3 | MIT | syntax-tree/mdast-util-to-markdown | [T302](#t302) |
+| mdast-util-to-string | 4.0.0 | MIT | syntax-tree/mdast-util-to-string | [T296](#t296) |
+| micromark | 4.0.3 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark | [T302](#t302) |
+| micromark-core-commonmark | 2.0.4 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-core-commonmark | [T302](#t302) |
+| micromark-extension-gfm | 3.0.0 | MIT | micromark/micromark-extension-gfm | [T307](#t307) |
+| micromark-extension-gfm-autolink-literal | 2.1.0 | MIT | micromark/micromark-extension-gfm-autolink-literal | [T307](#t307) |
+| micromark-extension-gfm-footnote | 2.1.0 | MIT | micromark/micromark-extension-gfm-footnote | [T314](#t314) |
+| micromark-extension-gfm-strikethrough | 2.1.0 | MIT | micromark/micromark-extension-gfm-strikethrough | [T307](#t307) |
+| micromark-extension-gfm-table | 2.1.2 | MIT | micromark/micromark-extension-gfm-table | [T302](#t302) |
+| micromark-extension-gfm-tagfilter | 2.0.0 | MIT | micromark/micromark-extension-gfm-tagfilter | [T307](#t307) |
+| micromark-extension-gfm-task-list-item | 2.1.0 | MIT | micromark/micromark-extension-gfm-task-list-item | [T307](#t307) |
+| micromark-factory-destination | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-destination | [T302](#t302) |
+| micromark-factory-label | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-label | [T302](#t302) |
+| micromark-factory-space | 2.1.0 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-space | [T302](#t302) |
+| micromark-factory-title | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-title | [T302](#t302) |
+| micromark-factory-whitespace | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-factory-whitespace | [T302](#t302) |
+| micromark-util-character | 2.1.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-character | [T302](#t302) |
+| micromark-util-chunked | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-chunked | [T302](#t302) |
+| micromark-util-classify-character | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-classify-character | [T302](#t302) |
+| micromark-util-combine-extensions | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-combine-extensions | [T302](#t302) |
+| micromark-util-decode-numeric-character-reference | 2.0.2 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-decode-numeric-character-reference | [T302](#t302) |
+| micromark-util-decode-string | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-decode-string | [T302](#t302) |
+| micromark-util-edit-map | 1.0.0 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-edit-map | [T302](#t302) |
+| micromark-util-encode | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-encode | [T302](#t302) |
+| micromark-util-html-tag-name | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-html-tag-name | [T302](#t302) |
+| micromark-util-normalize-identifier | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-normalize-identifier | [T302](#t302) |
+| micromark-util-resolve-all | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-resolve-all | [T302](#t302) |
+| micromark-util-sanitize-uri | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-sanitize-uri | [T302](#t302) |
+| micromark-util-subtokenize | 2.1.0 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-subtokenize | [T302](#t302) |
+| micromark-util-symbol | 2.0.1 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-symbol | [T302](#t302) |
+| micromark-util-types | 2.0.3 | MIT | https://github.com/micromark/micromark/tree/main/packages/micromark-util-types | [T302](#t302) |
+| ms | 2.1.3 | MIT | vercel/ms | [T315](#t315) |
+| parse-entities | 4.0.2 | MIT | wooorm/parse-entities | [T316](#t316) |
+| property-information | 7.2.0 | MIT | wooorm/property-information | [T316](#t316) |
+| react | 19.3.1 | MIT | https://github.com/react/react.git | [T317](#t317) |
+| react-dom | 19.3.1 | MIT | https://github.com/react/react.git | [T317](#t317) |
+| react-markdown | 10.1.0 | MIT | remarkjs/react-markdown | [T318](#t318) |
+| react-remove-scroll | 2.7.2 | MIT | https://github.com/theKashey/react-remove-scroll | [T295](#t295) |
 | react-remove-scroll-bar | 2.3.8 | MIT | https://github.com/theKashey/react-remove-scroll-bar | standard text: [MIT](https://spdx.org/licenses/MIT.html) |
-| react-style-singleton | 2.2.3 | MIT | https://github.com/theKashey/react-style-singleton | [T288](#t288) |
-| rehype-sanitize | 6.0.0 | MIT | rehypejs/rehype-sanitize | [T291](#t291) |
-| remark-gfm | 4.0.1 | MIT | remarkjs/remark-gfm | [T295](#t295) |
-| remark-parse | 11.0.0 | MIT | https://github.com/remarkjs/remark/tree/main/packages/remark-parse | [T312](#t312) |
-| remark-rehype | 11.1.2 | MIT | remarkjs/remark-rehype | [T295](#t295) |
-| remark-stringify | 11.0.0 | MIT | https://github.com/remarkjs/remark/tree/main/packages/remark-stringify | [T312](#t312) |
-| scheduler | 0.28.0 | MIT | https://github.com/react/react.git | [T310](#t310) |
-| space-separated-tokens | 2.0.2 | MIT | wooorm/space-separated-tokens | [T291](#t291) |
-| stringify-entities | 4.0.4 | MIT | wooorm/stringify-entities | [T305](#t305) |
-| style-mod | 4.1.4 | MIT | https://code.haverbeke.berlin/marijn/style-mod.git | [T313](#t313) |
-| style-to-js | 1.1.21 | MIT | https://github.com/remarkablemark/style-to-js.git | [T314](#t314) |
-| style-to-object | 1.0.14 | MIT | https://github.com/remarkablemark/style-to-object.git | [T315](#t315) |
-| trim-lines | 3.0.1 | MIT | wooorm/trim-lines | [T305](#t305) |
-| trough | 2.2.0 | MIT | wooorm/trough | [T316](#t316) |
-| tslib | 2.8.1 | 0BSD | https://github.com/Microsoft/tslib.git | [T317](#t317) |
-| unified | 11.0.5 | MIT | unifiedjs/unified | [T318](#t318) |
-| unist-util-is | 6.0.1 | MIT | syntax-tree/unist-util-is | [T319](#t319) |
-| unist-util-position | 5.0.0 | MIT | syntax-tree/unist-util-position | [T289](#t289) |
-| unist-util-stringify-position | 4.0.0 | MIT | syntax-tree/unist-util-stringify-position | [T291](#t291) |
-| unist-util-visit | 5.1.0 | MIT | syntax-tree/unist-util-visit | [T289](#t289) |
-| unist-util-visit-parents | 6.0.2 | MIT | syntax-tree/unist-util-visit-parents | [T291](#t291) |
-| use-callback-ref | 1.3.3 | MIT | https://github.com/theKashey/use-callback-ref/ | [T288](#t288) |
-| use-sidecar | 1.1.3 | MIT | https://github.com/theKashey/use-sidecar | [T288](#t288) |
-| vfile | 6.0.3 | MIT | vfile/vfile | [T318](#t318) |
-| vfile-message | 4.0.3 | MIT | vfile/vfile-message | [T295](#t295) |
-| w3c-keyname | 2.2.8 | MIT | https://github.com/marijnh/w3c-keyname.git | [T320](#t320) |
-| zwitch | 2.0.4 | MIT | wooorm/zwitch | [T291](#t291) |
+| react-style-singleton | 2.2.3 | MIT | https://github.com/theKashey/react-style-singleton | [T295](#t295) |
+| rehype-sanitize | 6.0.0 | MIT | rehypejs/rehype-sanitize | [T298](#t298) |
+| remark-gfm | 4.0.1 | MIT | remarkjs/remark-gfm | [T302](#t302) |
+| remark-parse | 11.0.0 | MIT | https://github.com/remarkjs/remark/tree/main/packages/remark-parse | [T319](#t319) |
+| remark-rehype | 11.1.2 | MIT | remarkjs/remark-rehype | [T302](#t302) |
+| remark-stringify | 11.0.0 | MIT | https://github.com/remarkjs/remark/tree/main/packages/remark-stringify | [T319](#t319) |
+| scheduler | 0.28.0 | MIT | https://github.com/react/react.git | [T317](#t317) |
+| space-separated-tokens | 2.0.2 | MIT | wooorm/space-separated-tokens | [T298](#t298) |
+| stringify-entities | 4.0.4 | MIT | wooorm/stringify-entities | [T312](#t312) |
+| style-mod | 4.1.4 | MIT | https://code.haverbeke.berlin/marijn/style-mod.git | [T320](#t320) |
+| style-to-js | 1.1.21 | MIT | https://github.com/remarkablemark/style-to-js.git | [T321](#t321) |
+| style-to-object | 1.0.14 | MIT | https://github.com/remarkablemark/style-to-object.git | [T322](#t322) |
+| trim-lines | 3.0.1 | MIT | wooorm/trim-lines | [T312](#t312) |
+| trough | 2.2.0 | MIT | wooorm/trough | [T323](#t323) |
+| tslib | 2.8.1 | 0BSD | https://github.com/Microsoft/tslib.git | [T324](#t324) |
+| unified | 11.0.5 | MIT | unifiedjs/unified | [T325](#t325) |
+| unist-util-is | 6.0.1 | MIT | syntax-tree/unist-util-is | [T326](#t326) |
+| unist-util-position | 5.0.0 | MIT | syntax-tree/unist-util-position | [T296](#t296) |
+| unist-util-stringify-position | 4.0.0 | MIT | syntax-tree/unist-util-stringify-position | [T298](#t298) |
+| unist-util-visit | 5.1.0 | MIT | syntax-tree/unist-util-visit | [T296](#t296) |
+| unist-util-visit-parents | 6.0.2 | MIT | syntax-tree/unist-util-visit-parents | [T298](#t298) |
+| use-callback-ref | 1.3.3 | MIT | https://github.com/theKashey/use-callback-ref/ | [T295](#t295) |
+| use-sidecar | 1.1.3 | MIT | https://github.com/theKashey/use-sidecar | [T295](#t295) |
+| vfile | 6.0.3 | MIT | vfile/vfile | [T325](#t325) |
+| vfile-message | 4.0.3 | MIT | vfile/vfile-message | [T302](#t302) |
+| w3c-keyname | 2.2.8 | MIT | https://github.com/marijnh/w3c-keyname.git | [T327](#t327) |
+| zwitch | 2.0.4 | MIT | wooorm/zwitch | [T298](#t298) |
 
 ## License and notice texts
 
@@ -14050,6 +14062,30 @@ DEALINGS IN THE SOFTWARE.
 ### T221
 
 ```text
+Copyright (c) 2016 Steven Fackler
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T222
+
+```text
 The MIT License (MIT)
 
 Copyright (c) 2015 Danny Guo
@@ -14075,7 +14111,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T222
+### T223
 
 ```text
 MIT License
@@ -14101,7 +14137,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T223
+### T224
 
 ```text
 Apache License
@@ -14307,7 +14343,7 @@ Apache License
    limitations under the License.
 ```
 
-### T224
+### T225
 
 ```text
 Copyright (c) 2023 The swift-rs Developers
@@ -14331,7 +14367,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T225
+### T226
 
 ```text
 This project is dual-licensed under the terms of the MIT and Apache (version 2.0) licenses.
@@ -14339,7 +14375,7 @@ This project is dual-licensed under the terms of the MIT and Apache (version 2.0
 Copyright (c) 2014 Chris Morgan and the Teepee project developers
 ```
 
-### T226
+### T227
 
 ```text
 Copyright (c) 2014 Chris Morgan and the Teepee project developers
@@ -14369,7 +14405,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T227
+### T228
 
 ```text
 Copyright 2016 Nika Layzell
@@ -14381,7 +14417,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T228
+### T229
 
 ```text
 Copyright (c) 2024 Mullvad VPN AB
@@ -14411,7 +14447,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T229
+### T230
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -14434,7 +14470,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tao.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T230
+### T231
 
 ```text
 MIT License
@@ -14460,7 +14496,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T231
+### T232
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -14484,7 +14520,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tao.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T232
+### T233
 
 ```text
 Copyright (c) The tar-rs Project Contributors
@@ -14514,7 +14550,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T233
+### T234
 
 ```text
 MIT License
@@ -14540,7 +14576,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T234
+### T235
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -14565,7 +14601,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T235
+### T236
 
 ```text
 Copyright (c) 2015 Steven Allen
@@ -14595,7 +14631,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T236
+### T237
 
 ```text
 Copyright (c) 2015 Keegan McAllister
@@ -14625,7 +14661,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T237
+### T238
 
 ```text
 Copyright (c) Jacob Pratt et al.
@@ -14649,7 +14685,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T238
+### T239
 
 ```text
 MIT License
@@ -14675,7 +14711,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T239
+### T240
 
 ```text
 Copyright (c) 2019 Tokio Contributors
@@ -14705,7 +14741,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T240
+### T241
 
 ```text
 Copyright (c) 2019 Tower Contributors
@@ -14735,7 +14771,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T241
+### T242
 
 ```text
 Copyright (c) 2019-2021 Tower Contributors
@@ -14765,7 +14801,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T242
+### T243
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -14789,7 +14825,164 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tray-icon.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T243
+### T244
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2018 Max Brunsfeld
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T245
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017 Max Brunsfeld
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T246
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2014 Max Brunsfeld
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T247
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017 Josh Vera, GitHub
+Copyright (c) 2019 Max Brunsfeld, Amaan Qureshi, Christian Frøystad, Caleb White
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T248
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2016 Max Brunsfeld
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T249
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017 Maxim Sokolov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T250
 
 ```text
 Copyright (c) 2018-2023 Sean McArthur
@@ -14814,13 +15007,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T244
+### T251
 
 ```text
 MIT OR Apache-2.0
 ```
 
-### T245
+### T252
 
 ```text
 Apache License
@@ -15026,7 +15219,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### T246
+### T253
 
 ```text
 The MIT License (MIT)
@@ -15052,7 +15245,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T247
+### T254
 
 ```text
 MIT License
@@ -15078,7 +15271,7 @@ MIT License
     SOFTWARE
 ```
 
-### T248
+### T255
 
 ```text
 UNICODE LICENSE V3
@@ -15122,7 +15315,7 @@ dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 ```
 
-### T249
+### T256
 
 ```text
 Licensed under the Apache License, Version 2.0
@@ -15134,7 +15327,7 @@ notice may not be copied, modified, or distributed except
 according to those terms.
 ```
 
-### T250
+### T257
 
 ```text
 MIT License
@@ -15160,7 +15353,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T251
+### T258
 
 ```text
 Copyright Mozilla Foundation
@@ -15207,7 +15400,7 @@ licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
 <LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
 ```
 
-### T252
+### T259
 
 ```text
 Copyright (c) 2014 The Rust Project Developers
@@ -15238,7 +15431,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T253
+### T260
 
 ```text
 Copyright (c) 2018-2019 Sean McArthur
@@ -15262,7 +15455,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T254
+### T261
 
 ```text
 Apache License
@@ -15468,7 +15661,7 @@ Apache License
    limitations under the License.
 ```
 
-### T255
+### T262
 
 ```text
 MIT License
@@ -15494,7 +15687,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T256
+### T263
 
 ```text
 Copyright (c) 2016 Boucher, Antoni <bouanto@zoho.com>
@@ -15519,7 +15712,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T257
+### T264
 
 ```text
 Copyright (c) 2016 Boucher, Antoni <bouanto@zoho.com>
@@ -15542,7 +15735,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T258
+### T265
 
 ```text
 Copyright (c) 2015 fangyuanziti
@@ -15566,7 +15759,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T259
+### T266
 
 ```text
 Copyright (c) 2015-2018 The winapi-rs Developers
@@ -15590,7 +15783,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T260
+### T267
 
 ```text
 MIT License
@@ -15616,7 +15809,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T261
+### T268
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -15640,7 +15833,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/window-vibrancy.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T262
+### T269
 
 ```text
 Apache License
@@ -15846,7 +16039,7 @@ Apache License
    limitations under the License.
 ```
 
-### T263
+### T270
 
 ```text
 MIT License
@@ -15872,7 +16065,7 @@ MIT License
     SOFTWARE
 ```
 
-### T264
+### T271
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining
@@ -15895,7 +16088,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T265
+### T272
 
 ```text
 MIT License
@@ -15921,7 +16114,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T266
+### T273
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -15946,7 +16139,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/wry.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T267
+### T274
 
 ```text
 Copyright (c) 2024 Zeeshan Ali Khan & zbus contributors
@@ -15976,7 +16169,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T268
+### T275
 
 ```text
 Copyright (c) 2026 Zeeshan Ali Khan & zcheapstr contributors
@@ -16006,7 +16199,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T269
+### T276
 
 ```text
 Apache License
@@ -16212,7 +16405,7 @@ Apache License
    limitations under the License.
 ```
 
-### T270
+### T277
 
 ```text
 Copyright 2019 The Fuchsia Authors.
@@ -16241,7 +16434,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### T271
+### T278
 
 ```text
 Copyright 2023 The Fuchsia Authors
@@ -16271,7 +16464,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T272
+### T279
 
 ```text
 Copyright (c) 2018-2026 The RustCrypto Project Developers
@@ -16301,7 +16494,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T273
+### T280
 
 ```text
 (C) 2024 Trifecta Tech Foundation 
@@ -16325,7 +16518,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### T274
+### T281
 
 ```text
 MIT License
@@ -16351,7 +16544,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T275
+### T282
 
 ```text
 MIT License
@@ -16377,7 +16570,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T276
+### T283
 
 ```text
 MIT License
@@ -16402,7 +16595,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T277
+### T284
 
 ```text
 Copyright 2019 IBM Corp. All rights reserved. IBMPlexSans-Italic[wdth,wght].ttf: Copyright 2019 IBM Corp. All rights reserved.
@@ -16500,7 +16693,7 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
-### T278
+### T285
 
 ```text
 Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-ThinItalic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-ExtraLight.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-ExtraLightItalic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-Light.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-LightItalic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-Regular.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-Italic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-Medium.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-MediumItalic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-SemiBold.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-SemiBoldItalic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-Bold.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-BoldItalic.ttf: Copyright 2017 IBM Corp. All rights reserved.
@@ -16598,7 +16791,7 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
-### T279
+### T286
 
 ```text
 MIT License
@@ -16624,7 +16817,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T280
+### T287
 
 ```text
 MIT License
@@ -16650,7 +16843,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T281
+### T288
 
 ```text
 MIT License
@@ -16676,7 +16869,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T282
+### T289
 
 ```text
 MIT License
@@ -16702,7 +16895,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T283
+### T290
 
 ```text
 MIT License
@@ -16728,7 +16921,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T284
+### T291
 
 ```text
 MIT License
@@ -16754,7 +16947,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T285
+### T292
 
 ```text
 MIT License
@@ -16780,7 +16973,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T286
+### T293
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -16805,7 +16998,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T287
+### T294
 
 ```text
 ISC License
@@ -16825,7 +17018,7 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### T288
+### T295
 
 ```text
 MIT License
@@ -16851,7 +17044,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T289
+### T296
 
 ```text
 (The MIT License)
@@ -16878,7 +17071,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T290
+### T297
 
 ```text
 MIT License
@@ -16904,7 +17097,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T291
+### T298
 
 ```text
 (The MIT License)
@@ -16931,7 +17124,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T292
+### T299
 
 ```text
 Copyright (C) 2020 by Marijn Haverbeke <marijn@haverbeke.berlin>
@@ -16955,7 +17148,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T293
+### T300
 
 ```text
 Copyright (c) 2017-2018 Fredrik Nicol
@@ -16979,7 +17172,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T294
+### T301
 
 ```text
 (The MIT License)
@@ -17003,7 +17196,7 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T295
+### T302
 
 ```text
 (The MIT License)
@@ -17030,7 +17223,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T296
+### T303
 
 ```text
 The MIT License (MIT)
@@ -17056,7 +17249,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T297
+### T304
 
 ```text
 MIT License
@@ -17082,7 +17275,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T298
+### T305
 
 ```text
 (The MIT License)
@@ -17109,7 +17302,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T299
+### T306
 
 ```text
 MIT License
@@ -17123,7 +17316,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T300
+### T307
 
 ```text
 (The MIT License)
@@ -17150,7 +17343,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T301
+### T308
 
 ```text
 The MIT License (MIT)
@@ -17177,7 +17370,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T302
+### T309
 
 ```text
 MIT License
@@ -17203,7 +17396,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T303
+### T310
 
 ```text
 (The MIT License)
@@ -17229,7 +17422,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T304
+### T311
 
 ```text
 (The MIT License)
@@ -17243,7 +17436,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T305
+### T312
 
 ```text
 (The MIT License)
@@ -17270,7 +17463,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T306
+### T313
 
 ```text
 (The MIT License)
@@ -17298,7 +17491,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T307
+### T314
 
 ```text
 (The MIT License)
@@ -17325,7 +17518,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T308
+### T315
 
 ```text
 The MIT License (MIT)
@@ -17351,7 +17544,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T309
+### T316
 
 ```text
 (The MIT License)
@@ -17378,7 +17571,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T310
+### T317
 
 ```text
 MIT License
@@ -17404,7 +17597,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T311
+### T318
 
 ```text
 The MIT License (MIT)
@@ -17430,7 +17623,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T312
+### T319
 
 ```text
 (The MIT License)
@@ -17456,7 +17649,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T313
+### T320
 
 ```text
 Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
@@ -17480,7 +17673,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T314
+### T321
 
 ```text
 The MIT License (MIT)
@@ -17507,7 +17700,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T315
+### T322
 
 ```text
 The MIT License (MIT)
@@ -17534,7 +17727,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T316
+### T323
 
 ```text
 (The MIT License)
@@ -17560,7 +17753,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T317
+### T324
 
 ```text
 Copyright (c) Microsoft Corporation.
@@ -17577,7 +17770,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### T318
+### T325
 
 ```text
 (The MIT License)
@@ -17603,7 +17796,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T319
+### T326
 
 ```text
 (The MIT license)
@@ -17630,7 +17823,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T320
+### T327
 
 ```text
 Copyright (C) 2016 by Marijn Haverbeke <marijn@haverbeke.berlin> and others

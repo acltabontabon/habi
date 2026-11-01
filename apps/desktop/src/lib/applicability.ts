@@ -81,6 +81,15 @@ export function statementsFromCondition(condition: Condition): ClauseNode {
         phrase: { text: "it depends on", code: condition.name, after: extra ? `(${extra})` : undefined },
       };
     }
+    case "code":
+      return {
+        op: "leaf",
+        phrase: {
+          text: condition.kind === "import" ? "its code imports" : "its code uses the annotation",
+          code: condition.name,
+          after: condition.language ? `(${condition.language})` : undefined,
+        },
+      };
   }
 }
 

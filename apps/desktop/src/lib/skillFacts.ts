@@ -39,6 +39,8 @@ export function describeCondition(c: Condition): string {
       return `has files matching ${c.glob}`;
     case "tag":
       return tagLabel(c.tag);
+    case "code":
+      return `${c.kind === "import" ? "imports" : "uses the annotation"} ${c.name}`;
   }
 }
 
