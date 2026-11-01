@@ -191,11 +191,17 @@ const nodes: Record<string, NodeSpec> = {
   },
   /**
    * One mention of another skill. `name` is the identity (written `` `name` skill ``
-   * or, with a plugin, `` `plugin:name` ``); `role` travels with the chip through
-   * moves, copies and undo but is never written into the Markdown.
+   * or, with a plugin, `` `plugin:name` ``). `role` says the author deliberately
+   * composed it, and `from` where they found it. Both travel with the chip through
+   * moves, copies and undo, and neither is ever written into the Markdown.
    */
   skill_ref: {
-    attrs: { name: { default: "" }, plugin: { default: null }, role: { default: null } },
+    attrs: {
+      name: { default: "" },
+      plugin: { default: null },
+      role: { default: null },
+      from: { default: null },
+    },
     inline: true,
     group: "inline",
     atom: true,
@@ -206,7 +212,12 @@ const nodes: Record<string, NodeSpec> = {
         tag: "span[data-skill-ref]",
         getAttrs: (dom) => {
           const d = (dom as HTMLElement).dataset;
-          return { name: d.skillRef ?? "", plugin: d.plugin ?? null, role: d.role ?? null };
+          return {
+            name: d.skillRef ?? "",
+            plugin: d.plugin ?? null,
+            role: d.role ?? null,
+            from: d.from ?? null,
+          };
         },
       },
     ],
@@ -216,6 +227,7 @@ const nodes: Record<string, NodeSpec> = {
         "data-skill-ref": node.attrs.name as string,
         ...(node.attrs.plugin ? { "data-plugin": node.attrs.plugin as string } : {}),
         ...(node.attrs.role ? { "data-role": node.attrs.role as string } : {}),
+        ...(node.attrs.from ? { "data-from": node.attrs.from as string } : {}),
       },
       node.attrs.name as string,
     ],

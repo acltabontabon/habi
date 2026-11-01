@@ -493,6 +493,8 @@ describe("skills Habi installed on this machine", () => {
 
 describe("using one of My skills on this machine", () => {
   const skill: LocalSkill = {
+    composes: [],
+    compositionState: { interrupted: false, unmentioned: [] },
     summary: {
       id: "k1",
       name: "alpha",

@@ -20,9 +20,11 @@ export type SkillLook = {
 
 export type ViewContext = {
   /** What's known about a named skill. */
-  skillLook?: (name: string) => SkillLook;
+  skillLook?: (name: string, role: string | null) => SkillLook;
   onSkillClick?: (name: string, pos: number, rect: DOMRect) => void;
   onLinkSkill?: (query: string) => void;
+  /** Something from the shelf was dropped on the page. */
+  onDropSkill?: (data: string, coords: { left: number; top: number }) => void;
   /** A package file's bytes as a data: URL, if it's an image inside the package. */
   imageData?: (path: string) => Promise<string | null>;
   openExternal?: (href: string) => void;
@@ -184,28 +186,22 @@ function capitalise(name: string): string {
 
 /** A skill named in the text. It reads as words in the sentence, and acts as one thing. */
 export function skillRefView(ctx: () => ViewContext): NodeViewConstructor {
-  return (node: PMNode, _view: EditorView, getPos) => {
+  return (node: PMNode, view: EditorView, getPos) => {
     const dom = document.createElement("span");
     dom.contentEditable = "false";
     dom.setAttribute("role", "button");
     dom.tabIndex = -1;
     const paint = (n: PMNode) => {
       const name = n.attrs.name as string;
-      const look = ctx().skillLook?.(name) ?? {
+      const look = ctx().skillLook?.(name, n.attrs.role as string | null) ?? {
         title: capitalise(name),
-        explicit: false,
+        explicit: n.attrs.role !== null,
         status: "unsure" as const,
       };
       dom.className = `doc-skill is-${look.explicit ? "composed" : "mentioned"} is-${look.status}`;
       dom.dataset.skillRef = name;
       dom.textContent = "";
-      if (look.explicit) {
-        const knot = document.createElement("span");
-        knot.className = "doc-skill-knot";
-        knot.setAttribute("aria-hidden", "true");
-        if (look.dye) knot.style.setProperty("--knot", look.dye);
-        dom.append(knot);
-      }
+      if (look.dye) dom.style.setProperty("--knot", look.dye);
       const word = document.createElement("span");
       word.className = "doc-skill-name";
       word.textContent = n.attrs.plugin ? `${n.attrs.plugin as string}: ${look.title}` : look.title;
@@ -223,6 +219,9 @@ export function skillRefView(ctx: () => ViewContext): NodeViewConstructor {
       ctx().onSkillClick?.(node.attrs.name as string, pos, dom.getBoundingClientRect());
     });
     let current = node;
+    // What's known about skills arrives after the page opens, and changes as libraries do.
+    const repaint = () => paint(current);
+    view.dom.addEventListener(LOOKS_CHANGED, repaint);
     return {
       dom,
       update(next) {
@@ -231,9 +230,13 @@ export function skillRefView(ctx: () => ViewContext): NodeViewConstructor {
         paint(next);
         return true;
       },
+      destroy() {
+        view.dom.removeEventListener(LOOKS_CHANGED, repaint);
+      },
       ignoreMutation: () => true,
     };
   };
 }
 
+export const LOOKS_CHANGED = "habi-skill-looks";
 export { capitalise };

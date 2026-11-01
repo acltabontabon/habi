@@ -245,6 +245,8 @@ describe("closing the window", () => {
 
 function skill(): LocalSkill {
   return {
+    composes: [],
+    compositionState: { interrupted: false, unmentioned: [] },
     summary: {
       id: "k",
       name: "review",

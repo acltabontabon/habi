@@ -10,6 +10,7 @@ import "./styles/app.css";
 import "./styles/authoring.css";
 import "./styles/studio.css";
 import "./styles/doc.css";
+import "./styles/compose.css";
 import "./styles/weave.css";
 import "./styles/welcome.css";
 import "./styles/kit.css";

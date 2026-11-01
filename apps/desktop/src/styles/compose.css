@@ -1,0 +1,998 @@
+/*
+ * Composing. Thread colour means something woven in from elsewhere, so it stays
+ * rare. Panels sit beside the page and push it over rather than covering it, so
+ * the document never stops being the thing you're looking at.
+ */
+
+.sk-with-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
+.sk-with-panel > .sk-stage {
+  container: skstage / inline-size;
+  flex: 1;
+  min-width: 0;
+}
+
+.sk-panel {
+  flex: none;
+  width: 348px;
+  min-height: 0;
+  border-left: 1px solid var(--hairline);
+  background: var(--paper);
+  animation: panel-in 200ms var(--ease);
+}
+
+.sk-panel.is-wide {
+  width: min(560px, 46%);
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-panel {
+    animation: none;
+  }
+}
+
+@container sk (max-width: 860px) {
+  .sk-panel {
+    position: absolute;
+    z-index: 12;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    box-shadow: -18px 0 40px -24px rgb(0 0 0 / 0.35);
+  }
+
+  .sk-panel.is-wide {
+    width: min(520px, 92%);
+  }
+}
+
+.sk-mode,
+.sk-tool {
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.sk-mode:hover,
+.sk-tool:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.sk-mode[aria-pressed="true"],
+.sk-tool[aria-pressed="true"] {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+/* ---------- Panels share one shape ---------- */
+
+.shelf,
+.weave,
+.inside {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--font-ui);
+}
+
+.weave,
+.inside {
+  overflow-y: auto;
+  padding-bottom: var(--s6);
+}
+
+.shelf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s4) var(--s4) var(--s2);
+}
+
+.shelf-head h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 620;
+  letter-spacing: -0.006em;
+  color: var(--ink);
+}
+
+.shelf-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ink-faint);
+}
+
+.shelf-close:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+/* ---------- The shelf ---------- */
+
+.shelf-note {
+  margin: 0 var(--s4) var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.shelf-search {
+  display: block;
+  padding: 0 var(--s4) var(--s2);
+}
+
+.shelf-search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--paper-sunken);
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+}
+
+.shelf-search input::placeholder {
+  color: var(--ink-faint);
+}
+
+.shelf-search input:focus-visible {
+  box-shadow: 0 0 0 1.5px var(--thread);
+}
+
+.shelf-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--s2) var(--s4);
+}
+
+.shelf-empty {
+  margin: var(--s3) var(--s4);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.shelf-group h3 {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  margin: 0;
+  padding: var(--s3) var(--s2) var(--s1);
+  background: var(--paper);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.shelf-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 7px 8px;
+  border-radius: 7px;
+  cursor: grab;
+}
+
+.shelf-row:active {
+  cursor: grabbing;
+}
+
+.shelf-row.is-active {
+  background: var(--paper-sunken);
+}
+
+.shelf-knot {
+  width: 7px;
+  height: 7px;
+  margin: 6px 0 0 3px;
+  border-radius: 50%;
+}
+
+.shelf-words {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.shelf-name {
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.shelf-what {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelf-what.is-open {
+  overflow: visible;
+  white-space: normal;
+}
+
+.shelf-more {
+  display: grid;
+  gap: 1px;
+  margin-top: 5px;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.shelf-flag,
+.shelf-more .is-caution {
+  font-size: var(--text-xs);
+  color: var(--warn-ink, var(--thread-strong));
+}
+
+.shelf-info {
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  opacity: 0;
+}
+
+.shelf-row:hover .shelf-info,
+.shelf-row.is-active .shelf-info,
+.shelf-info[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.shelf-info:hover {
+  color: var(--ink);
+}
+
+.shelf-foot {
+  padding: var(--s2) var(--s4) var(--s3);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* ---------- The thread in the margin ---------- */
+
+.threads {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: calc(100% + 24px);
+  width: clamp(92px, calc((100cqi - var(--measure)) / 2 - 52px), 180px);
+  height: 100%;
+  font-family: var(--font-ui);
+  pointer-events: none;
+}
+
+.threads ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.threads-line {
+  position: absolute;
+  left: 3.5px;
+  top: var(--thread-from);
+  height: calc(var(--thread-to) - var(--thread-from));
+  width: 1px;
+  background: var(--hairline-strong);
+  transition:
+    top 240ms var(--ease),
+    height 240ms var(--ease);
+}
+
+.thread-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 8px;
+  transform: translateY(-9px);
+  transition: top 240ms var(--ease);
+  animation: thread-in 260ms var(--ease);
+}
+
+@keyframes thread-in {
+  from {
+    opacity: 0;
+    transform: translate(-6px, -9px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .threads-line,
+  .thread-note {
+    transition: none;
+    animation: none;
+  }
+}
+
+.thread-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 9px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.thread-knot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--thread);
+  box-shadow: 0 0 0 3px var(--paper);
+  transition: transform var(--duration) var(--ease);
+}
+
+.thread-knot.is-count {
+  width: 15px;
+  height: 15px;
+  margin: 1px 0 0 -3.5px;
+  font-size: 9.5px;
+  font-weight: 650;
+  color: var(--paper);
+  background: var(--ink-soft);
+}
+
+.thread-item.is-missing .thread-knot {
+  background: var(--paper);
+  box-shadow:
+    0 0 0 3px var(--paper),
+    inset 0 0 0 1.25px var(--ink-faint);
+}
+
+.thread-item:hover .thread-knot,
+.thread-item:focus-visible .thread-knot {
+  transform: scale(1.35);
+}
+
+.thread-item:focus-visible {
+  outline: none;
+}
+
+.thread-words {
+  display: grid;
+  min-width: 0;
+}
+
+.thread-name {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  font-weight: 540;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-item:hover .thread-name,
+.thread-item:focus-visible .thread-name {
+  color: var(--ink);
+}
+
+.thread-role {
+  font-size: var(--text-2xs);
+  line-height: 1.35;
+  color: var(--ink-faint);
+}
+
+.threads-more {
+  position: absolute;
+  left: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  text-decoration: underline;
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 2.5px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.threads-more:hover {
+  color: var(--ink);
+}
+
+/* Without room for words, the knots remain. */
+@container skstage (max-width: 930px) {
+  .threads {
+    left: calc(100% + 14px);
+    width: 12px;
+  }
+
+  .thread-words,
+  .threads-more {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+/* ---------- One use, opened ---------- */
+
+.ref-pop {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  gap: var(--s3);
+  width: 360px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: var(--s4);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-strong),
+    0 18px 44px -14px rgb(0 0 0 / 0.3),
+    0 3px 10px -3px rgb(0 0 0 / 0.14);
+  font-family: var(--font-ui);
+  animation: sk-pop-in 140ms var(--ease);
+}
+
+.ref-head {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.ref-knot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.ref-knot.is-ghost {
+  background: none;
+  box-shadow: inset 0 0 0 1.25px var(--ink-faint);
+}
+
+.ref-title h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 620;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
+  color: var(--ink);
+}
+
+.ref-title p {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.ref-roles {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ref-roles legend {
+  padding: 0;
+  margin-bottom: 5px;
+  font-size: var(--text-xs);
+  font-weight: 560;
+  color: var(--ink-soft);
+}
+
+.ref-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ref-role-list label {
+  position: relative;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--paper-sunken);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.ref-role-list label:hover {
+  color: var(--ink);
+}
+
+.ref-role-list label.is-on {
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+  font-weight: 560;
+}
+
+.ref-role-list input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ref-role-list label:focus-within {
+  box-shadow: 0 0 0 1.5px var(--thread);
+}
+
+.ref-hint {
+  margin: 6px 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.ref-mentioned p {
+  margin: 0 0 var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.ref-where {
+  display: grid;
+  gap: 5px;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+}
+
+.ref-where p {
+  margin: 0;
+}
+
+.ref-status {
+  color: var(--ink-soft);
+}
+
+.ref-where.is-missing .ref-status {
+  color: var(--warn-ink, var(--thread-strong));
+}
+
+.ref-agents {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xs);
+}
+
+.ref-agents li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  color: var(--ink-soft);
+}
+
+.ref-state {
+  color: var(--ink-muted);
+}
+
+.ref-agents .is-notFound .ref-state {
+  color: var(--warn-ink, var(--thread-strong));
+}
+
+.ref-agents .is-unknown .ref-state {
+  color: var(--ink-faint);
+}
+
+.ref-truth {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.ref-ghost-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.ref-others {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.ref-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+}
+
+.link-btn.is-danger:hover {
+  color: var(--danger, var(--ink));
+}
+
+/* ---------- The weaver's draft ---------- */
+
+.weave-truth {
+  margin: 0 var(--s4) var(--s3);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.weave-scroll {
+  overflow-x: auto;
+  padding: 0 var(--s4);
+}
+
+.weave-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-sm);
+}
+
+.weave-table thead th {
+  height: 138px;
+  vertical-align: bottom;
+  padding: 0;
+}
+
+.weave-warp button {
+  display: block;
+  width: 30px;
+  padding: 0 0 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.weave-name {
+  display: inline-block;
+  max-height: 128px;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: var(--text-xs);
+  font-weight: 540;
+  line-height: 30px;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weave-warp button:hover .weave-name,
+.weave-warp button[aria-expanded="true"] .weave-name {
+  color: var(--ink);
+}
+
+.weave-warp.is-missing .weave-name {
+  color: var(--ink-faint);
+}
+
+.weave-table tbody th {
+  padding: 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+.weave-row {
+  display: block;
+  width: 168px;
+  overflow: hidden;
+  padding: 7px var(--s3) 7px calc(var(--depth, 0) * 10px);
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weave-row:hover {
+  color: var(--ink);
+}
+
+/* A thread down, a thread across, tied where they meet. */
+.weave-cell {
+  position: relative;
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+  background-image: linear-gradient(var(--hairline-strong), var(--hairline-strong));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.weave-cell.is-missing {
+  background-image: repeating-linear-gradient(to bottom, var(--ink-faint) 0 3px, transparent 3px 7px);
+}
+
+.weave-knot {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--thread);
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--paper);
+  cursor: pointer;
+  box-shadow: 0 0 0 2.5px var(--paper);
+  transition: transform var(--duration) var(--ease);
+}
+
+.weave-cell.is-missing .weave-knot {
+  background: var(--paper);
+  box-shadow:
+    0 0 0 2.5px var(--paper),
+    inset 0 0 0 1.25px var(--ink-faint);
+  color: var(--ink-muted);
+}
+
+.weave-knot:hover,
+.weave-knot:focus-visible {
+  transform: scale(1.3);
+  outline: none;
+}
+
+.weave-note,
+.weave-detail {
+  margin: var(--s3) var(--s4) 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.weave-detail {
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+
+.weave-detail h3 {
+  margin: 0 0 var(--s1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.weave-detail p {
+  margin: 0 0 var(--s2);
+}
+
+.weave-detail ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-soft);
+}
+
+.weave-detail li span {
+  color: var(--ink-faint);
+}
+
+.weave-detail .is-ghost {
+  color: var(--ink-faint);
+}
+
+.weave-decide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.weave-decide span {
+  display: flex;
+  gap: var(--s1);
+}
+
+/* ---------- What's inside ---------- */
+
+.inside-stages {
+  display: grid;
+  gap: var(--s4);
+  margin: var(--s2) 0 0;
+  padding: 0 var(--s4);
+  list-style: none;
+}
+
+.inside-stage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.inside h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.inside-size {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.inside-bar {
+  display: block;
+  height: 2px;
+  margin: 6px 0;
+  background: var(--hairline);
+}
+
+.inside-bar span {
+  display: block;
+  height: 100%;
+  background: var(--thread);
+  transform-origin: left;
+  transition: transform 300ms var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inside-bar span {
+    transition: none;
+  }
+}
+
+.inside p {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.inside-rows {
+  display: grid;
+  gap: 1px;
+  margin: 6px -6px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inside-rows button {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: left;
+  color: var(--ink-soft);
+}
+
+.inside-rows button:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.inside-rows span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inside-rows em {
+  flex: none;
+  font-family: var(--font-ui);
+  font-style: normal;
+  color: var(--ink-faint);
+}
+
+.inside-rows.is-plain {
+  margin: 6px 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.inside-rows.is-plain li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.inside-rows.is-plain .is-ghost {
+  color: var(--ink-faint);
+}
+
+.inside-hint {
+  margin-top: 6px !important;
+  color: var(--warn-ink, var(--thread-strong)) !important;
+}
+
+.inside-others {
+  margin: var(--s4) var(--s4) 0;
+  padding-top: var(--s4);
+  border-top: 1px dashed var(--hairline-strong);
+}
+
+.inside-others p {
+  margin-top: 4px;
+}
+
+.inside-foot {
+  margin: var(--s4) var(--s4) 0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+
+.inside-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--s3);
+  margin-top: var(--s2) !important;
+  font-size: var(--text-sm) !important;
+}

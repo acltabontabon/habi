@@ -16,6 +16,7 @@ import { unfinishedLines } from "../../../lib/coach";
 import { markdownOutline, type OutlineHeading, sectionAt } from "../../../lib/markdownOutline";
 import { packageCompletions } from "../../../lib/packageCompletions";
 import { useSkillTemplates } from "../../../lib/queries";
+import type { Composer } from "./compose/useComposer";
 import { DocEditor, type DocEditorHandle } from "./doc/lazy";
 import { countInvisibles, removeInvisibles } from "./doc/plugins";
 import { nextPrompt } from "./doc/prompts";
@@ -123,6 +124,7 @@ export function Instructions({
   draft,
   editor,
   sourceMode,
+  composer,
   onCursorLine,
   onOpenFile,
 }: {
@@ -130,6 +132,7 @@ export function Instructions({
   editor: RefObject<DocEditorHandle | null>;
   /** The same text, as text: for those who want the Markdown itself. */
   sourceMode: boolean;
+  composer: Composer;
   onCursorLine: (line: number) => void;
   /** A reference to one of the package's files was ⌘-clicked. */
   onOpenFile: (path: string) => void;
@@ -161,8 +164,10 @@ export function Instructions({
   purpose.current = document.description;
   const [hidden, setHidden] = useState<{ count: number } | null>(null);
 
+  const composerContext = composer.context;
   const context = useMemo(
     () => ({
+      ...composerContext,
       imageData: async (path: string) => {
         if (!pathsRef.current.includes(path)) return null;
         const file = await api.readSkillFile(skill.summary.id, path).catch(() => null);
@@ -172,21 +177,29 @@ export function Instructions({
         if (/^https?:\/\//i.test(href)) void api.openExternal(href);
       },
     }),
-    [skill.summary.id],
+    [skill.summary.id, composerContext],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the bridge lives as long as this page.
   useEffect(() => {
     draft.page.current = {
       text: () => editor.current?.text() ?? draftBody.current,
+      composes: () => composerRef.current.liveComposes(),
       verify: (text) => editor.current?.verify(text) ?? Promise.resolve("same"),
     };
     return () => {
       // After the page closes, what it last said is the text.
       const last = editor.current?.text() ?? draftBody.current;
-      draft.page.current = { text: () => last, verify: () => Promise.resolve("same") };
+      const record = composerRef.current.liveComposes();
+      draft.page.current = {
+        text: () => last,
+        composes: () => record,
+        verify: () => Promise.resolve("same"),
+      };
     };
   }, []);
+  const composerRef = useRef(composer);
+  composerRef.current = composer;
   const draftBody = useRef(document.body);
   draftBody.current = document.body;
 
@@ -225,6 +238,10 @@ export function Instructions({
           onOpenFile={onOpenFile}
           promptFor={(doc) => nextPrompt(doc, purpose.current)}
           context={context}
+          slashExtras={composer.slashExtras}
+          annotate={composer.annotate}
+          onSettled={composer.onSettled}
+          footer={sourceMode ? null : composer.threads}
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       </div>

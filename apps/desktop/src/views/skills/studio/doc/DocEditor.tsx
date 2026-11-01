@@ -12,6 +12,7 @@ import { gapCursor } from "prosemirror-gapcursor";
 import { DOMSerializer, type Node as PMNode, Slice } from "prosemirror-model";
 import { EditorState, NodeSelection, TextSelection, type Transaction } from "prosemirror-state";
 import { tableEditing } from "prosemirror-tables";
+import { Transform } from "prosemirror-transform";
 import { EditorView, type NodeViewConstructor } from "prosemirror-view";
 import {
   type ReactNode,
@@ -23,6 +24,7 @@ import {
   useState,
 } from "react";
 import type { LineMark, SourceEditorHandle } from "../../../../components/SourceEditor";
+import { SKILL_DRAG_TYPE } from "../compose/Shelf";
 import { BlockHandle, type BlockMenuTarget } from "./BlockHandle";
 import { clipboardTextParser, clipboardTextSerializer } from "./clipboard";
 import { sliceFromMarkdown } from "./commands";
@@ -58,6 +60,8 @@ export type DocEditorHandle = SourceEditorHandle & {
   appendMarkdown: (markdown: string) => void;
   /** The text right now, without waiting for the pause. */
   text: () => string;
+  /** Replaces what mentions are said to be, after their record changed elsewhere. */
+  setRoles: (roles: Map<number, { role: string; from: string | null }>) => void;
   /** Whether the text would read back as what's on the page. */
   verify: (text: string) => Promise<Verdict>;
   view: () => EditorView | null;
@@ -122,6 +126,8 @@ export function DocEditor({
   slashExtras,
   context,
   footer,
+  annotate,
+  onSettled,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -139,6 +145,10 @@ export function DocEditor({
   slashExtras?: (query: string) => SlashItem[];
   context: ViewContext;
   footer?: ReactNode;
+  /** What a freshly opened document's mentions are, by position: the roles the Markdown doesn't hold. */
+  annotate?: (doc: PMNode) => Map<number, { role: string; from: string | null }>;
+  /** The document after typing paused. */
+  onSettled?: (doc: PMNode) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -163,6 +173,10 @@ export function DocEditor({
   promptRef.current = promptFor ?? (() => placeholder ?? null);
   const contextRef = useRef(context);
   contextRef.current = context;
+  const annotateRef = useRef(annotate);
+  annotateRef.current = annotate;
+  const settledRef = useRef(onSettled);
+  settledRef.current = onSettled;
 
   const [selectionTick, setSelectionTick] = useState(0);
   const [slash, setSlash] = useState<SlashState>(null);
@@ -195,6 +209,7 @@ export function DocEditor({
     const written = write(view.state.doc, base.baseline);
     dirty.current = false;
     spans.current = written.spans;
+    settledRef.current?.(view.state.doc);
     if (written.text !== emitted.current) {
       emitted.current = written.text;
       onChangeRef.current(written.text);
@@ -212,8 +227,18 @@ export function DocEditor({
     const next = parseBody(source);
     parsed.current = next;
     spans.current = write(next.doc, next.baseline).spans;
+    const roles = annotateRef.current?.(next.doc);
+    let doc = next.doc;
+    if (roles?.size) {
+      const tr = new Transform(doc);
+      for (const [pos, attrs] of roles) {
+        tr.setNodeAttribute(pos, "role", attrs.role);
+        if (attrs.from) tr.setNodeAttribute(pos, "from", attrs.from);
+      }
+      doc = tr.doc;
+    }
     const state = EditorState.create({
-      doc: next.doc,
+      doc,
       plugins: [
         ...editingPlugins(),
         tableEditing({ allowTableNodeSelection: false }),
@@ -274,6 +299,30 @@ export function DocEditor({
         },
         clipboardTextParser,
         clipboardTextSerializer,
+        handleDrop(_view, event) {
+          const data = event.dataTransfer?.getData(SKILL_DRAG_TYPE);
+          if (!data) return false;
+          contextRef.current.onDropSkill?.(data, { left: event.clientX, top: event.clientY });
+          event.preventDefault();
+          return true;
+        },
+        handleKeyDown(current, event) {
+          // The keyboard's way to open a skill named at the caret.
+          if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return false;
+          const { selection } = current.state;
+          let pos: number | null = null;
+          if (selection instanceof NodeSelection && selection.node.type.name === "skill_ref")
+            pos = selection.from;
+          else if (selection.$from.nodeAfter?.type.name === "skill_ref") pos = selection.from;
+          else if (selection.$from.nodeBefore?.type.name === "skill_ref")
+            pos = selection.from - (selection.$from.nodeBefore?.nodeSize ?? 1);
+          if (pos === null) return false;
+          const dom = current.nodeDOM(pos);
+          if (!(dom instanceof HTMLElement)) return false;
+          const node = current.state.doc.nodeAt(pos);
+          contextRef.current.onSkillClick?.(node?.attrs.name as string, pos, dom.getBoundingClientRect());
+          return true;
+        },
         handleClickOn(_view, _pos, _node, _nodePos, event) {
           const target = event.target as HTMLElement;
           const link = target.closest("a[href]");
@@ -357,6 +406,16 @@ export function DocEditor({
       },
       focus: () => viewRef.current?.focus(),
       text: () => settle(),
+      setRoles: (roles) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const tr = view.state.tr;
+        for (const [pos, attrs] of roles) {
+          tr.setNodeAttribute(pos, "role", attrs.role);
+          tr.setNodeAttribute(pos, "from", attrs.from);
+        }
+        view.dispatch(tr.setMeta("addToHistory", false));
+      },
       verify: async (text) => {
         const view = viewRef.current;
         if (!view) return "same";

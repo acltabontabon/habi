@@ -72,6 +72,8 @@ const sharedCopy: ProjectCopy = {
 
 function localSkill(): LocalSkill {
   return {
+    composes: [],
+    compositionState: { interrupted: false, unmentioned: [] },
     summary: {
       id: "k1",
       name: "alpha",

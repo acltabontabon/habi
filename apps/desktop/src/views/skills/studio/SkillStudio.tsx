@@ -53,6 +53,7 @@ import { tagLabel } from "../../../lib/tags";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
+import { useComposer } from "./compose/useComposer";
 import type { DocEditorHandle } from "./doc/lazy";
 import { Materials, useDropToAdd } from "./files/Materials";
 import { Instructions, Outline, useOutline } from "./Instructions";
@@ -232,8 +233,23 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
   const [titleInView, setTitleInView] = useState(true);
   const [sourceMode, setSourceMode] = useState(false);
+  const evalProjectRef = useRef<string | null>(null);
+  const openFileRef = useRef<(path: string) => void>(() => undefined);
+  const goRef = useRef<(next: StudioLayer) => void>(() => undefined);
   const editor = useRef<DocEditorHandle>(null);
   const { outline, current } = useOutline(document.body, cursorLine);
+  const composer = useComposer({
+    draft,
+    editor,
+    projectId: evalProjectRef.current,
+    onOpenFile: (path) => openFileRef.current(path),
+    onWhen: () => goRef.current("when"),
+    onReadiness: () =>
+      window.document.querySelector<HTMLElement>(".sk-acts .sk-ready, .sk-acts [aria-haspopup]")?.click(),
+    onSource: () => setSourceMode(true),
+    ready: !skill.diagnostics.some((d) => d.level === "error"),
+    problems: skill.diagnostics.filter((d) => d.level === "error").length,
+  });
   const materials = useMemo(() => materialsOf(skill.files, document.body), [skill.files, document.body]);
   // Use only when there is something ready to use; until then, the next step.
   const ready = !skill.diagnostics.some((d) => d.level === "error");
@@ -256,6 +272,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
     sheet === "test" || (layer === "when" && draft.yamlMode),
   );
 
+  evalProjectRef.current = evalProject;
   const go = useCallback((next: StudioLayer) => {
     setLayer(next);
     setVisited((v) => (v.has(next) ? v : new Set([...v, next])));
@@ -318,6 +335,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
     go(isMaterial(path) && layer !== "source" ? "materials" : "source");
     setFile({ path, line });
   };
+
+  openFileRef.current = openFile;
+  goRef.current = go;
 
   const viewSource = (path: string | null) => {
     go("source");
@@ -735,6 +755,29 @@ function Studio({ initial }: { initial: LocalSkill }) {
           </nav>
         </div>
         <div className="sk-acts">
+          {layer === "skill" && !broken && !sourceMode ? (
+            <>
+              <button
+                type="button"
+                className="sk-tool"
+                aria-pressed={composer.panel?.kind === "shelf"}
+                title={`Use another skill here (${modShortcut("⇧K")})`}
+                disabled={trashed}
+                onClick={() => composer.setPanel((p) => (p?.kind === "shelf" ? null : { kind: "shelf" }))}
+              >
+                Skills
+              </button>
+              <button
+                type="button"
+                className="sk-tool"
+                aria-pressed={composer.panel?.kind === "inside"}
+                title="What's in this skill, and when an agent would read it"
+                onClick={() => composer.setPanel((p) => (p?.kind === "inside" ? null : { kind: "inside" }))}
+              >
+                Inside
+              </button>
+            </>
+          ) : null}
           {layer === "skill" && !broken ? (
             <button
               type="button"
@@ -848,162 +891,171 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
       <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} inert={sheet !== null} />
 
-      <div className="sk-stage" ref={stage} inert={sheet !== null}>
-        <section className="sk-layer is-skill" hidden={layer !== "skill"} aria-label="The skill">
-          <div className="sk-page">
-            {!broken ? (
-              <aside className={`sk-margin${wide ? "" : " is-narrow"}`}>
-                <Outline
-                  outline={outline}
-                  current={current}
-                  pinned={outlinePinned}
-                  onPinned={setOutlinePinned}
-                  onGo={(line) => reveal(line)}
-                />
-              </aside>
-            ) : null}
-            <article className="sk-doc">
-              <header className="sk-head">
-                <label className="visually-hidden" htmlFor="studio-title">
-                  Skill title
-                </label>
-                <input
-                  ref={titleRef}
-                  id="studio-title"
-                  className="sk-title"
-                  value={title}
-                  placeholder="Untitled skill"
-                  disabled={trashed || broken}
-                  spellCheck
-                  autoComplete="off"
-                  onChange={(e) => {
-                    names.stopTitle();
-                    setTitle(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      window.document.getElementById("studio-purpose")?.focus();
+      <div className="sk-with-panel">
+        <div className="sk-stage" ref={stage} inert={sheet !== null}>
+          <section className="sk-layer is-skill" hidden={layer !== "skill"} aria-label="The skill">
+            <div className="sk-page">
+              {!broken ? (
+                <aside className={`sk-margin${wide ? "" : " is-narrow"}`}>
+                  <Outline
+                    outline={outline}
+                    current={current}
+                    pinned={outlinePinned}
+                    onPinned={setOutlinePinned}
+                    onGo={(line) => reveal(line)}
+                  />
+                </aside>
+              ) : null}
+              <article className="sk-doc">
+                <header className="sk-head">
+                  <label className="visually-hidden" htmlFor="studio-title">
+                    Skill title
+                  </label>
+                  <input
+                    ref={titleRef}
+                    id="studio-title"
+                    className="sk-title"
+                    value={title}
+                    placeholder="Untitled skill"
+                    disabled={trashed || broken}
+                    spellCheck
+                    autoComplete="off"
+                    onChange={(e) => {
+                      names.stopTitle();
+                      setTitle(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        window.document.getElementById("studio-purpose")?.focus();
+                      }
+                    }}
+                  />
+                  <label className="visually-hidden" htmlFor="studio-purpose">
+                    What it is for
+                  </label>
+                  <AutoGrow
+                    id="studio-purpose"
+                    className="sk-purpose"
+                    value={document.description}
+                    disabled={trashed || broken}
+                    placeholder="What it helps with, and when an agent should reach for it."
+                    aria-describedby="studio-purpose-hint"
+                    aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
+                    // SKILL.md keeps its description on one line: Enter goes on to the
+                    // instructions, and line breaks pasted in become spaces.
+                    onChange={(text) =>
+                      setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
                     }
-                  }}
-                />
-                <label className="visually-hidden" htmlFor="studio-purpose">
-                  What it is for
-                </label>
-                <AutoGrow
-                  id="studio-purpose"
-                  className="sk-purpose"
-                  value={document.description}
-                  disabled={trashed || broken}
-                  placeholder="What it helps with, and when an agent should reach for it."
-                  aria-describedby="studio-purpose-hint"
-                  aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
-                  // SKILL.md keeps its description on one line: Enter goes on to the
-                  // instructions, and line breaks pasted in become spaces.
-                  onChange={(text) =>
-                    setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                      e.preventDefault();
-                      editor.current?.focus();
-                    }
-                  }}
-                />
-                <p
-                  id="studio-purpose-hint"
-                  className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
-                >
-                  {purposeLength > DESCRIPTION_LIMIT
-                    ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}, and tools may cut or refuse the rest.`
-                    : `${purposeHint(document.description)}${
-                        purposeLength > DESCRIPTION_LIMIT - 150
-                          ? ` ${DESCRIPTION_LIMIT - purposeLength} left.`
-                          : ""
-                      }`}
-                </p>
-                {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
-                {fresh || !cameFrom ? null : (
-                  <Provenance
-                    summary={skill.summary}
-                    standing={standing}
-                    onOpen={() => openSheet("provenance")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                        e.preventDefault();
+                        editor.current?.focus();
+                      }
+                    }}
+                  />
+                  <p
+                    id="studio-purpose-hint"
+                    className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
+                  >
+                    {purposeLength > DESCRIPTION_LIMIT
+                      ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}, and tools may cut or refuse the rest.`
+                      : `${purposeHint(document.description)}${
+                          purposeLength > DESCRIPTION_LIMIT - 150
+                            ? ` ${DESCRIPTION_LIMIT - purposeLength} left.`
+                            : ""
+                        }`}
+                  </p>
+                  {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
+                  {fresh || !cameFrom ? null : (
+                    <Provenance
+                      summary={skill.summary}
+                      standing={standing}
+                      onOpen={() => openSheet("provenance")}
+                    />
+                  )}
+                  <nav className="sk-layers" aria-label="More of this skill" hidden={fresh}>
+                    <button type="button" className="sk-layer-link" onClick={() => go("when")}>
+                      <span className="sk-layer-label">When to use</span>
+                      <span className={`sk-layer-value${when ? "" : " is-none"}`}>
+                        {when ?? "When you choose it"}
+                      </span>
+                    </button>
+                    <button type="button" className="sk-layer-link" onClick={() => go("materials")}>
+                      <span className="sk-layer-label">Comes with</span>
+                      <span className={`sk-layer-value${brings ? "" : " is-none"}`}>
+                        {brings || "Instructions only"}
+                      </span>
+                    </button>
+                  </nav>
+                </header>
+                {broken ? (
+                  <p className="sk-broken">
+                    SKILL.md can’t be read as a skill.{" "}
+                    <button type="button" className="link-btn" onClick={() => viewSource("SKILL.md")}>
+                      Repair it as text
+                    </button>
+                  </p>
+                ) : (
+                  <Instructions
+                    draft={draft}
+                    editor={editor}
+                    sourceMode={sourceMode}
+                    composer={composer}
+                    onCursorLine={setCursorLine}
+                    onOpenFile={openFile}
                   />
                 )}
-                <nav className="sk-layers" aria-label="More of this skill" hidden={fresh}>
-                  <button type="button" className="sk-layer-link" onClick={() => go("when")}>
-                    <span className="sk-layer-label">When to use</span>
-                    <span className={`sk-layer-value${when ? "" : " is-none"}`}>
-                      {when ?? "When you choose it"}
-                    </span>
-                  </button>
-                  <button type="button" className="sk-layer-link" onClick={() => go("materials")}>
-                    <span className="sk-layer-label">Comes with</span>
-                    <span className={`sk-layer-value${brings ? "" : " is-none"}`}>
-                      {brings || "Instructions only"}
-                    </span>
-                  </button>
-                </nav>
-              </header>
-              {broken ? (
-                <p className="sk-broken">
-                  SKILL.md can’t be read as a skill.{" "}
-                  <button type="button" className="link-btn" onClick={() => viewSource("SKILL.md")}>
-                    Repair it as text
-                  </button>
-                </p>
-              ) : (
-                <Instructions
+              </article>
+            </div>
+          </section>
+
+          {visited.has("when") ? (
+            <section className="sk-layer is-when" hidden={layer !== "when"} aria-label="When to use">
+              <div className="sk-sheet-page">
+                <WhenToUse
                   draft={draft}
-                  editor={editor}
-                  sourceMode={sourceMode}
-                  onCursorLine={setCursorLine}
-                  onOpenFile={openFile}
+                  projects={available}
+                  projectId={evalProject}
+                  preview={evaluation.preview}
                 />
-              )}
-            </article>
+              </div>
+            </section>
+          ) : null}
+
+          {visited.has("materials") || visited.has("source") ? (
+            <section
+              className="sk-layer is-materials"
+              hidden={layer !== "materials" && layer !== "source"}
+              aria-label={layer === "source" ? "Package source" : "Materials"}
+            >
+              <div className={filePath || layer === "source" ? "sk-work-page" : "sk-sheet-page"}>
+                <Materials
+                  skill={skill}
+                  readOnly={trashed}
+                  active={layer === "materials"}
+                  source={layer === "source"}
+                  path={filePath}
+                  line={file.line}
+                  instructions={document.body}
+                  beforeChange={beforeChange}
+                  onSkill={onSkill}
+                  onPath={(path, line) => setFile({ path, line })}
+                  onSource={(on) => (on ? viewSource(null) : go("materials"))}
+                  onReference={reference}
+                  onWhen={() => go("when")}
+                />
+              </div>
+            </section>
+          ) : null}
+        </div>
+        {composer.panelNode && layer === "skill" ? (
+          <div className={`sk-panel${composer.panel?.kind === "overview" ? " is-wide" : ""}`}>
+            {composer.panelNode}
           </div>
-        </section>
-
-        {visited.has("when") ? (
-          <section className="sk-layer is-when" hidden={layer !== "when"} aria-label="When to use">
-            <div className="sk-sheet-page">
-              <WhenToUse
-                draft={draft}
-                projects={available}
-                projectId={evalProject}
-                preview={evaluation.preview}
-              />
-            </div>
-          </section>
-        ) : null}
-
-        {visited.has("materials") || visited.has("source") ? (
-          <section
-            className="sk-layer is-materials"
-            hidden={layer !== "materials" && layer !== "source"}
-            aria-label={layer === "source" ? "Package source" : "Materials"}
-          >
-            <div className={filePath || layer === "source" ? "sk-work-page" : "sk-sheet-page"}>
-              <Materials
-                skill={skill}
-                readOnly={trashed}
-                active={layer === "materials"}
-                source={layer === "source"}
-                path={filePath}
-                line={file.line}
-                instructions={document.body}
-                beforeChange={beforeChange}
-                onSkill={onSkill}
-                onPath={(path, line) => setFile({ path, line })}
-                onSource={(on) => (on ? viewSource(null) : go("materials"))}
-                onReference={reference}
-                onWhen={() => go("when")}
-              />
-            </div>
-          </section>
         ) : null}
       </div>
+      {composer.inspectorNode}
 
       {sheet ? (
         <>

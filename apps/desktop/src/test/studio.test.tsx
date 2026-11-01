@@ -67,6 +67,8 @@ function wrap(ui: ReactNode, initial: Route = { name: "skills", skillId: "k" }) 
 
 function skill(over: Partial<LocalSkill["document"]> = {}): LocalSkill {
   return {
+    composes: [],
+    compositionState: { interrupted: false, unmentioned: [] },
     summary: {
       id: "k",
       name: over.name ?? "review",
