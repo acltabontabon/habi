@@ -54,7 +54,7 @@ export function SelectionBar({
   useEffect(() => {
     if (linking) return;
     setSpot(spotFor(view));
-  }, [tick, view, linking, atCaret]);
+  }, [tick, view, linking]);
 
   useEffect(() => {
     const away = () => setSpot((s) => (linking ? s : spotFor(view)));
@@ -67,7 +67,7 @@ export function SelectionBar({
       window.removeEventListener("resize", away);
       window.removeEventListener("scroll", scroll, true);
     };
-  }, [view, linking, atCaret]);
+  }, [view, linking]);
 
   if (!spot && !embedded) return null;
 
