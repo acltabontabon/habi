@@ -674,7 +674,7 @@ fn item_named<'a>(idx: &'a LibraryIndex, name: &str) -> &'a LibraryItem {
 }
 
 #[test]
-fn a_skill_calling_a_sibling_by_name_says_so() {
+fn explicit_composition_resolves_siblings_while_prose_does_not() {
     let skill =
         |name: &str, body: &str| format!("---\nname: {name}\ndescription: A skill.\n---\n{body}");
     let plans = skill(
@@ -689,17 +689,20 @@ fn a_skill_calling_a_sibling_by_name_says_so() {
     );
     let idx = index(&[
         ("skills/writing-plans/SKILL.md", plans.as_str()),
+        (
+            "skills/writing-plans/habi.yaml",
+            "habi: 1\ncomposes:\n  - skill: executing-plans\n  - skill: verification\n  - skill: missing-one\n",
+        ),
         ("skills/executing-plans/SKILL.md", executing.as_str()),
         ("skills/verification/SKILL.md", verification.as_str()),
         ("plugins/other/skills/elsewhere/SKILL.md", plugin.as_str()),
     ]);
-    // Only `plugin:skill` calls, in order, to skills beside it. A backticked
-    // name is a "see also", and a name not in the library is nothing to add.
+    // Explicit names resolve only to siblings. Missing names stay unresolved.
     assert_eq!(
         item_named(&idx, "writing-plans").calls,
         ["executing-plans", "verification"]
     );
-    assert_eq!(item_named(&idx, "executing-plans").calls, ["writing-plans"]);
+    assert!(item_named(&idx, "executing-plans").calls.is_empty());
     assert!(item_named(&idx, "verification").calls.is_empty());
     // A sibling is in the same folder: another plugin's skill of that name is not this one.
     assert!(item_named(&idx, "elsewhere").calls.is_empty());

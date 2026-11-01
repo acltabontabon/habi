@@ -1490,7 +1490,12 @@ impl<'a> Contributions<'a> {
     ) -> Result<Option<(BTreeMap<String, Vec<u8>>, BTreeSet<String>)>> {
         let dir = match origin {
             ContributionOrigin::LocalSkill { skill_id } => {
-                Some(crate::skills::package_dir(self.paths, skill_id)?)
+                let tree = crate::skills::Skills {
+                    paths: self.paths,
+                    store: self.store,
+                }
+                .portable_tree(skill_id)?;
+                return Ok(Some((tree.files, tree.executables)));
             }
             ContributionOrigin::ProjectSkill { path, .. } => match project_root {
                 Some(root) => resolve_for_read(root, &RelPath::new(path)?)?,
@@ -1618,6 +1623,16 @@ impl<'a> Contributions<'a> {
         project_root: Option<&Path>,
         project_tags: Vec<String>,
     ) -> Result<Contribution> {
+        let mut local_tree = match &origin {
+            ContributionOrigin::LocalSkill { skill_id } => Some(
+                crate::skills::Skills {
+                    paths: self.paths,
+                    store: self.store,
+                }
+                .portable_tree(skill_id)?,
+            ),
+            _ => None,
+        };
         let source = self.sources.connected(source_id)?;
         if source.kind != SourceKind::Git {
             return Err(HabiError::Unsupported(
@@ -1650,12 +1665,11 @@ impl<'a> Contributions<'a> {
                 )
             }
             ContributionOrigin::LocalSkill { skill_id } => {
-                let dir = crate::skills::package_dir(self.paths, skill_id)?;
-                if !dir.is_dir() {
-                    return Err(HabiError::NotFound(format!("skill {skill_id}")));
-                }
-                let files = read_folder(&dir)?;
-                let executables = executables_in(&dir, &files)?;
+                let tree = local_tree
+                    .take()
+                    .ok_or_else(|| HabiError::invalid("The skill could not be read."))?;
+                let files = tree.files;
+                let executables = tree.executables;
                 let name = files
                     .get(SKILL_FILE)
                     .and_then(|b| {

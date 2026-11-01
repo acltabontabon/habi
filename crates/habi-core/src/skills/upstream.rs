@@ -592,6 +592,6 @@ impl Skills<'_> {
                 serde_json::to_string(&baseline).map_err(|e| HabiError::Internal(e.to_string()))?,
             ],
         )?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 }

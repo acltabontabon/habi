@@ -64,7 +64,11 @@ fn collect(validator: &Validator, value: &Value) -> Result<(), Vec<String>> {
 }
 
 pub fn validate_skill(value: &Value) -> Result<(), Vec<String>> {
-    collect(&SKILL, value)
+    let mut readable = value.clone();
+    if let Some(object) = readable.as_object_mut() {
+        object.remove("composes");
+    }
+    collect(&SKILL, &readable)
 }
 
 pub fn validate_library(value: &Value) -> Result<(), Vec<String>> {

@@ -324,6 +324,8 @@ pub fn run() {
             commands::get_skill,
             commands::create_skill,
             commands::save_skill_document,
+            commands::skill_shelf,
+            commands::skill_composition,
             commands::save_skill_applicability,
             commands::save_skill_metadata,
             commands::read_skill_file,

@@ -1174,11 +1174,19 @@ pub async fn save_skill_document(
     title: String,
     document: SkillDocument,
     base_digest: Option<String>,
+    composes: Option<Vec<habi_core::library::ComposeEntry>>,
+    meta_base_digest: Option<String>,
 ) -> CmdResult<LocalSkill> {
     let habi = state.habi()?;
     blocking(habi, move |h| {
-        h.skills()
-            .save_document(&id, &title, &document, base_digest.as_deref())
+        h.skills().save_document(
+            &id,
+            &title,
+            &document,
+            base_digest.as_deref(),
+            composes,
+            meta_base_digest.as_deref(),
+        )
     })
     .await
 }
@@ -1772,4 +1780,25 @@ pub async fn free_up_space(
 ) -> CmdResult<habi_core::maintenance::PruneReport> {
     let habi = state.habi()?;
     blocking(habi, |h| h.prune()).await
+}
+
+#[tauri::command]
+pub async fn skill_shelf(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<habi_core::skills::compose::ShelfSkill>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.skill_shelf()).await
+}
+
+#[tauri::command]
+pub async fn skill_composition(
+    state: State<'_, AppState>,
+    id: String,
+    project_id: Option<String>,
+) -> CmdResult<habi_core::skills::compose::Composition> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.skill_composition(&id, project_id.as_deref())
+    })
+    .await
 }

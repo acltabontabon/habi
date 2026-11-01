@@ -5,6 +5,8 @@
 //! being opened; plans are kept server-side and applied by id, so a front end
 //! never supplies file content or target paths to write.
 
+mod composition;
+
 use crate::cancel::CancelToken;
 use crate::checks::{self, CheckPreview, CheckRun};
 use crate::clients::ClientId;
@@ -1181,6 +1183,16 @@ impl Habi {
         index: &LibraryIndex,
         item: &LibraryItem,
     ) -> Result<Payload> {
+        let local = if source.id == LOCAL_SOURCE_ID {
+            let (_, ids) = self.skills().library()?;
+            let id = ids
+                .get(&item.id)
+                .ok_or_else(|| HabiError::NotFound("the local skill".into()))?;
+            Some(self.skills().installable(id)?)
+        } else {
+            None
+        };
+        let item = local.as_ref().map(|(item, _)| item).unwrap_or(item);
         let mut files = Vec::new();
         for f in &item.files {
             let library_path = match item.kind {
@@ -1189,7 +1201,14 @@ impl Habi {
             };
             files.push(plan::PayloadFile {
                 path: f.path.clone(),
-                bytes: self.read_library_file(&source.id, &index.snapshot, &library_path)?,
+                bytes: match &local {
+                    Some((_, tree)) => tree
+                        .files
+                        .get(&f.path)
+                        .cloned()
+                        .ok_or_else(|| HabiError::NotFound(f.path.clone()))?,
+                    None => self.read_library_file(&source.id, &index.snapshot, &library_path)?,
+                },
                 executable: f.executable,
             });
         }

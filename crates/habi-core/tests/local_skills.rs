@@ -78,6 +78,8 @@ fn draft(habi: &Habi, title: &str, description: &str, body: &str) -> LocalSkill 
                 body: body.into(),
             },
             created.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap()
 }
@@ -189,8 +191,7 @@ fn drafts_survive_a_restart_without_a_project_or_library() {
                     description: "Draft release notes from merged changes. Use when preparing a release: \"notes\".".into(),
                     body: "## Steps\n\n1. List merged changes since the last tag.\n2. Group by audience.\n".into(),
                 },
-                created.document_digest.as_deref(),
-            )
+                created.document_digest.as_deref(), None, None)
             .unwrap();
         assert_eq!(saved.summary.errors, 0, "{:?}", saved.diagnostics);
         saved.summary.id
@@ -228,7 +229,9 @@ fn drafts_survive_a_restart_without_a_project_or_library() {
                 &id,
                 "x",
                 &resumed.document,
-                resumed.document_digest.as_deref()
+                resumed.document_digest.as_deref(),
+                None,
+                None
             )
             .is_err()
     );
@@ -519,6 +522,8 @@ fn importing_keeps_packages_whole_and_never_loses_an_original() {
                 ..plain.document.clone()
             },
             plain.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     let text = std::fs::read_to_string(package.join("SKILL.md")).unwrap();
@@ -690,6 +695,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
                 ..skill.document.clone()
             },
             skill.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(ready.summary.errors, 0, "{:?}", ready.diagnostics);
@@ -756,6 +763,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
                 ..ready.document.clone()
             },
             ready.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(
@@ -806,6 +815,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
             ..edited.document.clone()
         },
         edited.document_digest.as_deref(),
+        None,
+        None,
     );
     assert!(matches!(stale, Err(HabiError::Conflict(_))));
     // Nothing was overwritten.
@@ -823,6 +834,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
                 ..reloaded.document.clone()
             },
             reloaded.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(kept.document.body, "My unsaved edit.\n");
@@ -1102,6 +1115,8 @@ fn sharing_continues_from_a_draft_and_never_overstates_what_happened() {
                 ..copy.document.clone()
             },
             copy.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert!(
@@ -1249,6 +1264,8 @@ fn revising_a_shared_draft_takes_edits_made_after_revise() {
                 ..current.document.clone()
             },
             current.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     let revised = habi.commit_contribution(&c.id, &cancel).unwrap();
@@ -1821,6 +1838,8 @@ fn a_title_edit_never_removes_metadata_that_does_not_parse() {
             "Alpha renamed",
             &s.document,
             s.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(saved.summary.title, "Alpha renamed");
@@ -2049,7 +2068,7 @@ fn text_that_is_not_utf8_is_not_saved_over() {
     doc.body.push_str("More.\n");
     assert!(
         habi.skills()
-            .save_document(&id, "Eps", &doc, s.document_digest.as_deref())
+            .save_document(&id, "Eps", &doc, s.document_digest.as_deref(), None, None)
             .is_err()
     );
     assert_eq!(std::fs::read(&path).unwrap(), latin1);
@@ -2102,6 +2121,8 @@ fn saving_changes_only_the_frontmatter_lines_it_must() {
                     body: current.document.body.clone(),
                 },
                 current.document_digest.as_deref(),
+                None,
+                None,
             )
             .unwrap()
     };
@@ -2502,6 +2523,8 @@ fn document_saves_preserve_the_original_envelope_and_body_bytes() {
                 "Envelope",
                 &loaded.document,
                 loaded.document_digest.as_deref(),
+                None,
+                None,
             )
             .unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
@@ -2510,7 +2533,14 @@ fn document_saves_preserve_the_original_envelope_and_body_bytes() {
         document.body = body.replace("More.", "Changed.");
         let saved = habi
             .skills()
-            .save_document(id, "Envelope", &document, saved.document_digest.as_deref())
+            .save_document(
+                id,
+                "Envelope",
+                &document,
+                saved.document_digest.as_deref(),
+                None,
+                None,
+            )
             .unwrap();
         assert_eq!(
             std::fs::read(&path).unwrap(),
@@ -2530,7 +2560,14 @@ fn document_saves_preserve_the_original_envelope_and_body_bytes() {
                 document.description = new.into();
             }
             habi.skills()
-                .save_document(id, "Envelope", &document, loaded.document_digest.as_deref())
+                .save_document(
+                    id,
+                    "Envelope",
+                    &document,
+                    loaded.document_digest.as_deref(),
+                    None,
+                    None,
+                )
                 .unwrap();
             let expected = original.replace(
                 &format!("{key}: {old}{newline}"),
@@ -2546,7 +2583,9 @@ fn document_saves_preserve_the_original_envelope_and_body_bytes() {
                 id,
                 "Envelope",
                 &saved.document,
-                saved.document_digest.as_deref()
+                saved.document_digest.as_deref(),
+                None,
+                None
             ),
             Err(HabiError::Conflict(_))
         ));
@@ -2570,7 +2609,14 @@ fn unverified_frontmatter_edits_require_the_source_view() {
         document.name = "changed".into();
         let err = habi
             .skills()
-            .save_document(id, "Quoted", &document, loaded.document_digest.as_deref())
+            .save_document(
+                id,
+                "Quoted",
+                &document,
+                loaded.document_digest.as_deref(),
+                None,
+                None,
+            )
             .unwrap_err();
         assert!(matches!(err, HabiError::InvalidInput(_)));
         assert!(err.to_string().contains("source view"));

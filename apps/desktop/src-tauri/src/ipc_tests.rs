@@ -286,6 +286,8 @@ fn local_skill_contract_end_to_end() {
             commands::get_skill,
             commands::create_skill,
             commands::save_skill_document,
+            commands::skill_shelf,
+            commands::skill_composition,
             commands::save_skill_applicability,
             commands::write_skill_file,
             commands::trash_skill,
@@ -329,7 +331,6 @@ fn local_skill_contract_end_to_end() {
     )
     .unwrap();
     assert_eq!(saved["summary"]["errors"], 0);
-
     // A save that names a stale version is refused as a conflict.
     let stale = call(
         &webview,
@@ -732,4 +733,51 @@ fn machine_install_contract_end_to_end() {
     )
     .unwrap_err();
     assert_eq!(none["code"], "invalidInput");
+}
+
+#[test]
+fn composition_commands_keep_the_two_base_digests_separate() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = Habi::open(AppPaths::at(home.path().to_path_buf()))
+        .unwrap()
+        .with_user_home(home.path().join("person"));
+    let app = mock_builder()
+        .invoke_handler(tauri::generate_handler![
+            commands::create_skill,
+            commands::get_skill,
+            commands::save_skill_document,
+            commands::skill_shelf,
+            commands::skill_composition,
+        ])
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    app.manage(AppState::new(Some(habi), None, None));
+    let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let created = call(&webview, "create_skill", json!({ "skill": { "title": "Birch plan", "description": "Plan fictional changes.", "template": "blank" }, "projectId": null })).unwrap();
+    let id = created["summary"]["id"].as_str().unwrap();
+    let document = json!({ "name": "birch-plan", "description": "Plan fictional changes.", "body": "Use `cedar-review` skill.\n" });
+    let saved = call(&webview, "save_skill_document", json!({ "id": id, "title": "Birch plan", "document": document, "baseDigest": created["documentDigest"], "composes": [{"skill":"cedar-review", "roles":["after", "future-role"], "from": null}], "metaBaseDigest": null })).unwrap();
+    assert_eq!(
+        saved["composes"][0]["roles"],
+        json!(["after", "future-role"])
+    );
+    assert_eq!(saved["compositionState"]["unmentioned"], json!([]));
+    let composition = call(
+        &webview,
+        "skill_composition",
+        json!({ "id": id, "projectId": null }),
+    )
+    .unwrap();
+    assert_eq!(composition["dependencies"][0]["status"], "missing");
+    let shelf = call(&webview, "skill_shelf", json!({})).unwrap();
+    assert_eq!(shelf[0]["key"], format!("mine:{id}"));
+    assert!(shelf[0].get("location").is_none());
+    let conflict = call(&webview, "save_skill_document", json!({ "id": id, "title": "Birch plan", "document": document, "baseDigest": saved["documentDigest"], "composes": [], "metaBaseDigest": "stale" })).unwrap_err();
+    assert_eq!(conflict["code"], "conflict");
+    assert!(conflict["message"].as_str().unwrap().contains("habi.yaml"));
+    let after = call(&webview, "get_skill", json!({"id":id})).unwrap();
+    assert_eq!(after["documentDigest"], saved["documentDigest"]);
+    assert_eq!(after["metadataDigest"], saved["metadataDigest"]);
 }

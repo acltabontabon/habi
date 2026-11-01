@@ -235,10 +235,14 @@ fn a_skill_full_of_distinct_names_is_indexed_promptly() {
 }
 
 #[test]
-fn a_call_is_still_found_when_the_names_are_few() {
+fn an_explicit_composition_resolves_a_sibling() {
     let caller = format!("{}Then use tools:callee.\n", skill("caller"));
     let index = index_of(&[
         ("skills/caller/SKILL.md", caller.into_bytes()),
+        (
+            "skills/caller/habi.yaml",
+            b"habi: 1\ncomposes:\n  - skill: callee\n    roles: [after]\n".to_vec(),
+        ),
         ("skills/callee/SKILL.md", skill("callee").into_bytes()),
     ]);
     let caller = index.items.iter().find(|i| i.id == "caller").unwrap();

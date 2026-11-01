@@ -221,3 +221,14 @@ whether the guidance is right or the scripts are safe.
 - Use `excludes` for "does not fit if …" rules; they are reported separately.
 - Connect the folder as a library and read each item's problems before publishing.
 - To have a public library suggested in Habi, see the [library catalog](catalog.md).
+
+### Composed skills
+
+`composes` is optional. It records the skills an author deliberately composed in
+these instructions. An agent never needs it: the instructions themselves say when
+and how to use each skill. A mention alone does not make a dependency.
+
+Each entry has a `skill` name and `roles`, one free string per mention in document
+order. Unknown roles are kept. Optional `from` fields (`library`, `id`, `digest`)
+record a shareable library source and the version linked by the author. Unreadable
+entries are skipped when loading; Habi keeps the original file.

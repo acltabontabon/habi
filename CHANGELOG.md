@@ -7,6 +7,8 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ## Unreleased
 
+- Skills can record the other skills they use, save that record with their instructions, and show which copies agents can find.
+
 ### Added
 
 - **Reasons reach into the code.** A skill that fits because of a dependency or framework now says where your

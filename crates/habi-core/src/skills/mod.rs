@@ -16,6 +16,10 @@
 //! - Nothing here executes package content.
 
 mod archive;
+pub mod compose;
+mod save;
+use crate::library::ComposeEntry;
+use compose::{CompositionState, skill_mentions};
 pub mod intake;
 pub mod lineage;
 pub mod machine;
@@ -401,6 +405,8 @@ pub fn material_folder(name: &str, bytes: &[u8], executable: bool) -> &'static s
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct LocalSkill {
+    pub composes: Vec<ComposeEntry>,
+    pub composition_state: CompositionState,
     pub summary: LocalSkillSummary,
     pub document: SkillDocument,
     /// Digest of SKILL.md as loaded; saves must name it.
@@ -618,6 +624,13 @@ pub(crate) fn read_tree(root: &Path, limits: &TreeLimits) -> Result<Tree> {
         for entry in entries {
             let entry = entry.map_err(|e| HabiError::io("reading the folder", e))?;
             let path = entry.path();
+            if entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".habi-save-")
+            {
+                continue;
+            }
             let rel = path
                 .strip_prefix(root)
                 .map(|p| p.to_string_lossy().replace('\\', "/"))
@@ -965,6 +978,33 @@ fn edit_frontmatter(
     intact.then_some(text)
 }
 
+fn yaml_comment(line: &str) -> Option<&str> {
+    let mut quote = None;
+    let mut escaped = false;
+    let mut space = true;
+    for (i, c) in line.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if quote == Some('"') && c == '\\' {
+            escaped = true;
+            continue;
+        }
+        if let Some(q) = quote {
+            if c == q {
+                quote = None;
+            }
+        } else if c == '\'' || c == '"' {
+            quote = Some(c);
+        } else if c == '#' && space {
+            return line.get(i..);
+        }
+        space = c.is_whitespace();
+    }
+    None
+}
+
 /// Edits changed top-level metadata entries without rewriting unrelated text.
 fn edit_sidecar(text: &str, old: &Value, new: &Value) -> Result<String> {
     let mut out = text.to_string();
@@ -989,16 +1029,20 @@ fn edit_sidecar(text: &str, old: &Value, new: &Value) -> Result<String> {
                 let nested = line.starts_with([' ', '\t'])
                     || line.starts_with("- ")
                     || line.trim_end() == "-";
-                if !nested || line.trim_start().starts_with('#') {
+                if !nested || (key != "composes" && line.trim_start().starts_with('#')) {
                     break;
                 }
                 end += 1;
             }
             // A comment attached to a changed value needs the source editor. Only a `#` that
             // starts a word is a comment: `C#` and URL fragments are values.
-            if lines.iter().take(end).skip(start).any(|line| {
-                line.trim_start().starts_with('#') || line.contains(" #") || line.contains("\t#")
-            }) {
+            if key != "composes"
+                && lines.iter().take(end).skip(start).any(|line| {
+                    line.trim_start().starts_with('#')
+                        || line.contains(" #")
+                        || line.contains("\t#")
+                })
+            {
                 return Err(HabiError::invalid(
                     "Edit this habi.yaml value in the source view to keep its comments; nothing was overwritten.",
                 ));
@@ -1013,6 +1057,16 @@ fn edit_sidecar(text: &str, old: &Value, new: &Value) -> Result<String> {
             .take(start.unwrap_or(lines.len()))
             .copied()
             .collect();
+        if key == "composes"
+            && let Some(start) = start
+        {
+            for line in lines.iter().take(end).skip(start) {
+                if let Some(comment) = yaml_comment(line) {
+                    edited.push_str(comment.trim_end());
+                    edited.push_str(newline);
+                }
+            }
+        }
         if let Some(value) = new.get(key) {
             if !edited.is_empty() && !edited.ends_with('\n') {
                 edited.push_str(newline);
@@ -1045,6 +1099,20 @@ fn splice_skill_md(text: &str, yaml: &str, body: &str) -> Result<String> {
     let yaml_end = yaml_start + old_yaml.len();
     let visible_body = old_body.trim_start_matches(['\n', '\r']);
     let body_start = text.len() - visible_body.len();
+    // A file that had no instructions has no way of writing them to preserve: new ones get
+    // the usual blank line and final newline.
+    if visible_body.trim().is_empty() && !body.trim().is_empty() {
+        let newline = if text.contains("\r\n") { "\r\n" } else { "\n" };
+        let end = if body.ends_with('\n') { "" } else { newline };
+        return Ok(format!(
+            "{}{yaml}{}{newline}{body}{end}",
+            &text[..yaml_start],
+            text[yaml_end..body_start]
+                .trim_end_matches(['\n', '\r'])
+                .to_string()
+                + newline
+        ));
+    }
     Ok(format!(
         "{}{yaml}{}{body}",
         &text[..yaml_start],
@@ -1185,7 +1253,7 @@ impl<'a> Skills<'a> {
         Ok(())
     }
 
-    fn tree(&self, id: &str) -> Result<Tree> {
+    pub(crate) fn tree(&self, id: &str) -> Result<Tree> {
         let dir = package_dir(self.paths, id)?;
         if !dir.is_dir() {
             return Ok(Tree::default());
@@ -1340,7 +1408,19 @@ impl<'a> Skills<'a> {
             crate::fsutil::tree_digest(files.iter().map(|f| (f.path.as_str(), f.digest.as_str())))
         });
         let dir = package_dir(self.paths, &row.id).unwrap_or_default();
+        let composes = item.map(|i| i.composes.clone()).unwrap_or_default();
+        let mentions = skill_mentions(&document.body);
+        let unmentioned = composes
+            .iter()
+            .filter(|e| !mentions.iter().any(|m| m.name == e.skill))
+            .map(|e| e.skill.clone())
+            .collect();
         LocalSkill {
+            composes,
+            composition_state: CompositionState {
+                interrupted: false,
+                unmentioned,
+            },
             summary: LocalSkillSummary {
                 id: row.id.clone(),
                 name: document.name.clone(),
@@ -1402,9 +1482,18 @@ impl<'a> Skills<'a> {
     }
 
     pub fn get(&self, id: &str) -> Result<LocalSkill> {
+        let _lock = self.lock(id)?;
+        self.get_unlocked(id)
+    }
+
+    fn get_unlocked(&self, id: &str) -> Result<LocalSkill> {
+        self.row(id)?;
+        let interrupted = save::recover(&package_dir(self.paths, id)?)?;
         let row = self.row(id)?;
         let tree = self.tree(id)?;
-        Ok(self.describe(&row, &tree, &self.names()?))
+        let mut skill = self.describe(&row, &tree, &self.names()?);
+        skill.composition_state.interrupted = interrupted;
+        Ok(skill)
     }
 
     /// An identifier derived from `wanted` that no other local skill uses.
@@ -1554,6 +1643,7 @@ impl<'a> Skills<'a> {
     }
 
     fn editable(&self, id: &str) -> Result<(Row, PathBuf)> {
+        save::recover(&package_dir(self.paths, id)?)?;
         let row = self.row(id)?;
         if row.deleted_at.is_some() {
             return Err(HabiError::invalid(
@@ -1571,11 +1661,17 @@ impl<'a> Skills<'a> {
         title: &str,
         document: &SkillDocument,
         base_digest: Option<&str>,
+        composes: Option<Vec<ComposeEntry>>,
+        meta_base_digest: Option<&str>,
     ) -> Result<LocalSkill> {
         let _lock = self.lock(id)?;
         let (_, dir) = self.editable(id)?;
         let path = dir.join(SKILL_FILE);
         Self::check_base(&path, base_digest, SKILL_FILE)?;
+        let meta_path = Self::sidecar_path(&dir);
+        if composes.is_some() {
+            Self::check_base(&meta_path, meta_base_digest, "habi.yaml")?;
+        }
         if document.name.len() > 200
             || document.description.len() > 8 * 1024
             || document.body.len() > MAX_TEXT
@@ -1624,7 +1720,63 @@ impl<'a> Skills<'a> {
                 )));
             }
         };
-        atomic_write_mode(&path, text.as_bytes(), None)?;
+        if let Some(entries) = composes {
+            let existing = std::fs::read_to_string(&meta_path)
+                .map(Some)
+                .or_else(|e| {
+                    if e.kind() == std::io::ErrorKind::NotFound {
+                        Ok(None)
+                    } else {
+                        Err(e)
+                    }
+                })
+                .map_err(|e| HabiError::io("reading habi.yaml", e))?;
+            let original = existing.as_deref().unwrap_or("habi: 1\n");
+            let old = library::parse_yaml(original).map_err(HabiError::invalid)?;
+            if !old.is_object() {
+                return Err(HabiError::invalid("Open habi.yaml to repair it first."));
+            }
+            let same_composes = library::read_composes(&old) == entries
+                && (!entries.is_empty() || old.get("composes").is_none());
+            let mut new = old.clone();
+            if entries.is_empty() {
+                new.as_object_mut().map(|o| o.remove("composes"));
+            } else {
+                if let Some(object) = new.as_object_mut() {
+                    object.insert(
+                        "composes".into(),
+                        serde_json::to_value(entries)
+                            .map_err(|e| HabiError::Internal(e.to_string()))?,
+                    );
+                }
+            }
+            let edited = if same_composes {
+                original.to_string()
+            } else {
+                edit_sidecar(original, &old, &new)?
+            };
+            let remove = new == json!({"habi": 1}) && !edited.contains('#');
+            if same_composes || old == new || (existing.is_none() && remove) {
+                atomic_write_mode(&path, text.as_bytes(), None)?;
+            } else {
+                save::coordinated(
+                    &dir,
+                    &[
+                        (&path, Some(text.as_bytes())),
+                        (
+                            &meta_path,
+                            if remove {
+                                None
+                            } else {
+                                Some(edited.as_bytes())
+                            },
+                        ),
+                    ],
+                )?;
+            }
+        } else {
+            atomic_write_mode(&path, text.as_bytes(), None)?;
+        }
         self.store.conn()?.execute(
             "UPDATE local_skills SET title = ?2, updated_at = ?3 WHERE id = ?1",
             params![
@@ -1633,7 +1785,7 @@ impl<'a> Skills<'a> {
                 crate::time::now()
             ],
         )?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     fn sidecar_path(dir: &Path) -> PathBuf {
@@ -1762,7 +1914,7 @@ impl<'a> Skills<'a> {
                 crate::time::now()
             ],
         )?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Saves `habi.yaml` exactly as typed (the advanced view). Invalid
@@ -1794,7 +1946,7 @@ impl<'a> Skills<'a> {
             atomic_write_mode(&path, text.as_bytes(), None)?;
         }
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Lines of the package's text files that contain `query` (ignoring
@@ -1904,7 +2056,7 @@ impl<'a> Skills<'a> {
         check_total(before, before - replaced + text.len() as u64)?;
         atomic_write_mode(&path, text.as_bytes(), None)?;
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Copies files chosen by the user into `folder` of the package
@@ -1985,7 +2137,7 @@ impl<'a> Skills<'a> {
             atomic_write_mode(&target, &bytes, Some(executable))?;
         }
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Removes a supporting file, or a folder with everything in it.
@@ -2007,7 +2159,7 @@ impl<'a> Skills<'a> {
         }
         Self::prune_empty_parents(&dir, &path);
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Renames or moves a file or folder inside the package. Nothing is
@@ -2065,7 +2217,7 @@ impl<'a> Skills<'a> {
             .map_err(|e| HabiError::io(format!("renaming {from} to {to}"), e))?;
         Self::prune_empty_parents(&dir, &source);
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Marks a file as executable (scripts the agent runs directly) or not.
@@ -2078,7 +2230,7 @@ impl<'a> Skills<'a> {
             .ok_or_else(|| HabiError::NotFound(rel.to_string()))?;
         crate::fsutil::set_executable(&path, executable)?;
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Replaces a file's content with a file the user picked (a new version
@@ -2116,7 +2268,7 @@ impl<'a> Skills<'a> {
         check_total(before, before - replaced + bytes.len() as u64)?;
         atomic_write_mode(&target, &bytes, Some(crate::fsutil::is_executable(&target)))?;
         self.touch(id)?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// The package path of a file, for opening it in a text editor.
@@ -2163,7 +2315,7 @@ impl<'a> Skills<'a> {
             "UPDATE local_skills SET deleted_at = NULL WHERE id = ?1",
             [id],
         )?;
-        self.get(id)
+        self.get_unlocked(id)
     }
 
     /// Renames a skill in the trash if its identifier is in use by another.
@@ -2213,11 +2365,31 @@ impl<'a> Skills<'a> {
         Ok(())
     }
 
+    pub(crate) fn portable_tree(&self, id: &str) -> Result<Tree> {
+        let _lock = self.lock(id)?;
+        let row = self.row(id)?;
+        let interrupted = save::recover(&package_dir(self.paths, id)?)?;
+        let tree = self.tree(id)?;
+        let mut skill = self.describe(&row, &tree, &self.names()?);
+        skill.composition_state.interrupted = interrupted;
+        Self::check_composition(&skill)?;
+        Ok(tree)
+    }
+
+    pub(crate) fn check_composition(skill: &LocalSkill) -> Result<()> {
+        if skill.composition_state.interrupted || !skill.composition_state.unmentioned.is_empty() {
+            return Err(HabiError::invalid(
+                "This skill names other skills its instructions no longer mention. Open it to review them first.",
+            ));
+        }
+        Ok(())
+    }
+
     /// The skill as an installable library item with its files, after
     /// checking it is a valid standard package.
     pub(crate) fn installable(&self, id: &str) -> Result<(LibraryItem, Tree)> {
+        let tree = self.portable_tree(id)?;
         let row = self.row(id)?;
-        let tree = self.tree(id)?;
         let skill = self.describe(&row, &tree, &self.names()?);
         let errors: Vec<&Diagnostic> = skill
             .diagnostics

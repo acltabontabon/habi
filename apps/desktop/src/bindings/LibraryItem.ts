@@ -2,6 +2,7 @@
 import type { BindingSpec } from "./BindingSpec";
 import type { CheckSpec } from "./CheckSpec";
 import type { ClientId } from "./ClientId";
+import type { ComposeEntry } from "./ComposeEntry";
 import type { Condition } from "./Condition";
 import type { DeclaredEvidence } from "./DeclaredEvidence";
 import type { Diagnostic } from "./Diagnostic";
@@ -16,7 +17,7 @@ import type { Signal } from "./Signal";
 import type { ToolRequirement } from "./ToolRequirement";
 import type { WorkflowSpec } from "./WorkflowSpec";
 
-export type LibraryItem = { 
+export type LibraryItem = { composes: Array<ComposeEntry>, 
 /**
  * `<source id>/<item id>`: unique across sources.
  */
@@ -60,8 +61,8 @@ clients: Array<ClientId> | null, workflow: WorkflowSpec | null, bindings: Array<
  */
 signals: Array<Signal>, 
 /**
- * Ids of sibling skills this one calls by name in its instructions
- * (`superpowers:writing-plans`). Without them those steps do not work.
+ * Ids of sibling skills deliberately named in `composes`, resolved
+ * through their SKILL.md names.
  */
 calls: Array<string>, 
 /**
