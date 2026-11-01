@@ -419,6 +419,7 @@ export function useComposer({
     ) : panel?.kind === "inside" ? (
       <Inside
         composition={composition.data}
+        titleOf={titleOf}
         liveInstructionsTokens={liveTokens}
         ready={ready}
         problems={problems}

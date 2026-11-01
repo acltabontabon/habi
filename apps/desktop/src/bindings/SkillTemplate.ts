@@ -5,4 +5,4 @@
  * works for an agent as written; the author fills in what is specific to
  * their code.
  */
-export type SkillTemplate = "blank" | "workflow" | "troubleshooting" | "reviewProcedure" | "toolAssisted" | "implementationGuide";
+export type SkillTemplate = "blank" | "workflow" | "research" | "document" | "analysis" | "coordinate" | "troubleshooting" | "reviewProcedure" | "toolAssisted" | "implementationGuide";

@@ -10,7 +10,7 @@ import type { Composition } from "../../../../bindings/Composition";
 import type { Dependency } from "../../../../bindings/Dependency";
 import { Icon } from "../../../../components/Icon";
 import { Button } from "../../../../components/ui";
-import { knotColor, titleOfName } from "./knots";
+import { knotColor } from "./knots";
 import type { Overview as OverviewData } from "./overviewData";
 import { roleWords } from "./roles";
 
@@ -140,7 +140,7 @@ export function Overview({
             <ul>
               {opened.nested.map((n) => (
                 <li key={n.name} className={n.status === "missing" ? "is-ghost" : undefined}>
-                  {titleOfName(n.name)}{" "}
+                  {titleOf(n.name)}{" "}
                   <span>
                     {n.explicit ? "part of it" : "mentioned"}
                     {n.status === "missing" ? ", not found here" : ""}

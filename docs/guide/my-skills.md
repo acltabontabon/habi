@@ -38,7 +38,10 @@ becomes the title, and the title becomes the identifier (until you change it or 
 Edit three layers of your skill:
 
 **Instructions** — Markdown as a document. Type freely; headings, code, and file references
-are highlighted. Starters are available for new skills.
+are highlighted. Empty instructions offer starting patterns: **Step by step**, **Research a topic**,
+**Produce a document**, **Analyze a problem**, **Code review**, **Troubleshooting**,
+**Coordinate expertise**, and **Tool-assisted**. Fill in the placeholders for your work.
+These are starting text; they do not change how an agent runs the skill.
 
 **When to use** — Define signals (conditions that trigger recommendations). Examples:
 - *Playwright is used*

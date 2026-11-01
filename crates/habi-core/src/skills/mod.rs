@@ -121,6 +121,14 @@ pub enum SkillTemplate {
     Blank,
     /// A step-by-step procedure with a definition of done.
     Workflow,
+    /// Gather sources and report what they support.
+    Research,
+    /// Produce a document for a stated audience.
+    Document,
+    /// Compare evidence to reach a reasoned recommendation.
+    Analysis,
+    /// Bring other skills together and combine their results.
+    Coordinate,
     /// Narrowing a problem down from symptom to cause.
     Troubleshooting,
     /// Shown as "Code review".
@@ -174,6 +182,109 @@ Use this when …
 ## Never
 
 - Skip a step because it seems unnecessary — say why instead.
+";
+
+const RESEARCH_BODY: &str = "\
+## Question
+
+Find out …
+Say what is in scope and what is outside it before gathering sources.
+
+## Sources to gather
+
+- Official documents: …
+- Studies or first-hand accounts: …
+
+## Weigh the evidence
+
+1. Record where each finding came from and when the source was written.
+2. Compare sources that disagree; explain what each supports and where it falls short.
+3. Say what is still unknown and what evidence would settle it.
+
+## Report
+
+Answer the question, link to the sources, and separate supported findings from open questions.
+";
+
+const DOCUMENT_BODY: &str = "\
+## Who will read this
+
+Write for …
+Say what the reader needs to understand or do after reading.
+
+## What it must cover
+
+- …
+
+## Structure
+
+1. Start with the main point and why it matters to the reader.
+2. …
+3. End with what the reader should do next, if anything.
+
+## Sample of the finished shape
+
+**Main point:** …
+
+**Supporting detail:** …
+
+**Next step:** …
+
+## Before finishing
+
+- Check that every required topic is covered and every claim has support.
+- Read it as the intended reader; explain unfamiliar words and remove repetition.
+- …
+";
+
+const ANALYSIS_BODY: &str = "\
+## Decision to make
+
+Decide …
+Name the options, constraints, and who needs the recommendation.
+
+## Evidence that counts
+
+- …
+
+Say where the evidence comes from and what is missing before drawing conclusions.
+
+## Compare the options
+
+1. Use these criteria for each option: …
+2. Compare benefits, costs, and risks against the same criteria.
+3. Explain assumptions and how different evidence could change the result.
+
+## Recommendation
+
+Recommend an option and explain why the evidence supports it.
+Say what you ruled out, what is uncertain, and what to check next.
+";
+
+const COORDINATE_BODY: &str = "\
+## Understand the work
+
+1. Restate the goal, constraints, and what a finished result must include: …
+2. Split the work into questions that need different expertise.
+3. Note which questions depend on answers to others.
+
+## Skills this draws on
+
+Add the skills this draws on here.
+
+- Skill for understanding the problem: …
+- Skill for checking the proposed result: …
+
+## Bring the results together
+
+1. Give each skill the question it should answer and the context it needs.
+2. Compare the results against the goal; resolve disagreements with evidence.
+3. Say what is missing rather than filling gaps with guesses.
+
+## Report
+
+Bring the findings into one answer, explaining which result supports each conclusion.
+List open questions and the next steps needed to finish.
 ";
 
 const TROUBLESHOOTING_BODY: &str = "\
@@ -250,6 +361,10 @@ impl SkillTemplate {
         match self {
             SkillTemplate::Blank => "",
             SkillTemplate::Workflow => WORKFLOW_BODY,
+            SkillTemplate::Research => RESEARCH_BODY,
+            SkillTemplate::Document => DOCUMENT_BODY,
+            SkillTemplate::Analysis => ANALYSIS_BODY,
+            SkillTemplate::Coordinate => COORDINATE_BODY,
             SkillTemplate::Troubleshooting => TROUBLESHOOTING_BODY,
             SkillTemplate::ReviewProcedure => REVIEW_BODY,
             SkillTemplate::ToolAssisted => TOOL_ASSISTED_BODY,
@@ -267,14 +382,34 @@ impl SkillTemplate {
                 "A procedure the agent follows step by step, with a clear finish.",
             ),
             (
-                SkillTemplate::Troubleshooting,
-                "Troubleshooting",
-                "From a symptom to a confirmed cause, without guessing.",
+                SkillTemplate::Research,
+                "Research a topic",
+                "Gather sources, weigh disagreements, and report what is known.",
+            ),
+            (
+                SkillTemplate::Document,
+                "Produce a document",
+                "Plan and check a document for the people who will read it.",
+            ),
+            (
+                SkillTemplate::Analysis,
+                "Analyze a problem",
+                "Compare evidence and options, then explain a recommendation.",
             ),
             (
                 SkillTemplate::ReviewProcedure,
                 "Code review",
                 "What to check in a change and how to report it.",
+            ),
+            (
+                SkillTemplate::Troubleshooting,
+                "Troubleshooting",
+                "From a symptom to a confirmed cause, without guessing.",
+            ),
+            (
+                SkillTemplate::Coordinate,
+                "Coordinate expertise",
+                "Bring other skills together and combine their findings.",
             ),
             (
                 SkillTemplate::ToolAssisted,

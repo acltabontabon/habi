@@ -81,17 +81,20 @@ export function useDropToAdd({
   beforeChange,
   onSkill,
   onError,
+  onAdded,
 }: {
   enabled: boolean;
   skill: LocalSkill;
   beforeChange: () => Promise<void>;
   onSkill: (skill: LocalSkill) => void;
   onError: (e: unknown) => void;
+  /** Where the new files landed, and where on screen they were dropped. */
+  onAdded?: (paths: string[], at: { left: number; top: number } | null) => void;
 }) {
   const [hovering, setHovering] = useState(false);
   const toast = useToast();
-  const latest = useRef({ skill, beforeChange, onSkill, onError });
-  latest.current = { skill, beforeChange, onSkill, onError };
+  const latest = useRef({ skill, beforeChange, onSkill, onError, onAdded });
+  latest.current = { skill, beforeChange, onSkill, onError, onAdded };
   useEffect(() => {
     if (!enabled || !("__TAURI_INTERNALS__" in window)) return;
     let stop: (() => void) | undefined;
@@ -105,7 +108,10 @@ export function useDropToAdd({
             else if (p.type === "leave") setHovering(false);
             else if (p.type === "drop") {
               setHovering(false);
-              if (p.paths.length > 0) void add(p.paths);
+              if (p.paths.length > 0) {
+                const scale = window.devicePixelRatio || 1;
+                void add(p.paths, { left: p.position.x / scale, top: p.position.y / scale });
+              }
             }
           })
           .then((unlisten) => {
@@ -116,13 +122,17 @@ export function useDropToAdd({
       .catch(() => {
         // No webview to listen on (a plain browser, the dev bridge): dropping stays off.
       });
-    const add = async (paths: string[]) => {
+    const add = async (paths: string[], at: { left: number; top: number } | null) => {
       const { skill: before, beforeChange: flush, onSkill: adopt, onError: fail } = latest.current;
       try {
         await flush();
         const fresh = await api.addDroppedSkillFiles(before.summary.id, "auto", paths);
         adopt(fresh);
         const added = fresh.files.filter((f) => !before.files.some((b) => b.path === f.path));
+        latest.current.onAdded?.(
+          added.map((f) => f.path),
+          at,
+        );
         const words = added.map(
           (f) => `${baseName(f.path)} (${KIND_NAME[materialKind(f.path, f.executable)].one})`,
         );

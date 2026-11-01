@@ -17,9 +17,12 @@ import { markdownOutline, type OutlineHeading, sectionAt } from "../../../lib/ma
 import { packageCompletions } from "../../../lib/packageCompletions";
 import { useSkillTemplates } from "../../../lib/queries";
 import type { Composer } from "./compose/useComposer";
+import { FilePeek, type PeekTarget } from "./doc/FilePeek";
+import { markdownForFile } from "./doc/fileRefs";
 import { DocEditor, type DocEditorHandle } from "./doc/lazy";
 import { countInvisibles, removeInvisibles } from "./doc/plugins";
 import { nextPrompt } from "./doc/prompts";
+import type { SlashItem } from "./doc/SlashMenu";
 import type { SkillDraft } from "./useSkillDraft";
 
 const FALLBACK: TemplateInfo[] = [];
@@ -164,10 +167,13 @@ export function Instructions({
   purpose.current = document.description;
   const [hidden, setHidden] = useState<{ count: number } | null>(null);
 
+  const [peek, setPeek] = useState<PeekTarget | null>(null);
   const composerContext = composer.context;
   const context = useMemo(
     () => ({
       ...composerContext,
+      onFileClick: (path: string, rect: DOMRect, absent: boolean) =>
+        setPeek({ path, absent, rect: { left: rect.left, top: rect.top, bottom: rect.bottom } }),
       imageData: async (path: string) => {
         if (!pathsRef.current.includes(path)) return null;
         const file = await api.readSkillFile(skill.summary.id, path).catch(() => null);
@@ -200,6 +206,34 @@ export function Instructions({
   }, []);
   const composerRef = useRef(composer);
   composerRef.current = composer;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the files are what it reacts to.
+  useEffect(() => {
+    editor.current?.refreshFiles();
+  }, [skill.files, editor]);
+
+  const slashExtras = useMemo(() => {
+    const fromSkills = composer.slashExtras;
+    return (query: string): SlashItem[] => {
+      const scoped = query.startsWith("file");
+      const words = scoped ? query.slice(4).trim() : query;
+      const files: SlashItem[] =
+        scoped || words
+          ? pathsRef.current
+              .filter((p) => p !== "SKILL.md" && !/^habi\.ya?ml$/.test(p))
+              .filter((p) => p.toLowerCase().includes(words))
+              .slice(0, scoped ? 8 : 3)
+              .map((p) => ({
+                id: `file:${p}`,
+                group: "This skill's files",
+                label: p.slice(p.lastIndexOf("/") + 1),
+                hint: p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : undefined,
+                act: () => editor.current?.insertAt(markdownForFile(p), null),
+              }))
+          : [];
+      return [...(scoped ? [] : fromSkills(query)), ...files];
+    };
+  }, [composer.slashExtras, editor]);
+
   const draftBody = useRef(document.body);
   draftBody.current = document.body;
 
@@ -238,7 +272,7 @@ export function Instructions({
           onOpenFile={onOpenFile}
           promptFor={(doc) => nextPrompt(doc, purpose.current)}
           context={context}
-          slashExtras={composer.slashExtras}
+          slashExtras={slashExtras}
           annotate={composer.annotate}
           onSettled={composer.onSettled}
           footer={sourceMode ? null : composer.threads}
@@ -259,6 +293,28 @@ export function Instructions({
             Remove {hidden.count === 1 ? "it" : "them"}
           </Button>
         </p>
+      ) : null}
+      {peek ? (
+        <FilePeek
+          skillId={skill.summary.id}
+          target={peek}
+          executable={skill.files.find((f) => f.path === peek.path)?.executable ?? false}
+          onOpen={(path) => {
+            setPeek(null);
+            onOpenFile(path);
+          }}
+          onCreate={(path) => {
+            setPeek(null);
+            void api
+              .writeSkillFile(skill.summary.id, path, "", null)
+              .then((fresh) => draft.adopt(fresh, { document: false, metadata: false }))
+              .catch(draft.setActionError);
+          }}
+          onClose={() => {
+            setPeek(null);
+            editor.current?.focus();
+          }}
+        />
       ) : null}
       {empty && !trashed && !sourceMode ? (
         <Starters onPick={(t) => setDocument((d) => ({ ...d, body: t.body }))} />

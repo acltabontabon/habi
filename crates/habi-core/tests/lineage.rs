@@ -332,8 +332,12 @@ fn every_starter_makes_a_skill_that_only_lacks_a_description() {
         [
             "Blank",
             "Step by step",
-            "Troubleshooting",
+            "Research a topic",
+            "Produce a document",
+            "Analyze a problem",
             "Code review",
+            "Troubleshooting",
+            "Coordinate expertise",
             "Tool-assisted"
         ]
     );

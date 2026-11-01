@@ -54,6 +54,7 @@ import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
 import { useComposer } from "./compose/useComposer";
+import { markdownForFile } from "./doc/fileRefs";
 import type { DocEditorHandle } from "./doc/lazy";
 import { Materials, useDropToAdd } from "./files/Materials";
 import { Instructions, Outline, useOutline } from "./Instructions";
@@ -534,6 +535,11 @@ function Studio({ initial }: { initial: LocalSkill }) {
     beforeChange,
     onSkill: (fresh) => onSkill(fresh),
     onError: draft.setActionError,
+    // Dropped on the page, a file also joins the words at that spot: a picture shows, the rest link.
+    onAdded: (paths, at) => {
+      if (layer !== "skill" || sourceMode || paths.length === 0) return;
+      requestAnimationFrame(() => editor.current?.insertAt(paths.map(markdownForFile).join("\n\n"), at));
+    },
   });
 
   const shareLabel =

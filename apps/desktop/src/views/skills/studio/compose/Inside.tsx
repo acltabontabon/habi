@@ -5,7 +5,6 @@
  */
 import type { Composition } from "../../../../bindings/Composition";
 import { Icon } from "../../../../components/Icon";
-import { titleOfName } from "./knots";
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : String(n));
 const tokens = (n: number) => `about ${fmt(n)} tokens`;
@@ -31,6 +30,7 @@ function Bar({ value, max }: { value: number; max: number }) {
 
 export function Inside({
   composition,
+  titleOf,
   liveInstructionsTokens,
   ready,
   problems,
@@ -42,6 +42,7 @@ export function Inside({
   onClose,
 }: {
   composition: Composition | undefined;
+  titleOf: (name: string) => string;
   /** The instructions as they are on the page, ahead of the last save. */
   liveInstructionsTokens: number;
   ready: boolean;
@@ -172,7 +173,7 @@ export function Inside({
           <ul className="inside-rows is-plain">
             {deps.map((d) => (
               <li key={d.name} className={d.status === "missing" ? "is-ghost" : undefined}>
-                {titleOfName(d.name)}
+                {titleOf(d.name)}
                 {d.status === "missing" ? <em>not found here</em> : d.optional ? <em>optional</em> : null}
               </li>
             ))}
@@ -181,10 +182,27 @@ export function Inside({
         {mentioned.length ? (
           <p className="inside-hint">
             {mentioned.length === 1 ? "One more is" : `${mentioned.length} more are`} only mentioned in the
-            words: {mentioned.map((m) => titleOfName(m.name)).join(", ")}.
+            words: {mentioned.map((m) => titleOf(m.name)).join(", ")}.
           </p>
         ) : null}
       </section>
+
+      {composition?.incoming.length ? (
+        <section className="inside-others is-used-by">
+          <div className="inside-stage-head">
+            <h3>Other skills use this one</h3>
+          </div>
+          <p>Changing its name or what it does affects them. Habi won't change them for you.</p>
+          <ul className="inside-rows is-plain">
+            {composition.incoming.map((r) => (
+              <li key={r.skillId}>
+                {r.title}
+                <em>{r.explicit ? "part of it" : "mentioned"}</em>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <footer className="inside-foot">
         <p>Token counts are rough: about four characters each. Agents load things differently.</p>

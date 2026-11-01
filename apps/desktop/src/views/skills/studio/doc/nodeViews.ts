@@ -25,6 +25,8 @@ export type ViewContext = {
   onLinkSkill?: (query: string) => void;
   /** Something from the shelf was dropped on the page. */
   onDropSkill?: (data: string, coords: { left: number; top: number }) => void;
+  /** A file named in the words was clicked. */
+  onFileClick?: (path: string, rect: DOMRect, absent: boolean) => void;
   /** A package file's bytes as a data: URL, if it's an image inside the package. */
   imageData?: (path: string) => Promise<string | null>;
   openExternal?: (href: string) => void;

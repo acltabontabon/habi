@@ -71,7 +71,8 @@ export function BlockHandle({
         setSpot({
           pos: found.pos,
           node: found.node,
-          left: rect.left - origin.left - 28,
+          // A list's numbers hang in the margin: the handle stays clear of them.
+          left: rect.left - origin.left - (found.node.type === schema.nodes.list_item ? 50 : 28),
           top: rect.top - origin.top + padding + (lineHeight - 22) / 2,
         });
       });

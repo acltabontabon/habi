@@ -94,7 +94,7 @@ const nodes: Record<string, NodeSpec> = {
         getAttrs: (dom) => ({ info: (dom as HTMLElement).dataset.info ?? "" }),
       },
     ],
-    toDOM: (node) => ["pre", { "data-info": node.attrs.info as string }, ["code", 0]],
+    toDOM: (node) => ["pre", { "data-info": node.attrs.info as string, spellcheck: "false" }, ["code", 0]],
   },
   horizontal_rule: {
     attrs: { style: { default: "---" } },
@@ -270,8 +270,9 @@ const marks: Record<string, MarkSpec> = {
     toDOM: () => ["del", 0],
   },
   code: {
+    inclusive: false,
     parseDOM: [{ tag: "code" }],
-    toDOM: () => ["code", 0],
+    toDOM: () => ["code", { spellcheck: "false" }, 0],
   },
 };
 

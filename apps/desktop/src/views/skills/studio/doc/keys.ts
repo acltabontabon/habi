@@ -42,20 +42,20 @@ import { schema } from "./markdown/schema";
 
 const { nodes, marks } = schema;
 
-/** `**word**` as it's typed, leaving the markers behind. */
+/** `**word**` as it's typed, leaving the markers behind and what comes before them alone. */
 function markRule(pattern: RegExp, type: MarkType, attrs?: Record<string, unknown>): InputRule {
   return new InputRule(pattern, (state, match, start, end) => {
     const text = match[1];
     if (!text) return null;
     const $from = state.doc.resolve(start);
     if ($from.parent.type.spec.code) return null;
-    const open = match[0].indexOf(text);
-    const tr = state.tr;
-    tr.replaceWith(start, end, schema.text(text, [...$from.marks(), type.create(attrs)]));
+    const lead = /^[\s(]/.test(match[0]) ? 1 : 0;
+    const from = start + lead;
+    const tr = state.tr.replaceWith(from, end, schema.text(text, [...$from.marks(), type.create(attrs)]));
+    // Hold the caret after what was marked, and stop marking there.
+    tr.setSelection(TextSelection.create(tr.doc, from + text.length));
     tr.removeStoredMark(type);
-    // Hold the caret after what was marked.
-    tr.setSelection(TextSelection.create(tr.doc, start + text.length));
-    return open >= 0 ? tr : null;
+    return tr;
   });
 }
 

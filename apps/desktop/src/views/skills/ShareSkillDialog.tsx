@@ -4,6 +4,7 @@
  * this machine. Without a library, the skill can be exported as a zip
  * instead. The draft stays in My skills whatever happens.
  */
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { LocalSkill } from "../../bindings/LocalSkill";
@@ -19,6 +20,7 @@ import { requestWord } from "../../lib/sharing";
 import type { NavTarget } from "../../lib/studioNav";
 import { StateChip } from "../contributions/StateChip";
 import { ConnectLibrary } from "../sources/ConnectLibrary";
+import { ComposeNote } from "./studio/compose/ComposeNote";
 import { Unfinished } from "./Unfinished";
 
 export function ShareSkillDialog({
@@ -211,6 +213,7 @@ export function ShareSkillDialog({
               </span>
             </button>
           </div>
+          <ComposeNote skill={skill} mode="share" />
           {ongoing ? (
             <Notice tone="unknown" title={`Already being shared with ${ongoing.sourceName}`}>
               <p>

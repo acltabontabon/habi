@@ -11,6 +11,8 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Added
 
+- **More ways to start a skill.** Start with research, a document, an analysis, or coordinating other skills, alongside the existing patterns.
+
 - **Reasons reach into the code.** A skill that fits because of a dependency or framework now says where your
   code uses it: *declared in pom.xml:31; imported in src/main/java/Orders.java:5 and 12 more files*. Each place
   opens at its line. This works for every skill, with no change to any library. Finding no import changes

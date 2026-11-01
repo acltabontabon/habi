@@ -84,6 +84,110 @@ fn draft(habi: &Habi, title: &str, description: &str, body: &str) -> LocalSkill 
         .unwrap()
 }
 
+#[test]
+fn starting_patterns_are_offered_in_order() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let offered = habi.skill_templates();
+    assert_eq!(
+        offered
+            .iter()
+            .map(|info| (info.template, info.label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (SkillTemplate::Blank, "Blank"),
+            (SkillTemplate::Workflow, "Step by step"),
+            (SkillTemplate::Research, "Research a topic"),
+            (SkillTemplate::Document, "Produce a document"),
+            (SkillTemplate::Analysis, "Analyze a problem"),
+            (SkillTemplate::ReviewProcedure, "Code review"),
+            (SkillTemplate::Troubleshooting, "Troubleshooting"),
+            (SkillTemplate::Coordinate, "Coordinate expertise"),
+            (SkillTemplate::ToolAssisted, "Tool-assisted"),
+        ]
+    );
+}
+
+#[test]
+fn new_starting_patterns_create_valid_skills_with_unfinished_text() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let offered = habi.skill_templates();
+    for template in [
+        SkillTemplate::Research,
+        SkillTemplate::Document,
+        SkillTemplate::Analysis,
+        SkillTemplate::Coordinate,
+    ] {
+        let info = offered
+            .iter()
+            .find(|info| info.template == template)
+            .unwrap();
+        assert!(!info.summary.is_empty() && info.summary.chars().count() < 70);
+        let created = habi
+            .create_skill(
+                &NewSkill {
+                    title: info.label.clone(),
+                    description: format!("{}. Use when asked for this work.", info.summary),
+                    template,
+                },
+                None,
+            )
+            .unwrap();
+        assert_eq!(created.document.body, info.body);
+        // The Studio's unfinishedLines catches ellipses outside code fences.
+        assert!(created.document.body.contains('…'));
+        assert_eq!(created.summary.errors, 0, "{:?}", created.diagnostics);
+        assert!(
+            created
+                .diagnostics
+                .iter()
+                .all(|diagnostic| diagnostic.level != DiagnosticLevel::Error),
+            "{:?}",
+            created.diagnostics
+        );
+    }
+}
+
+#[test]
+fn existing_template_values_and_implementation_drafts_stay_compatible() {
+    for (template, value) in [
+        (SkillTemplate::Blank, "blank"),
+        (SkillTemplate::Workflow, "workflow"),
+        (SkillTemplate::Troubleshooting, "troubleshooting"),
+        (SkillTemplate::ReviewProcedure, "reviewProcedure"),
+        (SkillTemplate::ToolAssisted, "toolAssisted"),
+        (SkillTemplate::ImplementationGuide, "implementationGuide"),
+    ] {
+        assert_eq!(serde_json::to_value(template).unwrap(), value);
+        assert_eq!(
+            serde_json::from_value::<SkillTemplate>(serde_json::json!(value)).unwrap(),
+            template
+        );
+    }
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let created = habi
+        .create_skill(
+            &NewSkill {
+                title: "Example implementation".into(),
+                description: "Follow a plan. Use when implementing a change.".into(),
+                template: SkillTemplate::ImplementationGuide,
+            },
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        created.document.body,
+        "## Context\n\n\n\n## Steps\n\n1. \n\n## Done when\n\n- \n"
+    );
+    assert!(
+        habi.skill_templates()
+            .iter()
+            .all(|info| info.template != SkillTemplate::ImplementationGuide)
+    );
+}
+
 fn liquibase_form(title: &str) -> ShareForm {
     ShareForm {
         title: title.into(),

@@ -28,6 +28,7 @@ import { SKILL_DRAG_TYPE } from "../compose/Shelf";
 import { BlockHandle, type BlockMenuTarget } from "./BlockHandle";
 import { clipboardTextParser, clipboardTextSerializer } from "./clipboard";
 import { sliceFromMarkdown } from "./commands";
+import { FILE_ATTR, fileRefsPlugin, refreshFileRefs } from "./fileRefs";
 import { editingPlugins } from "./keys";
 import { canonOf } from "./markdown/canon";
 import { type Parsed, parseBody } from "./markdown/parse";
@@ -58,6 +59,10 @@ export type DocEditorHandle = SourceEditorHandle & {
   insertMarkdown: (markdown: string) => void;
   /** Markdown as a new last block, with the caret at its end. */
   appendMarkdown: (markdown: string) => void;
+  /** The skill's files changed. */
+  refreshFiles: () => void;
+  /** Markdown where something was dropped, or at the caret. */
+  insertAt: (markdown: string, coords: { left: number; top: number } | null) => void;
   /** The text right now, without waiting for the pause. */
   text: () => string;
   /** Replaces what mentions are said to be, after their record changed elsewhere. */
@@ -240,6 +245,11 @@ export function DocEditor({
     const state = EditorState.create({
       doc,
       plugins: [
+        // First, so the open menu sees Enter and the arrows before the editor does.
+        slashPlugin(() => ({
+          onChange: setSlash,
+          onKey: (e) => slashMenu.current?.key(e) ?? false,
+        })),
         ...editingPlugins(),
         tableEditing({ allowTableNodeSelection: false }),
         dropCursor({ color: "var(--thread)", width: 2, class: "doc-drop" }),
@@ -249,10 +259,7 @@ export function DocEditor({
         flashPlugin(),
         invisiblesPlugin(),
         syntaxPlugin(),
-        slashPlugin(() => ({
-          onChange: setSlash,
-          onKey: (e) => slashMenu.current?.key(e) ?? false,
-        })),
+        fileRefsPlugin(() => pathsRef.current()),
       ],
     });
     if (!prior) return state;
@@ -325,6 +332,17 @@ export function DocEditor({
         },
         handleClickOn(_view, _pos, _node, _nodePos, event) {
           const target = event.target as HTMLElement;
+          const file = target.closest<HTMLElement>(`[${FILE_ATTR}]`);
+          // A file named in the words opens a peek, with or without ⌘.
+          if (file && !event.shiftKey) {
+            const path = file.getAttribute(FILE_ATTR) ?? "";
+            contextRef.current.onFileClick?.(
+              path,
+              file.getBoundingClientRect(),
+              file.classList.contains("is-absent"),
+            );
+            return true;
+          }
           const link = target.closest("a[href]");
           // Links open only when asked to with ⌘, and through what the app already trusts.
           if (link && (event.metaKey || event.ctrlKey)) {
@@ -405,6 +423,19 @@ export function DocEditor({
         flashBlock(view, pos);
       },
       focus: () => viewRef.current?.focus(),
+      refreshFiles: () => {
+        if (viewRef.current) refreshFileRefs(viewRef.current);
+      },
+      insertAt: (markdown, coords) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const hit = coords ? view.posAtCoords(coords) : null;
+        const tr = view.state.tr;
+        if (hit) tr.setSelection(TextSelection.near(tr.doc.resolve(hit.pos)));
+        tr.replaceSelection(sliceFromMarkdown(markdown));
+        view.dispatch(tr.scrollIntoView());
+        view.focus();
+      },
       text: () => settle(),
       setRoles: (roles) => {
         const view = viewRef.current;
