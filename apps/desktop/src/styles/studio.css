@@ -177,6 +177,18 @@ button.rd-word:hover,
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok-ink) 18%, transparent);
 }
 
+.rd-word.is-check .rd-dot {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--thread-strong);
+}
+
+.rd-note {
+  margin: 6px 0 0;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
 .rd-word.is-draft .rd-dot {
   background: transparent;
   border: 1.5px solid var(--warn-ink);
@@ -271,6 +283,15 @@ button.rd-word:hover,
 .rd-item.is-todo .rd-label,
 .rd-item.is-todo .rd-detail {
   grid-column: 2;
+}
+
+.rd-item.is-other {
+  grid-template-columns: 16px auto minmax(0, 1fr);
+}
+
+.rd-item.is-other .rd-label,
+.rd-item.is-other .rd-detail {
+  grid-column: auto;
 }
 
 .rd-mark {
@@ -371,6 +392,7 @@ button.rd-word:hover,
 
 /* The skill: a reading measure, with the outline's spine in the margin. */
 .sk-page {
+  --measure: 660px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--measure)) minmax(0, 1fr);
   padding: clamp(var(--s5), 5cqi, var(--s8)) var(--gutter) 0;
@@ -392,31 +414,7 @@ button.rd-word:hover,
   position: relative;
   display: grid;
   gap: 0;
-  padding-bottom: var(--s6);
   margin-bottom: var(--s6);
-}
-
-/* One thread under the head, tied off at the left: the knowledge starts here. */
-.sk-head::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(to right, var(--hairline-strong), var(--hairline) 40%, transparent);
-}
-
-.sk-head::before {
-  content: "";
-  position: absolute;
-  left: -3px;
-  bottom: -3px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1.5px var(--hairline-strong);
 }
 
 .sk-title {
@@ -528,58 +526,6 @@ button.rd-word:hover,
 }
 
 /* ---------- The other layers, named in the head ---------- */
-
-.sk-layers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s3) var(--s7);
-  margin-top: var(--s5);
-}
-
-.sk-layers[hidden] {
-  display: none;
-}
-
-.sk-layer-link {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-}
-
-.sk-layer-value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-md);
-  color: var(--ink-soft);
-  transition: color var(--duration) var(--ease);
-}
-
-.sk-layer-value::after {
-  content: " →";
-  color: var(--thread);
-  opacity: 0;
-  transition: opacity var(--duration) var(--ease);
-}
-
-.sk-layer-value.is-none {
-  color: var(--ink-faint);
-}
-
-.sk-layer-link:hover .sk-layer-value,
-.sk-layer-link:focus-visible .sk-layer-value {
-  color: var(--ink);
-}
-
-.sk-layer-link:hover .sk-layer-value::after,
-.sk-layer-link:focus-visible .sk-layer-value::after {
-  opacity: 1;
-}
 
 .sk-broken {
   color: var(--ink-muted);

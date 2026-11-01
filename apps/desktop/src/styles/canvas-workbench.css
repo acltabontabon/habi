@@ -1,0 +1,2273 @@
+:root {
+  --canvas-sage: #397763;
+  --canvas-lilac: #77628f;
+}
+:root[data-theme="dark"] {
+  --canvas-sage: #7baf9b;
+  --canvas-lilac: #aa9bcc;
+}
+/* A palette of tangible pieces, with the instruction itself as the editing surface. */
+.canvas-palette {
+  --piece-ink: var(--thread-strong);
+}
+.canvas-invitation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin: 6px 0 32px;
+}
+.canvas-kicker {
+  font: 10px var(--font-mono);
+  letter-spacing: 0.13em;
+  color: var(--thread-strong);
+}
+.canvas-invitation h2 {
+  margin: 14px 0;
+  font:
+    400 clamp(30px, 3.8cqi, 48px) / 1.12 "IBM Plex Serif",
+    Georgia,
+    serif;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+.canvas-invitation p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+.canvas-thread-art {
+  width: 220px;
+  flex: 0 1 220px;
+  height: 150px;
+  overflow: visible;
+}
+.canvas-thread-art path {
+  stroke: var(--thread);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.canvas-thread-art path:nth-child(2) {
+  stroke: var(--canvas-lilac);
+}
+.canvas-thread-art path:nth-child(3) {
+  stroke: var(--canvas-sage);
+}
+.canvas-pieces {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.canvas-piece {
+  --piece-ink: var(--thread-strong);
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s,
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.canvas-piece.is-procedure,
+.canvas-piece.is-result {
+  --piece-ink: var(--canvas-sage);
+}
+.canvas-piece.is-condition,
+.canvas-piece.is-example {
+  --piece-ink: var(--canvas-lilac);
+}
+.canvas-piece:hover {
+  transform: translateY(-3px);
+  border-color: var(--piece-ink);
+  box-shadow: 0 9px 24px #00000014;
+}
+.canvas-piece:focus-visible {
+  outline: 2px solid var(--piece-ink);
+  outline-offset: 3px;
+}
+.canvas-piece:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.canvas-piece-caption {
+  display: grid;
+  gap: 5px;
+  padding: 15px 18px 18px;
+  border-top: 1px solid var(--hairline);
+}
+.canvas-piece-caption strong {
+  font-size: 14px;
+  font-weight: 550;
+}
+.canvas-piece-caption small {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  padding-right: 12px;
+}
+.canvas-piece-add {
+  position: absolute;
+  right: 16px;
+  bottom: 21px;
+  font-size: 20px;
+  color: var(--piece-ink);
+}
+.canvas-piece-sketch {
+  position: relative;
+  min-height: 128px;
+  padding: 22px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: color-mix(in srgb, var(--piece-ink) 6%, var(--paper));
+  color: var(--piece-ink);
+  font:
+    17px / 1.4 "IBM Plex Serif",
+    Georgia,
+    serif;
+}
+.canvas-piece-sketch em {
+  font-weight: 400;
+  opacity: 0.7;
+}
+.sketch-star {
+  font-size: 43px;
+  line-height: 1;
+}
+.canvas-piece-sketch.is-procedure {
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 24px;
+  align-items: stretch;
+  font: 11px var(--font-ui);
+}
+.canvas-piece-sketch.is-procedure > span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.canvas-piece-sketch.is-procedure i {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  font: 10px var(--font-mono);
+  border: 1px solid color-mix(in srgb, var(--piece-ink) 40%, transparent);
+  border-radius: 50%;
+}
+.canvas-piece-sketch.is-procedure > span:nth-child(2) {
+  margin-left: 18px;
+}
+.canvas-piece-sketch.is-procedure > span:nth-child(3) {
+  margin-left: 36px;
+}
+.canvas-piece-sketch.is-condition {
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  font: 11px var(--font-ui);
+}
+.sketch-when {
+  border: 1px solid color-mix(in srgb, var(--piece-ink) 45%, transparent);
+  border-radius: 20px;
+  padding: 8px 16px;
+}
+.sketch-branch {
+  font-size: 26px;
+  margin-left: 24px;
+}
+.sketch-then {
+  padding: 7px 11px;
+  background: color-mix(in srgb, var(--piece-ink) 12%, transparent);
+  border-radius: 5px;
+}
+.sketch-boundary {
+  border: 1px dashed var(--piece-ink);
+  padding: 11px 24px;
+  border-radius: 35px;
+  text-align: center;
+  font-size: 16px;
+}
+.sketch-quote {
+  align-self: flex-start;
+  font-size: 48px;
+  line-height: 1;
+}
+.canvas-piece-sketch.is-example {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.sketch-line {
+  height: 1px;
+  width: 75%;
+  background: currentColor;
+  opacity: 0.3;
+  transform: rotate(-3deg);
+}
+.sketch-sheet {
+  position: relative;
+  width: 63px;
+  height: 76px;
+  border: 1px solid var(--piece-ink);
+  border-radius: 3px;
+  padding: 14px 10px;
+  box-sizing: border-box;
+  transform: rotate(-8deg);
+}
+.sketch-sheet i {
+  display: block;
+  height: 1px;
+  background: currentColor;
+  margin-bottom: 9px;
+  opacity: 0.4;
+}
+.sketch-sheet i:nth-child(2) {
+  width: 65%;
+}
+.sketch-sheet b {
+  position: absolute;
+  right: -7px;
+  bottom: -5px;
+  background: var(--paper-raised);
+  border-radius: 50%;
+  font: 18px var(--font-ui);
+}
+.sketch-result {
+  font-size: 15px;
+}
+.canvas-start-note {
+  margin: 18px 0 0;
+  color: var(--ink-muted);
+  font-size: 11px;
+  text-align: center;
+}
+.sk .sk-doc.is-unwoven .sk-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--hairline);
+}
+.sk .sk-doc.is-unwoven .sk-title {
+  flex: 1;
+  min-width: 150px;
+  font-size: 17px;
+  margin: 0;
+}
+.sk .sk-doc.is-unwoven .weave-identity-label {
+  margin: 0;
+  font-size: 0;
+}
+.sk .sk-doc.is-unwoven .weave-identity-label svg {
+  width: 22px;
+  height: 22px;
+}
+.sk .sk-doc.is-unwoven .sk-purpose,
+.sk .sk-doc.is-unwoven .sk-purpose-hint,
+.sk .sk-doc.is-unwoven .weave-identity-status,
+.sk .sk-doc.is-unwoven .weave-workspace-head {
+  display: none;
+}
+.canvas-palette.is-dock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0;
+  padding: 9px 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+.canvas-dock-label {
+  flex: 0 0 auto;
+  font: 10px var(--font-mono);
+  color: var(--ink-muted);
+}
+.is-dock .canvas-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.is-dock .canvas-piece {
+  display: flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 6px;
+  gap: 8px;
+  background: transparent;
+  border-color: transparent;
+}
+.is-dock .canvas-piece:hover {
+  transform: none;
+  background: var(--paper-raised);
+  border-color: var(--hairline);
+  box-shadow: none;
+}
+.is-dock .canvas-piece-caption {
+  padding: 0;
+  border: 0;
+}
+.is-dock .canvas-piece-caption strong {
+  font-size: 11px;
+  font-weight: 400;
+}
+.canvas-piece-glyph {
+  color: var(--piece-ink);
+  font-size: 19px;
+  line-height: 1;
+}
+/* Different guidance has a different visual shape, while remaining portable prose. */
+.sk .doc-page {
+  padding-left: 0;
+  border-left: 0;
+}
+.sk .doc-page > p.weave-guidance {
+  margin: 0 0 16px;
+  padding: 36px 22px 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper-raised);
+}
+.sk .doc-page > p.weave-guidance::before {
+  content: attr(data-guidance);
+  position: absolute;
+  top: 12px;
+  left: 22px;
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+  transform: none;
+  color: var(--thread-strong);
+  font: 9px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.sk .doc-page > p.is-condition {
+  border-left: 3px solid var(--canvas-lilac);
+  background: color-mix(in srgb, var(--canvas-lilac) 5%, var(--paper));
+}
+.sk .doc-page > p.is-condition::before {
+  color: var(--canvas-lilac);
+}
+.sk .doc-page > p.is-constraint {
+  border-style: dashed;
+}
+.sk .doc-page > p.is-expected-result {
+  border-left: 3px solid var(--canvas-sage);
+  background: color-mix(in srgb, var(--canvas-sage) 5%, var(--paper));
+}
+.sk .doc-page > p.is-expected-result::before {
+  color: var(--canvas-sage);
+}
+.sk .doc-page > ol.weave-guidance {
+  margin-left: 0;
+  padding-left: 40px;
+  border-left: 0;
+}
+.sk .doc-page > ol.weave-guidance::before {
+  display: none;
+}
+.sk .doc-page > ol.weave-guidance > li {
+  box-sizing: border-box;
+  min-height: 46px;
+  padding: 11px 14px;
+  margin: 0 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  line-height: 1.55;
+}
+.sk .doc-page > ol.weave-guidance > li:last-child {
+  margin-bottom: 0;
+}
+.sk .doc-page > ol.weave-guidance > li > p:last-child {
+  margin-bottom: 0;
+}
+.sk .doc-page > ol.weave-guidance > li:not(.doc-task)::before {
+  left: -40px;
+  right: auto;
+  top: 10px;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--thread) 28%, var(--hairline));
+  background: var(--paper-raised);
+  color: var(--thread-strong);
+  font: 600 12px / 1 var(--font-ui);
+}
+.sk .doc-page > ol.weave-guidance > li:not(:last-child)::after {
+  left: -27px;
+  top: 36px;
+  bottom: -22px;
+  width: 1px;
+  background: var(--hairline-strong);
+}
+.sk .doc-page .guidance-is-current {
+  outline: none;
+  box-shadow: none;
+}
+.sk .doc-page > p.guidance-is-current {
+  border-color: var(--thread);
+}
+.guidance-unit-tools {
+  margin-bottom: 8px;
+  border-bottom: 0;
+}
+@container (max-width: 720px) {
+  .canvas-pieces {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .canvas-thread-art {
+    width: 140px;
+    flex-basis: 140px;
+  }
+  .canvas-palette.is-dock {
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .canvas-dock-label {
+    padding-top: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-piece {
+    transition: none;
+  }
+}
+.sk .sk-head {
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.sk .sk-title {
+  font-size: 24px;
+}
+.sk .sk-purpose {
+  margin-top: 5px;
+  font-size: 13px;
+}
+.sk .weave-identity-label {
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+.sk .sk-head .when-tokens {
+  margin-top: 6px;
+}
+.sk .weave-workspace-head {
+  margin-bottom: 14px;
+}
+@media (max-height: 800px) {
+  .canvas-invitation {
+    margin-bottom: 22px;
+  }
+  .canvas-invitation h2 {
+    font-size: 36px;
+  }
+  .canvas-piece-sketch {
+    min-height: 104px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .canvas-piece-caption {
+    padding-top: 12px;
+    padding-bottom: 14px;
+  }
+}
+.sk .doc-file {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+/* Pattern browsing is an explicit control, not a quiet line of body text. */
+.sk .doc-starters {
+  margin-top: 22px;
+}
+.sk .doc-starters-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+}
+.sk .doc-starters-lead::-webkit-details-marker {
+  display: none;
+}
+.sk .doc-starters-lead:hover {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+}
+.sk .doc-starters-lead:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 3px;
+}
+.pattern-grid-icon {
+  color: var(--thread-strong);
+  font-size: 19px;
+}
+.sk .doc-starters-lead small {
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+.pattern-chevron {
+  margin-left: 12px;
+  font-size: 18px;
+  line-height: 1;
+}
+.doc-starters[open] .pattern-chevron {
+  transform: rotate(180deg);
+}
+.canvas-weave-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+  background: transparent;
+}
+.canvas-weave-destination {
+  flex: 0 1 180px;
+  display: grid;
+  gap: 4px;
+}
+.canvas-weave-destination > span {
+  font: 11px var(--font-mono);
+  color: var(--thread-strong);
+}
+.canvas-weave-destination small {
+  color: var(--ink-muted);
+  font-size: 10px;
+}
+.canvas-weave-options {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.weave-choice {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.weave-choice > span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+.weave-choice strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.weave-choice small {
+  color: var(--ink-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.weave-choice-glyph {
+  color: var(--thread-strong);
+  font-size: 22px;
+}
+.weave-choice.is-script .weave-choice-glyph {
+  color: var(--canvas-sage);
+}
+.weave-choice.is-reference .weave-choice-glyph {
+  color: var(--canvas-lilac);
+}
+.weave-choice-plus {
+  color: var(--ink-muted);
+  margin-left: auto;
+  padding-left: 6px;
+}
+.weave-choice:hover:not(:disabled) {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+}
+.weave-existing {
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.weave-existing:hover:not(:disabled) {
+  color: var(--thread-strong);
+  text-decoration: underline;
+}
+.weave-choice:disabled,
+.weave-existing:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@container (max-width: 720px) {
+  .canvas-weave-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .canvas-weave-destination {
+    flex-basis: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+/* Pattern browsing belongs to the workspace rhythm, rather than a floating call-to-action. */
+.sk .doc-starters {
+  margin-top: 28px;
+  border-top: 1px solid var(--hairline);
+}
+.sk .doc-starters-lead {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 12px;
+  font-size: 13px;
+}
+.sk .doc-starters-lead:hover {
+  background: transparent;
+  color: var(--thread-strong);
+}
+.sk .doc-starters-lead small {
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: var(--paper-raised);
+  font: 10px var(--font-mono);
+}
+.sk .doc-starters-lead .pattern-chevron {
+  margin-left: auto;
+  margin-right: 4px;
+}
+.sk .doc-starters-lead .pattern-grid-icon {
+  font-size: 15px;
+  opacity: 0.7;
+}
+.doc-step-target {
+  display: none;
+  position: fixed;
+  z-index: 1100;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid var(--thread);
+  border-radius: 9px;
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+  font: 11px var(--font-ui);
+  padding: 3px 10px;
+  text-align: right;
+}
+.doc-step-target.is-on {
+  display: block;
+}
+
+/* Two invitations; choices appear when the author asks for them. */
+.canvas-toolbox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 22px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.canvas-tool-menu {
+  position: relative;
+}
+.canvas-tool-menu > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  list-style: none;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: 500 12px var(--font-ui);
+  cursor: pointer;
+}
+.canvas-tool-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.canvas-tool-menu > summary > span:first-child {
+  color: var(--thread-strong);
+  font-size: 19px;
+}
+.canvas-tool-menu .tool-chevron {
+  color: var(--ink-muted);
+  margin-left: 5px;
+}
+.canvas-tool-menu[open] > summary,
+.canvas-tool-menu > summary:hover {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+}
+.canvas-tool-menu > summary:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 3px;
+}
+.canvas-tool-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(370px, calc(100vw - 70px));
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow: 0 12px 36px #0003;
+}
+.canvas-tool-heading {
+  margin: 0 0 10px;
+  color: var(--ink-muted);
+  font: 12px var(--font-ui);
+}
+.canvas-step-options,
+.canvas-support-options {
+  display: grid;
+  gap: 5px;
+}
+.canvas-step-option,
+.canvas-tool-popover .weave-choice {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.canvas-step-option > span:nth-child(2),
+.canvas-tool-popover .weave-choice > span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+.canvas-step-option strong {
+  font: 500 12px var(--font-ui);
+}
+.canvas-step-option small,
+.canvas-tool-popover .weave-choice small {
+  font: 11px / 1.5 var(--font-ui);
+  color: var(--ink-muted);
+  white-space: normal;
+}
+.canvas-step-option .canvas-piece-glyph {
+  color: var(--thread-strong);
+  width: 24px;
+  text-align: center;
+}
+.canvas-step-option:hover:not(:disabled) {
+  border-color: var(--hairline-strong);
+  background: var(--paper);
+}
+.canvas-step-option:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.canvas-choice-type {
+  margin-left: auto;
+  font: 9px var(--font-ui);
+  color: var(--ink-muted);
+}
+.canvas-support-tool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.canvas-support-target {
+  font: 11px var(--font-ui);
+  color: var(--ink-muted);
+}
+.canvas-tool-popover .weave-existing {
+  text-align: left;
+  border-top: 1px solid var(--hairline);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+@container (max-width: 650px) {
+  .canvas-support-tool .canvas-tool-popover {
+    left: auto;
+    right: 0;
+  }
+  .canvas-support-target {
+    display: none;
+  }
+}
+
+/* The connection lives in its sentence; actions appear only on request. */
+.canvas-inline-connection {
+  position: relative;
+  display: inline;
+  white-space: nowrap;
+}
+.canvas-connection-toggle {
+  display: inline-block;
+  vertical-align: baseline;
+  margin: 0 2px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: 12px var(--font-ui);
+  cursor: grab;
+}
+.canvas-connection-toggle:hover,
+.canvas-connection-toggle[aria-expanded="true"] {
+  color: var(--thread-strong);
+  background: var(--thread-wash);
+}
+.canvas-connection-toggle:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+.canvas-connection-menu {
+  position: fixed;
+  z-index: 35;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 230px;
+  padding: 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  box-shadow: 0 6px 20px #0002;
+  font: 11px var(--font-ui);
+}
+.canvas-connection-menu[hidden] {
+  display: none;
+}
+.canvas-connection-menu button,
+.canvas-connection-menu select {
+  border: 0;
+  border-radius: 4px;
+  padding: 5px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+.canvas-connection-menu select {
+  max-width: 90px;
+}
+.canvas-connection-menu button:hover,
+.canvas-connection-menu select:hover {
+  color: var(--thread-strong);
+  background: var(--thread-wash);
+}
+.canvas-connection-menu :disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Retire legacy widgets immediately during a live studio update. */
+.canvas-threads {
+  display: none !important;
+}
+/* A quiet tool at the edge of the active piece, never another toolbar row. */
+.sk .guidance-unit-tools {
+  position: relative;
+  display: block;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  z-index: 8;
+}
+.sk .guidance-unit-tools > .guidance-tools-toggle {
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  padding: 0 7px;
+  height: 22px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--paper-raised);
+  color: var(--ink-muted);
+  line-height: 1;
+}
+.guidance-tools-menu {
+  position: absolute;
+  top: 32px;
+  right: 8px;
+  z-index: 35;
+  min-width: 165px;
+  padding: 6px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 9px;
+  background: var(--paper-raised);
+  box-shadow: 0 8px 26px #0002;
+}
+.guidance-tools-menu[hidden] {
+  display: none;
+}
+.guidance-tools-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: 12px var(--font-ui);
+  cursor: pointer;
+}
+.guidance-tools-menu button:hover:not(:disabled) {
+  background: var(--thread-wash);
+  color: var(--thread-strong);
+}
+.guidance-tools-menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* Small pools of color make the tools feel like a studio palette. */
+.canvas-toolbox > .canvas-tool-menu > summary {
+  border-color: color-mix(in srgb, var(--thread) 40%, var(--hairline));
+  background: color-mix(in srgb, var(--thread) 7%, var(--paper));
+}
+.canvas-support-tool > .canvas-tool-menu > summary {
+  border-color: color-mix(in srgb, var(--canvas-sage) 40%, var(--hairline));
+  background: color-mix(in srgb, var(--canvas-sage) 7%, var(--paper));
+}
+.canvas-support-tool > .canvas-tool-menu > summary > span:first-child {
+  color: var(--canvas-sage);
+}
+.canvas-step-option.is-procedure,
+.canvas-step-option.is-result {
+  --piece-accent: var(--canvas-sage);
+}
+.canvas-step-option.is-condition,
+.canvas-step-option.is-example {
+  --piece-accent: var(--canvas-lilac);
+}
+.canvas-step-option {
+  --piece-accent: var(--thread-strong);
+}
+.canvas-step-option .canvas-piece-glyph {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: var(--piece-accent);
+  background: color-mix(in srgb, var(--piece-accent) 9%, transparent);
+}
+.canvas-tool-popover .weave-choice-glyph {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+.guidance-unit-tools > span,
+.guidance-unit-tools > button:not(.guidance-tools-toggle) {
+  display: none;
+}
+/* Numbered steps already have a marker; legacy knots must never draw a second ring. */
+.sk .doc-handle.is-bead,
+.sk .doc-handle.is-bead:hover {
+  box-shadow: none;
+  background: transparent;
+  border: 0;
+}
+.canvas-toolbox.is-studio-palette {
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper-raised) 65%, transparent);
+}
+.studio-palette-label {
+  color: var(--ink-muted);
+  font: 10px var(--font-mono);
+  margin-right: 6px;
+}
+.is-studio-palette > .canvas-tool-menu:last-child {
+  margin-left: auto;
+}
+.is-studio-palette > .canvas-tool-menu:last-child > summary {
+  background: color-mix(in srgb, var(--canvas-lilac) 7%, var(--paper));
+  border-color: color-mix(in srgb, var(--canvas-lilac) 35%, var(--hairline));
+}
+.is-studio-palette > .canvas-tool-menu:last-child .canvas-tool-popover {
+  left: auto;
+  right: 0;
+  width: 200px;
+}
+.canvas-tool-popover .weave-perspectives {
+  display: grid;
+  gap: 4px;
+}
+.canvas-tool-popover .weave-perspectives button {
+  text-align: left;
+  width: 100%;
+  padding: 9px 10px;
+}
+@container (max-width: 600px) {
+  .studio-palette-label {
+    display: none;
+  }
+}
+
+.is-studio-palette > .canvas-tool-menu:last-child > summary > span:first-child {
+  color: var(--canvas-lilac);
+}
+
+/* One floating studio dock replaces the page-wide toolbar and duplicate add button. */
+.sk-tray-dock:has(.is-floating) {
+  position: relative;
+  padding-top: 24px;
+  padding-bottom: 18px;
+}
+.sk-tray-dock:has(.is-floating) .capability-add {
+  display: none;
+}
+.sk-tray-dock:has(.is-floating) > .doc-tray {
+  position: static;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  box-shadow: none;
+}
+.canvas-toolbox.is-studio-palette.is-floating {
+  position: relative;
+  z-index: 20;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin: 0;
+  padding: 7px;
+  border-radius: 18px;
+  border-color: var(--hairline-strong);
+  background: var(--paper-raised);
+  box-shadow:
+    0 8px 30px #0003,
+    0 0 0 3px color-mix(in srgb, var(--paper-raised) 45%, transparent);
+}
+.is-floating .canvas-tool-menu > summary {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: transparent;
+}
+.is-floating .canvas-support-tool {
+  flex-wrap: nowrap;
+  gap: 0;
+}
+.is-floating .canvas-support-target {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -22px;
+  text-align: center;
+  font-size: 10px;
+  pointer-events: none;
+}
+.is-floating .canvas-tool-menu .canvas-tool-popover {
+  top: auto;
+  bottom: calc(100% + 16px);
+  max-height: min(520px, calc(100vh - 180px));
+  overflow-y: auto;
+}
+.is-floating .canvas-support-tool .canvas-tool-popover {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+.is-floating > .canvas-tool-menu:last-child {
+  margin-left: 3px;
+  padding-left: 6px;
+  border-left: 1px solid var(--hairline);
+}
+.is-floating > .canvas-tool-menu:last-child > summary {
+  background: transparent;
+}
+.is-floating .canvas-tool-menu > summary:hover,
+.is-floating .canvas-tool-menu[open] > summary {
+  background: var(--thread-wash);
+}
+@media (max-width: 640px) {
+  .is-floating .canvas-tool-menu > summary {
+    gap: 5px;
+    padding: 9px 8px;
+    font-size: 11px;
+  }
+  .is-floating .tool-chevron {
+    display: none;
+  }
+}
+
+/* A collapsible footer tray keeps choices visible and never covers the canvas. */
+.sk-tray-dock:has(.studio-footer-palette) {
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+  background: var(--paper-raised);
+}
+.sk-tray-dock:has(.studio-footer-palette) .capability-add {
+  display: none;
+}
+.sk-tray-dock:has(.studio-footer-palette) > .doc-tray {
+  position: static;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  background: none;
+}
+.studio-footer-palette {
+  width: 100%;
+  min-width: 0;
+}
+.studio-footer-palette > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+}
+.studio-footer-name {
+  font: 11px var(--font-ui);
+  color: var(--ink-muted);
+}
+.studio-footer-palette nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.studio-footer-palette header button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ink-soft);
+  background: transparent;
+  font: 12px / 1 var(--font-ui);
+  cursor: pointer;
+}
+.studio-footer-palette header .is-steps {
+  --palette-accent: var(--thread-strong);
+}
+.studio-footer-palette header .is-support {
+  --palette-accent: var(--canvas-sage);
+}
+.studio-footer-palette header .is-views {
+  --palette-accent: var(--canvas-lilac);
+}
+.studio-footer-palette nav button > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  color: var(--palette-accent);
+  font-size: 18px;
+}
+.studio-footer-palette nav button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--palette-accent) 9%, transparent);
+  color: var(--ink);
+}
+.studio-footer-palette .studio-footer-collapse {
+  margin-left: auto;
+  color: var(--ink-muted);
+}
+.studio-footer-tools {
+  padding: 4px 24px 16px;
+  max-height: min(260px, 35vh);
+  overflow-y: auto;
+}
+.studio-footer-tools[hidden] {
+  display: none;
+}
+.studio-footer-tools .canvas-tool-heading {
+  display: none;
+}
+.studio-footer-tools .canvas-step-options {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.studio-footer-tools .canvas-step-option {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 10px 12px;
+  border-color: var(--hairline);
+  background: color-mix(in srgb, var(--piece-accent) 3%, var(--paper));
+}
+.studio-footer-tools .canvas-step-option small {
+  font-size: 10px;
+  line-height: 1.4;
+}
+.studio-footer-tools .canvas-support-tool {
+  display: block;
+}
+.studio-footer-tools .canvas-support-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.studio-footer-tools .weave-choice {
+  flex: unset;
+  padding: 12px;
+}
+.studio-footer-tools .weave-choice small {
+  white-space: normal;
+}
+.studio-footer-tools .weave-existing {
+  grid-column: 1 / -1;
+  text-align: left;
+  padding: 3px 0;
+}
+.studio-footer-tools .canvas-support-target {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+}
+.studio-footer-tools .weave-perspectives {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.studio-footer-tools .weave-perspectives button {
+  padding: 12px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+@media (max-width: 1050px) {
+  .studio-footer-tools .canvas-step-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .studio-footer-tools .canvas-step-option {
+    flex-direction: row;
+  }
+}
+@media (max-width: 640px) {
+  .studio-footer-name {
+    display: none;
+  }
+  .studio-footer-palette > header {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+  .studio-footer-tools {
+    padding: 4px 10px 12px;
+  }
+  .studio-footer-tools .canvas-step-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio-footer-tools .canvas-support-options {
+    grid-template-columns: 1fr;
+  }
+  .studio-footer-collapse > span:last-child {
+    display: none;
+  }
+}
+.studio-footer-tools .canvas-step-option,
+.studio-footer-tools .weave-choice {
+  cursor: grab;
+  touch-action: none;
+}
+.studio-footer-tools .canvas-step-option:active,
+.studio-footer-tools .weave-choice:active {
+  cursor: grabbing;
+}
+.studio-footer-palette header .is-format {
+  --palette-accent: var(--canvas-lilac);
+}
+.studio-format-palette > p {
+  margin: 0 0 10px;
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+.studio-format-palette .doc-bar.is-palette-format {
+  position: static;
+  transform: none;
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  box-shadow: none;
+}
+
+/* Selected-step actions share the same work tray, never float over the canvas. */
+.sk .guidance-unit-tools {
+  display: none;
+}
+.studio-palette-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  color: var(--text-muted, #97959f);
+  font-size: 12px;
+}
+.studio-palette-context > fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 6px;
+}
+.studio-palette-context button {
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 9px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.studio-palette-context button:hover {
+  background: #ffffff0a;
+  color: #eee;
+}
+.studio-palette-context button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.studio-connection-tools {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.studio-connection-tools > div {
+  display: grid;
+  gap: 5px;
+  margin-right: auto;
+  min-width: 180px;
+}
+.studio-connection-tools small,
+.studio-connection-tools span {
+  color: #97959f;
+  font-size: 12px;
+}
+.studio-connection-tools strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.studio-connection-tools button,
+.studio-connection-tools select {
+  background: #ffffff04;
+  border: 1px solid #ffffff14;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #d8d6de;
+  font: inherit;
+  font-size: 12px;
+}
+.studio-connection-tools select {
+  max-width: 220px;
+}
+
+.doc-bar-insert-hint {
+  margin: 0 7px 0 5px;
+  padding-left: 10px;
+  border-left: 1px solid #ffffff12;
+  color: #9996a3;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.doc-bar-insert-hint kbd {
+  display: inline-block;
+  padding: 0 4px;
+  color: #c4b9dd;
+  border: 1px solid #ffffff16;
+  border-radius: 3px;
+  font: inherit;
+}
+
+.studio-slash-hint {
+  color: #93909b;
+  font-size: 11px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.studio-slash-hint kbd {
+  color: #c6bdd7;
+  font: inherit;
+}
+@media (max-width: 760px) {
+  .studio-slash-hint {
+    display: none;
+  }
+}
+
+.studio-palette-separator {
+  align-self: center;
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  margin: 0 8px;
+  background: #ffffff12;
+}
+
+.studio-structure-tool {
+  cursor: grab;
+  touch-action: none;
+}
+.studio-structure-tool:active {
+  cursor: grabbing;
+}
+.sk .doc-add {
+  display: none;
+}
+
+/* The tray label is chrome, visually distinct from the authoring tools. */
+.studio-footer-palette header .studio-palette-badge {
+  position: relative;
+  gap: 7px;
+  height: 36px;
+  padding: 0 18px 0 0;
+  margin-right: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #8e8998;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
+.studio-footer-palette header .studio-palette-badge:hover {
+  background: transparent;
+  border-color: #ffffff12;
+  color: #c6bed1;
+}
+.studio-palette-badge-mark {
+  color: #a79ab8;
+  font-size: 14px;
+}
+.studio-palette-badge-chevron {
+  font-size: 10px;
+  opacity: 0.45;
+  margin-left: 1px;
+}
+.studio-footer-palette header .studio-palette-badge:focus-visible {
+  outline: 1px solid #b9a5d280;
+  outline-offset: 3px;
+}
+
+.studio-footer-palette header .studio-palette-badge::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 20px;
+  background: #ffffff12;
+}
+.studio-palette-badge-mark,
+.studio-palette-badge-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  line-height: 1;
+}
+
+/* Readiness is anchored to the left-aligned identity area, not a right toolbar. */
+.weave-identity-status {
+  position: relative;
+}
+.weave-identity-status .rd {
+  position: static;
+}
+.weave-identity-status .rd-pop {
+  left: 0;
+  right: auto;
+  width: min(340px, 100%);
+  max-height: min(440px, 45vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+/* Identity reads as one compact block, with optional metadata on one line. */
+.studio-identity-meta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 10px;
+}
+.studio-identity-meta .weave-identity-status {
+  position: static;
+  margin: 0;
+}
+.sk .studio-identity-meta .sk-when {
+  margin: 0;
+  padding: 0;
+  min-height: 24px;
+}
+.sk .studio-identity-meta .sk-when-add {
+  height: 24px;
+  padding: 0 4px;
+  font-size: 11px;
+  border-radius: 4px;
+  outline: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+}
+.sk .studio-identity-meta .sk-when-add:hover {
+  background: #ffffff08;
+  color: var(--ink);
+}
+.sk .sk-head {
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+}
+.sk-when-menu {
+  width: min(320px, calc(100vw - 48px));
+  box-sizing: border-box;
+}
+.sk-when-menu [role="option"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  padding: 9px 10px;
+}
+.sk-when-menu [role="option"] > span,
+.sk-when-menu em {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.sk-when-menu em {
+  line-height: 1.35;
+}
+
+/* Applicability is the entrance to the canvas, not another metadata strip. */
+.sk-when {
+  margin: 0 0 24px;
+  width: 100%;
+}
+.sk-when-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  text-align: left;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+}
+.sk-when-entry:hover {
+  border-color: var(--ink-muted);
+}
+.sk-when-entry-icon {
+  color: var(--ink-muted);
+  font-size: 22px;
+  flex: none;
+}
+.sk-when-entry-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sk-when-label {
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+.sk-when-entry-edit {
+  margin-left: auto;
+  flex: none;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+/* A single hierarchy for the material inspector. */
+.material-workspace .shelf-head {
+  padding: 20px;
+  align-items: flex-start;
+}
+.material-workspace .shelf-head .material-package-path {
+  margin: 6px 0 0;
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+.material-workspace-body > .link-btn {
+  font-size: 12px;
+  margin: 0 0 16px;
+}
+.material-workspace .material-uses {
+  padding: 14px 0;
+  margin: 0 0 12px;
+}
+.material-workspace .material-uses ul {
+  margin: 10px 0 0;
+}
+.material-workspace .material-use-actions {
+  gap: 12px;
+}
+.material-workspace .material-use-actions select {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+.material-workspace .material-new-connection {
+  padding: 0;
+  margin: 12px 0 0;
+  border: 0;
+}
+.material-workspace .material-new-connection > summary {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.material-workspace .mt-file-head {
+  flex-wrap: nowrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.material-workspace .mt-facts {
+  margin: 0;
+  gap: 8px;
+  font-size: 12px;
+}
+.material-workspace .mt-file-actions {
+  flex: none;
+  margin-left: auto;
+}
+.material-workspace .file-editor {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.material-workspace .file-editor-bar {
+  padding: 10px 14px;
+}
+.material-workspace .file-run {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  border-block: 1px solid var(--hairline);
+  font-size: 11px;
+}
+.material-workspace .file-run code {
+  min-width: 0;
+  overflow: auto;
+  white-space: nowrap;
+  flex: 1;
+}
+.material-workspace .file-run button,
+.material-workspace .file-run svg {
+  flex: none;
+}
+.material-workspace .file-editor .cm-editor {
+  font-size: 12px;
+}
+
+.material-workspace .material-use-context {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sk-when.is-editing {
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  box-sizing: border-box;
+}
+.sk-when.is-editing > .sk-when-label {
+  flex-basis: 100%;
+}
+.sk-when.is-editing > .link-btn {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+/* Whole-skill applicability shares the title area; the canvas stays for steps. */
+.sk .studio-title-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px 32px;
+}
+.studio-title-copy {
+  flex: 1 1 380px;
+  min-width: 0;
+}
+.studio-title-when {
+  flex: 0 1 300px;
+  min-width: 0;
+  padding-top: 18px;
+}
+.studio-title-when:empty {
+  display: none;
+}
+.studio-title-when .sk-when {
+  margin: 0;
+}
+.studio-title-when .sk-when-entry {
+  padding: 12px 14px;
+  gap: 10px;
+}
+.studio-title-when .sk-when-entry-edit {
+  font-size: 11px;
+}
+.studio-title-when .sk-when-menu {
+  left: 0;
+  right: auto;
+  max-width: 100%;
+}
+@container sk (max-width: 760px) {
+  .studio-title-when {
+    flex: 1 1 100%;
+    padding-top: 0;
+  }
+}
+
+.studio-trash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.studio-trash:hover {
+  color: var(--danger-ink, #e58c84);
+  background: #e58c8410;
+}
+.studio-trash:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+
+/* The applicability sidebar uses the same quiet surfaces as the canvas. */
+.sk-when-panel {
+  padding: 22px;
+}
+.sk-when-panel .wu-head {
+  margin-bottom: 22px;
+  padding: 0;
+}
+.sk-when-panel .layer-title {
+  margin: 0 0 8px;
+}
+.wu-intro,
+.wu-help {
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.wu-intro {
+  margin: 0;
+  max-width: 38ch;
+}
+.sk-when-panel .wu-form {
+  display: grid;
+  gap: 12px;
+}
+.sk-when-panel .wu-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  min-width: 0;
+}
+.sk-when-panel .wu-section > .wu-lead {
+  min-height: 0;
+  margin: 0;
+  font: 600 13px / 1.4 var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.sk-when-panel .wu-help {
+  margin: -3px 0 2px;
+}
+.sk-when-panel .wu-add {
+  align-self: flex-start;
+  min-height: 30px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.sk-when-panel .wu-foot {
+  gap: 12px;
+}
+.sk-when-panel .wu-match {
+  flex-wrap: wrap;
+}
+.sk-when-panel .wu-rows {
+  margin: 0;
+}
+.sk-when-panel .wu-adder {
+  margin: 0;
+}
+.sk-when-panel .wu-adder-row {
+  gap: 10px;
+}
+.sk-when-panel .wu-adder-input {
+  min-width: 0;
+  font-size: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--paper-sunken);
+}
+.sk-when-panel .wu-offers {
+  margin-top: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.sk-when-panel .wu-offers [role="option"] {
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 3px 8px;
+  margin: 0;
+  padding: 9px 8px;
+  font-size: 12px;
+}
+.sk-when-panel .wu-offers .wu-why {
+  grid-column: 2;
+  max-width: none;
+  white-space: normal;
+  font-size: 11px;
+}
+.sk-when-panel .wu-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sk-when-panel .wu-row {
+  font-size: 12px;
+}
+.sk-when-panel .wu-adder.is-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studio-view-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.studio-view-label {
+  color: var(--ink-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.studio-view-separator {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--hairline);
+}
+.studio-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 2px;
+  border-radius: 6px;
+  background: #ffffff05;
+  box-shadow: inset 0 0 0 1px #ffffff05;
+}
+.studio-view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  width: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: 400 12px / 1 var(--font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.studio-view-toggle button:hover {
+  color: var(--ink);
+  background: #ffffff05;
+}
+.studio-view-toggle button[aria-pressed="true"] {
+  color: color-mix(in srgb, var(--thread) 80%, var(--ink-muted));
+  background: color-mix(in srgb, var(--thread) 7%, transparent);
+}
+.studio-view-toggle button svg {
+  opacity: 0.75;
+}
+.studio-view-toggle button[aria-pressed="true"] svg {
+  opacity: 1;
+}
+.studio-view-toggle button:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 1px;
+}
+
+/* A divider has a usable hit area while its visible rule stays quiet. */
+.sk .doc-page hr {
+  height: 24px;
+  margin: 14px 0;
+  border: 0;
+  border-radius: 5px;
+  background: linear-gradient(var(--hairline-strong), var(--hairline-strong)) center / 100% 1px no-repeat;
+  cursor: grab;
+}
+.sk .doc-page hr:hover {
+  background-color: #ffffff04;
+}
+.sk .doc-page hr.ProseMirror-selectednode {
+  outline: 1px solid var(--thread);
+  outline-offset: 2px;
+  background-color: var(--thread-wash);
+}
+.sk .doc-page[contenteditable="false"] hr {
+  cursor: default;
+}
+
+/* An empty draft remains a canvas, with patterns available as a starting point. */
+.studio-empty-canvas {
+  min-height: 220px;
+}
+.studio-empty-canvas .doc-page {
+  min-height: 200px;
+}
+/* The new-skill doorway shares the canvas materials and palette accents. */
+.sk-doc:has(.studio-pattern-landing) .sk-head {
+  display: none;
+}
+.studio-pattern-landing {
+  max-width: 1040px;
+  margin: 28px auto 64px;
+}
+.studio-pattern-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 32px;
+}
+.studio-pattern-heading .kicker {
+  color: var(--thread);
+  margin: 0 0 12px;
+}
+.studio-pattern-heading h2 {
+  font-size: 32px;
+  font-weight: 550;
+  letter-spacing: -0.7px;
+  margin: 0 0 10px;
+}
+.studio-pattern-heading p {
+  color: var(--ink-muted);
+  margin: 0;
+  font-size: 14px;
+}
+.studio-blank-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  flex-shrink: 0;
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.studio-blank-start:hover {
+  border-color: var(--thread);
+}
+.studio-blank-start > svg:first-child {
+  color: var(--thread);
+}
+.studio-pattern-landing > ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  gap: 14px;
+  padding: 0;
+  margin: 0;
+}
+.studio-pattern-landing .doc-starter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 158px;
+  padding: 22px;
+  text-align: left;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.studio-pattern-landing .doc-starter:hover {
+  border-color: var(--thread);
+  background: color-mix(in srgb, var(--thread) 4%, var(--paper-raised));
+}
+.studio-pattern-landing .studio-pattern-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--thread) 9%, transparent);
+  margin-bottom: 6px;
+  padding: 0;
+}
+.studio-pattern-landing li:nth-child(3n + 2) .studio-pattern-icon {
+  color: #86b7a5;
+  background: #86b7a512;
+}
+.studio-pattern-landing li:nth-child(3n) .studio-pattern-icon {
+  color: #b0a0ce;
+  background: #b0a0ce12;
+}
+.studio-pattern-landing .doc-starter-name {
+  font-size: 16px;
+  color: var(--ink);
+  font-weight: 550;
+}
+.studio-pattern-landing .doc-starter-what {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+@media (max-width: 1000px) {
+  .studio-pattern-landing > ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .studio-pattern-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .studio-pattern-landing > ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Readiness belongs to the title, not a second status row. */
+.studio-toolbar-status {
+  display: inline-flex;
+  align-items: center;
+}
+.studio-toolbar-status .rd-word {
+  padding: 0;
+  min-height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 400;
+  box-shadow: none;
+}
+.studio-toolbar-status .rd-word:hover,
+.studio-toolbar-status .rd-word[aria-expanded="true"] {
+  color: var(--thread);
+  background: transparent;
+}
+.studio-publish-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 5px;
+  padding-left: 9px;
+  border-left: 1px solid var(--hairline);
+}
+.studio-publish-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: 400 12px / 1 var(--font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.studio-publish-actions button:hover {
+  background: #ffffff06;
+  color: var(--ink);
+}
+.studio-publish-actions button:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+
+.studio-field-label {
+  display: block;
+  margin: 10px 0 4px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.studio-improvements {
+  padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  overscroll-behavior: contain;
+}
+.studio-improvements-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.studio-improvements-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 550;
+}
+.studio-improvements-head > button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.studio-improvement-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.studio-improvement-list > li + li {
+  border-top: 1px solid var(--hairline);
+}
+.studio-improvement-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.studio-improvement-action strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+.studio-improvement-action small {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.studio-improvement-action > svg {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+}
+.studio-improvement-action:hover,
+.studio-improvements-head > button:hover {
+  background: #ffffff05;
+}
+.studio-improvements button:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+.studio-improvement-note {
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+
+.studio-fix-highlight,
+.sk .doc-page .is-flash {
+  outline: 1px solid color-mix(in srgb, var(--thread) 45%, transparent);
+  outline-offset: 4px;
+  background-color: color-mix(in srgb, var(--thread) 7%, var(--paper));
+  border-radius: 5px;
+  scroll-margin-block: 32px;
+}

@@ -1,11 +1,16 @@
 import "@fontsource-variable/ibm-plex-sans/wght.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-serif/400.css";
+import "@fontsource/ibm-plex-serif/400-italic.css";
+import "@fontsource/ibm-plex-serif/600.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/app.css";
 import "./styles/authoring.css";
 import "./styles/studio.css";
+import "./styles/doc.css";
+import "./styles/compose.css";
 import "./styles/weave.css";
 import "./styles/welcome.css";
 import "./styles/kit.css";

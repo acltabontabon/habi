@@ -9,7 +9,11 @@ deletedAt: string | null,
 /**
  * Problems that block installing, exporting and sharing.
  */
-errors: number, warnings: number, hasApplicability: boolean, fileCount: number, contentDigest: string, 
+errors: number, warnings: number, 
+/**
+ * The skills this one deliberately links to, by name.
+ */
+links: Array<string>, hasApplicability: boolean, fileCount: number, contentDigest: string, 
 /**
  * For an imported copy, whether its files differ from what was copied
  * (or from the library version it last took). `None` for skills

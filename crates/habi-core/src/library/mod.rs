@@ -61,42 +61,9 @@ pub fn parse_yaml(text: &str) -> Result<Value, String> {
     })
 }
 
-/// A skill calling on more than this many others is an index of them
-/// (`using-superpowers`), not something that needs them all.
-const MAX_CALLS: usize = 5;
-
-/// How many distinct names are collected from one skill's instructions. Far
-/// more than `MAX_CALLS`: most `word:word` text does not name a skill at all.
-const MAX_CALLED_NAMES: usize = 64;
-
-/// The names written as `plugin:skill` in a skill's instructions, the way
-/// skills in one plugin call each other (`superpowers:writing-plans`). Only
-/// this form counts: a name in backticks is usually a "see also", and works
-/// without it.
-fn called_names(body: &str) -> Vec<String> {
-    static CALL: std::sync::LazyLock<Option<regex::Regex>> = std::sync::LazyLock::new(|| {
-        regex::Regex::new(r"\b[a-z][a-z0-9-]*:([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\b").ok()
-    });
-    let mut names: Vec<String> = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
-    if let Some(call) = CALL.as_ref() {
-        for caps in call.captures_iter(body) {
-            if let Some(name) = caps.get(1).map(|m| m.as_str())
-                && seen.insert(name)
-            {
-                names.push(name.to_string());
-                if names.len() >= MAX_CALLED_NAMES {
-                    break;
-                }
-            }
-        }
-    }
-    names
-}
-
 /// Turns called names into sibling ids: skills in the same folder as the
 /// caller (one plugin, or a library's `skills/`), by their SKILL.md name.
-fn resolve_calls(items: &mut [LibraryItem], called: &HashMap<String, Vec<String>>) {
+fn resolve_calls(items: &mut [LibraryItem]) {
     let mut siblings: HashMap<String, HashMap<String, String>> = HashMap::new();
     for i in items.iter().filter(|i| i.kind != ItemKind::Instructions) {
         siblings
@@ -106,18 +73,16 @@ fn resolve_calls(items: &mut [LibraryItem], called: &HashMap<String, Vec<String>
             .or_insert_with(|| i.id.clone());
     }
     for item in items.iter_mut() {
-        let Some(names) = called.get(&item.path) else {
-            continue;
-        };
+        let mut names: Vec<String> = item.composes.iter().map(|e| e.skill.clone()).collect();
+        names.sort();
+        names.dedup();
         let parent = dir_of(&item.path);
         let calls: Vec<String> = names
             .iter()
             .filter(|n| **n != item.name)
             .filter_map(|n| siblings.get(parent).and_then(|named| named.get(n)).cloned())
             .collect();
-        if calls.len() <= MAX_CALLS {
-            item.calls = calls;
-        }
+        item.calls = calls;
     }
 }
 
@@ -216,9 +181,64 @@ fn parse_condition(
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ComposeEntry {
+    pub skill: String,
+    #[serde(default)]
+    pub roles: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub from: Option<ComposeSource>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ComposeSource {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub library: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub digest: Option<String>,
+}
+
+pub(crate) fn read_composes(v: &Value) -> Vec<ComposeEntry> {
+    v.get("composes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| {
+            let skill = entry.get("skill")?.as_str()?.to_string();
+            let roles = entry
+                .get("roles")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|r| r.as_str().map(str::to_string))
+                .collect();
+            let from = entry
+                .get("from")
+                .filter(|v| v.is_object())
+                .map(|v| ComposeSource {
+                    library: str_field(v, "library"),
+                    id: str_field(v, "id"),
+                    digest: str_field(v, "digest"),
+                });
+            Some(ComposeEntry { skill, roles, from })
+        })
+        .collect()
+}
+
 /// Typed view of a validated sidecar (or manifest instruction entry).
 #[derive(Default)]
 pub struct Metadata {
+    pub composes: Vec<ComposeEntry>,
     pub id: Option<String>,
     pub title: Option<String>,
     pub kind: Option<ItemKind>,
@@ -421,6 +441,7 @@ pub fn read_metadata(v: &Value, path: &str, diags: &mut Vec<Diagnostic>) -> Meta
         .unwrap_or_default();
 
     Metadata {
+        composes: read_composes(v),
         id: str_field(v, "id"),
         title: str_field(v, "title"),
         kind: match str_field(v, "kind").as_deref() {
@@ -626,8 +647,6 @@ pub fn build_index(
         accepted.push(dir.clone());
     }
 
-    // Names each skill's instructions call as `plugin:skill`, by skill folder.
-    let mut called: HashMap<String, Vec<String>> = HashMap::new();
     for dir in &accepted {
         let skill_md = join(dir, SKILL_FILE);
         let mut diags = Vec::new();
@@ -639,10 +658,7 @@ pub fn build_index(
 
         let (front, body_len) = match read_text(&skill_md) {
             Ok(text) => match parse_frontmatter(&text) {
-                Ok((fm, body)) => {
-                    called.insert(dir.clone(), called_names(body));
-                    (fm, body.len())
-                }
+                Ok((fm, body)) => (fm, body.len()),
                 Err(e) => {
                     diags.push(Diagnostic::error(e, Some(&skill_md)));
                     (Frontmatter::default(), 0)
@@ -831,6 +847,7 @@ pub fn build_index(
             checks: metadata.checks,
             evidence: metadata.evidence,
             examples: metadata.examples,
+            composes: metadata.composes,
             files: item_files,
             content_digest,
             metadata_status: status,
@@ -920,6 +937,7 @@ pub fn build_index(
             examples: Vec::new(),
             files: item_files,
             content_digest,
+            composes: md.composes,
             metadata_status,
             diagnostics: diags,
             signals: Vec::new(),
@@ -928,7 +946,7 @@ pub fn build_index(
         });
     }
 
-    resolve_calls(&mut index.items, &called);
+    resolve_calls(&mut index.items);
 
     // Name collisions matter at install time (same directory name).
     let mut by_name: BTreeMap<&str, Vec<&str>> = BTreeMap::new();

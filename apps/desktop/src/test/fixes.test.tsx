@@ -225,6 +225,8 @@ describe("share dialog", () => {
     defaultBranch: null,
   };
   const skill = {
+    composes: [],
+    compositionState: { interrupted: false, unmentioned: [] },
     summary: {
       id: "k",
       name: "migration-review",
@@ -236,6 +238,7 @@ describe("share dialog", () => {
       deletedAt: null,
       errors: 0,
       warnings: 0,
+      links: [],
       hasApplicability: true,
       fileCount: 1,
       contentDigest: "d",

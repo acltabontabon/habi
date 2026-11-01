@@ -7,6 +7,41 @@
   "required": ["habi"],
   "additionalProperties": true,
   "properties": {
+    "composes": {
+      "description": "Optional record of skills deliberately composed by the author. Agents do not need it.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "skill"
+        ],
+        "properties": {
+          "skill": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "from": {
+            "type": "object",
+            "properties": {
+              "library": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "digest": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
     "habi": {
       "description": "Schema version of this file.",
       "const": 1

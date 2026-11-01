@@ -11,6 +11,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComposeEntry } from "../../../bindings/ComposeEntry";
 import type { LocalSkill } from "../../../bindings/LocalSkill";
 import type { LocalSkillSummary } from "../../../bindings/LocalSkillSummary";
 import type { PreviewRequest } from "../../../bindings/PreviewRequest";
@@ -23,10 +24,10 @@ import { flushAutosaves, type SaveState, useAutosave } from "../../../lib/useAut
 export const NOT_SAVED =
   "Nothing was done: your latest edits are not saved. Resolve that above, then try again.";
 
-type DocValue = { title: string; document: SkillDocument };
+type DocValue = { title: string; document: SkillDocument; composes: ComposeEntry[] };
 
 const docKey = (v: DocValue) =>
-  JSON.stringify([v.title, v.document.name, v.document.description, v.document.body]);
+  JSON.stringify([v.title, v.document.name, v.document.description, v.document.body, v.composes]);
 const formKey = (f: ShareForm) => JSON.stringify(f);
 
 const RANK: SaveState[] = ["clean", "saved", "pending", "saving", "error", "conflict"];
@@ -34,12 +35,23 @@ function worst(...states: SaveState[]): SaveState {
   return states.reduce((a, b) => (RANK.indexOf(b) > RANK.indexOf(a) ? b : a), "clean");
 }
 
+export type PageBridge = {
+  text: () => string;
+  /** What the page says this skill is composed of, right now. */
+  composes: () => ComposeEntry[];
+  verify: (text: string) => Promise<"same" | "words" | "differs">;
+};
+
+const NOT_FAITHFUL =
+  "Habi couldn't write this so that it reads back the same, so nothing was saved. Your edits are still here. Undo the last change, or view the source.";
+
 export function useSkillDraft(initial: LocalSkill) {
   const id = initial.summary.id;
   const client = useQueryClient();
   const [skill, setSkill] = useState(initial);
   const [title, setTitle] = useState(initial.summary.title);
   const [document, setDocument] = useState(initial.document);
+  const [composes, setComposes] = useState<ComposeEntry[]>(initial.composes);
   const [form, setForm] = useState<ShareForm>({ ...initial.form, title: initial.summary.title });
   const [yaml, setYaml] = useState(initial.metadataText ?? "");
   const [yamlMode, setYamlMode] = useState(false);
@@ -50,7 +62,7 @@ export function useSkillDraft(initial: LocalSkill) {
   const trashed = skill.summary.deletedAt !== null;
   const broken = skill.documentError !== null;
 
-  const docValue = useMemo(() => ({ title, document }), [title, document]);
+  const docValue = useMemo(() => ({ title, document, composes }), [title, document, composes]);
   const formValue = useMemo(() => ({ ...form, title }), [form, title]);
 
   // Saves land in the cache as they are: this skill, and its row in My skills.
@@ -105,17 +117,66 @@ export function useSkillDraft(initial: LocalSkill) {
 
   // What SKILL.md last saved as, to tell (as soon as something is typed, not a
   // pause later) whether the skill on screen is the one the diagnostics are for.
-  const docSavedKey = useRef(docKey({ title: initial.summary.title, document: initial.document }));
+  const docSavedKey = useRef(
+    docKey({ title: initial.summary.title, document: initial.document, composes: initial.composes }),
+  );
+  /** The record last written, to send `composes` only when it changed: otherwise habi.yaml isn't involved. */
+  const composesSaved = useRef(JSON.stringify(initial.composes));
 
+  // One write at a time for one skill. SKILL.md and habi.yaml share their digests,
+  // so saves overlapping could trip each other, or lose an edit.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const serial = useCallback(<T>(work: () => Promise<T>): Promise<T> => {
+    const run = queue.current.then(work, work);
+    queue.current = run.catch(() => undefined);
+    return run;
+  }, []);
+
+  /** The page, once it's open: it hands over its text when asked and vouches for it before a write. */
+  const page = useRef<PageBridge | null>(null);
+  const yamlFlush = useRef<(() => Promise<boolean>) | null>(null);
+  const yamlReset = useRef<((saved: string) => void) | null>(null);
+  const docValueRef = useRef(docValue);
+  docValueRef.current = docValue;
   const docSave = useAutosave<DocValue>({
     value: docValue,
     keyOf: docKey,
     enabled: docOn,
+    fresh: () => {
+      const v = docValueRef.current;
+      const live = page.current;
+      if (!live) return v;
+      const body = live.text();
+      const entries = live.composes();
+      const same = body === v.document.body && JSON.stringify(entries) === JSON.stringify(v.composes);
+      return same ? v : { ...v, composes: entries, document: { ...v.document, body } };
+    },
     save: async (v) => {
       if (!modes.current.doc) return;
-      const fresh = await api.saveSkillDocument(id, v.title, v.document, docDigest.current);
+      // What reaches the file has to read back as what's on the page, or it isn't written.
+      if ((await page.current?.verify(v.document.body)) === "differs") throw new Error(NOT_FAITHFUL);
+      const composing = JSON.stringify(v.composes) !== composesSaved.current;
+      // The rules typed as text go first: this write edits the same file.
+      if (composing && modes.current.yaml) await yamlFlush.current?.();
+      const fresh = await serial(() =>
+        api.saveSkillDocument(
+          id,
+          v.title,
+          v.document,
+          docDigest.current,
+          composing ? v.composes : null,
+          composing ? metaDigest.current : null,
+        ),
+      );
       docDigest.current = fresh.documentDigest;
       docSavedKey.current = docKey(v);
+      if (composing) {
+        // Both files moved together, and the other editors of habi.yaml must see that.
+        composesSaved.current = JSON.stringify(v.composes);
+        metaDigest.current = fresh.metadataDigest;
+        setYaml(fresh.metadataText ?? "");
+        yamlReset.current?.(fresh.metadataText ?? "");
+      }
       saved(fresh);
     },
   });
@@ -125,7 +186,7 @@ export function useSkillDraft(initial: LocalSkill) {
     enabled: formOn,
     save: async (v) => {
       if (!modes.current.form) return;
-      const fresh = await api.saveSkillApplicability(id, v, metaDigest.current);
+      const fresh = await serial(() => api.saveSkillApplicability(id, v, metaDigest.current));
       metaDigest.current = fresh.metadataDigest;
       saved(fresh);
     },
@@ -136,11 +197,16 @@ export function useSkillDraft(initial: LocalSkill) {
     enabled: yamlOn,
     save: async (v) => {
       if (!modes.current.yaml) return;
-      const fresh = await api.saveSkillMetadata(id, v, metaDigest.current);
+      const fresh = await serial(() => api.saveSkillMetadata(id, v, metaDigest.current));
       metaDigest.current = fresh.metadataDigest;
+      // The record may have been edited by hand: what's on disk is now the truth for it.
+      composesSaved.current = JSON.stringify(fresh.composes);
+      setComposes(fresh.composes);
       saved(fresh);
     },
   });
+  yamlFlush.current = yamlSave.flush;
+  yamlReset.current = yamlSave.reset;
   /** Whether the title, identifier and purpose on screen are the ones last saved (and checked). */
   const settled = docKey(docValue) === docSavedKey.current && docSave.state !== "saving";
   const saveState = worst(docSave.state, yamlMode ? yamlSave.state : formSave.state);
@@ -160,7 +226,13 @@ export function useSkillDraft(initial: LocalSkill) {
         docDigest.current = fresh.documentDigest;
         setTitle(fresh.summary.title);
         setDocument(fresh.document);
-        docSavedKey.current = docKey({ title: fresh.summary.title, document: fresh.document });
+        setComposes(fresh.composes);
+        composesSaved.current = JSON.stringify(fresh.composes);
+        docSavedKey.current = docKey({
+          title: fresh.summary.title,
+          document: fresh.document,
+          composes: fresh.composes,
+        });
         resetDoc(docSavedKey.current);
       }
       if (parts.metadata) {
@@ -267,11 +339,14 @@ export function useSkillDraft(initial: LocalSkill) {
 
   return {
     id,
+    page,
     skill,
     title,
     setTitle,
     document,
     setDocument,
+    composes,
+    setComposes,
     form,
     setForm,
     yaml,

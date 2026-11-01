@@ -4,6 +4,7 @@
  * of use, and the change goes through the same reviewed plan as any other
  * install: every file listed, nothing written until confirmed.
  */
+
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { Applicability } from "../../bindings/Applicability";
@@ -18,6 +19,7 @@ import { materialsOf } from "../../lib/materials";
 import { useRecentProjects } from "../../lib/queries";
 import type { NavTarget } from "../../lib/studioNav";
 import { ReviewDialog } from "../review/ReviewDialog";
+import { ComposeNote } from "./studio/compose/ComposeNote";
 import { Unfinished } from "./Unfinished";
 
 const verdict: Record<Applicability, string> = {
@@ -177,6 +179,7 @@ export function UseSkillDialog({
               {brings.length > 6 ? <li className="muted">and {brings.length - 6} more</li> : null}
             </ul>
           </div>
+          <ComposeNote skill={skill} projectId={chosen} mode="install" />
         </>
       )}
     </Dialog>

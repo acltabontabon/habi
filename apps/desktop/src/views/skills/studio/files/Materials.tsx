@@ -13,6 +13,7 @@
  * package source is the developer's view: the literal tree, SKILL.md and
  * habi.yaml included, opened raw. Scripts are shown, never run.
  */
+import "../../../../styles/materials-context.css";
 import { useQuery } from "@tanstack/react-query";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FileMatch } from "../../../../bindings/FileMatch";
@@ -44,9 +45,39 @@ import {
   packageTree,
   withExtension,
 } from "../../../../lib/packageFiles";
+import { parseBody } from "../doc/markdown/parse";
+import { listMaterialUses } from "../doc/materialUses";
 import { BinaryView, FileEditor, size } from "./FileEditor";
 
 type Creating = { shape: NewFileShape; name: string };
+
+type MaterialChoice = "script" | "reference" | "example" | "asset";
+const MATERIAL_CHOICES: { id: MaterialChoice; label: string; detail: string }[] = [
+  { id: "script", label: "Tools to use", detail: "Scripts for the work" },
+  { id: "reference", label: "Knowledge to consult", detail: "Guides and reference material" },
+  { id: "example", label: "Examples to follow", detail: "A worked case or expected output" },
+  { id: "asset", label: "Assets to adapt", detail: "Templates, images and data" },
+];
+const MATERIAL_SHAPES: NewFileShape[] = [
+  ...NEW_FILE_SHAPES,
+  {
+    id: "asset",
+    label: "Text asset",
+    hint: "A template or data file",
+    folder: "assets",
+    ext: ".txt",
+    body: () => "",
+    executable: false,
+  },
+];
+const choiceForShape = (shape?: string): MaterialChoice =>
+  shape === "reference"
+    ? "reference"
+    : shape === "example"
+      ? "example"
+      : shape === "asset" || shape === "blank"
+        ? "asset"
+        : "script";
 
 /** The same marks as Materials, plus the skill's own two files. */
 function srcGlyph(f: SkillFileEntry): string {
@@ -65,7 +96,8 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 const isTextEntry = (t: EventTarget | null) =>
-  t instanceof Element && t.closest("input, textarea, select, [contenteditable='true'], .cm-editor") !== null;
+  t instanceof Element &&
+  t.closest("input, textarea, select, [contenteditable='true'], .cm-editor, .doc-page") !== null;
 
 // ----- bringing files in: dropped on the window, placed by type, undoable
 
@@ -80,17 +112,20 @@ export function useDropToAdd({
   beforeChange,
   onSkill,
   onError,
+  onAdded,
 }: {
   enabled: boolean;
   skill: LocalSkill;
   beforeChange: () => Promise<void>;
   onSkill: (skill: LocalSkill) => void;
   onError: (e: unknown) => void;
+  /** Where the new files landed, and where on screen they were dropped. */
+  onAdded?: (paths: string[], at: { left: number; top: number } | null) => void;
 }) {
   const [hovering, setHovering] = useState(false);
   const toast = useToast();
-  const latest = useRef({ skill, beforeChange, onSkill, onError });
-  latest.current = { skill, beforeChange, onSkill, onError };
+  const latest = useRef({ skill, beforeChange, onSkill, onError, onAdded });
+  latest.current = { skill, beforeChange, onSkill, onError, onAdded };
   useEffect(() => {
     if (!enabled || !("__TAURI_INTERNALS__" in window)) return;
     let stop: (() => void) | undefined;
@@ -104,7 +139,11 @@ export function useDropToAdd({
             else if (p.type === "leave") setHovering(false);
             else if (p.type === "drop") {
               setHovering(false);
-              if (p.paths.length > 0) void add(p.paths);
+              if (p.paths.length > 0) {
+                // Elsewhere the position is in device pixels. On macOS it's already in points.
+                const scale = navigator.platform.startsWith("Mac") ? 1 : window.devicePixelRatio || 1;
+                void add(p.paths, { left: p.position.x / scale, top: p.position.y / scale });
+              }
             }
           })
           .then((unlisten) => {
@@ -115,13 +154,17 @@ export function useDropToAdd({
       .catch(() => {
         // No webview to listen on (a plain browser, the dev bridge): dropping stays off.
       });
-    const add = async (paths: string[]) => {
+    const add = async (paths: string[], at: { left: number; top: number } | null) => {
       const { skill: before, beforeChange: flush, onSkill: adopt, onError: fail } = latest.current;
       try {
         await flush();
         const fresh = await api.addDroppedSkillFiles(before.summary.id, "auto", paths);
         adopt(fresh);
         const added = fresh.files.filter((f) => !before.files.some((b) => b.path === f.path));
+        latest.current.onAdded?.(
+          added.map((f) => f.path),
+          at,
+        );
         const words = added.map(
           (f) => `${baseName(f.path)} (${KIND_NAME[materialKind(f.path, f.executable)].one})`,
         );
@@ -578,6 +621,10 @@ function SourceTree({
 // ----- the layer
 
 export function Materials({
+  contextual = false,
+  startWith,
+  onCreated,
+  purpose,
   skill,
   readOnly,
   active,
@@ -592,6 +639,14 @@ export function Materials({
   onReference,
   onWhen,
 }: {
+  /** In-context material editor; the composition stays behind it. */
+  contextual?: boolean;
+  /** Creation shape to start when this contextual request changes. */
+  startWith?: string;
+  /** A newly created/imported material can be referenced at the author's insertion point. */
+  onCreated?: (path: string, purpose?: string) => void;
+  /** The author's instruction for this connection, preserved as ordinary prose. */
+  purpose?: string;
   skill: LocalSkill;
   readOnly: boolean;
   /** Whether the layer is on screen (pasting is taken only then). */
@@ -610,18 +665,66 @@ export function Materials({
   onPath: (path: string | null, line?: number) => void;
   onSource: (on: boolean) => void;
   /** Writes a reference to a file into the instructions. */
-  onReference: (path: string) => void;
+  onReference: (path: string, purpose?: string) => void;
   /** Goes to when Habi suggests it (habi.yaml is written from there). */
   onWhen: () => void;
 }) {
   const id = skill.summary.id;
   const [open, setOpen] = useState<SkillFileContent | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [creating, setCreating] = useState<Creating | null>(null);
+  const [creating, setCreating] = useState<Creating | null>(() => {
+    const shape = !readOnly && startWith ? MATERIAL_SHAPES.find((item) => item.id === startWith) : null;
+    return shape ? { shape, name: "" } : null;
+  });
+  const [materialChoice, setMaterialChoice] = useState<MaterialChoice>(() => choiceForShape(startWith));
   const [pasted, setPasted] = useState<Pasted | null>(null);
+  // Capture the purpose with the operation. Changing the field while a picker/write is
+  // pending must not change the instruction the author had chosen for that material.
+  const connect = (callback: ((path: string, purpose?: string) => void) | undefined, path: string) => {
+    if (purpose?.trim()) callback?.(path, purpose.trim());
+    else callback?.(path);
+  };
   const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const materials = useMemo(() => materialsOf(skill.files, instructions), [skill.files, instructions]);
+  const [busy, setBusy] = useState(false);
+  const working = useRef(false);
+  useEffect(() => {
+    if (readOnly || !startWith) return;
+    const shape = MATERIAL_SHAPES.find((item) => item.id === startWith);
+    if (shape) {
+      setMaterialChoice(choiceForShape(startWith));
+      setCreating({ shape, name: "" });
+      setPasted(null);
+    }
+  }, [startWith, readOnly]);
+  const inspectReferences = contextual || renaming !== null || removing !== null;
+  const recognizedUses = useMemo(
+    () =>
+      inspectReferences
+        ? listMaterialUses(
+            parseBody(instructions).doc,
+            skill.files.map((file) => file.path),
+          )
+        : [],
+    [inspectReferences, instructions, skill.files],
+  );
+  const affectedPath = renaming?.from ?? removing;
+  const affectedUses = recognizedUses.filter(
+    (use) => use.path === affectedPath || (affectedPath && use.path.startsWith(`${affectedPath}/`)),
+  );
+  const referenceImpact = affectedUses.length ? (
+    <details className="mt-reference-impact">
+      <summary>
+        Review {affectedUses.length} recognized {affectedUses.length === 1 ? "reference" : "references"}
+      </summary>
+      <ul>
+        {affectedUses.map((use) => (
+          <li key={`${use.from}:${use.to}`}>{use.context || use.path}</li>
+        ))}
+      </ul>
+    </details>
+  ) : null;
 
   // The open file follows `path`; it is read after pending edits are written.
   // Only the latest path asked for counts: a slower answer (or failure) for one
@@ -662,6 +765,9 @@ export function Materials({
   }, [skill.files, path, open, onPath]);
 
   const run = async (action: () => Promise<LocalSkill | null>, then?: (skill: LocalSkill) => void) => {
+    if (readOnly || working.current) return;
+    working.current = true;
+    setBusy(true);
     setError(null);
     try {
       await beforeChange();
@@ -672,6 +778,9 @@ export function Materials({
       }
     } catch (e) {
       setError(e);
+    } finally {
+      working.current = false;
+      setBusy(false);
     }
   };
 
@@ -681,13 +790,16 @@ export function Materials({
     if (!name) return;
     const target = creating.shape.folder ? `${creating.shape.folder}/${name}` : name;
     const { shape } = creating;
-    setCreating(null);
     void run(
       async () => {
         const created = await api.writeSkillFile(id, target, shape.body(name), null);
         return shape.executable ? api.setSkillFileExecutable(id, target, true) : created;
       },
-      () => onPath(target),
+      () => {
+        setCreating(null);
+        connect(onCreated, target);
+        onPath(target);
+      },
     );
   };
 
@@ -697,13 +809,16 @@ export function Materials({
     if (!name) return;
     const target = `${pasted.as === "script" ? "scripts" : "examples"}/${name}`;
     const { text, as } = pasted;
-    setPasted(null);
     void run(
       async () => {
         const created = await api.writeSkillFile(id, target, text.endsWith("\n") ? text : `${text}\n`, null);
         return as === "script" && /^#!/.test(text) ? api.setSkillFileExecutable(id, target, true) : created;
       },
-      () => onPath(target),
+      () => {
+        setPasted(null);
+        connect(onCreated, target);
+        onPath(target);
+      },
     );
   };
 
@@ -711,11 +826,11 @@ export function Materials({
     if (!renaming) return;
     const to = renaming.to.trim();
     const from = renaming.from;
-    setRenaming(null);
     if (!to || to === from) return;
     void run(
       () => api.renameSkillPath(id, from, to),
       () => {
+        setRenaming(null);
         if (path === from) onPath(to);
         else if (path?.startsWith(`${from}/`)) onPath(`${to}${path.slice(from.length)}`);
       },
@@ -724,6 +839,24 @@ export function Materials({
 
   // Removing moves focus on to the row that took its place (or Add), never to the page.
   const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!contextual || !open || open.binary || open.text === null) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      const element = root.current;
+      if (!element || element.closest("[hidden]")) {
+        window.clearInterval(timer);
+        return;
+      }
+      const content = element.querySelector<HTMLElement>(".cm-content");
+      if (content) {
+        content.focus();
+        window.clearInterval(timer);
+      } else if (attempts > 30) window.clearInterval(timer);
+    }, 40);
+    return () => window.clearInterval(timer);
+  }, [contextual, open]);
   const [refocus, setRefocus] = useState<{ path: string | null; failed?: boolean } | null>(null);
   useEffect(() => {
     const el = root.current;
@@ -775,13 +908,25 @@ export function Materials({
     );
   };
 
-  const importInto = (folder: string) => void run(() => api.addSkillFiles(id, folder));
+  const importInto = (folder: string) =>
+    void run(
+      () => api.addSkillFiles(id, folder),
+      (fresh) => {
+        const added = fresh.files.filter(
+          (file) => !skill.files.some((existing) => existing.path === file.path),
+        );
+        for (const file of added) connect(onCreated, file.path);
+        if (contextual && added[0]) onPath(added[0].path);
+      },
+    );
 
   // Pasted code in the list (not in a field) is offered as a script or an example.
   useEffect(() => {
     if (!active || readOnly || path || source) return;
     const onPaste = (e: ClipboardEvent) => {
-      if (isTextEntry(e.target) || document.querySelector('[role="dialog"]')) return;
+      if (isTextEntry(e.target)) return;
+      if (contextual ? !root.current?.contains(e.target as Node) : document.querySelector('[role="dialog"]'))
+        return;
       const text = e.clipboardData?.getData("text/plain") ?? "";
       if (text.trim().split("\n").length < 2) return;
       e.preventDefault();
@@ -790,7 +935,7 @@ export function Materials({
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [active, readOnly, path, source]);
+  }, [active, readOnly, path, source, contextual]);
 
   const addItems: (MenuItem | MenuItem[])[] = [
     [
@@ -848,7 +993,31 @@ export function Materials({
         create();
       }}
     >
-      <label className="mt-create-label" htmlFor="mt-new-name">
+      {contextual && creating.shape.folder === "scripts" ? (
+        <fieldset className="mt-script-types">
+          <legend className="visually-hidden">Script type</legend>
+          {MATERIAL_SHAPES.filter((shape) => shape.folder === "scripts").map((shape) => (
+            <button
+              type="button"
+              key={shape.id}
+              aria-pressed={creating.shape.id === shape.id}
+              disabled={busy}
+              onClick={() =>
+                setCreating({
+                  shape,
+                  name:
+                    creating.name.endsWith(creating.shape.ext) && creating.shape.ext
+                      ? creating.name.slice(0, -creating.shape.ext.length) + shape.ext
+                      : creating.name,
+                })
+              }
+            >
+              {shape.id === "script" ? "Other" : shape.label.replace(/ script$/, "")}
+            </button>
+          ))}
+        </fieldset>
+      ) : null}
+      <label className={contextual ? "visually-hidden" : "mt-create-label"} htmlFor="mt-new-name">
         New {creating.shape.label.toLowerCase()}
       </label>
       <input
@@ -868,12 +1037,14 @@ export function Materials({
           }
         }}
       />
-      <Button type="submit" size="sm" variant="primary" disabled={!creating.name.trim()}>
-        Create
+      <Button type="submit" size="sm" variant="primary" disabled={busy || !creating.name.trim()}>
+        {contextual && onCreated ? "Create and connect" : "Create"}
       </Button>
-      <Button size="sm" variant="quiet" onClick={() => setCreating(null)}>
-        Cancel
-      </Button>
+      {!contextual ? (
+        <Button size="sm" variant="quiet" onClick={() => setCreating(null)}>
+          Cancel
+        </Button>
+      ) : null}
     </form>
   ) : null;
 
@@ -921,19 +1092,40 @@ export function Materials({
           }
         }}
       />
-      <Button type="submit" size="sm" variant="primary" disabled={!pasted.name.trim()}>
+      <Button
+        type="submit"
+        size="sm"
+        variant="primary"
+        disabled={busy || !pasted.name.trim() || !pasted.text.trim()}
+      >
         Add
       </Button>
       <Button size="sm" variant="quiet" onClick={() => setPasted(null)}>
         Discard
       </Button>
-      <pre className="mt-paste-peek">{pasted.text.split("\n").slice(0, 4).join("\n")}</pre>
+      {contextual ? (
+        <label className="mt-code-paste">
+          Code
+          <textarea
+            className="input mono"
+            rows={7}
+            value={pasted.text}
+            placeholder="Paste or write the code to keep in this material"
+            onChange={(event) => {
+              const next = sniff(event.target.value);
+              setPasted({ ...pasted, text: event.target.value, ...next });
+            }}
+          />
+        </label>
+      ) : (
+        <pre className="mt-paste-peek">{pasted.text.split("\n").slice(0, 4).join("\n")}</pre>
+      )}
     </form>
   ) : null;
 
   const renameField = (p: string) => (
     <form
-      className="src-rename"
+      className="src-rename mt-rename-confirm"
       onSubmit={(e) => {
         e.preventDefault();
         rename();
@@ -957,15 +1149,39 @@ export function Materials({
             setRenaming(null);
           }
         }}
-        onBlur={() => setRenaming(null)}
       />
+      <p className="mt-operation-impact">
+        Only the package path changes. Existing references keep their current paths; update them after
+        renaming.
+        {materials.some(
+          (material) => (material.path === p || material.path.startsWith(`${p}/`)) && material.referenced,
+        )
+          ? " This material is mentioned in the instructions and those references may become missing."
+          : " Check other package files for references too."}
+      </p>
+      {referenceImpact}
+      <Button type="submit" size="sm" disabled={busy || !renaming?.to.trim() || renaming.to.trim() === p}>
+        Rename only
+      </Button>
+      <Button size="sm" variant="quiet" disabled={busy} onClick={() => setRenaming(null)}>
+        Cancel
+      </Button>
     </form>
   );
 
   const confirmRemove = (p: string, what: string) => (
     <div className="src-confirm" role="alert">
-      <span>Remove {what}?</span>
-      <Button size="sm" variant="danger" onClick={() => remove(p)}>
+      <span>Remove {what} from the package?</span>
+      <p className="mt-operation-impact">
+        {materials.some(
+          (material) => (material.path === p || material.path.startsWith(`${p}/`)) && material.referenced,
+        )
+          ? "The instructions mention this material. Its references will remain and may point to a missing file. "
+          : "Any references in other package files will remain. "}
+        This deletes the packaged file, not just its connections. It cannot be undone here.
+      </p>
+      {referenceImpact}
+      <Button size="sm" variant="danger" disabled={busy} onClick={() => remove(p)}>
         Remove
       </Button>
       <Button size="sm" variant="quiet" onClick={() => setRemoving(null)}>
@@ -1010,7 +1226,12 @@ export function Materials({
             <span className="mono">{open.path}</span>
           )}
           {entry ? <span className="mt-fact">{size(entry.size)}</span> : null}
-          {!source && material && material.kind !== "other" ? (
+          {material?.kind === "script" && !contextual ? (
+            <span className="mt-fact">
+              {entry?.executable ? "Executable bit set" : "Executable bit not set"} · never run here
+            </span>
+          ) : null}
+          {!source && !contextual && material && material.kind !== "other" ? (
             material.referenced ? (
               <span className="mt-fact is-ok">
                 <Icon name="check" size={12} /> referenced by the instructions
@@ -1018,8 +1239,8 @@ export function Materials({
             ) : (
               <span className="mt-fact is-loose">
                 not referenced
-                {readOnly ? null : (
-                  <button type="button" className="link-btn" onClick={() => onReference(open.path)}>
+                {readOnly || contextual ? null : (
+                  <button type="button" className="link-btn" onClick={() => connect(onReference, open.path)}>
                     Reference it
                   </button>
                 )}
@@ -1045,6 +1266,7 @@ export function Materials({
               </Button>
             ) : null}
             <Menu
+              align="start"
               label={`More for ${baseName(open.path)}`}
               items={[
                 [
@@ -1055,7 +1277,7 @@ export function Materials({
                     onSelect: () => setRenaming({ from: open.path, to: open.path }),
                   },
                   {
-                    label: entry?.executable ? "Not runnable" : "Runnable by agents",
+                    label: entry?.executable ? "Clear executable bit" : "Set executable bit",
                     hint: entry?.executable ? "Clears the executable bit" : "Sets the executable bit",
                     icon: "terminal",
                     disabled: open.binary,
@@ -1100,6 +1322,178 @@ export function Materials({
       )}
     </div>
   ) : null;
+
+  if (contextual) {
+    const begin = (shapeId: string) => {
+      const shape = MATERIAL_SHAPES.find((item) => item.id === shapeId);
+      if (!shape || readOnly || busy) return;
+      setPasted(null);
+      setCreating({ shape, name: "" });
+    };
+    const selected = MATERIAL_CHOICES.find((choice) => choice.id === materialChoice) ?? MATERIAL_CHOICES[0];
+    const available = materials.filter(
+      (material) =>
+        material.kind === materialChoice || (materialChoice === "asset" && material.kind === "other"),
+    );
+    const paste = () => {
+      setCreating(null);
+      setPasted({
+        text: "",
+        language: "code",
+        ext: ".py",
+        as: materialChoice === "example" ? "example" : "script",
+        name: "",
+      });
+    };
+    return (
+      <div className="mt-context" ref={root}>
+        {path ? (
+          (fileView ?? errorNotice ?? <p className="mt-empty-hint">Opening…</p>)
+        ) : creating || pasted ? (
+          <section className="mt-focused-create" aria-label="Create material">
+            {pasted ? <h3>Bring code into this instruction</h3> : null}
+            {creatingRow}
+            {pastedRow}
+            {errorNotice}
+          </section>
+        ) : (
+          <>
+            <fieldset className="mt-purpose-choices">
+              <legend>What would help this instruction?</legend>
+              <div>
+                {MATERIAL_CHOICES.map((choice) => (
+                  <button
+                    type="button"
+                    key={choice.id}
+                    aria-pressed={materialChoice === choice.id}
+                    onClick={() => {
+                      setMaterialChoice(choice.id);
+                      setCreating(null);
+                      setPasted(null);
+                    }}
+                  >
+                    <span className={`mt-glyph is-${choice.id}`} aria-hidden="true">
+                      {KIND_GLYPH[choice.id]}
+                    </span>
+                    <span>
+                      <strong>{choice.label}</strong>
+                      <small>{choice.detail}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {!readOnly ? (
+              <section className="mt-context-actions" aria-label="Create or bring materials">
+                {materialChoice === "script" ? (
+                  <Menu
+                    label="Create a script"
+                    trigger={
+                      <>
+                        <Icon name="terminal" size={14} /> Create a script
+                      </>
+                    }
+                    items={MATERIAL_SHAPES.filter((shape) =>
+                      ["python", "shell", "javascript", "script"].includes(shape.id),
+                    ).map((shape) => ({
+                      label: shape.label,
+                      disabled: busy,
+                      onSelect: () => begin(shape.id),
+                    }))}
+                  />
+                ) : (
+                  <Button disabled={busy} onClick={() => begin(materialChoice)}>
+                    {materialChoice === "reference"
+                      ? "Create a reference"
+                      : materialChoice === "example"
+                        ? "Create an example"
+                        : "Create a text asset"}
+                  </Button>
+                )}
+                <Button
+                  disabled={busy}
+                  onClick={() => importInto(materialChoice === "asset" ? "assets" : "auto")}
+                >
+                  Bring an existing file…
+                </Button>
+                {materialChoice === "script" || materialChoice === "example" ? (
+                  <Button disabled={busy} variant="quiet" onClick={paste}>
+                    Paste code
+                  </Button>
+                ) : null}
+              </section>
+            ) : null}
+            {creatingRow}
+            {pastedRow}
+            {errorNotice}
+            <div className="mt-reuse-heading">
+              <h3>{selected?.label}</h3>
+              <span>{available.length} available</span>
+            </div>
+            {available.length ? (
+              <p className="mt-context-note">
+                Reuse a material below. Every connection points to the same packaged file.
+              </p>
+            ) : (
+              <p className="mt-empty-hint">
+                {readOnly
+                  ? "No materials of this kind in the package."
+                  : "Create or bring one in, then connect it to the instruction."}
+              </p>
+            )}
+            <ul className="mt-context-list">
+              {available.map((material) => {
+                const uses = recognizedUses.filter((use) => use.path === material.path);
+                return (
+                  <li key={material.path}>
+                    <button
+                      type="button"
+                      className="mt-context-open"
+                      title={material.path}
+                      data-path={material.path}
+                      onClick={() => onPath(material.path)}
+                    >
+                      <span className={`mt-glyph is-${material.kind}`} aria-hidden="true">
+                        {KIND_GLYPH[material.kind]}
+                      </span>
+                      <span>
+                        <strong>{material.name}</strong>
+                        <small>
+                          {material.described ??
+                            (uses.length
+                              ? `Referenced in ${uses.length} ${uses.length === 1 ? "place" : "places"}`
+                              : "Ready to connect")}
+                        </small>
+                      </span>
+                    </button>
+                    {!readOnly ? (
+                      <Button
+                        size="sm"
+                        variant="quiet"
+                        onClick={() => connect(onReference, material.path)}
+                        aria-label={`Reference ${material.name} here`}
+                      >
+                        {materialChoice === "reference"
+                          ? "Consult here"
+                          : materialChoice === "example"
+                            ? "Show as example"
+                            : materialChoice === "asset"
+                              ? "Attach here"
+                              : "Use here"}
+                      </Button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-context-truth">
+              Connections are instructions. Nothing is run or loaded automatically.
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
 
   if (source) {
     return (

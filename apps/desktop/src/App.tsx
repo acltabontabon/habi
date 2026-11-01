@@ -119,7 +119,7 @@ function Startup() {
 function isTextEntry(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
-    target.closest('input, textarea, select, [contenteditable="true"], .cm-editor') !== null
+    target.closest('input, textarea, select, [contenteditable="true"], .cm-editor, .doc-page') !== null
   );
 }
 

@@ -72,9 +72,15 @@ Say what you checked, what you found, and what you could not verify.
 
 /** Replaces the skill's instructions in the editor. */
 async function writeInstructions(text) {
-  await page(`document.querySelector(".cm-content").focus()`);
+  await page(`document.querySelector("[data-skill-editor]").focus()`);
   await page(`document.execCommand("selectAll")`);
-  await type(text);
+  await page(`(() => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", ${JSON.stringify(text)});
+    document.querySelector("[data-skill-editor]").dispatchEvent(new ClipboardEvent("paste", {
+      clipboardData, bubbles: true, cancelable: true,
+    }));
+  })()`);
 }
 
 /** Waits for a contribution page to have settled (nothing busy, no spinner). */
@@ -111,7 +117,7 @@ async function run() {
   await click("My skills", ".sidebar-item");
   await until(`document.querySelector(".skills-idea")`, "the starter ideas");
   await page(`document.querySelector(".skills-idea").click()`);
-  await until(`document.querySelector(".cm-editor")`, "the Skill Studio");
+  await until(`document.querySelector("[data-skill-editor]")`, "the Skill Studio");
   await writeInstructions(instructions("data loss, security, concurrency, compatibility."));
   await page(`document.querySelector("[placeholder^='What it helps with']").focus()`);
   await type(PURPOSE);
@@ -175,7 +181,7 @@ async function run() {
   await click("My skills", ".sidebar-item");
   await until(`[...document.querySelectorAll("a, button, li")].some((e) => e.textContent.includes("Review a pull request"))`, "the skill in My skills");
   await click("Review a pull request", "a, button");
-  await until(`document.querySelector(".cm-editor")`, "the Skill Studio");
+  await until(`document.querySelector("[data-skill-editor]")`, "the Skill Studio");
   await writeInstructions(
     instructions("what is the worst thing that could happen if this change is wrong? Data loss, security, concurrency, compatibility."),
   );

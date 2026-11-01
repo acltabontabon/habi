@@ -64,7 +64,7 @@ async function run() {
 
   // The Skill Studio, from a starter idea, given its purpose.
   await page(`document.querySelector(".skills-idea").click()`);
-  await until(`document.querySelector(".cm-editor")`, "the Skill Studio");
+  await until(`document.querySelector("[data-skill-editor]")`, "the Skill Studio");
   await page(`document.querySelector("[placeholder^='What it helps with']")?.focus()`);
   await type("Reviews a pull request for correctness, risk and fit. Use when asked to review a change or a PR.");
   await until(`!document.body.textContent.includes("thing to finish")`, "the skill to be ready", 20000);

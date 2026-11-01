@@ -273,6 +273,8 @@ impl ItemFile {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct LibraryItem {
+    #[serde(default)]
+    pub composes: Vec<super::ComposeEntry>,
     /// `<source id>/<item id>`: unique across sources.
     pub key: String,
     pub source_id: String,
@@ -324,8 +326,8 @@ pub struct LibraryItem {
     /// as data. A static reading: not a guarantee either way.
     #[serde(default)]
     pub signals: Vec<super::signals::Signal>,
-    /// Ids of sibling skills this one calls by name in its instructions
-    /// (`superpowers:writing-plans`). Without them those steps do not work.
+    /// Ids of sibling skills deliberately named in `composes`, resolved
+    /// through their SKILL.md names.
     #[serde(default)]
     pub calls: Vec<String>,
     /// False if some of the item's files were skipped while reading the

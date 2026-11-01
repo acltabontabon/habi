@@ -11,6 +11,8 @@ import type { CatalogEntry } from "../bindings/CatalogEntry";
 import type { CatalogFit } from "../bindings/CatalogFit";
 import type { CheckRun } from "../bindings/CheckRun";
 import type { ClientId } from "../bindings/ClientId";
+import type { ComposeEntry } from "../bindings/ComposeEntry";
+import type { Composition } from "../bindings/Composition";
 import type { ConditionSuggestion } from "../bindings/ConditionSuggestion";
 import type { Contribution } from "../bindings/Contribution";
 import type { ContributionOrigin } from "../bindings/ContributionOrigin";
@@ -55,6 +57,7 @@ import type { Resolution } from "../bindings/Resolution";
 import type { SendRoute } from "../bindings/SendRoute";
 import type { Settings } from "../bindings/Settings";
 import type { ShareForm } from "../bindings/ShareForm";
+import type { ShelfSkill } from "../bindings/ShelfSkill";
 import type { SkillDocument } from "../bindings/SkillDocument";
 import type { SkillFileContent } from "../bindings/SkillFileContent";
 import type { SkillPreview } from "../bindings/SkillPreview";
@@ -244,12 +247,21 @@ export const api = {
     call<SendRoute>("contribution_send_route", { id, jobId: jobId ?? null }),
   discardContribution: (id: string) => call<void>("discard_contribution", { id }),
 
+  skillShelf: () => call<ShelfSkill[]>("skill_shelf"),
+  skillComposition: (id: string, projectId: string | null = null) =>
+    call<Composition>("skill_composition", { id, projectId }),
   listSkills: () => call<LocalSkillSummary[]>("list_skills"),
   getSkill: (id: string) => call<LocalSkill>("get_skill", { id }),
   createSkill: (skill: NewSkill, projectId: string | null) =>
     call<LocalSkill>("create_skill", { skill, projectId }),
-  saveSkillDocument: (id: string, title: string, document: SkillDocument, baseDigest: string | null) =>
-    call<LocalSkill>("save_skill_document", { id, title, document, baseDigest }),
+  saveSkillDocument: (
+    id: string,
+    title: string,
+    document: SkillDocument,
+    baseDigest: string | null,
+    composes: ComposeEntry[] | null = null,
+    metaBaseDigest: string | null = null,
+  ) => call<LocalSkill>("save_skill_document", { id, title, document, baseDigest, composes, metaBaseDigest }),
   saveSkillApplicability: (id: string, form: ShareForm, baseDigest: string | null) =>
     call<LocalSkill>("save_skill_applicability", { id, form, baseDigest }),
   saveSkillMetadata: (id: string, text: string, baseDigest: string | null) =>

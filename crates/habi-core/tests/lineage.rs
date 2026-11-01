@@ -217,6 +217,8 @@ fn overview_says_where_a_skill_is_installed_and_whether_it_is_current() {
                 ..created.document.clone()
             },
             created.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert!(
@@ -257,6 +259,8 @@ fn overview_says_where_a_skill_is_installed_and_whether_it_is_current() {
                 ..latest.document.clone()
             },
             latest.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     let standing = habi.skills_overview().unwrap();
@@ -288,6 +292,8 @@ fn diagnostics_name_the_kind_of_problem_and_its_line() {
                 ..created.document.clone()
             },
             created.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     let code = |c: DiagnosticCode| saved.diagnostics.iter().find(|d| d.code == Some(c));
@@ -326,8 +332,12 @@ fn every_starter_makes_a_skill_that_only_lacks_a_description() {
         [
             "Blank",
             "Step by step",
-            "Troubleshooting",
+            "Research a topic",
+            "Produce a document",
+            "Analyze a problem",
             "Code review",
+            "Troubleshooting",
+            "Coordinate expertise",
             "Tool-assisted"
         ]
     );

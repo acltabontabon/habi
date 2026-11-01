@@ -4,7 +4,8 @@
  * and Tab close it and return focus to the button. Items can be grouped and
  * explained in one quiet line.
  */
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./Icon";
 
 export type MenuItem = {
@@ -58,6 +59,32 @@ export function Menu({
     return () => window.removeEventListener("pointerdown", away);
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const position = () => {
+      const trigger = button.current;
+      const menu = list.current;
+      if (!trigger || !menu) return;
+      const edge = 8;
+      const rect = trigger.getBoundingClientRect();
+      const below = window.innerHeight - rect.bottom - 6 - edge;
+      const above = rect.top - 6 - edge;
+      const height = menu.scrollHeight;
+      const useBelow = below >= height || below >= above;
+      menu.style.maxHeight = `${Math.max(40, useBelow ? below : above)}px`;
+      const box = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(edge, Math.min(align === "start" ? rect.left : rect.right - box.width, window.innerWidth - box.width - edge))}px`;
+      menu.style.top = `${useBelow ? rect.bottom + 6 : Math.max(edge, rect.top - box.height - 6)}px`;
+    };
+    position();
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    return () => {
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+    };
+  }, [open, align]);
+
   const close = (refocus = true) => {
     setOpen(false);
     if (refocus) button.current?.focus();
@@ -106,43 +133,54 @@ export function Menu({
       >
         {trigger ?? <Icon name="more" />}
       </button>
-      {open ? (
-        <div
-          ref={list}
-          id={id}
-          role="menu"
-          aria-label={label}
-          className={`menu-list is-${align}`}
-          tabIndex={-1}
-          onKeyDown={onKey}
-        >
-          {groups.map((group, g) => (
-            <div key={g} className="menu-group">
-              {g > 0 ? <hr className="menu-sep" /> : null}
-              {group.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  role="menuitem"
-                  className={`menu-item${item.danger ? " is-danger" : ""}`}
-                  disabled={item.disabled}
-                  tabIndex={-1}
-                  onClick={() => {
-                    close();
-                    item.onSelect();
-                  }}
-                >
-                  {item.icon ? <Icon name={item.icon} size={14} /> : <span className="menu-gap" />}
-                  <span className="menu-text">
-                    <span>{item.label}</span>
-                    {item.hint ? <span className="menu-hint">{item.hint}</span> : null}
-                  </span>
-                </button>
+      {open
+        ? createPortal(
+            <div
+              ref={list}
+              id={id}
+              role="menu"
+              aria-label={label}
+              className={`menu-list is-${align}`}
+              style={{
+                position: "fixed",
+                right: "auto",
+                maxWidth: "calc(100vw - 16px)",
+                minWidth: "min(232px, calc(100vw - 16px))",
+                overflowY: "auto",
+                zIndex: 100,
+              }}
+              tabIndex={-1}
+              onKeyDown={onKey}
+            >
+              {groups.map((group, g) => (
+                <div key={g} className="menu-group">
+                  {g > 0 ? <hr className="menu-sep" /> : null}
+                  {group.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      role="menuitem"
+                      className={`menu-item${item.danger ? " is-danger" : ""}`}
+                      disabled={item.disabled}
+                      tabIndex={-1}
+                      onClick={() => {
+                        close();
+                        item.onSelect();
+                      }}
+                    >
+                      {item.icon ? <Icon name={item.icon} size={14} /> : <span className="menu-gap" />}
+                      <span className="menu-text">
+                        <span>{item.label}</span>
+                        {item.hint ? <span className="menu-hint">{item.hint}</span> : null}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               ))}
-            </div>
-          ))}
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

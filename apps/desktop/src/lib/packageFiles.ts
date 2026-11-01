@@ -86,7 +86,11 @@ export function runCommand(path: string, firstLine = ""): string {
         ts: "npx tsx",
       } as Record<string, string>
     )[ext];
-  return runner ? `${runner} ${path}` : `./${path}`;
+  const word = (value: string) =>
+    /^[A-Za-z0-9_./-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
+  const argument = word(path.startsWith("-") ? `./${path}` : path);
+  const command = shebang ? word(baseName(shebang)) : runner;
+  return command ? `${command} ${argument}` : word(`./${path}`);
 }
 
 export type NewFileShape = {

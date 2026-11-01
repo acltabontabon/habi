@@ -8,6 +8,8 @@ import {
   materialsOf,
   mentions,
   proposeSignals,
+  signalClause,
+  signalToken,
   technologiesIn,
 } from "./materials";
 
@@ -33,6 +35,8 @@ describe("materials", () => {
     expect(materialKind("LICENSE.txt")).toBe("other");
     expect(materialKind("guide.md")).toBe("reference");
     expect(materialKind("run", true)).toBe("script");
+    expect(materialKind("custom/check.py")).toBe("script");
+    expect(materialKind("references/example.py")).toBe("example");
   });
 
   it("knows a file is referenced by its path or its unmistakable name", () => {
@@ -57,6 +61,19 @@ describe("materials", () => {
     );
   });
 
+  it("recognizes encoded material paths without confusing literal percent filenames", () => {
+    const source =
+      "Consult [evidence](references/release%20evidence.md) and [details](references/caf%c3%a9%20%231.md).";
+    const entries = materialsOf(
+      [file("references/release evidence.md"), file("references/café #1.md")],
+      source,
+    );
+    expect(entries.find((entry) => entry.path === "references/release evidence.md")?.referenced).toBe(true);
+    expect(entries.find((entry) => entry.path === "references/café #1.md")?.referenced).toBe(true);
+    expect(mentions("[literal](references/a%2520b.md)", "references/a%20b.md")).toBe(true);
+    expect(mentions("[literal](references/a%2520b.md)", "references/a b.md")).toBe(false);
+  });
+
   it("says what comes with a skill in one line", () => {
     const m = materialsOf(
       [
@@ -70,6 +87,19 @@ describe("materials", () => {
       body,
     );
     expect(materialsLine(m)).toBe("1 script · 3 examples · LICENSE.txt");
+  });
+
+  it("words every signal so it reads inside a sentence", () => {
+    expect(signalClause({ kind: "tag", value: "test:playwright" })).toBe("Playwright is used");
+    expect(signalClause({ kind: "tag", value: "team:payments" })).toBe("it is tagged team:payments");
+    expect(signalClause({ kind: "dependency", value: "express" })).toBe("it depends on express");
+  });
+
+  it("names every signal in a word or two as a token", () => {
+    expect(signalToken({ kind: "tag", value: "test:playwright" })).toBe("Playwright");
+    expect(signalToken({ kind: "tag", value: "team:payments" })).toBe("team:payments");
+    expect(signalToken({ kind: "dependency", value: "express" })).toBe("express");
+    expect(signalToken({ kind: "file", value: "**/db/**" })).toBe("**/db/**");
   });
 
   it("proposes signals from a few words, and finds what the instructions keep naming", () => {

@@ -78,8 +78,114 @@ fn draft(habi: &Habi, title: &str, description: &str, body: &str) -> LocalSkill 
                 body: body.into(),
             },
             created.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap()
+}
+
+#[test]
+fn starting_patterns_are_offered_in_order() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let offered = habi.skill_templates();
+    assert_eq!(
+        offered
+            .iter()
+            .map(|info| (info.template, info.label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (SkillTemplate::Blank, "Blank"),
+            (SkillTemplate::Workflow, "Step by step"),
+            (SkillTemplate::Research, "Research a topic"),
+            (SkillTemplate::Document, "Produce a document"),
+            (SkillTemplate::Analysis, "Analyze a problem"),
+            (SkillTemplate::ReviewProcedure, "Code review"),
+            (SkillTemplate::Troubleshooting, "Troubleshooting"),
+            (SkillTemplate::Coordinate, "Coordinate expertise"),
+            (SkillTemplate::ToolAssisted, "Tool-assisted"),
+        ]
+    );
+}
+
+#[test]
+fn new_starting_patterns_create_valid_skills_with_unfinished_text() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let offered = habi.skill_templates();
+    for template in [
+        SkillTemplate::Research,
+        SkillTemplate::Document,
+        SkillTemplate::Analysis,
+        SkillTemplate::Coordinate,
+    ] {
+        let info = offered
+            .iter()
+            .find(|info| info.template == template)
+            .unwrap();
+        assert!(!info.summary.is_empty() && info.summary.chars().count() < 70);
+        let created = habi
+            .create_skill(
+                &NewSkill {
+                    title: info.label.clone(),
+                    description: format!("{}. Use when asked for this work.", info.summary),
+                    template,
+                },
+                None,
+            )
+            .unwrap();
+        assert_eq!(created.document.body, info.body);
+        // The Studio's unfinishedLines catches ellipses outside code fences.
+        assert!(created.document.body.contains('…'));
+        assert_eq!(created.summary.errors, 0, "{:?}", created.diagnostics);
+        assert!(
+            created
+                .diagnostics
+                .iter()
+                .all(|diagnostic| diagnostic.level != DiagnosticLevel::Error),
+            "{:?}",
+            created.diagnostics
+        );
+    }
+}
+
+#[test]
+fn existing_template_values_and_implementation_drafts_stay_compatible() {
+    for (template, value) in [
+        (SkillTemplate::Blank, "blank"),
+        (SkillTemplate::Workflow, "workflow"),
+        (SkillTemplate::Troubleshooting, "troubleshooting"),
+        (SkillTemplate::ReviewProcedure, "reviewProcedure"),
+        (SkillTemplate::ToolAssisted, "toolAssisted"),
+        (SkillTemplate::ImplementationGuide, "implementationGuide"),
+    ] {
+        assert_eq!(serde_json::to_value(template).unwrap(), value);
+        assert_eq!(
+            serde_json::from_value::<SkillTemplate>(serde_json::json!(value)).unwrap(),
+            template
+        );
+    }
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let created = habi
+        .create_skill(
+            &NewSkill {
+                title: "Example implementation".into(),
+                description: "Follow a plan. Use when implementing a change.".into(),
+                template: SkillTemplate::ImplementationGuide,
+            },
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        created.document.body,
+        "## Context\n\n\n\n## Steps\n\n1. \n\n## Done when\n\n- \n"
+    );
+    assert!(
+        habi.skill_templates()
+            .iter()
+            .all(|info| info.template != SkillTemplate::ImplementationGuide)
+    );
 }
 
 fn liquibase_form(title: &str) -> ShareForm {
@@ -189,8 +295,7 @@ fn drafts_survive_a_restart_without_a_project_or_library() {
                     description: "Draft release notes from merged changes. Use when preparing a release: \"notes\".".into(),
                     body: "## Steps\n\n1. List merged changes since the last tag.\n2. Group by audience.\n".into(),
                 },
-                created.document_digest.as_deref(),
-            )
+                created.document_digest.as_deref(), None, None)
             .unwrap();
         assert_eq!(saved.summary.errors, 0, "{:?}", saved.diagnostics);
         saved.summary.id
@@ -228,7 +333,9 @@ fn drafts_survive_a_restart_without_a_project_or_library() {
                 &id,
                 "x",
                 &resumed.document,
-                resumed.document_digest.as_deref()
+                resumed.document_digest.as_deref(),
+                None,
+                None
             )
             .is_err()
     );
@@ -519,6 +626,8 @@ fn importing_keeps_packages_whole_and_never_loses_an_original() {
                 ..plain.document.clone()
             },
             plain.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     let text = std::fs::read_to_string(package.join("SKILL.md")).unwrap();
@@ -690,6 +799,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
                 ..skill.document.clone()
             },
             skill.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(ready.summary.errors, 0, "{:?}", ready.diagnostics);
@@ -756,6 +867,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
                 ..ready.document.clone()
             },
             ready.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(
@@ -806,6 +919,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
             ..edited.document.clone()
         },
         edited.document_digest.as_deref(),
+        None,
+        None,
     );
     assert!(matches!(stale, Err(HabiError::Conflict(_))));
     // Nothing was overwritten.
@@ -823,6 +938,8 @@ fn local_skills_install_through_reviewed_plans_and_edits_are_detected() {
                 ..reloaded.document.clone()
             },
             reloaded.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(kept.document.body, "My unsaved edit.\n");
@@ -1102,6 +1219,8 @@ fn sharing_continues_from_a_draft_and_never_overstates_what_happened() {
                 ..copy.document.clone()
             },
             copy.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert!(
@@ -1249,6 +1368,8 @@ fn revising_a_shared_draft_takes_edits_made_after_revise() {
                 ..current.document.clone()
             },
             current.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     let revised = habi.commit_contribution(&c.id, &cancel).unwrap();
@@ -1821,6 +1942,8 @@ fn a_title_edit_never_removes_metadata_that_does_not_parse() {
             "Alpha renamed",
             &s.document,
             s.document_digest.as_deref(),
+            None,
+            None,
         )
         .unwrap();
     assert_eq!(saved.summary.title, "Alpha renamed");
@@ -2049,7 +2172,7 @@ fn text_that_is_not_utf8_is_not_saved_over() {
     doc.body.push_str("More.\n");
     assert!(
         habi.skills()
-            .save_document(&id, "Eps", &doc, s.document_digest.as_deref())
+            .save_document(&id, "Eps", &doc, s.document_digest.as_deref(), None, None)
             .is_err()
     );
     assert_eq!(std::fs::read(&path).unwrap(), latin1);
@@ -2099,9 +2222,11 @@ fn saving_changes_only_the_frontmatter_lines_it_must() {
                 &SkillDocument {
                     name: name.into(),
                     description: description.into(),
-                    body: "Body.\n".into(),
+                    body: current.document.body.clone(),
                 },
                 current.document_digest.as_deref(),
+                None,
+                None,
             )
             .unwrap()
     };
@@ -2150,12 +2275,9 @@ fn saving_changes_only_the_frontmatter_lines_it_must() {
     let crlf = "---\r\nname: zeta\r\ndescription: Back.\r\nmetadata:\r\n  version: 1.10\r\n---\r\n\r\nBody.\r\n";
     std::fs::write(&path, crlf).unwrap();
     save("zeta", "Again.");
-    assert!(
-        read().starts_with(
-            "---\nname: zeta\r\ndescription: Again.\r\nmetadata:\r\n  version: 1.10\n---\n"
-        ),
-        "{:?}",
-        read()
+    assert_eq!(
+        read(),
+        crlf.replace("description: Back.", "description: Again.")
     );
 }
 
@@ -2332,7 +2454,7 @@ fn restoring_under_a_taken_identifier_keeps_both_skills_working() {
     // Things only a line-by-line rename keeps.
     let path = package(&habi, &id).join("SKILL.md");
     let text = std::fs::read_to_string(&path).unwrap();
-    std::fs::write(&path, text.replace("---\n\n", "# kept\n---\n\n")).unwrap();
+    std::fs::write(&path, text.replace("\n---\n", "\n# kept\n---\n")).unwrap();
     habi.skills().trash(&id).unwrap();
     let second = draft(&habi, "Same name", description, "Second.\n");
     assert_eq!(first.summary.name, second.summary.name);
@@ -2473,4 +2595,235 @@ fn names_that_read_as_something_else_are_refused() {
         )
         .unwrap();
     assert!(!found.candidates[0].complete);
+}
+
+#[test]
+fn document_saves_preserve_the_original_envelope_and_body_bytes() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(&habi, "Envelope", "Old description.", "Body.");
+    let id = &skill.summary.id;
+    let path = package(&habi, id).join("SKILL.md");
+    for (bom, newline, gap, ending) in [
+        ("", "\n", "\n", "\n"),
+        ("", "\r\n", "\r\n", "\r\n"),
+        ("\u{feff}", "\r\n", "", ""),
+        ("", "\n", "", "\n"),
+        ("", "\n", "\n\n\n", "\n"),
+        ("", "\n", "\n", ""),
+    ] {
+        let envelope = format!(
+            "{bom}---{newline}# keep this comment{newline}name: envelope{newline}description: Old description.{newline}version: 1.10{newline}license: 'MIT'{newline}---{newline}{gap}"
+        );
+        let body = format!("Body.{newline}---{newline}More.{newline}---{ending}");
+        let original = format!("{envelope}{body}");
+        std::fs::write(&path, &original).unwrap();
+        let loaded = habi.skills().get(id).unwrap();
+        assert_eq!(loaded.document.body, body);
+        let saved = habi
+            .skills()
+            .save_document(
+                id,
+                "Envelope",
+                &loaded.document,
+                loaded.document_digest.as_deref(),
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+
+        let mut document = saved.document.clone();
+        document.body = body.replace("More.", "Changed.");
+        let saved = habi
+            .skills()
+            .save_document(
+                id,
+                "Envelope",
+                &document,
+                saved.document_digest.as_deref(),
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            format!("{envelope}{}", document.body).as_bytes()
+        );
+
+        for (key, old, new) in [
+            ("description", "Old description.", "New description."),
+            ("name", "envelope", "envelope-two"),
+        ] {
+            std::fs::write(&path, &original).unwrap();
+            let loaded = habi.skills().get(id).unwrap();
+            let mut document = loaded.document.clone();
+            if key == "name" {
+                document.name = new.into();
+            } else {
+                document.description = new.into();
+            }
+            habi.skills()
+                .save_document(
+                    id,
+                    "Envelope",
+                    &document,
+                    loaded.document_digest.as_deref(),
+                    None,
+                    None,
+                )
+                .unwrap();
+            let expected = original.replace(
+                &format!("{key}: {old}{newline}"),
+                &format!("{key}: {new}{newline}"),
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+        }
+
+        // The digest from before another write still prevents any replacement.
+        let before = std::fs::read(&path).unwrap();
+        assert!(matches!(
+            habi.skills().save_document(
+                id,
+                "Envelope",
+                &saved.document,
+                saved.document_digest.as_deref(),
+                None,
+                None
+            ),
+            Err(HabiError::Conflict(_))
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+    }
+}
+
+#[test]
+fn unverified_frontmatter_edits_require_the_source_view() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(&habi, "Quoted", "Description.", "Body.");
+    let id = &skill.summary.id;
+    let path = package(&habi, id).join("SKILL.md");
+    for comment in ["# author comment\n", ""] {
+        let original =
+            format!("---\n{comment}'name': quoted\ndescription: Description.\n---\n\nBody.");
+        std::fs::write(&path, &original).unwrap();
+        let loaded = habi.skills().get(id).unwrap();
+        let mut document = loaded.document.clone();
+        document.name = "changed".into();
+        let err = habi
+            .skills()
+            .save_document(
+                id,
+                "Quoted",
+                &document,
+                loaded.document_digest.as_deref(),
+                None,
+                None,
+            )
+            .unwrap_err();
+        assert!(matches!(err, HabiError::InvalidInput(_)));
+        assert!(err.to_string().contains("source view"));
+        assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+    }
+
+    // Restoring under a taken identifier uses rename_in_skill_md.
+    let original =
+        "\u{feff}---\r\n# keep me\r\n'name': quoted\r\ndescription: Description.\r\n---\r\nBody.";
+    std::fs::write(&path, original).unwrap();
+    habi.skills().trash(id).unwrap();
+    draft(&habi, "Quoted", "Description.", "Other.");
+    let err = habi.skills().restore(id).unwrap_err();
+    assert!(matches!(err, HabiError::InvalidInput(_)));
+    assert!(err.to_string().contains("source view"));
+    assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+
+    let editable = original.replace("'name':", "name:");
+    std::fs::write(&path, &editable).unwrap();
+    let restored = habi.skills().restore(id).unwrap();
+    let expected = editable.replace(
+        "name: quoted\r\n",
+        &format!("name: {}\r\n", restored.document.name),
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+}
+
+#[test]
+fn applicability_saves_preserve_comments_and_unknown_keys() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = draft(&habi, "Metadata", "Description.", "Body.");
+    let id = &skill.summary.id;
+    let path = package(&habi, id).join("habi.yaml");
+    let original = "# Team metadata\r\n# Keep these notes\r\nhabi: 1\r\ncomposes: [{skill: x}] # future use\r\n# Applicability notes\r\n";
+    std::fs::write(&path, original).unwrap();
+    let loaded = habi.skills().get(id).unwrap();
+    let mut form = loaded.form.clone();
+    form.applies_tags = vec!["language:rust".into()];
+    form.conditions_editable = true;
+    let saved = habi
+        .skills()
+        .save_applicability(id, &form, loaded.metadata_digest.as_deref())
+        .unwrap();
+    let expected = format!("{original}applies_when:\r\n  tag: language:rust\r\n");
+    assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+    habi.skills()
+        .save_applicability(id, &saved.form, saved.metadata_digest.as_deref())
+        .unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), expected.as_bytes());
+
+    form.applies_tags = vec!["language:go".into()];
+    let saved = habi
+        .skills()
+        .save_applicability(id, &form, saved.metadata_digest.as_deref())
+        .unwrap();
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        expected.replace("language:rust", "language:go").as_bytes()
+    );
+    form.applies_tags.clear();
+    habi.skills()
+        .save_applicability(id, &form, saved.metadata_digest.as_deref())
+        .unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
+}
+
+#[test]
+fn a_skill_created_with_nothing_filled_in_can_be_named_and_written() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = habi
+        .create_skill(
+            &NewSkill {
+                title: String::new(),
+                description: String::new(),
+                template: SkillTemplate::Blank,
+            },
+            None,
+        )
+        .unwrap();
+    let document = SkillDocument {
+        name: "write-a-status-report".into(),
+        description: "Writes a status report for a fictional project.".into(),
+        body: "Gather what happened.\n".into(),
+    };
+    let saved = habi
+        .skills()
+        .save_document(
+            &skill.summary.id,
+            "Write a status report",
+            &document,
+            skill.document_digest.as_deref(),
+            None,
+            None,
+        )
+        .unwrap();
+    assert_eq!(saved.document.name, "write-a-status-report");
+    assert_eq!(saved.document.body, "Gather what happened.\n");
+    assert!(
+        saved
+            .diagnostics
+            .iter()
+            .all(|d| d.level != DiagnosticLevel::Error)
+    );
 }

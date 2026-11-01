@@ -285,6 +285,10 @@ impl Bridge {
             "contribution_send_route" => out(h.contribution_send_route(&s("id")?, cancel)?),
             "discard_contribution" => out(h.contributions().discard(&s("id")?)?),
 
+            "skill_shelf" => out(h.skill_shelf()?),
+            "skill_composition" => out(
+                h.skill_composition(&s("id")?, arg::<Option<String>>(a, "projectId")?.as_deref())?
+            ),
             "list_skills" => out(h.skills().list()?),
             "get_skill" => out(h.skills().get(&s("id")?)?),
             "create_skill" => out(h.create_skill(
@@ -296,6 +300,8 @@ impl Bridge {
                 &s("title")?,
                 &arg(a, "document")?,
                 arg::<Option<String>>(a, "baseDigest")?.as_deref(),
+                arg(a, "composes")?,
+                arg::<Option<String>>(a, "metaBaseDigest")?.as_deref(),
             )?),
             "save_skill_applicability" => out(h.skills().save_applicability(
                 &s("id")?,

@@ -23,9 +23,9 @@ export function size(bytes: number): string {
 function RunLine({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <p className="file-run">
+    <p className="file-run" title="Copy this command to run it yourself. Habi never runs it.">
       <Icon name="terminal" size={13} />
-      <span>Never run here. To run it yourself:</span>
+      <span className="visually-hidden">Run manually:</span>
       <code>{command}</code>
       <button
         type="button"

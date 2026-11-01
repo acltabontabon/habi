@@ -10,7 +10,7 @@
  * hundred both read well. On this machine: the agents' own skill folders
  * (see OnThisMachine).
  */
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, type KeyboardEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { LocalSkill } from "../../bindings/LocalSkill";
 import type { LocalSkillSummary } from "../../bindings/LocalSkillSummary";
@@ -123,15 +123,21 @@ function Composition({ skills, dyes }: { skills: LocalSkillSummary[]; dyes: Map<
   );
 }
 
-/** Where a skill stands, in a word: Ready, or Draft and what is missing. */
-function standingWord(s: LocalSkillSummary): { ready: boolean; text: string } {
-  if (s.errors === 0) return { ready: true, text: "Ready" };
+/** Where a skill stands, in a word: Ready, or what's in the way. */
+function standingWord(s: LocalSkillSummary, found: Set<string> | null): { ready: boolean; text: string } {
+  if (s.errors === 0) {
+    const missing = found ? s.links.filter((name) => !found.has(name)).length : 0;
+    return missing > 0
+      ? { ready: false, text: `Valid · ${plural(missing, "skill")} not found` }
+      : { ready: true, text: "Ready" };
+  }
   if (!s.description.trim()) return { ready: false, text: "Draft · missing purpose" };
   return { ready: false, text: `Draft · ${plural(s.errors, "thing")} to finish` };
 }
 
 function Row({
   s,
+  found,
   standing,
   letter,
   onOpen,
@@ -142,6 +148,8 @@ function Row({
   onTrash,
 }: {
   s: LocalSkillSummary;
+  /** Skill names Habi can see, once known. */
+  found: Set<string> | null;
   standing: SkillStanding | undefined;
   letter: string | null;
   onOpen: () => void;
@@ -152,7 +160,7 @@ function Row({
   onTrash: () => void;
 }) {
   const installed = standing?.installedIn ?? [];
-  const word = standingWord(s);
+  const word = standingWord(s, found);
   const passOn = onward(s);
   const thread = isCopy(s.origin) || s.origin.type === "instructions" || Boolean(standing?.upstream);
   return (
@@ -219,6 +227,9 @@ function Row({
 
 export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collection" | "machine" }) {
   const skills = useSkills();
+  const anyLinks = (skills.data ?? []).some((s) => s.links.length > 0);
+  const shelf = useQuery({ queryKey: ["skill-shelf"], queryFn: () => api.skillShelf(), enabled: anyLinks });
+  const found = useMemo(() => (shelf.data ? new Set(shelf.data.map((s) => s.name)) : null), [shelf.data]);
   const overview = useSkillsOverview(!skillId);
   const sources = useSources();
   const area = tab ?? "collection";
@@ -597,6 +608,7 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
                     </li>
                   ) : null}
                   <Row
+                    found={found}
                     s={s}
                     standing={standing.get(s.id)}
                     letter={sort === "title" && fresh && !query ? group : null}

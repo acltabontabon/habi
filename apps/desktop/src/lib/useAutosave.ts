@@ -63,8 +63,12 @@ export function useAutosave<T>(options: {
   save: (value: T) => Promise<void>;
   delay?: number;
   enabled?: boolean;
+  /** The newest value, for an editor whose text isn't worked out on every keystroke. */
+  fresh?: () => T;
 }): Autosave {
-  const { value, keyOf, save, delay = 700, enabled = true } = options;
+  const { value, keyOf, save, delay = 700, enabled = true, fresh } = options;
+  const freshRef = useRef(fresh);
+  freshRef.current = fresh;
   const [state, setState] = useState<SaveState>("clean");
   const [error, setError] = useState<unknown>(null);
   const latest = useRef(value);
@@ -93,6 +97,7 @@ export function useAutosave<T>(options: {
     // rest must see its write in flight (and then its saved key) rather than save the same snapshot again.
     while (inFlight.current) await inFlight.current;
     if (blocked.current) return false;
+    if (freshRef.current) latest.current = freshRef.current();
     const snapshot = latest.current;
     const key = keyRef.current(snapshot);
     if (key === savedKey.current) {
@@ -150,7 +155,9 @@ export function useAutosave<T>(options: {
     const entry: Registered = {
       flush: run,
       unsaved: () => blocked.current || failed.current,
-      pending: () => inFlight.current !== null || keyRef.current(latest.current) !== savedKey.current,
+      pending: () =>
+        inFlight.current !== null ||
+        keyRef.current(freshRef.current ? freshRef.current() : latest.current) !== savedKey.current,
     };
     registered.add(entry);
     const onHide = () => void run();
