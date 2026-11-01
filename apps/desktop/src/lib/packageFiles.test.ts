@@ -52,6 +52,15 @@ describe("files", () => {
     expect(runCommand("scripts/tool")).toBe("./scripts/tool");
   });
 
+  it("quotes paths and shebangs as literal shell words", () => {
+    expect(runCommand("scripts/check files.py")).toBe("python3 'scripts/check files.py'");
+    expect(runCommand("scripts/$(touch marker).sh")).toBe("bash 'scripts/$(touch marker).sh'");
+    expect(runCommand("scripts/user's.sh")).toBe("bash 'scripts/user'\\''s.sh'");
+    expect(runCommand("-check.py")).toBe("python3 ./-check.py");
+    expect(runCommand("scripts/tool", "#!/usr/bin/env bash;echo")).toBe("'bash;echo' scripts/tool");
+    expect(runCommand("scripts/a b")).toBe("'./scripts/a b'");
+  });
+
   it("adds the extension only when none was typed", () => {
     expect(withExtension("check", ".py")).toBe("check.py");
     expect(withExtension("check.sh", ".py")).toBe("check.sh");

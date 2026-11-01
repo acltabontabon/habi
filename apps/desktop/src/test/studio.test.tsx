@@ -118,16 +118,6 @@ function skill(over: Partial<LocalSkill["document"]> = {}): LocalSkill {
   };
 }
 
-const billing = {
-  id: "p1",
-  name: "billing",
-  path: "~/work/billing",
-  exists: true,
-  lastOpenedAt: "2026-10-02T00:00:00Z",
-  exclusions: [],
-  summary: null,
-};
-
 const formOf = (calls: unknown[][]) =>
   (calls[calls.length - 1]?.[0] as { form: Record<string, unknown> } | undefined)?.form;
 
@@ -149,22 +139,35 @@ describe("the Skill Studio", () => {
     const { container } = wrap(<SkillStudio id="k" />);
     expect(await screen.findByLabelText("Skill title")).toHaveValue("Review");
     expect(screen.getByLabelText("What it is for")).toHaveValue("Reviews changes before merge.");
-    // One coherent state, one primary action; the rest behind a menu.
-    expect(screen.getByRole("button", { name: /^Ready/ })).toBeInTheDocument();
+    // Recovery is directly accessible beside the view controls.
+    expect(screen.getByRole("button", { name: /^(\d+ to improve|Skill details)$/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add to a project…" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move to trash" })).toBeInTheDocument();
     // No tabs: the other layers are named, in a line each, at the head of the skill.
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Set conditions" })).toBeInTheDocument();
     // The package format stays out of sight.
     expect(screen.queryByText("habi.yaml")).not.toBeInTheDocument();
     expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
-    expect(await screen.findByText("Or begin from a shape")).toBeInTheDocument();
+    expect(await screen.findByText("Explore patterns")).toBeInTheDocument();
     const results = await axe.run(container);
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   });
 
-  it("starts from a shape only when asked, and saves it as the instructions", async () => {
+  it("opens an empty canvas without inserting a starter or leaving the draft", async () => {
+    handlers.get_skill = () => skill();
+    wrap(<SkillStudio id="k" />);
+    const blank = await screen.findByRole("button", { name: "Empty canvas" });
+    await waitFor(() => expect(blank).toBeEnabled());
+    expect(screen.queryByRole("textbox", { name: /^Instructions$/ })).not.toBeInTheDocument();
+    await userEvent.click(blank);
+    expect(await screen.findByRole("textbox", { name: /^Instructions$/ })).toHaveTextContent("");
+    expect(screen.queryByRole("heading", { name: "Explore patterns" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Studio palette" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Skill title")).toHaveValue("Review");
+  });
+
+  it("starts from a pattern only when asked, and saves it as the instructions", async () => {
     handlers.get_skill = () => skill();
     const saved = vi.fn((args: Record<string, unknown>) => ({
       ...skill({ body: (args.document as { body: string }).body }),
@@ -172,11 +175,39 @@ describe("the Skill Studio", () => {
     }));
     handlers.save_skill_document = saved;
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /Step by step/ }));
+    const pattern = await screen.findByRole("button", { name: /Step by step/ });
+    await waitFor(() => expect(pattern).toBeEnabled());
+    await userEvent.click(pattern);
     await waitFor(() => expect(saved).toHaveBeenCalled(), { timeout: 2000 });
     expect((saved.mock.calls[0]?.[0].document as { body: string } | undefined)?.body).toBe(
-      templates[1]?.body,
+      templates[1]?.body.trimEnd(),
     );
+  });
+
+  it("keeps the same editor and exact instructions across agent, source and compose perspectives", async () => {
+    const body = "## Review\n\nRead this instruction.\n\n<!-- preserve this hidden comment -->\n";
+    handlers.get_skill = () => skill({ body });
+    const saved = vi.fn();
+    handlers.save_skill_document = saved;
+    const { container } = wrap(<SkillStudio id="k" />);
+    const editor = await screen.findByRole("textbox", { name: /^Instructions$/ });
+    expect(screen.getByRole("button", { name: /^Canvas$/ })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: /^Agent view$/ }));
+    const preview = screen.getByRole("region", { name: "Agent instructions" });
+    expect(within(preview).getByText("Read this instruction.")).toBeVisible();
+    expect(within(preview).queryByText("Exact instruction text")).not.toBeInTheDocument();
+    expect(container.querySelector(".doc-page")).toBe(editor);
+    expect(editor).not.toBeVisible();
+    const result = await axe.run(container);
+    expect(result.violations.map((v) => v.id)).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: /^Markdown$/ }));
+    expect(screen.queryByRole("region", { name: "Agent instructions" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^Markdown$/ }));
+    expect(editor).not.toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: /^Canvas$/ }));
+    expect(editor).toBeVisible();
+    expect(container.querySelector(".doc-page")).toBe(editor);
+    expect(saved).not.toHaveBeenCalled();
   });
 
   it("names a fresh draft from what is written, and offers the rest without asking", async () => {
@@ -197,9 +228,9 @@ describe("the Skill Studio", () => {
     // The first heading is its title, and the title its identifier.
     expect(await screen.findByLabelText("Skill title")).toHaveValue("Liquibase Changeset Review");
     // What would make it better waits under Ready, each with its action.
-    await userEvent.click(screen.getByRole("button", { name: /^Ready/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^(\d+ to improve|Skill details)$/ }));
     await userEvent.click(
-      within(screen.getByRole("dialog", { name: "Ready to use" })).getByRole("button", {
+      within(screen.getByRole("dialog", { name: "Improve this skill" })).getByRole("button", {
         name: "Use the opening line",
       }),
     );
@@ -213,23 +244,16 @@ describe("the Skill Studio", () => {
     };
     expect(last.title).toBe("Liquibase Changeset Review");
     expect(last.document.name).toBe("liquibase-changeset-review");
-    // The instructions keep naming Liquibase: one click makes it a signal, said in words.
-    await userEvent.click(screen.getByRole("button", { name: /^Ready/ }));
-    const better = screen.getByRole("dialog", { name: "Ready to use" });
-    expect(within(better).getByText(/The instructions are brief/)).toBeInTheDocument();
-    expect(within(better).getByText("Looks related to Liquibase projects.")).toBeInTheDocument();
-    await userEvent.click(within(better).getByRole("button", { name: "Suggest it there" }));
-    await waitFor(() => expect(formOf(rules.mock.calls)).toMatchObject({ appliesTags: ["db:liquibase"] }), {
-      timeout: 2000,
-    });
+    await userEvent.click(screen.getByRole("button", { name: "Skill details" }));
+    const better = screen.getByRole("dialog", { name: "Improve this skill" });
+    expect(within(better).getByText("No improvements to suggest right now.")).toBeInTheDocument();
+    expect(formOf(rules.mock.calls)).toMatchObject({ appliesTags: [] });
   });
 
   it("keeps a file the words don't mention at the end of the page, to be put somewhere", async () => {
     handlers.get_skill = () => skill({ body: "## Steps\n\nDo it.\n" });
     wrap(<SkillStudio id="k" />);
-    expect(
-      await screen.findByText(/won't know about these until the words mention them/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Available materials/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /check\.py/ })).toBeInTheDocument();
   });
 
@@ -249,8 +273,11 @@ describe("the Skill Studio", () => {
     expect(instructions.hidden).toBe(false);
   });
 
-  it("changes the identifier deliberately, from readiness, and warns where it is installed", async () => {
-    handlers.get_skill = () => skill();
+  it("opens a focused editor for an invalid identifier and warns where it is installed", async () => {
+    handlers.get_skill = () => ({
+      ...skill(),
+      diagnostics: [{ level: "error", code: "invalidName", message: "Invalid name", path: "SKILL.md" }],
+    });
     const standing: SkillStanding[] = [
       {
         skillId: "k",
@@ -265,10 +292,12 @@ describe("the Skill Studio", () => {
     }));
     handlers.save_skill_document = saved;
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Ready/ }));
-    const ready = screen.getByRole("dialog", { name: "Ready to use" });
-    expect(within(ready).getByText("review")).toBeInTheDocument();
-    await userEvent.click(within(ready).getByRole("button", { name: "Change" }));
+    await userEvent.click(await screen.findByRole("button", { name: /1 thing to finish/ }));
+    const improvements = screen.getByRole("dialog", { name: "Things to finish" });
+    expect(within(improvements).queryByText("Advanced")).not.toBeInTheDocument();
+    await userEvent.click(within(improvements).getByRole("button", { name: "Change the identifier" }));
+    expect(screen.queryByRole("dialog", { name: "Things to finish" })).not.toBeInTheDocument();
+    const ready = screen.getByRole("dialog", { name: "Fix the skill identifier" });
     const field = within(ready).getByLabelText("name");
     await userEvent.clear(field);
     await userEvent.type(field, "Bad Name");
@@ -298,11 +327,12 @@ describe("the Skill Studio", () => {
       ],
     });
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /Draft\s*· 1 thing to finish/ }));
-    const left = screen.getByRole("dialog", { name: "What is left to do" });
-    expect(within(left).getByText(/Agents decide whether to load a skill/)).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /1 thing to finish/ }));
+    const left = screen.getByRole("dialog", { name: "Things to finish" });
+    expect(within(left).getByText(/Describe what this skill helps with/)).toBeInTheDocument();
     await userEvent.click(within(left).getByRole("button", { name: "Edit the purpose" }));
     await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
+    expect(screen.getByLabelText("What it is for")).toHaveClass("studio-fix-highlight");
   });
 
   it("offers Use only when the skill is ready, and the next step until then", async () => {
@@ -321,8 +351,10 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
     expect(screen.queryByRole("button", { name: "Add to a project…" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Add a purpose" }));
+    await userEvent.click(screen.getByRole("button", { name: /to finish/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit the purpose" }));
     await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
+    expect(screen.getByLabelText("What it is for")).toHaveClass("studio-fix-highlight");
   });
 
   it("asks a nameless draft for a title, not an identifier", async () => {
@@ -334,7 +366,8 @@ describe("the Skill Studio", () => {
       ],
     });
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: "Give it a title" }));
+    await userEvent.click(await screen.findByRole("button", { name: /to finish/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Give it a title" }));
     await waitFor(() => expect(screen.getByLabelText("Skill title")).toHaveFocus());
   });
 
@@ -345,15 +378,15 @@ describe("the Skill Studio", () => {
         body: "## When to use this\n\nUse this when …\n\n## Steps\n\n1. Read it.\n2. \n",
       });
     wrap(<SkillStudio id="k" />);
-    await userEvent.click(await screen.findByRole("button", { name: /^Ready/ }));
-    const better = screen.getByRole("dialog", { name: "Ready to use" });
+    await userEvent.click(await screen.findByRole("button", { name: /^(\d+ to improve|Skill details)$/ }));
+    const better = screen.getByRole("dialog", { name: "Improve this skill" });
     expect(within(better).getByText("2 places still read like the starter.")).toBeInTheDocument();
-    expect(within(better).getByRole("button", { name: "Show me" })).toBeInTheDocument();
-    expect(
-      within(better).getByText("“haha” is all an agent reads before choosing this skill."),
-    ).toBeInTheDocument();
-    await userEvent.click(within(better).getByRole("button", { name: "Say what it helps with" }));
-    await waitFor(() => expect(screen.getByLabelText("What it is for")).toHaveFocus());
+    expect(within(better).getByRole("button", { name: "Finish the placeholders" })).toBeInTheDocument();
+    expect(within(better).queryByRole("button", { name: "Clarify the description" })).not.toBeInTheDocument();
+    await userEvent.click(within(better).getByRole("button", { name: "Finish the placeholders" }));
+    await waitFor(() =>
+      expect(window.document.querySelector(".doc-page .is-flash")).toHaveTextContent("Use this when"),
+    );
   });
 
   it("puts passing it on beside Use, said for where it came from", async () => {
@@ -375,9 +408,7 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     expect(await screen.findByRole("button", { name: "Contribute" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add to a project…" })).toBeInTheDocument();
-    // Not twice: the menu keeps only what the bar does not show.
-    await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
-    expect(screen.queryByRole("menuitem", { name: /Contribute to Team/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More for this skill" })).not.toBeInTheDocument();
   });
 
   it("is silent about saving until something goes wrong", async () => {
@@ -456,10 +487,10 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
-    const when = screen.getByRole("region", { name: "Suggest when" });
+    const when = screen.getByRole("region", { name: "Use this skill when…" });
     // Empty, a section is just its action.
     expect(within(when).queryByText(/Nothing yet/)).not.toBeInTheDocument();
-    await userEvent.click(within(when).getByRole("button", { name: "Add signal" }));
+    await userEvent.click(within(when).getByRole("button", { name: "Choose a project detail" }));
     const ask = within(when).getByLabelText("What to look for");
     await userEvent.type(ask, "Spring Boot{Enter}");
     expect(within(when).getByText("Spring Boot is used")).toBeInTheDocument();
@@ -491,9 +522,9 @@ describe("the Skill Studio", () => {
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
     fireEvent.keyDown(window, { key: "2", metaKey: true });
-    const needs = screen.getByRole("region", { name: "Needs" });
-    await userEvent.click(within(needs).getByRole("button", { name: "Add tool" }));
-    expect(within(needs).getByText(/Looked up on PATH, never run/)).toBeInTheDocument();
+    const needs = screen.getByRole("region", { name: "Tools it needs" });
+    await userEvent.click(within(needs).getByRole("button", { name: "Add a required tool" }));
+    expect(within(needs).getByText(/Habi checks whether the tool is available/)).toBeInTheDocument();
     await userEvent.type(within(needs).getByLabelText("Tool name"), "Maven");
     await userEvent.type(
       within(needs).getByLabelText("Commands, any one of which satisfies the requirement"),
@@ -537,7 +568,8 @@ describe("the Skill Studio", () => {
     handlers.save_skill_metadata = save;
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
-    expect(screen.getByRole("button", { name: "Custom rules" })).toBeInTheDocument();
+    expect(screen.getByText("Custom rules")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Edit when to use" }));
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     const layer = screen.getByRole("region", { name: "When to use" });
     expect(within(layer).getByText("it contains Java code")).toBeInTheDocument();
@@ -547,68 +579,6 @@ describe("the Skill Studio", () => {
     expect(within(layer).getByRole("button", { name: "Edit as YAML" })).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 900));
     expect(save).not.toHaveBeenCalled();
-  });
-
-  it("tests against a project only when asked, and says why", async () => {
-    handlers.get_skill = () => skill({ body: "Steps." });
-    handlers.recent_projects = () => [billing];
-    const preview = vi.fn((args: Record<string, unknown>) => ({
-      appliesWhen: { op: "tag", tag: "lang:java" },
-      excludes: null,
-      scope: "module",
-      problem: null,
-      projects: [
-        {
-          project: billing,
-          result: {
-            applicability: "applies",
-            scope: "module",
-            modules: [],
-            reason: "Contains Java code (Billing.java)",
-            specificity: 1,
-          },
-          error: null,
-          inspectedAt: "2026-10-02T00:00:00Z",
-          incomplete: [],
-          prerequisites: [
-            {
-              kind: "tool",
-              name: "Maven",
-              status: "missing",
-              detail: "none of mvn found on PATH or in the project",
-              purpose: null,
-              hint: "brew install maven",
-            },
-          ],
-        },
-      ],
-      request: args,
-    }));
-    handlers.preview_skill = preview;
-    wrap(<SkillStudio id="k" />);
-    await screen.findByLabelText("Skill title");
-    fireEvent.keyDown(window, { key: "2", metaKey: true });
-    await new Promise((r) => setTimeout(r, 400));
-    // Each project's mark says where it would be suggested, as the rules change.
-    expect(await screen.findByRole("button", { name: new RegExp(`^${billing.name}: `) })).toBeInTheDocument();
-    // Editing the rules does not run diagnostics for one project, and offers no test station.
-    const forOneProject = () =>
-      preview.mock.calls.filter((c) => (c[0].request as { projectId?: string })?.projectId);
-    expect(forOneProject()).toHaveLength(0);
-    expect(screen.queryByRole("button", { name: "Test" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: /Test against a project/ }));
-    const sheet = await screen.findByRole("dialog", { name: "Test against a project" });
-    expect(
-      await within(sheet).findByText("Would be suggested here", {}, { timeout: 2000 }),
-    ).toBeInTheDocument();
-    expect(within(sheet).getByText(/Maven/)).toBeInTheDocument();
-    expect(within(sheet).getByText(/Looked up, never run/)).toBeInTheDocument();
-    expect(within(sheet).getByText(/from build files and file names only/)).toBeInTheDocument();
-    const request = forOneProject()[0]?.[0].request as { projectId?: string } | undefined;
-    expect(request?.projectId).toBe("p1");
-    await userEvent.click(within(sheet).getByRole("button", { name: "Done" }));
-    expect(screen.queryByRole("dialog", { name: "Test against a project" })).not.toBeInTheDocument();
   });
 
   it("keeps materials human, files placed by Habi, and the package source one step away", async () => {
@@ -648,7 +618,7 @@ describe("the Skill Studio", () => {
     expect(within(layer).queryByText("scripts/")).not.toBeInTheDocument();
     await userEvent.click(within(layer).getByRole("button", { name: /check\.py/ }));
     expect(await within(layer).findByText("python3 scripts/check.py")).toBeInTheDocument();
-    expect(within(layer).getByText(/Never run here/)).toBeInTheDocument();
+    expect(within(layer).getByTitle(/Habi never runs it/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Run/ })).not.toBeInTheDocument();
     // The crumb leads back; the editor chrome goes with the file.
     await userEvent.click(screen.getByRole("button", { name: "Materials" }));
@@ -803,7 +773,7 @@ describe("the Skill Studio, saving", () => {
     // A → B → A, with B answering last: A stays.
     gate = true;
     await userEvent.click(within(nav).getByRole("button", { name: "b.py" }));
-    expect(within(layer).queryByText("python3 scripts/a.py")).not.toBeInTheDocument();
+    await waitFor(() => expect(within(layer).queryByText("python3 scripts/a.py")).not.toBeInTheDocument());
     await userEvent.click(within(nav).getByRole("button", { name: "a.py" }));
     expect(await within(layer).findByText("python3 scripts/a.py")).toBeInTheDocument();
     (hold as { resolve: (v: unknown) => void } | null)?.resolve(file("scripts/b.py"));
@@ -815,7 +785,7 @@ describe("the Skill Studio, saving", () => {
     await userEvent.click(within(nav).getByRole("button", { name: "b.py" }));
     (hold as { reject: (e: unknown) => void } | null)?.reject({ code: "io", message: "unreadable" });
     expect(await within(layer).findByText(/unreadable/)).toBeInTheDocument();
-    expect(within(layer).queryByText("python3 scripts/a.py")).not.toBeInTheDocument();
+    await waitFor(() => expect(within(layer).queryByText("python3 scripts/a.py")).not.toBeInTheDocument());
   });
 
   it("keeps saves cheap: the skill and its row are updated in place, the rest asked again on leaving", async () => {

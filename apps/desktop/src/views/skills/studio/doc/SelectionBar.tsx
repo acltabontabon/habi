@@ -36,7 +36,11 @@ export function SelectionBar({
   view,
   tick,
   onLinkSkill,
+  embedded = false,
+  atCaret = false,
 }: {
+  embedded?: boolean;
+  atCaret?: boolean;
   view: EditorView;
   tick: number;
   onLinkSkill?: (query: string) => void;
@@ -50,19 +54,22 @@ export function SelectionBar({
   useEffect(() => {
     if (linking) return;
     setSpot(spotFor(view));
-  }, [tick, view, linking]);
+  }, [tick, view, linking, atCaret]);
 
   useEffect(() => {
     const away = () => setSpot((s) => (linking ? s : spotFor(view)));
     view.dom.addEventListener("blur", away);
     window.addEventListener("resize", away);
+    const scroll = () => setSpot(null);
+    window.addEventListener("scroll", scroll, true);
     return () => {
       view.dom.removeEventListener("blur", away);
       window.removeEventListener("resize", away);
+      window.removeEventListener("scroll", scroll, true);
     };
-  }, [view, linking]);
+  }, [view, linking, atCaret]);
 
-  if (!spot) return null;
+  if (!spot && !embedded) return null;
 
   const state = view.state;
   const run = (command: (s: typeof state, d: typeof view.dispatch) => boolean) => {
@@ -92,7 +99,22 @@ export function SelectionBar({
     requestAnimationFrame(() => input.current?.select());
   };
   const finishLink = (save: boolean) => {
-    if (save) setLink(href.trim() || null)(view.state, view.dispatch);
+    if (save) {
+      const address = href.trim();
+      if (
+        (embedded || atCaret) &&
+        address &&
+        view.state.selection.empty &&
+        !markActive(view.state, marks.link)
+      ) {
+        view.dispatch(
+          view.state.tr.replaceSelectionWith(
+            schema.text(address, [marks.link.create({ href: address })]),
+            false,
+          ),
+        );
+      } else setLink(address || null)(view.state, view.dispatch);
+    }
     setLinking(false);
     view.focus();
   };
@@ -107,18 +129,19 @@ export function SelectionBar({
   };
 
   const inHeading = state.selection.$from.parent.type === nodes.heading;
-  const style: CSSProperties = { left: spot.left, top: spot.top };
+  const style: CSSProperties = embedded ? {} : { left: spot?.left, top: spot?.top };
   return (
     <div
-      className={`doc-bar${spot.below ? " is-below" : ""}`}
+      className={`doc-bar${spot?.below ? " is-below" : ""}${embedded ? " is-palette-format" : ""}`}
       style={style}
       role="toolbar"
-      aria-label="Format selected text"
+      aria-label={embedded || atCaret ? "Format your writing" : "Format selected text"}
     >
       {linking ? (
         <label className="doc-bar-link">
           <span className="visually-hidden">Link address</span>
           <input
+            aria-label="Link address"
             ref={input}
             value={href}
             placeholder="https:// or a file in this skill"
@@ -126,13 +149,23 @@ export function SelectionBar({
             onKeyDown={onLinkKey}
             onBlur={() => finishLink(false)}
           />
+          <button
+            type="button"
+            className="doc-bar-btn"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => finishLink(true)}
+          >
+            Apply
+          </button>
         </label>
       ) : (
         <>
           {toggle("Bold", "B", marks.strong, "⌘B", toggleBold)}
           {toggle("Italic", "I", marks.em, "⌘I", toggleItalic)}
-          {toggle("Code", "</>", marks.code, "⌘E", toggleCode)}
-          {toggle("Strikethrough", "S", marks.strike, "⌘⇧X", toggleStrike)}
+          {!atCaret || !state.selection.empty ? toggle("Code", "</>", marks.code, "⌘E", toggleCode) : null}
+          {!atCaret || !state.selection.empty
+            ? toggle("Strikethrough", "S", marks.strike, "⌘⇧X", toggleStrike)
+            : null}
           <span className="doc-bar-gap" aria-hidden="true" />
           <button
             type="button"
@@ -154,6 +187,11 @@ export function SelectionBar({
           >
             Link
           </button>
+          {atCaret ? (
+            <span className="doc-bar-insert-hint">
+              Type <kbd>/</kbd> for skills &amp; files
+            </span>
+          ) : null}
           {onLinkSkill ? (
             <button
               type="button"

@@ -60,6 +60,7 @@ function statusLine(
 }
 
 export function RefInspector({
+  readOnly = false,
   target,
   dependency,
   shelf,
@@ -73,6 +74,7 @@ export function RefInspector({
   onFind,
   onClose,
 }: {
+  readOnly?: boolean;
   target: InspectorTarget;
   dependency: Dependency | undefined;
   /** Copies of it on the shelf. */
@@ -90,12 +92,21 @@ export function RefInspector({
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    root.current?.querySelector<HTMLElement>("button, [href], input")?.focus();
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const element = root.current;
+    root.current?.querySelector<HTMLElement>("button:not(:disabled), [href], input:not(:disabled)")?.focus();
     const away = (e: PointerEvent) => {
       if (!root.current?.contains(e.target as Node)) onClose();
     };
     window.addEventListener("pointerdown", away);
-    return () => window.removeEventListener("pointerdown", away);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      if (
+        opener?.isConnected &&
+        (element?.contains(document.activeElement) || document.activeElement === document.body)
+      )
+        opener.focus();
+    };
   }, [onClose]);
 
   const explicit = target.role !== null;
@@ -107,10 +118,15 @@ export function RefInspector({
   const missing = status.tone === "missing";
 
   const below = target.rect.bottom + 380 < window.innerHeight;
-  const left = Math.min(Math.max(16, target.rect.left - 12), window.innerWidth - 376);
+  const width = Math.min(360, window.innerWidth - 32);
+  const left = Math.max(16, Math.min(target.rect.left - 12, window.innerWidth - width - 16));
   const style = below
-    ? { left, top: target.rect.bottom + 8 }
-    : { left, bottom: window.innerHeight - target.rect.top + 8 };
+    ? { left, width, top: Math.max(16, target.rect.bottom + 8) }
+    : {
+        left,
+        width,
+        bottom: Math.max(16, Math.min(window.innerHeight - target.rect.top + 8, window.innerHeight * 0.25)),
+      };
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape anywhere in it closes it.
@@ -140,7 +156,7 @@ export function RefInspector({
       </header>
 
       {explicit ? (
-        <fieldset className="ref-roles">
+        <fieldset className="ref-roles" disabled={readOnly}>
           <legend>How it's used here</legend>
           <div className="ref-role-list">
             {ROLES.map((r) => (
@@ -164,7 +180,9 @@ export function RefInspector({
       ) : (
         <div className="ref-mentioned">
           <p>Only named in the words, so Habi doesn't check it.</p>
-          <Button onClick={onMakePart}>Link this skill</Button>
+          <Button disabled={readOnly} onClick={onMakePart}>
+            Link this skill
+          </Button>
         </div>
       )}
 
@@ -199,7 +217,9 @@ export function RefInspector({
               Connect the library it came from
             </Button>
           ) : null}
-          <Button onClick={onFind}>Find a match</Button>
+          <Button disabled={readOnly} onClick={onFind}>
+            Find a match
+          </Button>
         </div>
       ) : null}
 
@@ -219,11 +239,11 @@ export function RefInspector({
       ) : null}
 
       <footer className="ref-actions">
-        <button type="button" className="link-btn" onClick={() => onReplace(false)}>
+        <button type="button" className="link-btn" disabled={readOnly} onClick={() => onReplace(false)}>
           Link another skill
         </button>
         {target.otherUses.length ? (
-          <button type="button" className="link-btn" onClick={() => onReplace(true)}>
+          <button type="button" className="link-btn" disabled={readOnly} onClick={() => onReplace(true)}>
             Replace all {target.otherUses.length + 1}
           </button>
         ) : null}
@@ -232,7 +252,7 @@ export function RefInspector({
             {best.origin === "mine" ? "Open it" : "Look at it"}
           </button>
         ) : null}
-        <button type="button" className="link-btn is-danger" onClick={onRemove}>
+        <button type="button" className="link-btn is-danger" disabled={readOnly} onClick={onRemove}>
           Remove from here
         </button>
       </footer>

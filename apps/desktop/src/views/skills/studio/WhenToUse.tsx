@@ -89,7 +89,8 @@ export function ReadRules({
   appliesWhen: Condition | null;
   excludes: Condition | null;
 }) {
-  if (!appliesWhen && !excludes) return <p className="wu-empty">No signals — chosen by hand.</p>;
+  if (!appliesWhen && !excludes)
+    return <p className="wu-empty">Choose this skill manually in any project.</p>;
   return (
     <div className="wu-read">
       {appliesWhen ? (
@@ -208,7 +209,7 @@ function Adder({
         </p>
       ) : null}
       {offers.length > 0 ? (
-        <div className="wu-offers" id={`${id}-offers`} role="listbox" aria-label="Signals to look for">
+        <div className="wu-offers" id={`${id}-offers`} role="listbox" aria-label="Project details">
           {offers.map((o, i) => (
             // biome-ignore lint/a11y/useKeyWithClickEvents: the field above moves through the list.
             <div
@@ -366,7 +367,7 @@ export function WhenToUse({
 
   const add = (s: Signal): string | null => {
     if (applies.some((r) => r.kind === s.kind && r.value === s.value)) return "Already there.";
-    if (applies.length >= 20) return "That is a lot of signals. Remove one first, or edit the YAML.";
+    if (applies.length >= 20) return "You can add up to 20 conditions. Remove one to add another.";
     setForm(addSignal(form, s));
     return null;
   };
@@ -401,6 +402,7 @@ export function WhenToUse({
   const header = (
     <header className="wu-head">
       <h2 className="layer-title">When to use</h2>
+      <p className="wu-intro">Help Habi suggest this skill in the right projects.</p>
     </header>
   );
 
@@ -484,8 +486,11 @@ export function WhenToUse({
 
         <section className="wu-section" aria-labelledby="wu-when">
           <h3 id="wu-when" className="wu-lead">
-            Suggest when
+            Use this skill when…
           </h3>
+          {!applies.length ? (
+            <p className="wu-help">Choose a language, framework, or file to look for. For example, Python.</p>
+          ) : null}
           {applies.length > 0 ? (
             <Rows signals={applies} onRemove={remove} disabled={trashed} />
           ) : inferred && adding !== "applies" ? (
@@ -503,7 +508,7 @@ export function WhenToUse({
           {adding === "applies" ? (
             <Adder
               kinds={["tag", "dependency", "file"]}
-              placeholder="Playwright, @playwright/test, **/db/changelog/**…"
+              placeholder="Search, e.g. Python or React"
               observedFrom={project?.name ?? null}
               observed={observed}
               observing={suggestions.isFetching}
@@ -522,12 +527,12 @@ export function WhenToUse({
                   data-adds="applies"
                   onClick={() => setAdding("applies")}
                 >
-                  <Icon name="plus" size={12} /> Add signal
+                  <Icon name="plus" size={12} /> Choose a project detail
                 </button>
               )}
               {applies.length > 1 ? (
                 <span className="wu-match">
-                  match
+                  Suggest if
                   <span className="wu-choice">
                     {(["any", "all"] as const).map((mode) => (
                       <button
@@ -549,15 +554,18 @@ export function WhenToUse({
 
         <section className="wu-section" aria-labelledby="wu-avoid">
           <h3 id="wu-avoid" className="wu-lead">
-            Avoid when
+            Skip this skill when…
           </h3>
+          {!excludes.length ? (
+            <p className="wu-help">Optional. Leave out projects where this skill would not help.</p>
+          ) : null}
           {excludes.length > 0 ? (
             <Rows signals={excludes} onRemove={removeExclude} disabled={trashed} />
           ) : null}
           {adding === "excludes" ? (
             <Adder
               kinds={["tag", "dependency"]}
-              placeholder="A technology or dependency that rules it out"
+              placeholder="Search for something that makes this skill unsuitable"
               observedFrom={project?.name ?? null}
               observed={observed}
               observing={suggestions.isFetching}
@@ -571,7 +579,7 @@ export function WhenToUse({
               data-adds="excludes"
               onClick={() => setAdding("excludes")}
             >
-              <Icon name="plus" size={12} /> Add exception
+              <Icon name="plus" size={12} /> Add a reason to skip
             </button>
           )}
         </section>
@@ -605,8 +613,11 @@ export function WhenToUse({
 
         <section className="wu-section" aria-labelledby="wu-needs">
           <h3 id="wu-needs" className="wu-lead">
-            Needs
+            Tools it needs
           </h3>
+          {!form.tools.length ? (
+            <p className="wu-help">Optional. Software that must be available to use this skill.</p>
+          ) : null}
           {form.tools.length > 0 ? (
             <ul className="wu-rows">
               {form.tools.map((tool, index) => {
@@ -669,11 +680,11 @@ export function WhenToUse({
               <Button size="sm" variant="quiet" onClick={stopAdding}>
                 Done
               </Button>
-              <p className="wu-note">Looked up on PATH, never run.</p>
+              <p className="wu-note">Habi checks whether the tool is available. It does not run it.</p>
             </div>
           ) : (
             <button type="button" className="wu-add" data-adds="tool" onClick={() => setAdding("tool")}>
-              <Icon name="plus" size={12} /> Add tool
+              <Icon name="plus" size={12} /> Add a required tool
             </button>
           )}
         </section>

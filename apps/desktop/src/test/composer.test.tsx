@@ -1,20 +1,15 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { Transform } from "prosemirror-transform";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Composition } from "../bindings/Composition";
 import type { Dependency } from "../bindings/Dependency";
 import type { ShelfSkill } from "../bindings/ShelfSkill";
 import { Inside } from "../views/skills/studio/compose/Inside";
-import { Overview } from "../views/skills/studio/compose/Overview";
-import { overviewOf } from "../views/skills/studio/compose/overviewData";
 import { type InspectorTarget, RefInspector } from "../views/skills/studio/compose/RefInspector";
-import { occurrencesIn } from "../views/skills/studio/compose/roles";
 import { Shelf } from "../views/skills/studio/compose/Shelf";
-import { WhenTokens } from "../views/skills/studio/compose/WhenTokens";
-import { parseBody } from "../views/skills/studio/doc/markdown/parse";
+import { WhenSummary } from "../views/skills/studio/compose/WhenSummary";
 import type { SkillDraft } from "../views/skills/studio/useSkillDraft";
 
 Element.prototype.scrollIntoView = () => {};
@@ -151,7 +146,7 @@ describe("the shelf", () => {
 
   it("says that a link installs and runs nothing", () => {
     render(<Shelf {...shelfProps} skills={skills} />);
-    expect(screen.getByText(/nothing is installed or run/)).toBeInTheDocument();
+    expect(screen.getByText(/nothing is installed or run/i)).toBeInTheDocument();
   });
 
   it("can be picked up as well as pressed", () => {
@@ -191,6 +186,18 @@ describe("one use, opened", () => {
     onFind: vi.fn(),
     onClose: vi.fn(),
   };
+
+  it("allows inspecting a read-only reference without exposing edits", () => {
+    render(<RefInspector {...handlers} target={target} dependency={dep()} shelf={[skill()]} readOnly />);
+    expect(
+      screen
+        .getAllByRole("radio")
+        .every((radio) => (radio as HTMLInputElement).disabled || radio.closest("fieldset")?.disabled),
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "Remove from here" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Link another skill" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Look at it" })).toBeEnabled();
+  });
 
   it("changes what this use is for in plain words", async () => {
     const onRole = vi.fn();
@@ -313,120 +320,6 @@ describe("one use, opened", () => {
   });
 });
 
-describe("the loom", () => {
-  const SOURCE =
-    "Intro uses the `a-b` skill.\n\n## One\n\nUse the `c-d` skill.\n\n## Two\n\nUse the `a-b` skill.\n\nNamed: the `e-f` skill.\n";
-  const composed = () => {
-    const { doc } = parseBody(SOURCE);
-    const tr = new Transform(doc);
-    for (const o of occurrencesIn(doc))
-      if (o.name !== "e-f") tr.setNodeAttribute(o.pos, "role", "when-relevant");
-    return tr.doc;
-  };
-  const props = {
-    titleOf: (n: string) => n.toUpperCase(),
-    onGo: vi.fn(),
-    onUse: vi.fn(),
-    onTie: vi.fn(),
-    onMoveUse: vi.fn(),
-    onMoveSection: vi.fn(),
-    onAddBack: vi.fn(),
-    onForget: vi.fn(),
-    onClose: vi.fn(),
-  };
-
-  it("reads sections and deliberate uses from the document alone", () => {
-    const data = overviewOf(composed());
-    expect(data.rows.map((r) => r.title)).toEqual(["Opening", "One", "Two"]);
-    expect(data.names).toEqual(["a-b", "c-d"]);
-    expect(data.uses.map((u) => [u.name, u.row])).toEqual([
-      ["a-b", 0],
-      ["c-d", 1],
-      ["a-b", 2],
-    ]);
-  });
-
-  it("is a real table, so it can be walked cell by cell", () => {
-    render(<Overview {...props} overview={overviewOf(composed())} composition={composition()} />);
-    expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getAllByRole("rowheader").map((r) => r.textContent)).toEqual(["Opening", "One", "Two"]);
-    expect(screen.getAllByRole("columnheader")).toHaveLength(2);
-  });
-
-  it("tying a knot at an empty crossing adds that skill to that section", async () => {
-    const onTie = vi.fn();
-    render(
-      <Overview {...props} overview={overviewOf(composed())} composition={composition()} onTie={onTie} />,
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Use C-D in Two" }));
-    expect(onTie).toHaveBeenCalledWith("c-d", 2);
-  });
-
-  it("a knot opens from the keyboard, and sections move with Alt+arrows", () => {
-    const onUse = vi.fn();
-    const onMoveSection = vi.fn();
-    render(
-      <Overview
-        {...props}
-        overview={overviewOf(composed())}
-        composition={composition()}
-        onUse={onUse}
-        onMoveSection={onMoveSection}
-      />,
-    );
-    fireEvent.keyDown(screen.getByRole("button", { name: /C-D in One/ }), { key: "Enter" });
-    expect(onUse).toHaveBeenCalled();
-    fireEvent.keyDown(screen.getByRole("button", { name: "Two" }), { key: "ArrowUp", altKey: true });
-    expect(onMoveSection).toHaveBeenCalledWith(2, 1);
-  });
-
-  it("says it isn't a route an agent will follow", () => {
-    render(<Overview {...props} overview={overviewOf(composed())} composition={composition()} />);
-    expect(screen.getByText(/isn't a route it will follow/)).toBeInTheDocument();
-  });
-
-  it("says in words what's missing, circular, or only mentioned", () => {
-    render(
-      <Overview
-        {...props}
-        overview={overviewOf(composed())}
-        composition={composition({
-          dependencies: [dep({ name: "c-d", status: "missing" })],
-          cycles: [["a-b", "c-d", "a-b"]],
-          mentioned: [{ name: "e-f", plugin: undefined, lines: [9] } as never],
-        })}
-      />,
-    );
-    expect(screen.getByText(/C-D isn't on this machine/)).toBeInTheDocument();
-    expect(screen.getByText(/A-B → C-D → A-B/)).toBeInTheDocument();
-    expect(screen.getByText("Mentioned, not linked")).toBeInTheDocument();
-    expect(screen.getByText("E-F")).toBeInTheDocument();
-  });
-
-  it("makes the author decide about what the words no longer mention", async () => {
-    const onForget = vi.fn();
-    render(
-      <Overview
-        {...props}
-        overview={overviewOf(composed())}
-        composition={composition({ unmentioned: ["gone"] })}
-        onForget={onForget}
-      />,
-    );
-    expect(screen.getByText(/can't be installed or shared until you decide/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Forget it" }));
-    expect(onForget).toHaveBeenCalledWith("gone");
-  });
-
-  it("has no accessibility violations", async () => {
-    const { container } = render(
-      <Overview {...props} overview={overviewOf(composed())} composition={composition()} />,
-    );
-    const result = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
-    expect(result.violations.map((v) => v.id)).toEqual([]);
-  });
-});
-
 describe("what's inside", () => {
   const props = {
     titleOf: (n: string) => n,
@@ -437,7 +330,6 @@ describe("what's inside", () => {
     onWhen: vi.fn(),
     onReadiness: vi.fn(),
     onSource: vi.fn(),
-    onOverview: vi.fn(),
     onClose: vi.fn(),
   };
 
@@ -523,65 +415,26 @@ function Harness({ initial = form, onMore = () => {} }: { initial?: typeof form;
     document: { name: "n", description: "d", body: "Plain words." },
     skill: { metadataStatus: "undeclared" },
   } as unknown as SkillDraft;
-  return <WhenTokens draft={draft} onMore={onMore} />;
+  return <WhenSummary draft={draft} onOpen={onMore} />;
 }
 
 describe("what a skill is for", () => {
-  it("is tokens, with no sentence and no fields to fill in", () => {
-    render(<Harness />);
-    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.queryByText(/Habi/)).toBeNull();
-  });
-
-  it("type, choose, and it's a token", async () => {
-    render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: "Suggest for…" }));
-    const input = screen.getByRole("combobox");
-    expect(input).toHaveFocus();
-    await userEvent.type(input, "playwright{Enter}");
-    expect(screen.getByRole("button", { name: "Remove Playwright" })).toBeInTheDocument();
-    expect(screen.queryByText(/is used/)).toBeNull();
-  });
-
-  it("Backspace on an empty line takes out the last one, as in any text", async () => {
-    render(<Harness initial={{ ...form, appliesTags: ["test:playwright"] }} />);
-    await userEvent.click(screen.getByRole("button", { name: "Add another" }));
-    await userEvent.keyboard("{Backspace}");
-    expect(screen.queryByText("Playwright")).toBeNull();
-  });
-
-  it("a token's × takes it out", async () => {
-    render(<Harness initial={{ ...form, appliesTags: ["test:playwright"] }} />);
-    await userEvent.click(screen.getByRole("button", { name: "Remove Playwright" }));
-    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
-  });
-
-  it("the word between tokens changes what they mean when pressed", async () => {
-    render(<Harness initial={{ ...form, appliesDependencies: ["a", "b"] }} />);
-    await userEvent.click(screen.getByRole("button", { name: "and" }));
-    expect(screen.getByRole("button", { name: "or" })).toBeInTheDocument();
-  });
-
-  it("keeps the rarer rules one step away, not on the page", async () => {
+  it("opens the sidebar directly without an intermediate input", async () => {
     const onMore = vi.fn();
     render(<Harness onMore={onMore} />);
-    expect(screen.queryByText("Exceptions and other rules")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Suggest for…" }));
-    await userEvent.click(screen.getByRole("button", { name: "Exceptions and other rules" }));
-    expect(onMore).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Set conditions" }));
+    expect(onMore).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
-
-  it("Escape leaves it as it was", async () => {
-    render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: "Suggest for…" }));
-    await userEvent.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "Suggest for…" })).toBeInTheDocument();
+  it("summarizes matching logic and opens the same sidebar to edit", async () => {
+    const onMore = vi.fn();
+    render(<Harness initial={{ ...form, appliesDependencies: ["a", "b"] }} onMore={onMore} />);
+    expect(screen.getByText("it depends on a and it depends on b")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Edit when to use" }));
+    expect(onMore).toHaveBeenCalledOnce();
   });
-
-  it("hand-written rules aren't these tokens' to change", () => {
+  it("keeps custom rules inspectable", () => {
     render(<Harness initial={{ ...form, conditionsEditable: false }} />);
-    expect(screen.getByRole("button", { name: "Custom rules" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add another" })).toBeNull();
+    expect(screen.getByText("Custom rules")).toBeInTheDocument();
   });
 });

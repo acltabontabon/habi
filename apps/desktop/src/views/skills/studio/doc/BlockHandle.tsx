@@ -12,6 +12,7 @@ import { moveBlock, setHeading, setParagraph, toggleList } from "./commands";
 import { armDrag, ghostOfBlocks } from "./drag";
 import { schema } from "./markdown/schema";
 import { moveBlocks, moveItem, sectionRange } from "./moves";
+import type { InsertionTarget } from "./Pieces";
 import { composedUseIn } from "./uses";
 
 export type BlockMenuTarget = { pos: number; left: number; top: number };
@@ -46,6 +47,7 @@ export function BlockHandle({
   onMenu,
   tick,
   onLiftUse,
+  onInsert,
 }: {
   view: EditorView;
   host: RefObject<HTMLDivElement | null>;
@@ -53,6 +55,7 @@ export function BlockHandle({
   onMenu: (target: BlockMenuTarget | null) => void;
   tick: number;
   onLiftUse?: (pos: number, event: PointerEvent) => void;
+  onInsert?: (target: InsertionTarget) => void;
 }) {
   const [spot, setSpot] = useState<Spot | null>(null);
   const handle = useRef<HTMLButtonElement>(null);
@@ -92,7 +95,7 @@ export function BlockHandle({
           parent.parent.type === schema.nodes.ordered_list;
         // A step's number and a used skill's knot are the things you pick up.
         if (step) setSpot({ pos: found.pos, node: found.node, bead: true, left: left - 36, top: top + 2 });
-        else if (dom.classList.contains("doc-use")) {
+        else if (dom.classList.contains("doc-use") && !dom.classList.contains("weave-guidance")) {
           setSpot({ pos: found.pos, node: found.node, bead: true, left: left + 8, top: top + 12 });
         } else {
           setSpot({
@@ -187,29 +190,27 @@ export function BlockHandle({
     <>
       {spot ? (
         <>
-          <button
-            type="button"
-            className="doc-add"
-            style={{ left: spot.left - 22, top: spot.top }}
-            aria-label="Add a block below"
-            title="Add a block below"
-            tabIndex={-1}
-            onClick={() => {
-              const size = spot.node.nodeSize;
-              const at = spot.pos + size;
-              const para = schema.nodes.paragraph.create();
-              const item = spot.node.type === schema.nodes.list_item;
-              const tr = view.state.tr.insert(at, item ? schema.nodes.list_item.create(null, para) : para);
-              tr.setSelection(NodeSelection.near(tr.doc.resolve(at + (item ? 2 : 1))));
-              if (!item) tr.insertText("/");
-              view.dispatch(tr.scrollIntoView());
-              view.focus();
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-          </button>
+          {onInsert ? (
+            <button
+              type="button"
+              className="doc-add"
+              style={{ left: spot.left - 22, top: spot.top }}
+              aria-label="Add guidance below"
+              title="Add guidance below"
+              tabIndex={-1}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                const $pos = view.state.doc.resolve(spot.pos);
+                // A procedure is one top-level block: guidance joins after it.
+                const at = $pos.depth > 0 ? $pos.after(1) : spot.pos + spot.node.nodeSize;
+                onInsert({ pos: at, left: rect.left, top: rect.bottom + 6 });
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            </button>
+          ) : null}
           <button
             ref={handle}
             type="button"
@@ -230,7 +231,7 @@ export function BlockHandle({
               e.preventDefault();
               const { pos, node } = spot;
               const use = composedUseIn(node);
-              if (use && onLiftUse) {
+              if (spot.bead && use && onLiftUse) {
                 onLiftUse(pos + 1 + use.offset, e.nativeEvent);
                 return;
               }

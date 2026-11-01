@@ -16,7 +16,9 @@ const draft = (errors = 0) =>
     },
   }) as unknown as SkillDraft;
 
-const better = [{ kind: "instructions", text: "The instructions are brief.", action: "Add more" }] as never[];
+const better = [
+  { kind: "unfinished", text: "One unfinished placeholder.", action: "Show me", line: 1 },
+] as never[];
 
 function show(d: SkillDraft, others: OtherSkill[], onOpenOther = vi.fn(), improve: never[] = []) {
   render(
@@ -41,36 +43,33 @@ const found: OtherSkill = { name: "a", title: "Found one", status: "found" };
 const missing: OtherSkill = { name: "b", title: "Missing one", status: "missing" };
 
 describe("where a skill stands", () => {
-  it("says Ready only when the format is valid and every link was found", () => {
+  it("shows neutral details when there are no actual problems", () => {
     show(draft(), [found]);
-    expect(screen.getByRole("button", { name: /^Ready/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Skill details$/ })).toBeInTheDocument();
   });
 
   it("doesn't call a skill Ready when a skill it links to can't be found", () => {
     show(draft(), [found, missing]);
-    expect(screen.getByRole("button", { name: /^Valid.*1 skill not found/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1 skill not found/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Ready/ })).toBeNull();
   });
 
-  it("suggestions don't take Ready away", () => {
+  it("counts unfinished placeholders", () => {
     show(draft(), [], vi.fn(), better);
-    expect(screen.getByRole("button", { name: /^Ready.*1 to improve/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1 to improve/ })).toBeInTheDocument();
   });
 
-  it("a format problem is a Draft, whatever else is true", () => {
+  it("prioritizes validation problems", () => {
     show(draft(1), [missing]);
-    expect(screen.getByRole("button", { name: /^Draft/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1 thing to finish/ })).toBeInTheDocument();
   });
 
-  it("answers format, content and other skills separately, and goes to a link", async () => {
+  it("shows only actual problems and opens the broken link", async () => {
     const open = show(draft(), [found, missing]);
-    await userEvent.click(screen.getByRole("button", { name: /^Valid/ }));
-    for (const part of ["Format", "Content", "Other skills"]) {
-      expect(screen.getByText(part)).toBeInTheDocument();
-    }
-    expect(screen.getByText("Not found here")).toBeInTheDocument();
-    expect(screen.getByText(/Agents decide for themselves/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Missing one" }));
+    await userEvent.click(screen.getByRole("button", { name: /^1 skill not found/ }));
+    expect(screen.queryByText("Format")).not.toBeInTheDocument();
+    expect(screen.queryByText("Found one")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Check Missing one/ }));
     expect(open).toHaveBeenCalledWith("b");
   });
 });

@@ -62,6 +62,10 @@ export function moveItem(view: EditorView, from: number, to: number, at: number)
 
 /** New content between blocks, with the caret in it. An empty line at the spot is replaced. */
 export function placeBlocks(view: EditorView, at: number, content: PMNode[]): number {
+  // Palette factories can be hot-reloaded while an editor keeps its original schema.
+  content = content.map((node) =>
+    node.type.schema === view.state.schema ? node : view.state.schema.nodeFromJSON(node.toJSON()),
+  );
   const tr = view.state.tr;
   const after = tr.doc.nodeAt(at);
   const before = at > 0 ? tr.doc.resolve(at).nodeBefore : null;
@@ -70,9 +74,9 @@ export function placeBlocks(view: EditorView, at: number, content: PMNode[]): nu
   if (docEmpty) {
     tr.replaceWith(0, tr.doc.content.size, content);
     place = 0;
-  } else if (after?.type === nodes.paragraph && after.content.size === 0) {
+  } else if (after?.type.name === "paragraph" && after.content.size === 0) {
     tr.replaceWith(at, at + after.nodeSize, content);
-  } else if (before?.type === nodes.paragraph && before.content.size === 0) {
+  } else if (before?.type.name === "paragraph" && before.content.size === 0) {
     place = at - before.nodeSize;
     tr.replaceWith(place, at, content);
   } else {

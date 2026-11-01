@@ -16,19 +16,19 @@
  * silent unless it fails. Edits save to the draft on this machine as they are
  * typed; nothing here installs, runs or publishes.
  */
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { TextSelection } from "prosemirror-state";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { LocalSkill } from "../../../bindings/LocalSkill";
 import { BackLink } from "../../../components/BackLink";
 import { Icon } from "../../../components/Icon";
-import { Menu } from "../../../components/Menu";
 import { SaveIndicator } from "../../../components/SaveIndicator";
 import { useToast } from "../../../components/Toasts";
 import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
-import { useActions } from "../../../lib/actions";
 import { api } from "../../../lib/api";
-import { purposeHint, type Refinement, refinements } from "../../../lib/coach";
-import { firstHeading, isMaterial, materialsOf, type Signal, signalClause } from "../../../lib/materials";
+import { type Refinement, refinements } from "../../../lib/coach";
+import { firstHeading, isMaterial, materialsOf } from "../../../lib/materials";
 import { useNav } from "../../../lib/nav";
 import { modShortcut } from "../../../lib/platform";
 import {
@@ -38,26 +38,35 @@ import {
   useSkills,
   useSkillsOverview,
 } from "../../../lib/queries";
-import { useSafeInvoke } from "../../../lib/safeInvoke";
 import { type ScreenCommand, useRegisterScreenCommands } from "../../../lib/screenCommands";
 import { slugify } from "../../../lib/skills";
 import type { NavTarget, StudioLayer } from "../../../lib/studioNav";
-import { tagLabel } from "../../../lib/tags";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
+import "../../../styles/weaving.css";
+import "../../../styles/canvas-workbench.css";
 import { type Panel, useComposer } from "./compose/useComposer";
-import { WhenTokens } from "./compose/WhenTokens";
+import { WhenSummary } from "./compose/WhenSummary";
+import { insertCapability, insertionAtSelection } from "./doc/capabilityPieces";
 import { markdownForFile } from "./doc/fileRefs";
+import { GuidanceActions } from "./doc/GuidanceActions";
+import {
+  attachGuidanceMaterial,
+  attachGuidanceSkill,
+  captureGuidanceTarget,
+  type GuidanceTarget,
+  subscribeGuidance,
+} from "./doc/guidanceContext";
 import type { DocEditorHandle } from "./doc/lazy";
+import type { WeaveKind } from "./doc/WeaveBar";
 import { Materials, useDropToAdd } from "./files/Materials";
+import { type MaterialTarget, MaterialWorkspace } from "./files/MaterialWorkspace";
 import { Instructions, Outline, useOutline } from "./Instructions";
-import { ProjectEvaluation } from "./ProjectEvaluation";
 import { isCopy, onward, Provenance, ProvenanceSheet } from "./Provenance";
 import { nextStep, Readiness } from "./Readiness";
-import { SuggestedStrip } from "./SuggestedStrip";
 import { NOT_SAVED, type SkillDraft, useSkillDraft } from "./useSkillDraft";
-import { addSignal, removeSignal, WhenToUse } from "./WhenToUse";
+import { WhenToUse } from "./WhenToUse";
 
 const LAYER_NAME: Record<StudioLayer, string> = {
   skill: "Instructions",
@@ -66,7 +75,7 @@ const LAYER_NAME: Record<StudioLayer, string> = {
   source: "Package source",
 };
 
-type Sheet = "provenance" | "test";
+type Sheet = "provenance";
 
 const DESCRIPTION_LIMIT = 1024;
 
@@ -199,10 +208,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const draft = useSkillDraft(initial);
   const { id, skill, trashed, broken, title, setTitle, document, setDocument } = draft;
   const { navigate } = useNav();
-  const { openProject } = useActions();
   const client = useQueryClient();
   const toast = useToast();
-  const safely = useSafeInvoke();
   const projects = useRecentProjects();
   const [trayHost, setTrayHost] = useState<HTMLDivElement | null>(null);
   const overview = useSkillsOverview();
@@ -229,6 +236,11 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const [dialog, setDialog] = useState<"use" | "share" | null>(null);
   const [titleInView, setTitleInView] = useState(true);
   const [sourceMode, setSourceMode] = useState(false);
+  const [agentView, setAgentView] = useState(false);
+  const guidanceTarget = useRef<GuidanceTarget | null>(null);
+  const [supportContext, setSupportContext] = useState<string | undefined>();
+  const [expertiseCondition, setExpertiseCondition] = useState("");
+  const [materialTarget, setMaterialTarget] = useState<MaterialTarget | null>(null);
   const evalProjectRef = useRef<string | null>(null);
   const openFileRef = useRef<(path: string) => void>(() => undefined);
   const goRef = useRef<(next: StudioLayer) => void>(() => undefined);
@@ -244,12 +256,55 @@ function Studio({ initial }: { initial: LocalSkill }) {
     onAddFile: () => addFileRef.current(),
     onWhen: () => goRef.current("when"),
     onReadiness: () =>
-      window.document.querySelector<HTMLElement>(".sk-acts .sk-ready, .sk-acts [aria-haspopup]")?.click(),
-    onSource: () => setSourceMode(true),
+      window.document.querySelector<HTMLElement>(".studio-toolbar-status [aria-haspopup]")?.click(),
+    onSource: () => {
+      setAgentView(false);
+      setSourceMode(true);
+    },
     ready: !skill.diagnostics.some((d) => d.level === "error"),
     problems: skill.diagnostics.filter((d) => d.level === "error").length,
+    skillDragCondition: expertiseCondition,
+    onAttachSkill: (view, pick) => {
+      const target = guidanceTarget.current;
+      if (!target) return false;
+      if (!attachGuidanceSkill(view, target, pick, expertiseCondition)) {
+        draft.setActionError(
+          new Error("That instruction changed. Select it again before connecting expertise."),
+        );
+        return true;
+      }
+      target.release(view);
+      guidanceTarget.current = null;
+      setSupportContext(undefined);
+      return true;
+    },
+    onCloseSupport: () => finishSupport(),
   });
   const materials = useMemo(() => materialsOf(skill.files, document.body), [skill.files, document.body]);
+  const previousPanel = useRef(composer.panel?.kind);
+  useEffect(() => {
+    if (previousPanel.current === "shelf" && composer.panel?.kind !== "shelf") {
+      const view = editor.current?.view();
+      if (view) guidanceTarget.current?.release(view);
+      guidanceTarget.current = null;
+      setSupportContext(undefined);
+    }
+    previousPanel.current = composer.panel?.kind;
+  }, [composer.panel?.kind]);
+  useEffect(() => {
+    const view = composer.view;
+    if (!view) return;
+    return subscribeGuidance(view, () => {
+      const target = guidanceTarget.current;
+      if (!target) return;
+      const current = target.resolve(view);
+      setSupportContext(
+        current
+          ? current.label
+          : "This instruction was removed. Select another instruction to connect support.",
+      );
+    });
+  }, [composer.view]);
   // Use only when there is something ready to use; until then, the next step.
   const ready = !skill.diagnostics.some((d) => d.level === "error");
 
@@ -259,16 +314,11 @@ function Studio({ initial }: { initial: LocalSkill }) {
     origin.type === "createdForProject" || origin.type === "instructions" || origin.type === "project"
       ? available.find((p) => p.name === origin.projectName)?.id
       : undefined;
-  const [chosenProject, setChosenProject] = useState<string | null>(null);
-  const evalProject =
-    (chosenProject && available.some((p) => p.id === chosenProject) ? chosenProject : null) ??
-    originProject ??
-    available[0]?.id ??
-    null;
+  const evalProject = originProject ?? available[0]?.id ?? null;
   const evaluation = useRulesPreview(
     draft.previewRequest(evalProject),
     `${draft.rulesKey}|${evalProject ?? ""}`,
-    sheet === "test" || (composer.panel?.kind === "when" && draft.yamlMode),
+    composer.panel?.kind === "when" && draft.yamlMode,
   );
 
   evalProjectRef.current = evalProject;
@@ -332,38 +382,116 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
   const reveal = (line: number, atEnd = false) => {
     go("skill");
+    setAgentView(false);
+    setSourceMode(false);
+    composer.setPanel(null);
+    setMaterialTarget(null);
     requestAnimationFrame(() => requestAnimationFrame(() => editor.current?.revealLine(line, atEnd)));
+  };
+
+  const retainGuidance = (target: GuidanceTarget) => {
+    const view = editor.current?.view();
+    if (view) guidanceTarget.current?.release(view);
+    guidanceTarget.current = target;
+    setSupportContext(target.label);
+  };
+  const finishSupport = () => {
+    const view = editor.current?.view();
+    const target = guidanceTarget.current;
+    if (view && target) {
+      const current = target.resolve(view);
+      target.release(view);
+      if (current)
+        view.dispatch(
+          view.state.tr
+            .setSelection(TextSelection.near(view.state.doc.resolve(current.from + 1)))
+            .scrollIntoView(),
+        );
+      view.focus();
+    }
+    guidanceTarget.current = null;
+    setSupportContext(undefined);
+  };
+  const showMaterial = async (target: MaterialTarget) => {
+    if (!(await draft.flushAll())) {
+      draft.setActionError(new Error("Save or resolve the open material before switching."));
+      return;
+    }
+    setAgentView(false);
+    setSourceMode(false);
+    composer.setPanel(null);
+    setFile({ path: null });
+    setMaterialTarget(target);
+  };
+
+  const weaveSupport = (kind: WeaveKind, captured?: GuidanceTarget) => {
+    const view = editor.current?.view();
+    if (!view || trashed) return;
+    const target = captured ?? captureGuidanceTarget(view);
+    if (!target) return;
+    retainGuidance(target);
+    if (kind === "skill") {
+      setExpertiseCondition("");
+      composer.setPanel({ kind: "shelf" });
+    } else {
+      void showMaterial({
+        path: null,
+        ...(kind === "script"
+          ? { create: "python" as const }
+          : kind === "reference"
+            ? { create: "reference" as const }
+            : {}),
+      });
+    }
   };
 
   const openFile = (path: string, line?: number) => {
     if (path === "SKILL.md" && !broken) return line ? reveal(line) : go("skill");
     if (/^habi\.ya?ml$/.test(path)) return go("when");
+    if (isMaterial(path) && layer === "skill") {
+      void showMaterial({ path });
+      return;
+    }
     go(isMaterial(path) && layer !== "source" ? "materials" : "source");
     setFile({ path, line });
   };
 
   const addFile = () => {
-    void api
-      .addSkillFiles(id, "auto")
-      .then((fresh) => {
-        if (!fresh) return;
-        const added = fresh.files.filter((f) => !skill.files.some((b) => b.path === f.path));
-        draft.adopt(fresh, { document: false, metadata: false });
-        if (added.length) {
-          requestAnimationFrame(() =>
-            editor.current?.insertAt(added.map((f) => markdownForFile(f.path)).join("\n\n"), null),
-          );
-        }
-      })
-      .catch(draft.setActionError);
+    const view = editor.current?.view();
+    const target = view && captureGuidanceTarget(view);
+    if (target) retainGuidance(target);
+    void showMaterial({ path: null });
+  };
+  const attachMaterial = (path: string, purpose?: string) => {
+    const view = editor.current?.view();
+    if (!view || trashed || sourceMode || agentView) return;
+    if (guidanceTarget.current) {
+      if (!attachGuidanceMaterial(view, guidanceTarget.current, path, purpose))
+        draft.setActionError(
+          new Error(
+            "The file is available, but that instruction changed. Select an instruction to connect it.",
+          ),
+        );
+      return;
+    }
+    const material = materialsOf(skill.files, document.body).find((file) => file.path === path);
+    const verb = material?.kind === "script" || /^scripts\//.test(path) ? "Use" : "Consult";
+    insertCapability(view, insertionAtSelection(view), `${verb} ${markdownForFile(path)} to ….`);
   };
   addFileRef.current = addFile;
   openFileRef.current = openFile;
   goRef.current = go;
 
   const viewSource = (path: string | null) => {
-    go("source");
-    setFile({ path: path ?? "SKILL.md" });
+    void draft.flushAll().then((saved) => {
+      if (!saved) {
+        draft.setActionError(new Error(NOT_SAVED));
+        return;
+      }
+      setMaterialTarget(null);
+      go("source");
+      setFile({ path: path ?? "SKILL.md" });
+    });
   };
 
   /** A material the instructions never mention: a line for it at the end, ready to be described. */
@@ -375,6 +503,31 @@ function Studio({ initial }: { initial: LocalSkill }) {
     requestAnimationFrame(() => editor.current?.appendMarkdown(`- [${name}](${target}) — `));
   };
 
+  const spotlight = (selector: string) => {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const target = window.document.querySelector<HTMLElement>(selector);
+        if (!target) return;
+        const focus = target.matches("input, textarea, button, [contenteditable]")
+          ? target
+          : target.querySelector<HTMLElement>("input, textarea, button");
+        focus?.focus({ preventScroll: true });
+        target.scrollIntoView?.({
+          block: "center",
+          behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        });
+        target.classList.add("studio-fix-highlight");
+        window.setTimeout(() => target.classList.remove("studio-fix-highlight"), 2400);
+      }),
+    );
+  };
+  const revealWhen = () => {
+    setSourceMode(false);
+    setAgentView(false);
+    go("when");
+    spotlight('.sk-when-panel section[aria-labelledby="wu-when"]');
+  };
+
   /** From a problem, a dialog or the palette to the place that fixes it. */
   const focusTarget = (t: NavTarget) => {
     setDialog(null);
@@ -382,13 +535,17 @@ function Studio({ initial }: { initial: LocalSkill }) {
     if (t.field === "identifier") return setIdentEditing(true);
     if (t.field) {
       go("skill");
-      requestAnimationFrame(() =>
-        window.document.getElementById(t.field === "title" ? "studio-title" : "studio-purpose")?.focus(),
-      );
+      setSourceMode(false);
+      setAgentView(false);
+      composer.setPanel(null);
+      setMaterialTarget(null);
+      spotlight(t.field === "title" ? "#studio-title" : "#studio-purpose");
       return;
     }
     if (t.path) return openFile(t.path, t.line);
     if (t.layer === "skill" && t.line) return reveal(t.line);
+    if (t.layer === "when") return revealWhen();
+    if (t.layer === "skill") return reveal(1);
     if (t.layer) go(t.layer);
   };
 
@@ -398,14 +555,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
     if (layer === "source") return go("materials");
     go("skill");
   };
-
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
 
   // Keys that belong to the Studio.
   const keyState = useRef({ go, up, layer, sheet, closeSheet, outline: outline.length });
@@ -500,42 +649,14 @@ function Studio({ initial }: { initial: LocalSkill }) {
       }
     });
 
-  const showFolder = () => safely(() => api.revealSkill(id), "The folder was not shown");
-
-  const suggestSignal = (signal: Signal) => {
-    draft.setForm((f) => addSignal(f, signal));
-    // Undo takes back this signal only: edits made since stay.
-    toast.show(`Now suggested when ${signalClause(signal)}.`, "ok", {
-      label: "Undo",
-      run: () => {
-        if (mounted.current) return draft.setForm((f) => removeSignal(f, signal));
-        // The editor has been left, so what is on disk is what to take it back from.
-        void api
-          .getSkill(id)
-          .then((s) => api.saveSkillApplicability(id, removeSignal(s.form, signal), s.metadataDigest))
-          .then(() => invalidateSkills(client))
-          .catch((e: unknown) =>
-            toast.show(`Could not undo: ${e instanceof Error ? e.message : String(e)}`, "danger"),
-          );
-      },
-    });
-  };
-
   /** Each refinement's one action: the place, or the change, it asks for. */
   const refine = (r: Refinement) => {
     switch (r.kind) {
       case "opening":
-        return setDocument((d) => ({ ...d, description: r.sentence }));
+        setDocument((d) => ({ ...d, description: r.sentence }));
+        return focusTarget({ field: "description" });
       case "unfinished":
         return reveal(r.line, true);
-      case "purpose":
-        return focusTarget({ field: "description" });
-      case "instructions":
-        return reveal(document.body.split("\n").length, true);
-      case "inferred":
-        return suggestSignal(r.signal);
-      case "signals":
-        return go("when");
     }
   };
 
@@ -575,8 +696,8 @@ function Studio({ initial }: { initial: LocalSkill }) {
 
   // The palette offers the Studio's layers and actions while it is open.
   const switchYaml = draft.switchYaml;
-  const commandsRef = useRef({ go, openSheet, openDialog, viewSource, exportZip, showFolder, switchYaml });
-  commandsRef.current = { go, openSheet, openDialog, viewSource, exportZip, showFolder, switchYaml };
+  const commandsRef = useRef({ go, openSheet, openDialog, viewSource, exportZip, switchYaml });
+  commandsRef.current = { go, openSheet, openDialog, viewSource, exportZip, switchYaml };
   const commands = useMemo<ScreenCommand[]>(
     () => [
       {
@@ -612,13 +733,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
           commandsRef.current.go("skill");
           setOutlinePinned(true);
         },
-      },
-      {
-        id: "test",
-        label: "Test against a project…",
-        keywords: "try check billing applies",
-        icon: "play",
-        run: () => commandsRef.current.openSheet("test"),
       },
       ...(ready
         ? [
@@ -676,12 +790,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
         icon: "download",
         run: () => void commandsRef.current.exportZip(),
       },
-      {
-        id: "folder",
-        label: "Show the package folder",
-        icon: "folder",
-        run: () => commandsRef.current.showFolder(),
-      },
     ],
     [shareLabel, ready],
   );
@@ -693,23 +801,15 @@ function Studio({ initial }: { initial: LocalSkill }) {
   // Nothing written yet: nothing else asks for attention.
   const fresh =
     !title.trim() && !document.description.trim() && !document.body.trim() && materials.length === 0;
-  const { form } = draft;
-  const signalCount =
-    form.conditionsEditable && skill.metadataStatus !== "invalid"
-      ? form.appliesTags.length + form.appliesDependencies.length + form.appliesFiles.length
-      : null;
   const better = useMemo(
     () =>
       trashed || broken
         ? []
         : refinements({
-            title,
             description: document.description,
             body: document.body,
-            signals: signalCount,
-            tagsLabel: tagLabel,
           }),
-    [trashed, broken, title, document.description, document.body, signalCount],
+    [trashed, broken, document.description, document.body],
   );
 
   // The next step mixes what is typed with what the last save reported, so
@@ -720,7 +820,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const next = shownNext.current;
   const passOn = onward(skill.summary);
 
-  const sheetTitle = sheet === "test" ? "Test against a project" : "Where it came from";
+  const sheetTitle = "Where it came from";
 
   return (
     <div
@@ -783,126 +883,112 @@ function Studio({ initial }: { initial: LocalSkill }) {
           </nav>
         </div>
         <div className="sk-acts">
-          {layer === "skill" && sourceMode ? (
-            <button type="button" className="sk-mode" onClick={() => setSourceMode(false)}>
-              Back to the page
+          {layer === "skill" ? (
+            <>
+              <div className="studio-toolbar-status">
+                <Readiness
+                  draft={draft}
+                  standing={standing}
+                  identEditing={identEditing}
+                  setIdentEditing={setIdentEditing}
+                  onFix={focusTarget}
+                  better={better}
+                  onRefine={refine}
+                  others={composer.others}
+                  onOpenOther={composer.showUse}
+                />
+              </div>
+              <span className="studio-view-separator" aria-hidden="true" />
+            </>
+          ) : null}
+          {layer === "skill" ? (
+            <div className="studio-view-controls">
+              <span className="studio-view-label">View as</span>
+              <nav className="studio-view-toggle" aria-label="Skill perspectives">
+                <button
+                  type="button"
+                  aria-label="Canvas"
+                  title="Canvas"
+                  aria-pressed={!sourceMode && !agentView}
+                  onClick={() => {
+                    editor.current?.text();
+                    setSourceMode(false);
+                    setAgentView(false);
+                    composer.setPanel(null);
+                  }}
+                >
+                  <Icon name="panel" size={15} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Agent view"
+                  title="Agent view"
+                  aria-pressed={agentView}
+                  onClick={() => {
+                    editor.current?.text();
+                    setSourceMode(false);
+                    setAgentView(true);
+                    composer.setPanel(null);
+                  }}
+                >
+                  <Icon name="eye" size={15} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Markdown"
+                  title="Markdown"
+                  aria-pressed={sourceMode}
+                  onClick={() => {
+                    editor.current?.text();
+                    setSourceMode(true);
+                    setAgentView(false);
+                    composer.setPanel(null);
+                  }}
+                >
+                  <Icon name="file" size={15} />
+                </button>
+              </nav>
+            </div>
+          ) : null}
+          {layer === "skill" && !trashed ? (
+            <span className="studio-view-separator" aria-hidden="true" />
+          ) : null}
+          {!trashed ? (
+            <button
+              type="button"
+              className="studio-trash"
+              aria-label="Move to trash"
+              title="Move to trash · restore from My skills"
+              onClick={() => void trash()}
+            >
+              <Icon name="trash" size={15} />
             </button>
           ) : null}
           {!trashed ? (
             <SaveIndicator state={draft.saveState} ambient onRetry={() => void draft.flushAll()} />
           ) : null}
-          <Readiness
-            draft={draft}
-            standing={standing}
-            identEditing={identEditing}
-            setIdentEditing={setIdentEditing}
-            onFix={focusTarget}
-            better={better}
-            onRefine={refine}
-            others={composer.others}
-            onOpenOther={composer.showUse}
-          />
           {trashed ? (
             <Button variant="primary" disabled={busy === "restore"} onClick={() => void restore()}>
               {busy === "restore" ? "Restoring…" : "Restore"}
             </Button>
-          ) : (
-            <>
-              {next ? (
-                <Button variant="primary" onClick={() => focusTarget(next.target)}>
-                  {next.label}
-                </Button>
-              ) : ready ? (
-                <>
-                  {passOn ? (
-                    <Button
-                      onClick={() => void openDialog("share")}
-                      title={
-                        origin.type === "library" ? `Offer your changes to ${origin.sourceName}` : undefined
-                      }
-                    >
-                      {passOn}
-                    </Button>
-                  ) : null}
-                  <Button variant="primary" onClick={() => void openDialog("use")}>
-                    Add to a project…
-                  </Button>
-                </>
+          ) : !next && ready ? (
+            <div className="studio-publish-actions">
+              {passOn ? (
+                <button
+                  type="button"
+                  onClick={() => void openDialog("share")}
+                  title={origin.type === "library" ? `Offer your changes to ${origin.sourceName}` : undefined}
+                >
+                  <Icon name="share" size={14} />
+                  {passOn}
+                </button>
               ) : null}
-              <Menu
-                label="More for this skill"
-                items={[
-                  [
-                    // Shown in the bar when it is the thing to do; here otherwise.
-                    ...(ready && passOn
-                      ? []
-                      : [
-                          {
-                            label: shareLabel,
-                            icon: "share" as const,
-                            onSelect: () => void openDialog("share"),
-                          },
-                        ]),
-                    {
-                      label: "Export as zip…",
-                      icon: "download",
-                      disabled: busy === "export",
-                      onSelect: () => void exportZip(),
-                    },
-                  ],
-                  [
-                    ...(composer.used > 0
-                      ? [
-                          {
-                            label: "How the skills fit",
-                            icon: "layers" as const,
-                            hint: "Sections and the skills they use",
-                            onSelect: () => composer.setPanel({ kind: "overview" }),
-                          },
-                        ]
-                      : []),
-                    {
-                      label: "What's inside",
-                      icon: "layers",
-                      hint: "What an agent reads, and when",
-                      onSelect: () => composer.setPanel({ kind: "inside" }),
-                    },
-                    {
-                      label: "Show as Markdown",
-                      icon: "file",
-                      hint: "What an agent receives",
-                      onSelect: () => {
-                        editor.current?.text();
-                        setSourceMode(true);
-                      },
-                    },
-                    { label: "All files", icon: "folder", onSelect: () => go("materials") },
-                  ],
-                  [
-                    { label: "Where it came from", icon: "branch", onSelect: () => openSheet("provenance") },
-                    { label: "Test against a project…", icon: "play", onSelect: () => openSheet("test") },
-                    {
-                      label: "View source",
-                      icon: "file",
-                      hint: "SKILL.md as written",
-                      onSelect: () => viewSource("SKILL.md"),
-                    },
-                    { label: "View package source", icon: "layers", onSelect: () => viewSource(null) },
-                    { label: "Show the package folder", icon: "folder", onSelect: showFolder },
-                  ],
-                  [
-                    {
-                      label: "Move to trash",
-                      icon: "trash",
-                      danger: true,
-                      hint: "Restore it from My skills",
-                      onSelect: () => void trash(),
-                    },
-                  ],
-                ]}
-              />
-            </>
-          )}
+              <button type="button" onClick={() => void openDialog("use")}>
+                <Icon name="plus" size={14} />
+                Add to a project…
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
       <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} inert={sheet !== null} />
@@ -924,86 +1010,89 @@ function Studio({ initial }: { initial: LocalSkill }) {
                   </aside>
                 ) : null}
                 <article className="sk-doc">
-                  <header className="sk-head">
-                    <label className="visually-hidden" htmlFor="studio-title">
-                      Skill title
-                    </label>
-                    <input
-                      ref={titleRef}
-                      id="studio-title"
-                      className="sk-title"
-                      value={title}
-                      placeholder="Untitled skill"
-                      disabled={trashed || broken}
-                      spellCheck
-                      autoComplete="off"
-                      onChange={(e) => {
-                        names.stopTitle();
-                        setTitle(e.target.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          window.document.getElementById("studio-purpose")?.focus();
-                        }
-                      }}
-                    />
-                    <label className="visually-hidden" htmlFor="studio-purpose">
-                      What it is for
-                    </label>
-                    <AutoGrow
-                      id="studio-purpose"
-                      className="sk-purpose"
-                      value={document.description}
-                      disabled={trashed || broken}
-                      placeholder="What it helps with, and when an agent should reach for it."
-                      aria-describedby="studio-purpose-hint"
-                      aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
-                      // SKILL.md keeps its description on one line: Enter goes on to the
-                      // instructions, and line breaks pasted in become spaces.
-                      onChange={(text) =>
-                        setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                          e.preventDefault();
-                          editor.current?.focus();
-                        }
-                      }}
-                    />
-                    <p
-                      id="studio-purpose-hint"
-                      className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
-                    >
-                      {purposeLength > DESCRIPTION_LIMIT
-                        ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}, and tools may cut or refuse the rest.`
-                        : `${purposeHint(document.description)}${
-                            purposeLength > DESCRIPTION_LIMIT - 150
-                              ? ` ${DESCRIPTION_LIMIT - purposeLength} left.`
-                              : ""
-                          }`}
-                    </p>
-                    {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
-                    {fresh || !cameFrom ? null : (
-                      <Provenance
-                        summary={skill.summary}
-                        standing={standing}
-                        onOpen={() => openSheet("provenance")}
+                  <header className="sk-head studio-title-layout">
+                    <div className="studio-title-copy">
+                      <label className="studio-field-label" htmlFor="studio-title">
+                        Skill title
+                      </label>
+                      <input
+                        ref={titleRef}
+                        id="studio-title"
+                        className="sk-title"
+                        value={title}
+                        placeholder="Name your skill"
+                        disabled={trashed || broken}
+                        spellCheck
+                        autoComplete="off"
+                        onChange={(e) => {
+                          names.stopTitle();
+                          setTitle(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (document.body.trim())
+                              window.document.getElementById("studio-purpose")?.focus();
+                            else window.document.querySelector<HTMLElement>(".canvas-piece")?.focus();
+                          }
+                        }}
                       />
-                    )}
-                    {fresh ? null : (
-                      <WhenTokens draft={draft} onMore={() => go("when")}>
-                        {!trashed && !broken && available.length > 0 ? (
-                          <SuggestedStrip
-                            draft={draft}
-                            projectIds={available.map((p) => p.id)}
-                            onTest={() => openSheet("test")}
-                            onRules={() => go("when")}
-                          />
-                        ) : null}
-                      </WhenTokens>
-                    )}
+                      <label className="studio-field-label" htmlFor="studio-purpose">
+                        Description
+                      </label>
+                      <AutoGrow
+                        id="studio-purpose"
+                        aria-label="What it is for"
+                        className="sk-purpose"
+                        value={document.description}
+                        disabled={trashed || broken}
+                        placeholder="What should this skill help the agent accomplish?"
+                        aria-describedby={
+                          purposeLength > DESCRIPTION_LIMIT - 150 ? "studio-purpose-hint" : undefined
+                        }
+                        aria-invalid={purposeLength > DESCRIPTION_LIMIT ? true : undefined}
+                        // SKILL.md keeps its description on one line: Enter goes on to the
+                        // instructions, and line breaks pasted in become spaces.
+                        onChange={(text) =>
+                          setDocument((d) => ({ ...d, description: text.replace(/[ \t]*\r?\n[ \t]*/g, " ") }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            editor.current?.focus();
+                          }
+                        }}
+                      />
+                      {purposeLength > DESCRIPTION_LIMIT - 150 ? (
+                        <p
+                          id="studio-purpose-hint"
+                          className={`sk-purpose-hint${purposeLength > DESCRIPTION_LIMIT ? " is-over" : ""}`}
+                        >
+                          {purposeLength > DESCRIPTION_LIMIT
+                            ? `${purposeLength} characters — the format allows ${DESCRIPTION_LIMIT}.`
+                            : `${DESCRIPTION_LIMIT - purposeLength} characters left.`}
+                        </p>
+                      ) : null}
+                      {/* Provenance is said when the knowledge came from somewhere; your own needs no line. */}
+                      {fresh || !cameFrom ? null : (
+                        <Provenance
+                          summary={skill.summary}
+                          standing={standing}
+                          onOpen={() => openSheet("provenance")}
+                        />
+                      )}
+                    </div>
+                    {!broken && composer.panel?.kind !== "when" ? (
+                      <div className="studio-title-when">
+                        <WhenSummary draft={draft} onOpen={() => go("when")} />
+                      </div>
+                    ) : null}
                   </header>
+                  {!broken && (sourceMode || agentView) ? (
+                    <div className="weave-workspace-head">
+                      <h2>{sourceMode ? "Instruction source" : "What the agent receives"}</h2>
+                    </div>
+                  ) : null}
                   {broken ? (
                     <p className="sk-broken">
                       SKILL.md can’t be read as a skill.{" "}
@@ -1012,15 +1101,27 @@ function Studio({ initial }: { initial: LocalSkill }) {
                       </button>
                     </p>
                   ) : (
-                    <Instructions
-                      draft={draft}
-                      editor={editor}
-                      sourceMode={sourceMode}
-                      composer={composer}
-                      trayHost={trayHost}
-                      onCursorLine={setCursorLine}
-                      onOpenFile={openFile}
-                    />
+                    <div>
+                      <GuidanceActions
+                        view={composer.view}
+                        onSupport={() =>
+                          composer.view?.dom.dispatchEvent(
+                            new CustomEvent("habi-palette", { detail: "support" }),
+                          )
+                        }
+                      />
+                      <Instructions
+                        draft={draft}
+                        editor={editor}
+                        sourceMode={sourceMode}
+                        agentView={agentView}
+                        composer={composer}
+                        trayHost={trayHost}
+                        onCursorLine={setCursorLine}
+                        onOpenFile={openFile}
+                        onWeave={weaveSupport}
+                      />
+                    </div>
                   )}
                 </article>
               </div>
@@ -1043,7 +1144,14 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     instructions={document.body}
                     beforeChange={beforeChange}
                     onSkill={onSkill}
-                    onPath={(path, line) => setFile({ path, line })}
+                    onPath={(path, line) => {
+                      void draft.flushAll().then((saved) => {
+                        if (saved) {
+                          setMaterialTarget(null);
+                          setFile({ path, line });
+                        }
+                      });
+                    }}
                     onSource={(on) => (on ? viewSource(null) : go("materials"))}
                     onReference={reference}
                     onWhen={() => go("when")}
@@ -1054,6 +1162,33 @@ function Studio({ initial }: { initial: LocalSkill }) {
           </div>
           <div className="sk-tray-dock" ref={setTrayHost} hidden={layer !== "skill"} />
         </div>
+        {materialTarget ? (
+          <div
+            className="sk-panel is-material-workspace"
+            hidden={layer !== "skill" || composer.panel !== null || sourceMode || agentView}
+          >
+            <MaterialWorkspace
+              draft={draft}
+              active={layer === "skill" && composer.panel === null && !sourceMode && !agentView}
+              target={materialTarget}
+              editor={editor}
+              onTarget={(target) => void showMaterial(target)}
+              onAttach={attachMaterial}
+              onClose={() => {
+                setMaterialTarget(null);
+                finishSupport();
+              }}
+              onSource={() => {
+                void draft.flushAll().then((saved) => {
+                  if (saved) {
+                    setMaterialTarget(null);
+                    viewSource(materialTarget.path);
+                  }
+                });
+              }}
+            />
+          </div>
+        ) : null}
         {composer.panel?.kind === "when" && layer === "skill" ? (
           <section className="sk-panel is-wide sk-when-panel" aria-label="When to use">
             <button
@@ -1073,7 +1208,20 @@ function Studio({ initial }: { initial: LocalSkill }) {
           </section>
         ) : null}
         {composer.panelNode && layer === "skill" ? (
-          <div className={`sk-panel${composer.panel?.kind === "overview" ? " is-wide" : ""}`}>
+          <div className="sk-panel">
+            {composer.panel?.kind === "shelf" && supportContext ? (
+              <div className="weave-support-destination">
+                <span className="weave-eyebrow">Connecting expertise to</span>
+                <blockquote>{supportContext}</blockquote>
+                <label htmlFor="expertise-condition">When should this expertise help?</label>
+                <input
+                  id="expertise-condition"
+                  value={expertiseCondition}
+                  onChange={(event) => setExpertiseCondition(event.target.value)}
+                  placeholder="e.g. authentication or permissions change"
+                />
+              </div>
+            ) : null}
             {composer.panelNode}
           </div>
         ) : null}
@@ -1097,33 +1245,16 @@ function Studio({ initial }: { initial: LocalSkill }) {
               </button>
             </header>
             <div className="sk-sheet-body">
-              {sheet === "test" ? (
-                <ProjectEvaluation
-                  projects={available}
-                  projectId={evalProject}
-                  onProject={setChosenProject}
-                  evaluation={evaluation}
-                  allRequest={draft.previewRequest(null)}
-                  allKey={`${draft.rulesKey}|${available.map((p) => p.id).join(",")}`}
-                  onOpenProject={() => void openProject({ stay: true })}
-                />
-              ) : (
-                <ProvenanceSheet
-                  summary={skill.summary}
-                  standing={standing}
-                  title={title}
-                  beforeReview={draft.saveFirst}
-                  onReloaded={() => void draft.reloadFromDisk()}
-                  onShare={() => void openDialog("share")}
-                  onExport={() => void exportZip()}
-                />
-              )}
+              <ProvenanceSheet
+                summary={skill.summary}
+                standing={standing}
+                title={title}
+                beforeReview={draft.saveFirst}
+                onReloaded={() => void draft.reloadFromDisk()}
+                onShare={() => void openDialog("share")}
+                onExport={() => void exportZip()}
+              />
             </div>
-            {sheet === "test" ? (
-              <footer className="sk-sheet-foot">
-                <Button onClick={closeSheet}>Done</Button>
-              </footer>
-            ) : null}
           </aside>
         </>
       ) : null}

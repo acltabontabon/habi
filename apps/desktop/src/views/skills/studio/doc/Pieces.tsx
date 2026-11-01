@@ -1,303 +1,380 @@
-/**
- * What a page can be made of, within reach. Pick one up and put it where it goes,
- * or press it to add it at the caret. Each glyph is a small picture of the piece,
- * so what's on offer can be read without trying any of it.
- */
-import type { Node as PMNode } from "prosemirror-model";
+/** A shared canvas palette, with reusable plain-language forms for alternate entry points. */
+import { TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { type ReactNode, type PointerEvent as ReactPointerEvent, useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  ADD_GUIDANCE,
+  type AuthoredCapability,
+  blocksForMarkdown,
+  CAPABILITY_PIECES,
+  type CapabilityKind,
+  type CapabilityPiece,
+  insertCanvasPiece,
+  insertionAtSelection,
+} from "./capabilityPieces";
 import { ghostLabel } from "./drag";
 import { markdownForFile } from "./fileRefs";
-import { parseBody } from "./markdown/parse";
-import { schema } from "./markdown/schema";
 import { placeBlocks } from "./moves";
 
-const { nodes } = schema;
+export type InsertionTarget = { pos: number; left?: number; top?: number };
 
-type Piece = {
-  id: string;
-  label: string;
-  hint: string;
-  glyph: ReactNode;
-  make?: () => PMNode[];
-  /** For a piece that needs a choice made first. */
-  choose?: "skill" | "file";
+const FIELD_LABELS: Record<CapabilityKind, string> = {
+  instruction: "What should the agent do?",
+  procedure: "Steps",
+  condition: "What should the agent do then?",
+  constraint: "What rule must the agent follow?",
+  example: "Show an example",
+  result: "What should the response contain?",
 };
 
-const para = (text?: string) => nodes.paragraph.create(null, text ? schema.text(text) : null);
-const item = (attrs?: Record<string, unknown>) => nodes.list_item.create(attrs ?? null, para());
+const FIELD_EXAMPLES: Record<CapabilityKind, string> = {
+  instruction: "e.g. Turn meeting notes into decisions, action items, and open questions.",
+  procedure: "",
+  condition: "e.g. Check that authentication errors never reveal private information.",
+  constraint: "e.g. Ask before deleting files or changing shared settings.",
+  example: "e.g. Action: Send the revised proposal · Owner: Alex · Due: Friday",
+  result: "e.g. A short summary followed by a checklist of next steps.",
+};
 
-const line = (y: number, w = 14, x = 2) => <rect x={x} y={y} width={w} height="1.6" rx=".8" />;
-
-const PIECES: Piece[] = [
-  {
-    id: "heading",
-    label: "Section",
-    hint: "A heading that starts a part",
-    glyph: <rect x="2" y="4" width="11" height="3.4" rx="1" />,
-    make: () => [nodes.heading.create({ level: 2 }), para()],
-  },
-  {
-    id: "steps",
-    label: "Steps",
-    hint: "A numbered procedure",
-    glyph: (
-      <>
-        <circle cx="3" cy="4" r="1.3" />
-        {line(3.2, 10, 6)}
-        <circle cx="3" cy="9" r="1.3" />
-        {line(8.2, 10, 6)}
-        <circle cx="3" cy="14" r="1.3" />
-        {line(13.2, 7, 6)}
-      </>
-    ),
-    make: () => [nodes.ordered_list.create(null, item())],
-  },
-  {
-    id: "checklist",
-    label: "Checklist",
-    hint: "Things to confirm",
-    glyph: (
-      <>
-        <rect x="1.5" y="2.5" width="3.4" height="3.4" rx=".8" />
-        {line(3.4, 10, 7)}
-        <rect x="1.5" y="10" width="3.4" height="3.4" rx=".8" />
-        {line(10.9, 8, 7)}
-      </>
-    ),
-    make: () => [nodes.bullet_list.create(null, item({ checked: false }))],
-  },
-  {
-    id: "code",
-    label: "Code",
-    hint: "An example to follow",
-    glyph: (
-      <path
-        d="M6 4 2.5 9 6 14M12 4l3.5 5L12 14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ),
-    make: () => [nodes.code_block.create()],
-  },
-  {
-    id: "note",
-    label: "Note",
-    hint: "Worth knowing",
-    glyph: (
-      <>
-        <rect x="1.5" y="3" width="15" height="12" rx="2" opacity=".28" />
-        {line(6.5, 10, 4)}
-        {line(10, 7, 4)}
-      </>
-    ),
-    make: () => [nodes.blockquote.create({ callout: "NOTE" }, para())],
-  },
-  {
-    id: "table",
-    label: "Table",
-    hint: "Rows and columns",
-    glyph: (
-      <path
-        d="M2 4h14v10H2zM2 9h14M7 4v10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-    ),
-    make: () => {
-      const row = (type: typeof nodes.table_cell) =>
-        nodes.table_row.create(null, [type.create(), type.create(), type.create()]);
-      return [
-        nodes.table.create(null, [row(nodes.table_header), row(nodes.table_cell), row(nodes.table_cell)]),
-        para(),
-      ];
-    },
-  },
-  {
-    id: "file",
-    label: "File",
-    hint: "A picture, reference or script",
-    glyph: (
-      <path
-        d="M4 2.5h6.5L14 6v9.5H4zM10.5 2.5V6H14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-    ),
-    choose: "file",
-  },
-  {
-    id: "skill",
-    label: "Skill",
-    hint: "A link to another skill, for where it applies",
-    glyph: (
-      <>
-        <circle cx="9" cy="9" r="3" />
-        <path d="M1 9h16" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      </>
-    ),
-    choose: "skill",
-  },
-];
+/** A real authoring surface: field values become literal document content only on submit. */
+export function CapabilityForm({
+  kind,
+  onSubmit,
+  onCancel,
+}: {
+  kind: CapabilityKind;
+  onSubmit: ((values: AuthoredCapability) => boolean) | ((values: AuthoredCapability) => void);
+  onCancel?: () => void;
+}) {
+  const [content, setContent] = useState("");
+  const [when, setWhen] = useState("");
+  const [steps, setSteps] = useState([""]);
+  const [code, setCode] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const id = useId();
+  const form = useRef<HTMLFormElement>(null);
+  const piece = CAPABILITY_PIECES.find((item) => item.kind === kind);
+  const valid =
+    kind === "procedure"
+      ? steps.every((step) => step.trim())
+      : !!content.trim() && (kind !== "condition" || !!when.trim());
+  useEffect(() => {
+    form.current?.querySelector<HTMLElement>("textarea, input")?.focus();
+  }, []);
+  return (
+    <form
+      ref={form}
+      className="capability-compose-form"
+      aria-label={`New ${piece?.label.toLowerCase() ?? "instruction"}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!valid || submitted) return;
+        if (onSubmit({ content, when, steps, code }) !== false) setSubmitted(true);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && onCancel) {
+          event.preventDefault();
+          event.stopPropagation();
+          onCancel();
+        }
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          event.currentTarget.requestSubmit();
+        }
+      }}
+    >
+      {kind === "condition" ? (
+        <label className="capability-compose-field" htmlFor={`${id}-when`}>
+          <span>When does this apply?</span>
+          <input
+            id={`${id}-when`}
+            value={when}
+            onChange={(event) => setWhen(event.target.value)}
+            placeholder="Authentication-related code changes"
+            required
+            autoComplete="off"
+          />
+        </label>
+      ) : null}
+      {kind === "procedure" ? (
+        <div className="capability-compose-steps">
+          <p className="capability-compose-hint">Give the agent a repeatable approach, one step at a time.</p>
+          {steps.map((step, index) => (
+            <div key={index} className="capability-compose-step">
+              <label className="capability-compose-field" htmlFor={`${id}-step-${index}`}>
+                <span>Step {index + 1}</span>
+                <textarea
+                  id={`${id}-step-${index}`}
+                  rows={2}
+                  placeholder={
+                    index === 0
+                      ? "Start with the first action, e.g. Read the notes and identify decisions."
+                      : "What should happen next?"
+                  }
+                  value={step}
+                  onChange={(event) =>
+                    setSteps((current) =>
+                      current.map((value, at) => (at === index ? event.target.value : value)),
+                    )
+                  }
+                  required
+                />
+              </label>
+              {steps.length > 1 ? (
+                <button
+                  type="button"
+                  className="link-btn"
+                  aria-label={`Remove step ${index + 1}`}
+                  onClick={() => setSteps((current) => current.filter((_, at) => at !== index))}
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          ))}
+          <button
+            type="button"
+            className="link-btn"
+            onClick={() => {
+              setSteps((current) => [...current, ""]);
+              requestAnimationFrame(() =>
+                form.current
+                  ?.querySelector<HTMLTextAreaElement>(".capability-compose-step:last-of-type textarea")
+                  ?.focus(),
+              );
+            }}
+          >
+            Add step
+          </button>
+        </div>
+      ) : (
+        <label className="capability-compose-field" htmlFor={`${id}-content`}>
+          <span>{FIELD_LABELS[kind]}</span>
+          <textarea
+            id={`${id}-content`}
+            rows={kind === "example" ? 6 : 4}
+            placeholder={code ? "Paste your example code here" : FIELD_EXAMPLES[kind]}
+            className={code ? "is-code" : undefined}
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            required
+          />
+        </label>
+      )}
+      {kind === "example" ? (
+        <label className="capability-compose-check">
+          <input type="checkbox" checked={code} onChange={(event) => setCode(event.target.checked)} />
+          This is a code example
+        </label>
+      ) : null}
+      <div className="capability-compose-actions">
+        {onCancel ? (
+          <button type="button" className="link-btn" onClick={onCancel}>
+            Cancel
+          </button>
+        ) : null}
+        <button type="submit" className="button primary" disabled={!valid || submitted}>
+          Add {piece?.label.toLowerCase() ?? "instruction"}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export function Pieces({
   view,
   files,
   onChoose,
   landInto,
+  target,
+  onTarget,
 }: {
   view: EditorView;
-  /** The skill's own files, for the File piece to offer. */
   files: () => { path: string; name: string; referenced: boolean }[];
-  /** The caret is where it should go: let the author choose which. */
   onChoose: (what: "skill" | "file") => void;
-  /** Runs a drag for a new piece, with where it lands. */
   landInto: (event: PointerEvent, ghost: HTMLElement, land: (at: number) => void) => void;
+  target: InsertionTarget | null;
+  onTarget: (target: InsertionTarget | null) => void;
 }) {
-  const [filesOpen, setFilesOpen] = useState(false);
-  const [hint, setHint] = useState<Piece | null>(null);
-  const [quiet, setQuiet] = useState(false);
-  const hintId = useId();
-
-  useEffect(() => {
-    if (!filesOpen) return;
-    const away = (e: PointerEvent) => {
-      if (!(e.target as HTMLElement).closest?.(".doc-tray")) setFilesOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFilesOpen(false);
-    };
-    window.addEventListener("pointerdown", away);
-    window.addEventListener("keydown", esc);
-    return () => {
-      window.removeEventListener("pointerdown", away);
-      window.removeEventListener("keydown", esc);
-    };
-  }, [filesOpen]);
-
-  // Writing, the tray steps back. It's there again the moment the pointer moves.
-  useEffect(() => {
-    const writing = (e: KeyboardEvent) => {
-      if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) setQuiet(true);
-    };
-    const wake = () => setQuiet(false);
-    view.dom.addEventListener("keydown", writing);
-    view.dom.addEventListener("blur", wake);
-    window.addEventListener("mousemove", wake);
-    return () => {
-      view.dom.removeEventListener("keydown", writing);
-      view.dom.removeEventListener("blur", wake);
-      window.removeEventListener("mousemove", wake);
-    };
-  }, [view]);
-
-  const blocksFor = (path: string) => {
-    const blocks: PMNode[] = [];
-    parseBody(markdownForFile(path)).doc.forEach((child) => {
-      blocks.push(child);
-    });
-    return blocks;
+  const [resources, setResources] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const id = useId();
+  const close = () => {
+    onTarget(null);
+    setResources(false);
+    view.focus();
   };
 
-  const caretSlot = () => {
-    const $from = view.state.selection.$from;
-    return $from.depth > 0 ? $from.after(1) : view.state.doc.content.size;
-  };
+  useEffect(() => {
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent<{ kind?: string }>).detail;
+      const piece = CAPABILITY_PIECES.find((item) => item.kind === detail?.kind);
+      const at = insertionAtSelection(view);
+      setResources(false);
+      if (piece?.kind) {
+        onTarget(null);
+        insertCanvasPiece(view, at, piece.kind);
+      } else onTarget({ pos: at });
+    };
+    view.dom.addEventListener(ADD_GUIDANCE, open);
+    return () => view.dom.removeEventListener(ADD_GUIDANCE, open);
+  }, [view, onTarget]);
 
-  const atCaret = (piece: Piece) => {
-    if (piece.choose === "file") {
-      setFilesOpen((open) => !open);
+  useEffect(() => {
+    if (!target) {
+      setResources(false);
       return;
     }
-    if (piece.make) {
-      const $from = view.state.selection.$from;
-      const at = view.hasFocus() && $from.depth > 0 ? $from.after(1) : view.state.doc.content.size;
-      const empty = $from.depth === 1 && $from.parent.content.size === 0;
-      placeBlocks(view, empty ? $from.before(1) : at, piece.make());
-    } else if (piece.choose) {
-      view.focus();
-      onChoose(piece.choose);
-    }
-  };
-
-  const lift = (e: ReactPointerEvent, piece: Piece) => {
-    landInto(e.nativeEvent, ghostLabel(piece.label), (at) => {
-      if (piece.make) placeBlocks(view, at, piece.make());
-      else if (piece.choose) {
-        placeBlocks(view, at, [para()]);
-        if (piece.choose === "file") setFilesOpen(true);
-        else onChoose(piece.choose);
+    menu.current
+      ?.querySelector<HTMLButtonElement>(resources ? ".sk-file, .sk-file-more" : ".capability-option")
+      ?.focus();
+    const away = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) {
+        onTarget(null);
+        setResources(false);
       }
-    });
+    };
+    const typing = () => {
+      onTarget(null);
+      setResources(false);
+    };
+    window.addEventListener("pointerdown", away);
+    view.dom.addEventListener("keydown", typing);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      view.dom.removeEventListener("keydown", typing);
+    };
+  }, [target, resources, onTarget, view]);
+
+  const choose = (what: "skill" | "file", at: number) => {
+    view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at), -1)));
+    onTarget(null);
+    setResources(false);
+    view.focus();
+    onChoose(what);
   };
+  const insert = (piece: CapabilityPiece, at: number) => {
+    if (piece.kind) {
+      onTarget(null);
+      insertCanvasPiece(view, at, piece.kind);
+    } else if (piece.choose === "file") setResources(true);
+    else if (piece.choose) choose(piece.choose, at);
+  };
+  const fixed = target?.left !== undefined && target.top !== undefined;
+  const style = fixed
+    ? {
+        position: "fixed" as const,
+        left: Math.max(
+          20,
+          Math.min(target.left ?? 20, window.innerWidth - Math.min(470, window.innerWidth - 40) - 20),
+        ),
+        top: Math.max(
+          12,
+          Math.min(target.top ?? 12, window.innerHeight - Math.min(560, window.innerHeight * 0.7) - 20),
+        ),
+      }
+    : undefined;
 
   return (
-    <div className={`doc-tray${quiet ? " is-quiet" : ""}`} role="toolbar" aria-label="Add to the page">
-      {hint && !filesOpen ? (
-        <div className="doc-tray-hint" role="tooltip" id={hintId}>
-          {hint.hint}. Drag it to where it belongs, or press to add it at the caret.
-        </div>
-      ) : null}
-      {filesOpen ? (
-        <div className="doc-tray-files">
-          {files().map((f) => (
-            <button
-              key={f.path}
-              type="button"
-              className="sk-file"
-              title="Drag it to where it belongs, or press to add it at the caret"
-              onPointerDown={(e) =>
-                landInto(e.nativeEvent, ghostLabel(f.name), (at) => {
-                  setFilesOpen(false);
-                  placeBlocks(view, at, blocksFor(f.path));
-                })
-              }
-              onClick={() => {
-                setFilesOpen(false);
-                placeBlocks(view, caretSlot(), blocksFor(f.path));
-              }}
-            >
-              {f.name}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="sk-file-more"
-            onClick={() => {
-              setFilesOpen(false);
-              onChoose("file");
-            }}
-          >
-            Bring in a new file…
-          </button>
-        </div>
-      ) : null}
-      {PIECES.map((piece) => (
-        <button
-          key={piece.id}
-          type="button"
-          className={`doc-piece is-${piece.id}`}
-          aria-describedby={hint === piece ? hintId : undefined}
-          onMouseEnter={() => setHint(piece)}
-          onMouseLeave={() => setHint(null)}
-          onFocus={() => setHint(piece)}
-          onBlur={() => setHint(null)}
-          onPointerDown={(e) => lift(e, piece)}
-          onClick={() => atCaret(piece)}
+    <div ref={root} className="doc-tray capability-tray">
+      <button
+        type="button"
+        className="capability-add"
+        aria-keyshortcuts="Control+Shift+I Meta+Shift+I"
+        title="Add guidance after the selected instruction"
+        aria-expanded={!!target}
+        aria-controls={target ? id : undefined}
+        onClick={() => (target ? close() : onTarget({ pos: insertionAtSelection(view) }))}
+      >
+        <span aria-hidden="true">+</span> Add guidance
+      </button>
+      {target ? (
+        <div
+          ref={menu}
+          id={id}
+          className={`capability-menu${fixed ? " is-contextual" : ""}`}
+          style={style}
+          role="dialog"
+          aria-label={resources ? "Attach a resource" : "Add guidance"}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              close();
+            } else if (
+              ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) &&
+              !(event.target as HTMLElement).matches("input, textarea, select")
+            ) {
+              const buttons = [...(menu.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
+              const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? buttons.length - 1
+                    : (at + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+              event.preventDefault();
+              buttons[next]?.focus();
+            }
+          }}
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
-            {piece.glyph}
-          </svg>
-          <span>{piece.label}</span>
-        </button>
-      ))}
+          <div className="capability-menu-head">
+            <span>{resources ? "Supporting resources" : "Shape this capability"}</span>
+            <button type="button" aria-label="Close guidance choices" onClick={close}>
+              ×
+            </button>
+          </div>
+          {resources ? (
+            <div className="capability-files">
+              {files().map((file) => (
+                <button
+                  key={file.path}
+                  type="button"
+                  className="sk-file"
+                  onPointerDown={(event) =>
+                    landInto(event.nativeEvent, ghostLabel(file.name), (at) => {
+                      onTarget(null);
+                      setResources(false);
+                      placeBlocks(view, at, blocksForMarkdown(markdownForFile(file.path)));
+                    })
+                  }
+                  onClick={() => {
+                    onTarget(null);
+                    setResources(false);
+                    placeBlocks(view, target.pos, blocksForMarkdown(markdownForFile(file.path)));
+                  }}
+                >
+                  {file.name}
+                </button>
+              ))}
+              <button type="button" className="sk-file-more" onClick={() => choose("file", target.pos)}>
+                Create or bring material…
+              </button>
+            </div>
+          ) : (
+            <div className="capability-options">
+              {CAPABILITY_PIECES.map((piece) => (
+                <button
+                  type="button"
+                  key={piece.id}
+                  className={`capability-option is-${piece.id}`}
+                  onClick={() => insert(piece, target.pos)}
+                  onPointerDown={
+                    piece.kind
+                      ? (event) =>
+                          landInto(event.nativeEvent, ghostLabel(piece.label), (at) => insert(piece, at))
+                      : undefined
+                  }
+                >
+                  <span className="capability-option-label">{piece.label}</span>
+                  <span className="capability-option-hint">{piece.hint}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

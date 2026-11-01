@@ -18,7 +18,7 @@ import {
 import { keymap } from "prosemirror-keymap";
 import type { MarkType, Node as PMNode } from "prosemirror-model";
 import { splitListItem } from "prosemirror-schema-list";
-import { type Plugin, TextSelection } from "prosemirror-state";
+import { type Command, type Plugin, TextSelection } from "prosemirror-state";
 import { goToNextCell } from "prosemirror-tables";
 import {
   codeEnter,
@@ -92,7 +92,17 @@ function rules(): Plugin {
   });
 }
 
-export function editingPlugins(): Plugin[] {
+/** Keep a visual instruction together while its author continues on another line. */
+const insertLineBreak: Command = (state, dispatch) => {
+  const { $from, $to } = state.selection;
+  const br = state.schema.nodes.hard_break;
+  if (!br || !$from.sameParent($to) || !$from.parent.canReplaceWith($from.index(), $to.index(), br))
+    return false;
+  dispatch?.(state.tr.replaceSelectionWith(br.create()).scrollIntoView());
+  return true;
+};
+
+export function editingPlugins(studio = false): Plugin[] {
   return [
     history({ depth: 300, newGroupDelay: 600 }),
     rules(),
@@ -103,12 +113,20 @@ export function editingPlugins(): Plugin[] {
       Backspace: chainCommands(undoInputRule, joinOrBackspace),
       Enter: chainCommands(
         codeEnter,
+        (state, dispatch) =>
+          studio &&
+          state.selection.$from.depth === 1 &&
+          state.selection.$from.parent.type.name === "paragraph" &&
+          state.selection.$from.parent.content.size > 0
+            ? insertLineBreak(state, dispatch)
+            : false,
         splitListItem(nodes.list_item),
         newlineInCode,
         createParagraphNear,
         liftEmptyBlock,
         splitBlock,
       ),
+      "Shift-Enter": chainCommands(newlineInCode, insertLineBreak),
       Tab: chainCommands(codeTab, goToNextCell(1), indent),
       "Shift-Tab": chainCommands(goToNextCell(-1), outdent),
       "Mod-b": toggleBold,

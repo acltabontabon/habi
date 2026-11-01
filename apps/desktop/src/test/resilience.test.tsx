@@ -306,7 +306,7 @@ function Leave() {
 }
 
 describe("the skill editor", () => {
-  it("does not export when the latest edits could not be saved", async () => {
+  it("does not open sharing when the latest edits could not be saved", async () => {
     handlers.get_skill = () => skill();
     handlers.skill_upstream = () => null;
     handlers.save_skill_applicability = () => skill();
@@ -318,8 +318,7 @@ describe("the skill editor", () => {
 
     const title = await screen.findByLabelText("Skill title");
     await userEvent.type(title, " checklist");
-    await userEvent.click(screen.getByRole("button", { name: "More for this skill" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: /Export as zip…/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Share", exact: true }));
 
     expect(await screen.findByText(/Nothing was done: your latest edits are not saved/)).toBeInTheDocument();
     expect(handlers.export_skill).not.toHaveBeenCalled();

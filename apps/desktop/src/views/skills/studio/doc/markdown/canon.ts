@@ -170,7 +170,7 @@ export function escapeText(text: string, atStart: boolean): string {
         out += text.indexOf("]", i) >= 0 || next === "" ? "\\[" : c;
         break;
       case "]":
-        out += i === text.length - 1 ? "\\]" : c;
+        out += "\\]";
         break;
       case "!":
         out += next === "[" ? "\\!" : c;
@@ -307,7 +307,7 @@ function writeInline(parent: PMNode, atStart: boolean): string {
       return;
     }
     const code = run.marks.some((m) => m.type.name === "code");
-    const hasWrap = run.marks.some((m) => m.type.name !== "code");
+    const hasWrap = run.marks.some((m) => m.type.name !== "code" && m.type.name !== "link");
     let body = run.text;
     let lead = "";
     let trail = "";

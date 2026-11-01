@@ -16,6 +16,7 @@ export type Landing =
   | { type: "slot"; slot: Slot }
   /** Inside a sentence. */
   | { type: "text"; pos: number }
+  | { type: "instruction"; pos: number; rect: DOMRect }
   /** Pulled away from everything, for what can be pulled off. */
   | { type: "pull" };
 
@@ -29,6 +30,12 @@ export type DragSpec = {
   source?: { from: number; to: number; list?: boolean };
   /** Whether it can land inside a sentence, as a word. */
   inline?: boolean;
+  /** Land on a complete instruction, including an individual list step. */
+  instructions?: boolean;
+  instructionsOnly?: boolean;
+  listInsert?: boolean;
+  stationary?: boolean;
+  canvasOnly?: boolean;
   /** Whether letting go here would take it off the page. */
   pulls?: (x: number, y: number) => boolean;
   /** A line from something to the pointer, redrawn as it moves. */
@@ -172,6 +179,11 @@ function run(spec: DragSpec, start: PointerEvent): void {
   gapMark.className = "doc-gap";
   gapMark.setAttribute("aria-hidden", "true");
   document.body.append(gapMark);
+  const stepTarget = document.createElement("div");
+  stepTarget.className = "doc-step-target";
+  stepTarget.setAttribute("aria-hidden", "true");
+  stepTarget.textContent = "Connect to this step";
+  document.body.append(stepTarget);
   const caret = document.createElement("div");
   caret.className = "doc-word-gap";
   caret.setAttribute("aria-hidden", "true");
@@ -195,7 +207,11 @@ function run(spec: DragSpec, start: PointerEvent): void {
   let ended = false;
 
   // Measured once, with nothing moved: the page shifts under the pointer, the targets don't.
-  const slots = itemMove ? itemSlots(view) : topSlots(view);
+  const slots = spec.listInsert
+    ? [...itemSlots(view), ...topSlots(view)]
+    : itemMove
+      ? itemSlots(view)
+      : topSlots(view);
   const scrollAtMeasure = stage?.scrollTop ?? 0;
   doc.classList.add("is-parting");
   const firstLifted = lifted.length ? blocks.indexOf(lifted[0] as (typeof blocks)[number]) : -1;
@@ -211,7 +227,27 @@ function run(spec: DragSpec, start: PointerEvent): void {
     ghost.classList.toggle("is-pulled", pull);
     let next: Landing | null = pull ? { type: "pull" } : null;
 
-    if (!pull && spec.inline) {
+    const stageBox = stage?.getBoundingClientRect();
+    const insideStage = !stageBox || (y >= stageBox.top && y <= stageBox.bottom);
+    if (!pull && spec.instructions && insideStage) {
+      const hits: { landing: Extract<Landing, { type: "instruction" }>; distance: number }[] = [];
+      view.state.doc.descendants((node, pos) => {
+        if (node.type.name !== "paragraph") return true;
+        const el = view.nodeDOM(pos);
+        if (!(el instanceof HTMLElement)) return false;
+        const rect = el.getBoundingClientRect();
+        const step = el.closest("li");
+        const box = step?.getBoundingClientRect() ?? rect;
+        if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)
+          hits.push({
+            landing: { type: "instruction", pos, rect },
+            distance: Math.max(rect.top - y, y - rect.bottom, 0),
+          });
+        return false;
+      });
+      next = hits.sort((a, b) => a.distance - b.distance)[0]?.landing ?? next;
+    }
+    if (!pull && !next && !spec.instructionsOnly && spec.inline) {
       // Over the words of a sentence, it becomes a word.
       const hit = view.posAtCoords({ left: x, top: y });
       if (hit) {
@@ -222,7 +258,15 @@ function run(spec: DragSpec, start: PointerEvent): void {
         }
       }
     }
-    if (!pull && !next) {
+    const pageBox = doc.getBoundingClientRect();
+    if (
+      !pull &&
+      !next &&
+      !spec.instructionsOnly &&
+      (!spec.canvasOnly || insideStage) &&
+      x >= pageBox.left &&
+      x <= pageBox.right
+    ) {
       // The closest place, reckoned as if the hole had already closed.
       const adjusted = slots.map((s) => {
         const shift = firstLifted >= 0 && s.index > firstLifted ? liftedHeight : 0;
@@ -233,8 +277,20 @@ function run(spec: DragSpec, start: PointerEvent): void {
     }
     landing = next;
 
+    stepTarget.classList.toggle("is-on", landing?.type === "instruction");
+    if (landing?.type === "instruction") {
+      const r = landing.rect;
+      stepTarget.style.left = `${r.left - 5}px`;
+      stepTarget.style.top = `${r.top - 5}px`;
+      stepTarget.style.width = `${r.width + 10}px`;
+      stepTarget.style.height = `${r.height + 10}px`;
+    }
     // Everything takes its place.
-    const open = landing?.type === "slot" && !itemMove ? landing.slot.index : -1;
+    // Keep instruction targets stationary as a contribution crosses the gaps.
+    const open =
+      landing?.type === "slot" && !itemMove && !spec.instructions && !spec.stationary
+        ? landing.slot.index
+        : -1;
     const rules = [...stillRules];
     blocks.forEach((b, i) => {
       if (inSource(b.pos)) return;
@@ -285,6 +341,7 @@ function run(spec: DragSpec, start: PointerEvent): void {
     scrollFrame = requestAnimationFrame(edgeScroll);
     if (!stage) return;
     const box = stage.getBoundingClientRect();
+    if (x < box.left || x > box.right || y < box.top || y > box.bottom) return;
     const zone = 56;
     const speed =
       y < box.top + zone
@@ -312,6 +369,7 @@ function run(spec: DragSpec, start: PointerEvent): void {
     sheet.remove();
     gapMark.remove();
     caret.remove();
+    stepTarget.remove();
     tether?.remove();
   };
 

@@ -9,18 +9,23 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Added
 
-- **The Skill Studio is now a real document.** Instructions are edited directly, with no Markdown on screen:
-  steps on a thread you pick up by their numbers, files as named objects, checklists, code, notes and tables. Drag pieces onto the page from a tray or type `/`, and pick up any
-  block or whole section by its handle while the page makes room. Your file stays ordinary Markdown, and only
-  what you change is rewritten, so a Git diff shows your edit and nothing else. What the page can't show as
-  rich text stays on it, kept exactly as written.
-- **Link a skill to other skills.** Drag skills in from yours, this machine, your projects and your
-  libraries, and each becomes a sentence an agent can read anywhere, drawn as a tile on the page. Pick up a tile
-  by its knot to move it, or pull it away to take it out. A grid of sections and skills shows larger
-  compositions: press a crossing to use a skill in that section. A link is a pointer, not a requirement: Habi says which
-  agents would find each skill, never installs one on its own, and can't make an agent use it.
-- **See inside a skill.** A panel shows what it holds in the order an agent meets it, with rough sizes, and
-  files open a preview right where the instructions name them.
+- **Weave a capability in Skill Studio.** An illustrated palette turns instructions, sequences, decisions,
+  boundaries, examples and results into editable canvas pieces with one click. The palette stays in reach
+  as the skill grows, with distinct visual treatments for each kind of guidance. Edit the words directly,
+  move individual steps and connect their support. The result stays ordinary portable Markdown. Patterns remain optional.
+  Keyboard insertion, moves and undo use the existing source-preserving editor.
+- **Bring expertise into the instructions.** The thread shelf supports discovery and dragging a skill to
+  where it applies. **Connections** groups repeated uses with explicit resolution states and per-use
+  inspection; a section map remains available. References install and execute nothing.
+- **Connect support to the exact instruction.** Select a paragraph or procedure step to inspect its
+  tools, knowledge and expertise. Create scripts and Markdown references, import files,
+  paste reusable code, explain each contribution, and reuse one file across instructions. Conditions
+  for expertise and purposes for materials become portable prose in the selected instruction. Detaching or
+  retargeting a reference is undoable and does not delete a file. Rename/delete operations explain their
+  impact. Missing materials, spaced filenames and encoded paths are handled explicitly.
+- **Inspect the portable result.** Agent view shows instructions, exact source text and package contents;
+  Markdown remains directly accessible. Original source bytes, safe file operations, autosave and external
+  conflict handling stay in place.
 - **More ways to start a skill.** Start with research, a document, an analysis, or coordinating other skills, alongside the existing patterns.
 
 - **Reasons reach into the code.** A skill that fits because of a dependency or framework now says where your

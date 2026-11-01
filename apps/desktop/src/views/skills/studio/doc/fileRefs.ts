@@ -8,53 +8,52 @@ import type { Node as PMNode } from "prosemirror-model";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
 
+import { listMaterialUses, packagePathFromUri, packageUri, safePackagePath } from "./materialUses";
+
 export const FILE_ATTR = "data-file-ref";
 
-/** Looks like a path inside a skill: a folder and a file with an extension. */
-const PATHLIKE = /^(?:\.\/)?[\w.-]+(?:\/[\w.-]+)*\/[\w.-]+\.[A-Za-z0-9]{1,8}$/;
-
+/** Kept for callers displaying a relative URI as a package path. */
 export function normalPath(text: string): string {
-  return text.replace(/^\.\//, "");
+  return packagePathFromUri(text) ?? text;
 }
 
 export function looksLikePackagePath(text: string): boolean {
-  return PATHLIKE.test(text) && !text.includes("..") && !/^[a-z][a-z0-9+.-]*:/i.test(text);
+  const path = safePackagePath(text);
+  return !!path?.includes("/") && /\.[^./\s]{1,16}$/.test(path);
 }
 
 const refreshKey = new PluginKey("doc-file-refs");
 
-const SCRIPT = /\.(sh|bash|zsh|py|rb|js|mjs|ts|pl|ps1)$/i;
-
 function decorate(doc: PMNode, paths: readonly string[], caret: { from: number; to: number }): DecorationSet {
-  const known = new Set(paths);
   const decos: Decoration[] = [];
-  doc.descendants((node, pos) => {
-    if (!node.isText) return node.type.name !== "code_block";
-    const text = node.text ?? "";
-    const link = node.marks.find((m) => m.type.name === "link");
-    const code = node.marks.some((m) => m.type.name === "code");
-    const target = link ? normalPath(link.attrs.href as string) : code ? normalPath(text) : null;
-    if (!target) return false;
-    const inside = known.has(target);
-    if (!inside && !(code && looksLikePackagePath(text))) return false;
-    const end = pos + node.nodeSize;
+  for (const use of listMaterialUses(doc, paths)) {
     const attrs = {
-      class: `doc-file${inside ? "" : " is-absent"}`,
-      [FILE_ATTR]: target,
-      "data-kind": SCRIPT.test(target) ? "script" : "file",
+      class: `doc-file${use.missing ? " is-absent" : ""}`,
+      [FILE_ATTR]: use.path,
+      "data-kind": use.materialKind,
+      "data-material-from": String(use.from),
+      spellcheck: "false",
+      // Tooltips adopts `title` by mutating attributes; keep this PM-owned DOM stable.
+      "data-tip": `${use.materialKind}: ${use.path}${use.missing ? " · not in this skill" : ""} · Click or press Cmd/Ctrl+Enter to inspect`,
+      "aria-description": `${use.materialKind}: ${use.path}${use.missing ? " · not in this skill" : ""}. Click or press Cmd/Ctrl+Enter to inspect.`,
     };
-    // A file reads as its name. The folder comes back while the caret is in it, to edit.
-    const slash = code ? text.lastIndexOf("/") : -1;
-    if (slash >= 0 && (caret.to < pos || caret.from > end)) {
-      decos.push(
-        Decoration.inline(pos, pos + slash + 1, { class: "doc-file-dir", [FILE_ATTR]: target }),
-        Decoration.inline(pos + slash + 1, end, attrs),
-      );
-    } else {
-      decos.push(Decoration.inline(pos, end, attrs));
+    if (use.kind === "image") {
+      decos.push(Decoration.node(use.from, use.to, attrs));
+      continue;
     }
-    return false;
-  });
+    // The folder comes back while the caret is in a code path, to edit it directly.
+    const slash = use.kind === "code" ? use.source.lastIndexOf("/") : -1;
+    if (slash >= 0 && (caret.to < use.from || caret.from > use.to)) {
+      decos.push(
+        Decoration.inline(use.from, use.from + slash + 1, {
+          class: "doc-file-dir",
+          [FILE_ATTR]: use.path,
+          "data-material-from": String(use.from),
+        }),
+        Decoration.inline(use.from + slash + 1, use.to, attrs),
+      );
+    } else decos.push(Decoration.inline(use.from, use.to, attrs));
+  }
   return DecorationSet.create(doc, decos);
 }
 
@@ -85,7 +84,8 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
 
 /** How a file is written into the instructions: a picture shows, anything else is a link. */
 export function markdownForFile(path: string): string {
-  const name = path.slice(path.lastIndexOf("/") + 1);
-  const target = /\s/.test(path) ? `<${path}>` : path;
+  const name = path.slice(path.lastIndexOf("/") + 1).replace(/[\\[\]`*_~<>&!]/g, "\\$&");
+  const target = packageUri(path);
+  if (target === null) return "";
   return IMAGE.test(path) ? `![${name}](${target})` : `[${name}](${target})`;
 }

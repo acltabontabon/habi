@@ -68,7 +68,10 @@ const nodes: Record<string, NodeSpec> = {
         getAttrs: (dom) => ({ start: Number((dom as HTMLElement).getAttribute("start") ?? 1) || 1 }),
       },
     ],
-    toDOM: (node) => (node.attrs.start === 1 ? ["ol", 0] : ["ol", { start: node.attrs.start as number }, 0]),
+    toDOM: (node) =>
+      node.attrs.start === 1
+        ? ["ol", 0]
+        : ["ol", { start: node.attrs.start as number, style: `--start: ${Number(node.attrs.start) - 1}` }, 0],
   },
   list_item: {
     attrs: { checked: { default: null } },

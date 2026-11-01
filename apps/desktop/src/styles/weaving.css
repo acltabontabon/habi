@@ -1,0 +1,1112 @@
+/* Capability structure: one continuous spine, with expertise joining the guidance. */
+.sk .sk-page {
+  --measure: 860px;
+  padding-top: 22px;
+}
+.sk .sk-head {
+  padding: 22px 26px;
+  margin-bottom: 26px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--paper-raised);
+}
+.weave-identity-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--thread-strong);
+}
+.weave-identity-label span {
+  margin-left: auto;
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+.sk .sk-title {
+  font-size: clamp(24px, 3cqi, 32px);
+}
+.sk .sk-purpose {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  max-width: 72ch;
+}
+.weave-workspace-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.weave-eyebrow {
+  font: 11px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+}
+.weave-workspace-head h2 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.weave-perspectives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.weave-perspectives button {
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+.weave-perspectives button:hover,
+.weave-perspectives button[aria-pressed="true"] {
+  background: var(--paper-raised);
+  border-color: var(--hairline);
+  color: var(--ink);
+}
+.sk .doc-page {
+  position: relative;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.65;
+  padding-left: 28px;
+  min-height: 180px;
+  border-left: 1px solid var(--hairline-strong);
+}
+.sk .doc-page > .weave-guidance {
+  position: relative;
+}
+.sk .doc-page > .weave-guidance::before {
+  content: "";
+  position: absolute;
+  left: -33px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: var(--paper);
+}
+.sk .doc-page > h1.weave-guidance,
+.sk .doc-page > h2.weave-guidance {
+  font-size: 17px;
+  padding-top: 16px;
+  margin-top: 20px;
+  border-top: 1px solid var(--hairline);
+}
+.sk .doc-page > h1.weave-guidance::before,
+.sk .doc-page > h2.weave-guidance::before {
+  top: 23px;
+  border-radius: 2px;
+  background: var(--thread-wash);
+  border-color: var(--thread);
+  transform: rotate(45deg);
+}
+.sk .doc-page > :first-child {
+  margin-top: 0;
+}
+.sk .doc-page > p.weave-guidance {
+  padding: 8px 12px;
+  margin: 0 0 8px -12px;
+  border-radius: 6px;
+}
+.sk .doc-page > p.weave-guidance::before {
+  left: -21px;
+  top: 16px;
+}
+.sk .doc-page > p.weave-guidance:hover,
+.sk .doc-page > p.weave-guidance:focus-within {
+  background: var(--paper-raised);
+}
+.sk .doc-page > .is-condition,
+.sk .doc-page > .is-constraint,
+.sk .doc-page > .is-expected-result {
+  background: var(--paper-raised);
+  border-left: 2px solid var(--hairline-strong);
+}
+.sk .doc-page > .is-condition::before {
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.sk .doc-page > .is-expected-result {
+  border-left-color: var(--thread);
+}
+.sk .doc-page > p.doc-use {
+  margin: 8px 0 12px;
+  padding: 13px 16px;
+  border: 1px solid var(--hairline-strong);
+  border-left: 3px solid var(--thread);
+  border-radius: 0 8px 8px 0;
+  background: var(--paper-raised);
+  box-shadow: none;
+}
+.sk .doc-page > p.doc-use::before {
+  left: -37px;
+  top: 20px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--thread);
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 2px var(--paper),
+    inset 0 0 0 6px var(--thread);
+}
+.sk .doc-page > p.doc-use::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 1px;
+  top: 27px;
+  left: -25px;
+  bottom: auto;
+  background: var(--thread);
+}
+.sk .doc-page .weave-linked-guidance {
+  border-left: 2px solid var(--thread);
+  padding-left: 12px;
+  background: var(--paper-raised);
+}
+.sk .doc-page > ol {
+  margin-top: 12px;
+}
+.weave-material-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 18px 0 24px 28px;
+  border-top: 1px solid var(--hairline);
+}
+.weave-material-actions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+.weave-material-actions button:first-child {
+  color: var(--thread-strong);
+  border-color: var(--thread);
+}
+.weave-material-actions span {
+  flex-basis: 100%;
+  margin-top: 3px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+.weave-agent-view {
+  padding: 20px 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--paper-raised);
+}
+.weave-agent-note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+.weave-agent-view details {
+  border-top: 1px solid var(--hairline);
+  margin-top: 20px;
+  padding-top: 14px;
+  font-size: var(--text-sm);
+}
+.weave-agent-view pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sk .doc-tray {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+.capability-add {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 18px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 24px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 14px;
+  box-shadow: var(--shadow-raised);
+}
+.capability-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(470px, calc(100vw - 40px));
+  max-height: min(560px, 70vh);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-dialog);
+}
+.capability-menu[style] {
+  transform: none;
+  bottom: auto;
+}
+.capability-menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.capability-menu-head button {
+  padding: 4px 8px;
+  background: none;
+  border: 0;
+  color: var(--ink-muted);
+}
+.capability-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.capability-option {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+}
+.capability-option:hover,
+.capability-option:focus-visible {
+  border-color: var(--hairline-strong);
+  background: var(--paper);
+}
+.capability-option-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.capability-option-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+.capability-files {
+  display: grid;
+  gap: 6px;
+}
+.capability-files button {
+  padding: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  text-align: left;
+  background: var(--paper);
+  color: var(--ink);
+}
+@container skstage (max-width: 650px) {
+  .sk .sk-page {
+    padding-inline: 20px;
+  }
+  .sk .sk-head {
+    padding: 18px;
+  }
+  .weave-identity-label span {
+    display: none;
+  }
+  .weave-workspace-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .sk .doc-page {
+    padding-left: 24px;
+  }
+  .weave-material-actions {
+    padding-left: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .capability-menu {
+    animation: sk-layer-in 120ms ease-out;
+  }
+  .sk .doc-page > p.weave-guidance {
+    transition: background 120ms;
+  }
+}
+
+.sk-panel[hidden] {
+  display: none;
+}
+.sk-panel.is-material-workspace {
+  width: min(560px, 48%);
+}
+.material-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.material-workspace .shelf-head {
+  flex: none;
+  align-items: flex-start;
+}
+.material-workspace .shelf-head h2 {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+}
+.material-workspace-body {
+  overflow: auto;
+  padding: 0 20px 24px;
+  flex: 1;
+  min-height: 0;
+}
+.material-package-path {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  margin: 12px 0 6px;
+}
+.material-truth {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+}
+.material-uses {
+  padding: 12px 0;
+  margin: 0 0 18px;
+  border-block: 1px solid var(--hairline);
+}
+.material-uses-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.material-uses h3 {
+  font-size: 13px;
+  margin: 0;
+}
+.material-uses p {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+.material-uses ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  display: grid;
+  gap: 10px;
+}
+.material-uses li {
+  padding-left: 12px;
+  border-left: 2px solid var(--hairline-strong);
+}
+.material-use-context {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 3px 0;
+  background: none;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.material-use-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 5px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.material-use-actions select {
+  max-width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  color: var(--ink-muted);
+  padding: 4px;
+}
+.material-missing {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.material-workspace .mt-file {
+  display: block;
+}
+.material-workspace .file-editor {
+  min-height: 300px;
+}
+.material-workspace .file-editor .cm-editor {
+  min-height: 240px;
+}
+.material-workspace .file-run {
+  flex-wrap: wrap;
+}
+.material-workspace .mt-file-main {
+  min-width: 0;
+}
+@container sk (max-width: 860px) {
+  .sk-panel.is-material-workspace {
+    width: min(560px, 94%);
+  }
+}
+
+.sk .doc-file[data-kind="reference"]::before,
+.sk .doc-file[data-kind="example"]::before,
+.sk .doc-file[data-kind="asset"]::before {
+  width: auto;
+  height: auto;
+  box-shadow: none;
+  vertical-align: baseline;
+  font-family: var(--font-mono);
+}
+.sk .doc-file[data-kind="reference"]::before {
+  content: "¶";
+}
+.sk .doc-file[data-kind="example"]::before {
+  content: "‹›";
+}
+.sk .doc-file[data-kind="asset"]::before {
+  content: "◫";
+}
+.sk .doc-file.is-absent::after {
+  content: " · missing";
+  color: var(--ink-muted);
+  font-size: 0.9em;
+}
+
+/* Guidance carries a readable role; connections belong to the selected instruction. */
+.sk .sk-head {
+  padding: 16px 0 20px;
+  border: 0;
+  border-bottom: 1px solid var(--hairline-strong);
+  border-radius: 0;
+  background: transparent;
+  margin-bottom: 22px;
+}
+.weave-identity-label {
+  margin-bottom: 8px;
+}
+.weave-identity-label > span {
+  display: none;
+}
+.sk .sk-title {
+  font-size: 27px;
+}
+.weave-composition {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 24px;
+  align-items: start;
+}
+.weave-composition > .ins {
+  min-width: 0;
+}
+.sk .sk-page {
+  --measure: 1100px;
+}
+.sk .doc-page {
+  padding-left: 100px;
+  border-left: 0;
+  min-height: 120px;
+}
+.sk .doc-page > .weave-guidance::before {
+  content: attr(data-guidance);
+  width: 78px;
+  height: auto;
+  left: -100px;
+  top: 9px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  font: 10px / 1.4 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+.sk .doc-page > p.weave-guidance {
+  border-radius: 0;
+  padding: 10px 12px;
+  margin: 0 0 8px;
+  border-left: 1px solid var(--hairline-strong);
+}
+.sk .doc-page > :is(h1, h2).weave-guidance {
+  padding-top: 18px;
+  margin-top: 26px;
+}
+.sk .doc-page > :is(h1, h2).weave-guidance::before {
+  top: 23px;
+}
+.sk .doc-page > .is-condition {
+  border-left: 2px dashed var(--thread);
+}
+.sk .doc-page > .is-constraint {
+  border-left: 3px double var(--ink-muted);
+}
+.sk .doc-page > .is-expected-result {
+  border-left: 3px solid var(--thread);
+  background: var(--thread-wash);
+}
+.sk .doc-page > p.doc-use::after {
+  display: none;
+}
+.sk .doc-page > p.doc-use::before {
+  box-shadow: none;
+}
+.weave-begin {
+  padding: 20px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.weave-begin h3 {
+  margin: 7px 0;
+  font-size: 21px;
+}
+.weave-begin p {
+  color: var(--ink-muted);
+  font-size: 13px;
+  max-width: 65ch;
+}
+.weave-begin > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.weave-begin button {
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--paper);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  color: var(--ink);
+  flex: 1 1 150px;
+}
+.weave-begin button strong,
+.weave-begin button span {
+  display: block;
+}
+.weave-begin button span {
+  margin-top: 5px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.weave-begin button:hover {
+  border-color: var(--thread);
+}
+@container (max-width: 850px) {
+  .weave-composition {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sk .doc-page {
+    padding-left: 76px;
+  }
+  .sk .doc-page > .weave-guidance::before {
+    width: 62px;
+    left: -76px;
+    font-size: 9px;
+  }
+}
+.guidance-context {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--hairline-strong);
+  border-top: 2px solid var(--thread);
+  border-radius: 0 0 8px 8px;
+  background: var(--paper-raised);
+}
+.guidance-context-heading > span {
+  font: 10px var(--font-mono);
+  text-transform: uppercase;
+  color: var(--thread-strong);
+}
+.guidance-context h3 {
+  font-size: 15px;
+  margin: 6px 0 12px;
+}
+.guidance-context-quote,
+.weave-support-destination blockquote {
+  margin: 0 0 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--thread);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.guidance-contributions {
+  padding: 0;
+  margin: 0 0 16px;
+  list-style: none;
+}
+.guidance-contribution {
+  width: 100%;
+  text-align: left;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+}
+.guidance-contribution > span {
+  display: block;
+}
+.guidance-contribution-kind {
+  font: 10px var(--font-mono);
+  color: var(--thread-strong);
+  text-transform: uppercase;
+}
+.guidance-contribution-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.guidance-contribution-purpose {
+  font-size: 12px;
+  color: var(--ink-muted);
+  overflow: hidden;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.guidance-context-actions {
+  display: grid;
+  gap: 6px;
+}
+.guidance-context-actions button {
+  text-align: left;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: var(--paper);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.guidance-context-actions button:hover {
+  border-color: var(--thread);
+  color: var(--thread-strong);
+}
+.guidance-context-empty,
+.guidance-context-truth {
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.guidance-context-truth {
+  font-size: 11px;
+  margin-bottom: 0;
+}
+.sk .doc-page .guidance-is-current {
+  background: var(--paper-raised);
+  outline: none;
+  box-shadow: -2px 0 0 var(--thread);
+}
+.sk .doc-page .guidance-is-target {
+  background: var(--thread-wash);
+  box-shadow: -2px 0 0 var(--thread-strong);
+}
+.weave-support-destination {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-raised);
+}
+.weave-support-destination blockquote {
+  margin-top: 10px;
+  max-height: 46px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.weave-support-destination label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.weave-support-destination input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+}
+.sk-panel:has(.weave-support-destination) {
+  display: flex;
+  flex-direction: column;
+}
+.sk-panel:has(.weave-support-destination) > .shelf {
+  flex: 1;
+  min-height: 0;
+}
+@container skstage (max-width: 850px) {
+  .guidance-context {
+    position: static;
+  }
+  .guidance-context-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sk .doc-page > :is(h1, h2, p).weave-guidance::before {
+  content: attr(data-guidance);
+  width: 78px;
+  height: auto;
+  left: -100px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+.sk .ins-outline:not(.is-pinned) {
+  display: none;
+}
+@container skstage (max-width: 850px) {
+  .sk .doc-page > :is(h1, h2, p).weave-guidance::before {
+    width: 62px;
+    left: -76px;
+  }
+}
+.guidance-context-toggle {
+  display: none;
+}
+@container skstage (max-width: 850px) {
+  .weave-composition > .guidance-context {
+    position: fixed;
+    z-index: 9;
+    top: auto;
+    bottom: 78px;
+    right: 20px;
+    width: min(340px, calc(100vw - 288px));
+    box-sizing: border-box;
+    padding: 0;
+    box-shadow: var(--shadow-dialog);
+  }
+  .guidance-context-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    font-size: 13px;
+  }
+  .guidance-context-toggle span {
+    color: var(--thread-strong);
+    font: 10px var(--font-mono);
+  }
+  .guidance-context-content {
+    display: none;
+  }
+  .guidance-context.is-expanded .guidance-context-content {
+    display: block;
+    padding: 0 16px 16px;
+    max-height: 50vh;
+    overflow: auto;
+  }
+}
+.guidance-context-quote {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.guidance-context-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.guidance-context {
+  max-height: calc(100dvh - 110px);
+  overflow: auto;
+}
+@container skstage (max-width: 850px) {
+  .guidance-context.is-expanded .guidance-context-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .guidance-context-content .guidance-context-heading {
+    display: none;
+  }
+  .guidance-context-content .guidance-context-quote {
+    order: 0;
+    margin-bottom: 0;
+  }
+  .guidance-context-content .guidance-context-actions {
+    order: 1;
+  }
+  .guidance-context-content .guidance-contributions {
+    order: 2;
+    margin-bottom: 0;
+  }
+  .guidance-context-content .guidance-context-empty {
+    order: 2;
+    margin: 0;
+  }
+  .guidance-context-content .guidance-context-truth {
+    order: 3;
+    margin: 0;
+  }
+}
+.sk .doc-skill.is-composed {
+  display: inline-flex;
+  align-items: baseline;
+  max-width: 100%;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.sk .doc-skill.is-composed .doc-skill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sk .doc-skill .doc-skill-knot {
+  display: inline-block;
+  flex: none;
+}
+.sk .doc-skill-note {
+  flex: none;
+}
+/* Starting choices belong to the writing surface, not a separate onboarding card. */
+.weave-begin {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0;
+  margin: 10px 0 18px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.weave-begin-label {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.weave-begin > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+.weave-begin button {
+  flex: none;
+  padding: 7px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+}
+.weave-begin button:hover {
+  background: var(--paper-raised);
+}
+.sk .ins.is-empty .doc-page {
+  padding-left: 0;
+  min-height: 70px;
+}
+.sk .ins.is-empty .doc-page .guidance-is-current {
+  outline: none;
+  background: transparent;
+}
+.sk .ins.is-empty .doc-starters {
+  margin-top: 0;
+  padding-top: 0;
+}
+@container skstage (max-width: 850px) {
+  .guidance-context-content > * {
+    flex-shrink: 0;
+  }
+}
+.sk .sk-bar {
+  min-height: 42px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--hairline);
+}
+.weave-identity-status {
+  margin-top: 8px;
+}
+.weave-identity-status .rd-word {
+  padding-left: 0;
+  font-size: 11px;
+  height: 24px;
+}
+.sk .sk-head {
+  padding-top: 6px;
+}
+/* Author complete pieces through local controls; the canvas remains the artifact. */
+.weave-first-piece {
+  max-width: 680px;
+  margin: 8px 0 24px;
+}
+.weave-first-kinds {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.weave-first-kinds button {
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.weave-first-kinds button[aria-pressed="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--thread);
+}
+.capability-compose-form {
+  display: grid;
+  gap: 14px;
+  padding: 6px 0;
+}
+.capability-compose-field {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.capability-compose-form :is(input[type="text"], input:not([type]), textarea) {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  padding: 11px 12px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: 14px / 1.5 var(--font-ui);
+}
+.capability-compose-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.capability-compose-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+.capability-compose-actions button[type="submit"] {
+  padding: 9px 15px;
+  border-radius: 6px;
+  border: 1px solid var(--thread);
+  background: var(--thread-strong);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+}
+.capability-compose-actions button:disabled {
+  opacity: 0.4;
+}
+.capability-compose-hint {
+  color: var(--ink-muted);
+  font-size: 12px;
+  margin: 0;
+}
+.capability-compose-step {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin: 10px 0;
+}
+.capability-compose-step label {
+  flex: 1;
+  min-width: 0;
+}
+.capability-compose-check {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+.guidance-unit-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin: 14px 0 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hairline);
+  font: 11px var(--font-ui);
+  user-select: none;
+}
+.guidance-unit-tools > span {
+  color: var(--thread-strong);
+  margin-right: auto;
+  font: 10px var(--font-mono);
+}
+.guidance-unit-tools > button {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  padding: 5px 7px;
+  font-size: 11px;
+}
+.guidance-unit-tools > button:hover {
+  background: var(--paper-raised);
+  color: var(--thread-strong);
+}
+.guidance-unit-tools > button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.guidance-editor-slot {
+  flex-basis: 100%;
+  user-select: text;
+}
+.guidance-editor-slot:empty {
+  display: none;
+}
+.guidance-editor-slot .guidance-field-editor {
+  margin: 8px 0 12px;
+}
+
+.guidance-context-heading {
+  position: relative;
+  padding-right: 24px;
+}
+.guidance-context-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 20px;
+}

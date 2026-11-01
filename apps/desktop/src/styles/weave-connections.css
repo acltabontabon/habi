@@ -1,0 +1,150 @@
+/* One thread per capability, with its uses tucked underneath. */
+.connections-perspective {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px var(--s4) 14px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+.connections-perspective button {
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font: inherit;
+}
+.connection-threads {
+  margin: 0;
+  padding: 0 var(--s4);
+  list-style: none;
+}
+.connection-thread {
+  border-top: 1px solid var(--hairline);
+}
+.connection-thread-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 66px;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: var(--ink-soft);
+}
+.connection-thread-toggle:hover,
+.connection-thread-toggle[aria-expanded="true"] {
+  color: var(--ink);
+}
+.connection-knot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--thread-strong);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 4px var(--hairline);
+}
+.connection-thread.is-missing .connection-knot {
+  border-style: dashed;
+}
+.connection-thread-identity {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.connection-thread-identity strong {
+  font-size: var(--text-sm);
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.connection-thread-identity > span,
+.connection-use-count {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.connection-use-count {
+  flex: none;
+}
+.connection-thread-body {
+  margin: 0 0 18px 4px;
+  padding: 0 0 0 15px;
+  border-left: 1px solid var(--thread);
+}
+.connection-origin {
+  margin: 0 0 10px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.connection-uses {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.connection-uses li {
+  position: relative;
+  padding-bottom: 12px;
+}
+.connection-uses li::before {
+  content: "";
+  position: absolute;
+  left: -19px;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--thread-strong);
+  border-radius: 50%;
+  background: var(--paper);
+}
+.connection-use {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.connection-use small {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.connection-move,
+.connection-add {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.connection-move select,
+.connection-add select {
+  max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font: inherit;
+}
+.connection-add {
+  padding-top: 6px;
+  border-top: 1px solid var(--hairline);
+}
+.connection-thread button:focus-visible,
+.connections-perspective button:focus-visible {
+  outline: 2px solid var(--thread-strong);
+  outline-offset: 3px;
+}

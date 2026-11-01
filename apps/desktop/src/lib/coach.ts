@@ -1,12 +1,5 @@
-/**
- * What would make a skill better, beyond being valid: the parts a starter
- * left unfilled, a purpose too thin for an agent to choose by, instructions
- * too short to follow, no way for Habi to suggest it. Every suggestion is
- * read from the skill itself — deterministic, explainable, never a guess
- * about quality — and comes with the one action that addresses it, most
- * useful first.
- */
-import { openingSentence, type Signal, technologiesIn } from "./materials";
+/** Actionable unfinished content. Optional configuration is never an improvement. */
+import { openingSentence } from "./materials";
 
 /** A line still as a starter left it. */
 export type Unfinished = { line: number; why: string };
@@ -55,11 +48,7 @@ export function realWords(body: string): number {
 
 export type Refinement =
   | { kind: "opening"; text: string; action: string; sentence: string }
-  | { kind: "unfinished"; text: string; action: string; line: number }
-  | { kind: "purpose"; text: string; action: string }
-  | { kind: "instructions"; text: string; action: string }
-  | { kind: "inferred"; text: string; action: string; signal: Signal }
-  | { kind: "signals"; text: string; action: string };
+  | { kind: "unfinished"; text: string; action: string; line: number };
 
 const WHEN = /\b(when|whenever|if|before|after|during|while|once)\b/i;
 
@@ -75,15 +64,8 @@ export function purposeHint(description: string): string {
   return "Agents read only this to decide whether to use it.";
 }
 
-export function refinements(input: {
-  title: string;
-  description: string;
-  body: string;
-  /** Signals the sentences can edit, or null when the rules are YAML or invalid. */
-  signals: number | null;
-  tagsLabel: (tag: string) => string;
-}): Refinement[] {
-  const { description, body, signals } = input;
+export function refinements(input: { description: string; body: string }): Refinement[] {
+  const { description, body } = input;
   const out: Refinement[] = [];
   const purpose = description.trim();
   const opening = purpose ? null : openingSentence(body);
@@ -104,54 +86,5 @@ export function refinements(input: {
     });
   }
 
-  const words = purpose.split(/\s+/).filter(Boolean).length;
-  if (purpose && words < 6) {
-    out.push({
-      kind: "purpose",
-      text: `“${purpose.length > 24 ? `${purpose.slice(0, 24)}…` : purpose}” is all an agent reads before choosing this skill.`,
-      action: "Say what it helps with",
-    });
-  } else if (purpose && !WHEN.test(purpose)) {
-    out.push({
-      kind: "purpose",
-      text: "The purpose says what it does, not when to reach for it.",
-      action: "Add when to use it",
-    });
-  }
-
-  if (purpose.length > LONG_PURPOSE) {
-    out.push({
-      kind: "purpose",
-      text: "A long purpose costs context in every session, and tools can cut it. Say the key use first.",
-      action: "Tighten it",
-    });
-  }
-
-  const real = realWords(body);
-  if (body.trim() && real < 40) {
-    out.push({
-      kind: "instructions",
-      text: "The instructions are brief. Steps, checks and what done looks like help agents most.",
-      action: "Keep writing",
-    });
-  }
-
-  if (signals === 0) {
-    const tag = technologiesIn(body)[0];
-    if (tag) {
-      out.push({
-        kind: "inferred",
-        text: `Looks related to ${input.tagsLabel(tag)} projects.`,
-        action: "Suggest it there",
-        signal: { kind: "tag", value: tag },
-      });
-    } else if (body.trim()) {
-      out.push({
-        kind: "signals",
-        text: "Not suggested in any project yet.",
-        action: "Add a signal",
-      });
-    }
-  }
   return out;
 }

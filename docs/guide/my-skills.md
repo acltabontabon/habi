@@ -27,50 +27,91 @@ an idea or skills you already have.
 
 ![My skills before your first skill: a skill is a note your agent can follow, kept as a file; write one, bring some in, or start from an idea.](../media/my-skills.jpg)
 
-**New skill** opens a blank page. Habi auto-names it from your content: the first heading
+**New skill** opens a visual palette of guidance pieces. Habi auto-names it from your content: the first heading
 becomes the title, and the title becomes the identifier (until you change it or install).
 *Use the opening line* sets the purpose from your opening sentence.
 
 ## The Skill Studio
 
-![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a token saying what it's for, and the instructions with steps, files and other skills drawn as objects you can pick up.](../media/skill-studio.jpg)
+![The capability workspace with conditional expertise connected to review instructions.](../media/skill-weaving/canvas-composed.jpg)
 
-A skill is a page you write on. Title, purpose and instructions flow into each other, with a line
-of tokens between them saying what the skill is for. Press **+** and type a tool, a package or a
-file, then choose what you meant. Backspace or a token's **×** takes one out, and pressing *and*
-changes it to *or*. Beside the tokens are your projects' marks, lit where the skill would be
-suggested. Press one to see why.
+Start with the skill's identity: its name and the purpose an agent reads before choosing it.
+The weave below holds the guidance, procedures, conditions and results. Its structure follows
+ordinary instructions, not a guaranteed execution graph. A standalone skill is complete without
+any links to other skills.
 
-**Instructions** — A real document. Headings, steps, checklists, code, notes and tables are
-what you see and edit, with no Markdown on screen. To add something:
+Choose **An instruction**, **A sequence**, **A decision**, **A boundary**, **An example**, or
+**The result**. The illustrated pieces show the shape of the guidance before you choose. One click
+places an editable example on the canvas and selects the first words for you to replace. A sequence
+starts with three editable steps; a decision starts with When/Do guidance. No creation form is needed.
+The smaller palette remains above your work as it grows. The **Weave in** strip connects a
+**Skill**, **Script**, or **Reference** to the selected instruction through the same contextual
+workflow. **Use existing material** reuses a file already in the package.
 
-- Drag a piece from the **tray** at the bottom of the page to where it goes, or press it to add
-  it at the caret.
-- Type `/` for the same pieces, your files and other skills.
-- Select words for formatting.
+Select a piece to reveal **Edit**, **Add support**, **Move up**, **Move down**, and **Add below**.
+**Edit** puts the cursor directly in the canvas. Inside a sequence, **Add after procedure** adds a new
+piece after the whole sequence; moving a selected step moves only that step. Each insertion or move
+can be undone. A small **+**, **Add guidance**, or **⌘⇧I** (**Ctrl+Shift+I** elsewhere) also opens the
+piece chooser, including Resource and Skill reference.
+
+Formatting remains available by selecting words, or typing `/` for headings, checklists, tables,
+code and other familiar structures. Freeform instructions remain first-class.
 
 Hover a block for its handle. Drag it to move the block; drag a heading's handle and the whole
 section comes with it. The rest of the page makes room. **Alt+↑** and **Alt+↓** do the same from
 the keyboard, **Esc** cancels a drag, and every move is one undo.
 
-An empty page suggests one thing at a time and offers starting patterns: **Step by step**,
+The **Start from a pattern** section shows the number of available starting points. Open it for: **Step by step**,
 **Research a topic**, **Produce a document**, **Analyze a problem**, **Code review**,
 **Troubleshooting**, **Coordinate expertise**, and **Tool-assisted**. These are starting text;
 they do not change how an agent runs the skill.
 
-*Show as Markdown* in the **•••** menu shows the same instructions as the text an agent receives. Your file
-stays ordinary Markdown: only what you change is rewritten, so a Git diff shows your edit and
-nothing else. Anything the page can't show as rich text (HTML, for instance) stays on the page
-as a block marked *kept as written*, and you can edit it as it is. Hidden characters are marked
-for you to decide about, never removed on their own.
+**Agent view** shows the current instructions and package contents. **Exact instruction text**
+also exposes text that a rich preview cannot render, including comments and unfamiliar Markdown.
+**Markdown** switches to direct source editing. The same rich editor stays mounted while you
+inspect another perspective. Only what you change is rewritten; untouched content retains its
+original bytes. Unsupported rich content remains visibly marked *kept as written*.
 
-Files named in the instructions open a preview where they're named, and one that doesn't exist
-yet can be created there. The tray's **File** piece lists the skill's files and brings in new ones.
-Files the words don't mention wait at the end of the page, because an agent won't know about them
-until they do: drag one to where it belongs. Pictures from the skill show on the page; drop a file
-on the page to add it to the skill at that spot. Pictures from the web aren't fetched. Scripts are supporting
-files an agent may inspect or run, depending on the instructions and its permissions. Habi never
-runs them, including to preview them.
+### Materials where they are useful
+
+Connected skills, scripts and references stay visible beneath each instruction as branching threads.
+Each piece shows its name, type and stated purpose; select it to inspect the original connection.
+Repeated uses appear under each step that mentions them, and missing files are marked explicitly.
+
+Select an instruction or an individual procedure step, then choose **Add support**.
+**Support this instruction** shows its
+current materials and expertise, including their stated purposes. Choose **Add script**,
+**Create reference**, or **Use existing material**. The destination stays quoted while you work.
+Choose tools to use, knowledge to consult, examples to follow, or assets to adapt, then explain
+**How should the agent use this?** Create a Python, shell or JavaScript script, a Markdown reference,
+an example, or import an existing file. **Paste code** offers a
+reusable script or example. Existing inline code remains editable through the code-block tools.
+Conventional folders are suggested; advanced paths remain available through package source.
+
+Creating or importing material here adds its reference and purpose inside that exact instruction,
+including a step within a procedure. The destination follows edits while the workspace is open;
+if the instruction is removed, Habi asks you to choose another instead of attaching somewhere else.
+An omitted purpose remains a selected, editable prompt. Creating a file does not run it or install dependencies. Selecting a
+material in the instructions opens its contents beside them: scripts have syntax highlighting,
+Markdown has Write and Preview, supported images have a preview, and other binary files stay
+unchanged without pretending to be editable.
+
+The material workspace shows the actual path, language, executable-bit status and each recognized
+reference. **Connect to this instruction** reuses the same packaged file. **Detach reference** removes
+only the link or code styling and keeps the instruction's words and the underlying file; undo
+restores the connection. A reference can instead be pointed to another material already in the
+package. These actions do not rewrite unrelated prose.
+
+A missing material can be inspected, created at its expected path, or replaced with an existing
+material. An available file without a direct reference is not an error: supporting assets may
+legitimately be used indirectly. Dragging a file into the native application still uses the safe
+package import and inserts it where it lands. Remote images and document contents are not fetched.
+
+**Rename or move** lists recognized affected references and asks you to confirm the path change.
+It does not silently rewrite instructions: update the shown references deliberately afterwards.
+**Remove** explicitly deletes the package file, warns about affected references and cannot be
+undone here. Detaching a reference is a separate, undoable operation. Pending edits must save
+successfully before switching or closing the material workspace; conflicts keep the editor open.
 
 *What's inside*, in the **•••** menu, shows what's in the skill in the order an agent meets it, with rough sizes.
 
@@ -93,7 +134,9 @@ The top bar shows where the skill stands and what to do next, with the rest in *
 
 ### Using other skills
 
-Press the tray's **Skill** piece (or **⌘⇧K**) to see every skill within reach: yours, the ones on this machine,
+Select an instruction and choose **Weave skill**. The shelf keeps that instruction quoted and asks
+**When should this expertise help?** Choosing expertise writes the reference and condition into
+that exact instruction. **Add guidance → Skill reference** or **⌘⇧K** also opens skills within reach: yours, the ones on this machine,
 in your projects and in your libraries. Drag one onto the page. Between blocks it brings a
 sentence with the part only you can say selected, ready to type over; inside a sentence it joins
 the words. Choosing a skill only changes your draft. Nothing is installed or run.
@@ -109,10 +152,12 @@ an agent use it. One that's only named in the words is **mentioned**, shown with
 and Habi doesn't check it until you press it and choose *Link this skill*. Press a skill to say how it's used, see which agents would find it, or replace it. Each use is separate: changing one
 leaves the others alone.
 
-Pick up a tile by its knot to move it, or pull it off to the right to take it out. A step moves
-by its number. **How the skills fit**, in the **•••** menu, opens the whole composition as a grid of sections and skills: press an empty crossing to use
-that skill in that section, drag a knot to another section, drag a section to reorder it. A dashed
-one means Habi can't find that skill here.
+Pick up a reference by its knot to move its instruction, or pull it off to the right to
+remove that relationship. A step moves by its number. **Connections** groups repeated references
+by skill, with resolution stated in words. Expand a skill to inspect every use and its section.
+Top-level reference instructions can move to another section; references inside a procedure move
+with that procedure, not as unrelated fragments. **Show section map** exposes the larger matrix
+when useful. Missing and ambiguous matches remain distinct from invalid skill formatting.
 
 When a skill you use isn't found, open it to look for a match, connect the library it came from,
 or use another. Installing and sharing say which skills it names. They aren't included, and
@@ -120,17 +165,14 @@ installing them is always your own reviewed step. What you composed is saved in 
 another copy of Habi can read it; the skill works without it. See
 [Habi metadata](../library-authors/metadata-schema.md).
 
-### Readiness
+### Things to fix
 
-That word opens three separate answers. **Format**: whether it's a valid package. **Content**: what
-could be better, read from the skill's shape, not a judgement of its advice. **Other skills**: whether
-each link can be found here. **Ready** means the format is valid and every link was found; suggestions
-don't take that away. **Valid** means a linked skill is missing, and **Draft** means the format isn't
-done yet.
+The toolbar shows actual problems: invalid package fields, unfinished placeholders, missing files,
+and unresolved skill links. Click an item to go to the relevant field or instruction, with a brief
+highlight showing exactly where to edit. With no problems it shows **Skill details**.
 
-Each item comes with the way to it: a title, a
-purpose, a valid identifier. The identifier is changed deliberately, with *Change the
-identifier*.
+**When to use is optional.** Leaving it unset does not count as an improvement. Short descriptions
+and concise instructions do not need padding or particular trigger words to satisfy the studio.
 
 ### Saving & cleanup
 
@@ -140,16 +182,6 @@ you choose which version to keep. Undo reaches back through the page's edits; ed
 Markdown view starts its history again.
 
 *Move to trash* can be restored later; *Delete permanently* is separate and confirmed.
-
-## Testing against a project
-
-Choose a project to test your signals against using the same matcher as recommendations:
-
-- **Would be suggested here** — signals matched with evidence (files and lines)
-- **Would not be suggested here** — signal failed or exception triggered
-- **Can’t tell yet** — missing info (e.g., inherited dependencies outside the repo)
-
-Verdict is about rules only—not skill quality or agent behavior.
 
 ## Checks
 

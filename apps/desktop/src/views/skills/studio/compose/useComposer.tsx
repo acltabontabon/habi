@@ -13,12 +13,13 @@ import { useToast } from "../../../../components/Toasts";
 import { api } from "../../../../lib/api";
 import { useNav } from "../../../../lib/nav";
 import { sliceFromMarkdown } from "../doc/commands";
+import { connectToInstruction } from "../doc/connectionEditing";
 import { armDrag, ghostLabel } from "../doc/drag";
 import { markdownForFile } from "../doc/fileRefs";
 import type { DocEditorHandle } from "../doc/lazy";
 import { canonOf } from "../doc/markdown/canon";
 import { parseBody } from "../doc/markdown/parse";
-import { moveBlocks, placeBlocks, sectionRange, topBlockAt } from "../doc/moves";
+import { moveBlocks, placeBlocks, topBlockAt } from "../doc/moves";
 import { LOOKS_CHANGED, type SkillLook, type ViewContext } from "../doc/nodeViews";
 import type { SlashItem } from "../doc/SlashMenu";
 import type { SkillDraft } from "../useSkillDraft";
@@ -37,24 +38,19 @@ import {
 } from "./edit";
 import { Inside } from "./Inside";
 import { KNOT, titleOfName } from "./knots";
-import { Overview } from "./Overview";
-import { endOfRow, overviewOf } from "./overviewData";
 import { type InspectorTarget, RefInspector } from "./RefInspector";
 import {
   type ComposeEntry,
   composesKey,
   deriveComposes,
-  mentionOf,
   occurrencesIn,
   type RoleId,
   rolesForOpening,
-  sentenceFor,
 } from "./roles";
 import { Shelf } from "./Shelf";
 
 export type Panel =
   | { kind: "shelf"; query?: string; inline?: boolean; replace?: { pos: number; name: string; all: boolean } }
-  | { kind: "overview" }
   | { kind: "inside" }
   /** Drawn by the Studio, which holds what it needs. */
   | { kind: "when" };
@@ -81,6 +77,9 @@ export function useComposer({
   onSource,
   ready,
   problems,
+  onAttachSkill,
+  skillDragCondition,
+  onCloseSupport,
 }: {
   draft: SkillDraft;
   editor: RefObject<DocEditorHandle | null>;
@@ -93,8 +92,21 @@ export function useComposer({
   onSource: () => void;
   ready: boolean;
   problems: number;
+  /** A selected instruction can receive expertise without creating a new block. */
+  onAttachSkill?: (view: EditorView, pick: Pick) => boolean;
+  onCloseSupport?: () => void;
+  skillDragCondition?: string;
 }) {
+  const dragConditionRef = useRef(skillDragCondition);
+  dragConditionRef.current = skillDragCondition;
+  const attachSkillRef = useRef(onAttachSkill);
+  attachSkillRef.current = onAttachSkill;
+  const closeSupportRef = useRef(onCloseSupport);
+  closeSupportRef.current = onCloseSupport;
   const { skill, id } = draft;
+  const readOnly = draft.trashed || draft.broken;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   const { navigate } = useNav();
   const toast = useToast();
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -198,11 +210,16 @@ export function useComposer({
     if (roles.size) editor.current?.setRoles(roles);
   }, [draft.composes, view, editor]);
 
-  const withView = useCallback(() => {
-    const current = editor.current?.view() ?? null;
-    if (current !== view) setView(current);
-    return current;
-  }, [editor, view]);
+  const withView = useCallback(
+    (editing = false) => {
+      if (editing && readOnlyRef.current) return null;
+      const current = editor.current?.view() ?? null;
+      if (editing && current?.dom.closest("[hidden]")) return null;
+      if (current !== view) setView(current);
+      return current;
+    },
+    [editor, view],
+  );
 
   useEffect(() => {
     // The page arrives with its lazy code; the view appears once it has.
@@ -240,14 +257,19 @@ export function useComposer({
     (pos: number) => {
       const current = withView();
       if (!current) return;
+      if (current.dom.closest("[hidden]")) return;
       const dom = current.nodeDOM(pos);
       const chip = current.state.doc.nodeAt(pos);
       if (!(dom instanceof HTMLElement) || !chip) return;
-      dom.scrollIntoView({ block: "center", behavior: "smooth" });
-      window.setTimeout(
-        () => openInspector(chip.attrs.name as string, pos, dom.getBoundingClientRect()),
-        240,
-      );
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      dom.scrollIntoView({ block: "center", behavior: reducedMotion ? "instant" : "smooth" });
+      const inspect = () => {
+        // The document may have changed while scrolling; don't inspect a different occurrence.
+        if (current.state.doc.nodeAt(pos) !== chip || !dom.isConnected) return;
+        openInspector(chip.attrs.name as string, pos, dom.getBoundingClientRect());
+      };
+      if (reducedMotion) inspect();
+      else window.setTimeout(inspect, 240);
     },
     [withView, openInspector],
   );
@@ -260,7 +282,7 @@ export function useComposer({
   const liftSkill = useCallback(
     (s: ShelfSkill, event: PointerEvent) => {
       armDrag(event, () => {
-        const current = withView();
+        const current = withView(true);
         if (!current) return null;
         const color = KNOT;
         return {
@@ -268,9 +290,18 @@ export function useComposer({
           ghost: ghostLabel(s.title, color),
           grip: { x: 18, y: 15 },
           inline: true,
+          instructions: true,
           tether: () => ({ x: current.dom.getBoundingClientRect().right + 28, color }),
           onLand: (landing) => {
-            if (landing.type === "text") dropSkillInText(current, pickOf(s), landing.pos);
+            if (landing.type === "instruction") {
+              if (
+                connectToInstruction(current, landing.pos, {
+                  skill: pickOf(s),
+                  condition: dragConditionRef.current,
+                })
+              )
+                setPanel(null);
+            } else if (landing.type === "text") dropSkillInText(current, pickOf(s), landing.pos);
             else if (landing.type === "slot") dropSkillBetween(current, pickOf(s), landing.slot.pos);
             current.focus();
           },
@@ -284,7 +315,7 @@ export function useComposer({
   const liftKnot = useCallback(
     (pos: number, event: PointerEvent) => {
       armDrag(event, () => {
-        const current = withView();
+        const current = withView(true);
         if (!current) return null;
         const chip = current.state.doc.nodeAt(pos);
         const range = topBlockAt(current.state.doc, pos);
@@ -317,16 +348,18 @@ export function useComposer({
   const liftFile = useCallback(
     (path: string, name: string, event: PointerEvent) => {
       armDrag(event, () => {
-        const current = withView();
+        const current = withView(true);
         if (!current) return null;
         return {
           view: current,
           ghost: ghostLabel(name),
           grip: { x: 18, y: 15 },
           inline: true,
+          instructions: true,
           onLand: (landing) => {
             const markdown = markdownForFile(path);
-            if (landing.type === "text") {
+            if (landing.type === "instruction") connectToInstruction(current, landing.pos, { path });
+            else if (landing.type === "text") {
               const tr = current.state.tr.setSelection(TextSelection.create(current.state.doc, landing.pos));
               current.dispatch(tr.replaceSelection(sliceFromMarkdown(markdown)));
             } else if (landing.type === "slot") {
@@ -347,7 +380,7 @@ export function useComposer({
 
   const pick = useCallback(
     (s: ShelfSkill) => {
-      const current = withView();
+      const current = withView(true);
       if (!current) return;
       if (panel?.kind === "shelf" && panel.replace) {
         if (panel.replace.all) replaceAll(current, panel.replace.name, pickOf(s));
@@ -357,6 +390,11 @@ export function useComposer({
         return;
       }
       const inline = panel?.kind === "shelf" && panel.inline;
+      if (attachSkillRef.current?.(current, pickOf(s))) {
+        setPanel(null);
+        current.focus();
+        return;
+      }
       insertSkill(current, pickOf(s), { inline });
       current.focus();
       if (inline) setPanel(null);
@@ -373,8 +411,11 @@ export function useComposer({
       }),
       onSkillClick: (name, pos, rect) => openInspector(name, pos, rect),
       onLiftUse: (pos, event) => liftKnot(pos, event),
-      onLinkSkill: (query) => setPanel({ kind: "shelf", query, inline: true }),
+      onLinkSkill: (query) => {
+        if (!readOnlyRef.current) setPanel({ kind: "shelf", query, inline: true });
+      },
       onChoosePiece: (what) => {
+        if (readOnlyRef.current) return;
         if (what === "skill") setPanel({ kind: "shelf", inline: false });
         else onAddFile();
       },
@@ -405,6 +446,7 @@ export function useComposer({
         label: s.title,
         hint: s.sourceLabel,
         act: (v) => {
+          if (readOnlyRef.current) return;
           insertSkill(v, pickOf(s), { inline: true });
         },
       }));
@@ -414,7 +456,9 @@ export function useComposer({
         label: "Browse skills…",
         hint: "⌘⇧K",
         keywords: "skill compose shelf",
-        act: () => setPanel({ kind: "shelf", query: words }),
+        act: () => {
+          if (!readOnlyRef.current) setPanel({ kind: "shelf", query: words });
+        },
       };
       if (!query || "skill browse compose".includes(query) || scoped) items.push(browse);
       return items;
@@ -425,6 +469,7 @@ export function useComposer({
   // The keyboard's way to the shelf, from anywhere in the Studio.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (readOnlyRef.current || editor.current?.view()?.dom.closest("[hidden]")) return;
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         e.stopPropagation();
@@ -433,10 +478,11 @@ export function useComposer({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, []);
+  }, [editor]);
 
   const closePanel = useCallback(() => {
     setPanel(null);
+    closeSupportRef.current?.();
     editor.current?.focus();
   }, [editor]);
 
@@ -460,6 +506,7 @@ export function useComposer({
   const panelNode: ReactNode =
     panel?.kind === "shelf" ? (
       <Shelf
+        readOnly={readOnly}
         skills={shelf}
         loading={shelfQuery.isLoading}
         initialQuery={panel.query}
@@ -476,63 +523,6 @@ export function useComposer({
         onLift={panel.replace ? undefined : liftSkill}
         onClose={closePanel}
       />
-    ) : panel?.kind === "overview" ? (
-      <Overview
-        overview={view ? overviewOf(view.state.doc) : { rows: [], names: [], uses: [] }}
-        composition={composition.data}
-        titleOf={titleOf}
-        onGo={(pos) => {
-          const dom = view?.nodeDOM(pos);
-          if (dom instanceof HTMLElement) dom.scrollIntoView({ block: "start", behavior: "smooth" });
-        }}
-        onUse={openUse}
-        onTie={(name, row) => {
-          const current = withView();
-          if (!current) return;
-          const at = endOfRow(current.state.doc, overviewOf(current.state.doc), row);
-          const s = byName.get(name)?.[0];
-          dropSkillBetween(current, s ? pickOf(s) : { name }, at);
-        }}
-        onMoveUse={(pos, row) => {
-          const current = withView();
-          if (!current) return;
-          const range = topBlockAt(current.state.doc, pos);
-          if (!range) return;
-          moveBlocks(
-            current,
-            range.from,
-            range.to,
-            endOfRow(current.state.doc, overviewOf(current.state.doc), row),
-          );
-        }}
-        onMoveSection={(row, before) => {
-          const current = withView();
-          if (!current) return;
-          const data = overviewOf(current.state.doc);
-          const here = data.rows[row];
-          if (!here) return;
-          const range = sectionRange(current.state.doc, here.pos);
-          if (!range) return;
-          const target = data.rows[before]?.pos ?? current.state.doc.content.size;
-          moveBlocks(current, range.from, range.to, target);
-        }}
-        onAddBack={(name) => {
-          const current = withView();
-          if (!current) return;
-          editor.current?.appendMarkdown(sentenceFor("alongside", mentionOf(name)));
-          const hit = occurrencesIn(current.state.doc)
-            .filter((o) => o.name === name)
-            .pop();
-          if (hit) current.dispatch(current.state.tr.setNodeAttribute(hit.pos, "role", "alongside"));
-        }}
-        onForget={(name) => {
-          hadChip.current.add(name);
-          const next = draft.composes.filter((e) => e.skill !== name);
-          loaded.current = next;
-          draft.setComposes(next);
-        }}
-        onClose={closePanel}
-      />
     ) : panel?.kind === "inside" ? (
       <Inside
         composition={composition.data}
@@ -544,18 +534,18 @@ export function useComposer({
         onWhen={onWhen}
         onReadiness={onReadiness}
         onSource={onSource}
-        onOverview={() => setPanel({ kind: "overview" })}
         onClose={closePanel}
       />
     ) : null;
 
   const inspectorNode: ReactNode = inspector ? (
     <RefInspector
+      readOnly={readOnly}
       target={inspector}
       dependency={deps.get(inspector.name)}
       shelf={byName.get(inspector.name) ?? []}
       onRole={(role: RoleId) => {
-        const current = withView();
+        const current = withView(true);
         if (!current) return;
         const reworded = canReword(current, inspector.pos);
         setRole(current, inspector.pos, role);
@@ -565,14 +555,14 @@ export function useComposer({
         } else setInspector({ ...inspector, role });
       }}
       onMakePart={() => {
-        const current = withView();
+        const current = withView(true);
         if (!current) return;
         const s = byName.get(inspector.name)?.[0];
         promote(current, inspector.pos, s ? pickOf(s).from : null);
         setInspector({ ...inspector, role: "used" });
       }}
       onRemove={() => {
-        const current = withView();
+        const current = withView(true);
         if (!current) return;
         removeUse(current, inspector.pos);
         setInspector(null);
@@ -580,6 +570,7 @@ export function useComposer({
         toast.show(`${titleOf(inspector.name)} removed from here. ⌘Z brings it back.`);
       }}
       onReplace={(all) => {
+        if (readOnlyRef.current) return;
         setPanel({ kind: "shelf", replace: { pos: inspector.pos, name: inspector.name, all } });
         setInspector(null);
       }}
@@ -596,6 +587,7 @@ export function useComposer({
         navigate({ name: "sources", view: "git" });
       }}
       onFind={() => {
+        if (readOnlyRef.current) return;
         setPanel({
           kind: "shelf",
           query: inspector.name.replace(/-/g, " "),
@@ -633,6 +625,9 @@ export function useComposer({
   }, [editor, derived]);
 
   return {
+    view,
+    titleOf,
+    statusOf,
     panel,
     setPanel,
     panelNode,

@@ -38,7 +38,6 @@ export function Inside({
   onWhen,
   onReadiness,
   onSource,
-  onOverview,
   onClose,
 }: {
   composition: Composition | undefined;
@@ -51,7 +50,6 @@ export function Inside({
   onWhen: () => void;
   onReadiness: () => void;
   onSource: () => void;
-  onOverview: () => void;
   onClose: () => void;
 }) {
   const context = composition?.context;
@@ -158,11 +156,6 @@ export function Inside({
       <section className="inside-others">
         <div className="inside-stage-head">
           <h3>Other skills</h3>
-          {deps.length ? (
-            <button type="button" className="link-btn" onClick={onOverview}>
-              See how they fit
-            </button>
-          ) : null}
         </div>
         <p>
           {deps.length

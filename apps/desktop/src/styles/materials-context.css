@@ -1,0 +1,252 @@
+/* Materials extend the instruction in a focused workspace, using the same package editor. */
+.mt-context {
+  min-width: 0;
+  height: 100%;
+}
+.mt-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.mt-context-actions .menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--paper-raised);
+}
+.mt-context-note {
+  margin: 14px 0 20px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.mt-context-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mt-context-list > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline);
+}
+.mt-context-open {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+}
+.mt-context-open > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.mt-context-open strong {
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.mt-context-open small {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.mt-context-back {
+  margin-bottom: 18px;
+}
+.mt-context .mt-file-main {
+  min-width: 0;
+}
+.mt-context .mt-file-head {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mt-context .mt-facts {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+.mt-context .src-path {
+  white-space: normal;
+}
+.mt-context .file-editor .cm-editor {
+  min-height: 320px;
+}
+.mt-rename-confirm,
+.src-confirm {
+  flex-wrap: wrap;
+}
+.mt-operation-impact {
+  flex-basis: 100%;
+  margin: 8px 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.mt-code-paste {
+  display: grid;
+  flex-basis: 100%;
+  gap: 6px;
+  width: 100%;
+  font-size: var(--text-sm);
+}
+.mt-code-paste textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.mt-reference-impact {
+  flex-basis: 100%;
+  font-size: var(--text-sm);
+  margin: 4px 0 10px;
+  color: var(--ink-soft);
+}
+.mt-reference-impact li {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+/* The choice begins with what the instruction needs, then narrows to a material. */
+.mt-purpose-choices {
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.mt-purpose-choices legend {
+  padding: 0 0 10px;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--ink);
+}
+.mt-purpose-choices > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.mt-purpose-choices button {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.mt-purpose-choices button[aria-pressed="true"] {
+  border-color: var(--thread);
+  background: var(--thread-wash);
+  color: var(--ink);
+}
+.mt-purpose-choices button > span:last-child {
+  display: grid;
+  gap: 4px;
+}
+.mt-purpose-choices strong {
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.mt-purpose-choices small {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+.mt-reuse-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 24px;
+}
+.mt-reuse-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.mt-reuse-heading > span,
+.mt-context-truth {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.mt-context-truth {
+  margin-top: 20px;
+  line-height: 1.5;
+}
+.mt-focused-create h3 {
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.material-new-connection {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.material-new-connection > summary {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.material-new-connection[open] > summary {
+  margin-bottom: 16px;
+}
+
+.mt-context .mt-create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+}
+.mt-script-types {
+  display: flex;
+  flex: 0 0 100%;
+  gap: 4px;
+  padding: 0 0 8px;
+  margin: 0;
+  border: 0;
+}
+.mt-script-types button {
+  padding: 7px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mt-script-types button[aria-pressed="true"] {
+  color: var(--thread);
+  background: color-mix(in srgb, var(--thread) 7%, transparent);
+  border-color: color-mix(in srgb, var(--thread) 18%, transparent);
+}
+.mt-script-types button:hover {
+  background: var(--paper-raised);
+}
+.mt-script-types button:focus-visible {
+  outline: 2px solid var(--thread);
+  outline-offset: 2px;
+}
+.mt-context .mt-create > input {
+  flex: 1 1 160px;
+  min-width: 0;
+}

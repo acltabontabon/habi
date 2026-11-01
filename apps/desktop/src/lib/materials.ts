@@ -32,6 +32,7 @@ export const KIND_GLYPH: Record<MaterialKind, string> = {
 export const KIND_ORDER: MaterialKind[] = ["script", "example", "reference", "asset", "other"];
 
 const DOC = /\.(md|markdown|txt|rst|adoc|pdf|html?)$/i;
+const SCRIPT = /\.(sh|bash|zsh|py|rb|js|mjs|cjs|ts|pl|ps1)$/i;
 const IMAGE = /\.(png|jpe?g|gif|webp|svg|ico)$/i;
 const NOTICE = /^(license|licence|notice|copying)(\.|$)/i;
 
@@ -48,6 +49,7 @@ export function materialKind(path: string, executable = false): MaterialKind {
   if (top === "scripts" || top === "bin" || executable) return "script";
   if (top === "references" || top === "reference" || top === "docs") return "reference";
   if (top === "assets" || top === "templates" || IMAGE.test(name)) return "asset";
+  if (SCRIPT.test(name)) return "script";
   if (DOC.test(name)) return "reference";
   return "other";
 }
@@ -66,6 +68,15 @@ const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 /** Whether the instructions point at a file: by its path, or by its name when that is unmistakable. */
 export function mentions(body: string, path: string, all: string[] = []): boolean {
   if (body.includes(path)) return true;
+  // Links encode spaces, Unicode and URI punctuation; do not decode the whole
+  // document, which could turn a literal percent sequence into a different file.
+  const uri = path
+    .split("/")
+    .map((part) =>
+      encodeURIComponent(part).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`),
+    )
+    .join("/");
+  if (uri !== path && body.replace(/%[\da-f]{2}/gi, (code) => code.toUpperCase()).includes(uri)) return true;
   const name = baseName(path);
   if (name.length < 4 || all.filter((p) => baseName(p) === name).length > 1) return false;
   return new RegExp(`(^|[\\s\`'"(/\\[])${escapeRe(name)}($|[\\s\`'")\\],.:;])`, "m").test(body);

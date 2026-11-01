@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import axe from "axe-core";
+import { NodeSelection, TextSelection } from "prosemirror-state";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { Tooltips } from "../components/Tooltips";
 import { clipboardTextParser, looksLikeCode } from "../views/skills/studio/doc/clipboard";
 import { moveBlock, toggleTask } from "../views/skills/studio/doc/commands";
 import { DocEditor, type DocEditorHandle } from "../views/skills/studio/doc/DocEditor";
@@ -42,6 +44,50 @@ function mount(value: string, extra: Partial<Parameters<typeof DocEditor>[0]> = 
 }
 
 describe("the page is the document", () => {
+  it("reveals and highlights only the unfinished step, without changing the document", () => {
+    const { handle, container, view } = mount(
+      "## Steps\n\n1. Read the notes.\n2. Fill this in …\n3. Report findings.\n",
+      { contextualToolbar: false },
+    );
+    const original = view().state.doc;
+    act(() => handle.current?.revealLine(4, true));
+    const highlighted = container.querySelectorAll(".is-flash");
+    expect(highlighted).toHaveLength(1);
+    expect(highlighted[0]).toHaveTextContent("Fill this in …");
+    expect(highlighted[0]).not.toHaveTextContent("Read the notes.");
+    expect(view().state.selection.$from.parent.textContent).toBe("Fill this in …");
+    expect(view().state.doc).toBe(original);
+  });
+
+  it("continues a studio instruction on a new line and preserves it in Markdown", () => {
+    const { view, handle } = mount("Check the changes.\n", { contextualToolbar: false });
+    act(() => {
+      view().dispatch(view().state.tr.setSelection(TextSelection.create(view().state.doc, 19)));
+      view().someProp("handleKeyDown", (handler) =>
+        handler(view(), new KeyboardEvent("keydown", { key: "Enter" })),
+      );
+      view().dispatch(view().state.tr.insertText("Explain the result."));
+    });
+    expect(view().state.doc.childCount).toBe(1);
+    expect(view().state.doc.firstChild?.child(1).type.name).toBe("hard_break");
+    const roundTrip = parseBody(handle.current?.text() ?? "").doc;
+    expect(roundTrip.firstChild?.textContent).toBe("Check the changes.Explain the result.");
+    expect(roundTrip.firstChild?.child(1).type.name).toBe("hard_break");
+  });
+
+  it("supports Shift+Enter inside a numbered step without adding another step", () => {
+    const { view } = mount("1. Check\n", { contextualToolbar: false });
+    act(() => {
+      view().dispatch(view().state.tr.setSelection(TextSelection.create(view().state.doc, 8)));
+      view().someProp("handleKeyDown", (handler) =>
+        handler(view(), new KeyboardEvent("keydown", { key: "Enter", shiftKey: true })),
+      );
+      view().dispatch(view().state.tr.insertText("Explain"));
+    });
+    expect(view().state.doc.firstChild?.childCount).toBe(1);
+    expect(view().state.doc.firstChild?.firstChild?.firstChild?.child(1).type.name).toBe("hard_break");
+  });
+
   it("shows Markdown as what it means, with no syntax on screen", () => {
     const { container } = mount("## Steps\n\n1. **Read** it\n2. Write `code`\n\n> [!NOTE]\n> Careful\n");
     const page = container.querySelector("[data-skill-editor]");
@@ -107,7 +153,8 @@ describe("the page is the document", () => {
     );
     const { rerender, container } = render(ui("Mine\n"));
     rerender(ui("Theirs\n"));
-    expect(container.querySelector("[data-skill-editor]")?.textContent).toBe("Theirs");
+    expect(container.querySelector("[data-skill-editor]")?.textContent).toContain("Theirs");
+    expect(container.querySelector("[data-skill-editor]")?.textContent).not.toContain("Mine");
     expect(handle.current?.text()).toBe("Theirs\n");
   });
 
@@ -165,6 +212,100 @@ describe("what a skill holds is safe to show", () => {
     expect(countInvisibles(view().state.doc).count).toBe(1);
     act(() => removeInvisibles(view()));
     expect(handle.current?.text()).toBe("A hiddenspace\n");
+  });
+});
+
+describe("material pointer inspection", () => {
+  it.each([false, true])(
+    "opens the material when clicking its label or surrounding anchor (%s)",
+    (anchor) => {
+      const onFileClick = vi.fn();
+      const { view } = mount("Read [style](references/style.md).\n", { context: { onFileClick } });
+      const element = view().dom.querySelector(anchor ? "a" : "[data-file-ref]");
+      if (!element) throw new Error("material absent");
+      fireEvent.click(element);
+      expect(onFileClick).toHaveBeenCalledOnce();
+      expect(onFileClick).toHaveBeenCalledWith("references/style.md", expect.anything(), false);
+    },
+  );
+});
+
+describe("material primary press", () => {
+  it("opens before a selection change replaces decorations, without waiting for click", () => {
+    const onFileClick = vi.fn();
+    const { view } = mount("Use `scripts/missing.py`.\n\nLater.\n", { context: { onFileClick } });
+    act(() => view().dispatch(view().state.tr.setSelection(TextSelection.atEnd(view().state.doc))));
+    const element = view().dom.querySelector<HTMLElement>(".doc-file");
+    if (!element) throw new Error("material absent");
+    expect(fireEvent.mouseDown(element, { button: 0 })).toBe(false);
+    expect(onFileClick).toHaveBeenCalledOnce();
+    expect(onFileClick).toHaveBeenCalledWith("scripts/missing.py", expect.anything(), true);
+    // Selection exposes the path and replaces its old filename decoration.
+    expect(view().dom.querySelector(".doc-file-dir")).toBeNull();
+    const current = view().dom.querySelector(".doc-file");
+    if (!current) throw new Error("material absent after selection");
+    fireEvent.mouseUp(current, { button: 0 });
+    fireEvent.click(current, { button: 0, detail: 1 });
+    expect(onFileClick).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a hovered material connected when the app tooltip layer is active", async () => {
+    const onFileClick = vi.fn();
+    const source = "Read [style](references/style.md).\n";
+    const { view, handle } = mount(source, { context: { onFileClick } });
+    render(<Tooltips />);
+    const material = view().dom.querySelector<HTMLElement>(".doc-file");
+    if (!material) throw new Error("material absent");
+    const attributes = material.outerHTML;
+    fireEvent.pointerOver(material, { pointerType: "mouse" });
+    // Give both tooltip and ProseMirror mutation observers their turn.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(material.isConnected).toBe(true);
+    expect(material.outerHTML).toBe(attributes);
+    expect(handle.current?.text()).toBe(source);
+    fireEvent.mouseDown(material, { button: 0 });
+    fireEvent.mouseUp(material, { button: 0 });
+    fireEvent.click(material, { button: 0, detail: 1 });
+    expect(onFileClick).toHaveBeenCalledOnce();
+    expect(onFileClick).toHaveBeenCalledWith("references/style.md", expect.anything(), false);
+  });
+
+  it("leaves modified presses available for selecting and editing reference text", () => {
+    const onFileClick = vi.fn();
+    const { view } = mount("Read [style](references/style.md).\n", { context: { onFileClick } });
+    const element = view().dom.querySelector(".doc-file");
+    if (!element) throw new Error("material absent");
+    // Test the handler directly: jsdom has no geometry for PM's selection fallback.
+    const handler = view().props.handleDOMEvents?.mousedown;
+    for (const options of [{ button: 2 }, { button: 0, shiftKey: true }, { button: 0, altKey: true }]) {
+      const event = new MouseEvent("mousedown", options);
+      Object.defineProperty(event, "target", { value: element });
+      expect(handler?.(view(), event)).toBe(false);
+    }
+    expect(onFileClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("material keyboard inspection", () => {
+  it.each([
+    ["Read [style](references/style.md).\n", "references/style.md", false],
+    ["Use `scripts/missing.py`.\n", "scripts/missing.py", true],
+  ])("opens the material at the caret: %s", (source, path, missing) => {
+    const onFileClick = vi.fn();
+    const { view } = mount(String(source), { context: { onFileClick } });
+    const material = view().dom.querySelector<HTMLElement>("[data-material-from]");
+    expect(material).not.toBeNull();
+    const from = Number(material?.dataset.materialFrom);
+    act(() => {
+      view().dispatch(view().state.tr.setSelection(TextSelection.create(view().state.doc, from + 1)));
+      const handled = view().someProp("handleKeyDown", (handler) =>
+        handler(view(), new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true })),
+      );
+      expect(handled).toBe(true);
+    });
+    expect(onFileClick).toHaveBeenCalledWith(path, expect.anything(), missing);
   });
 });
 
@@ -289,16 +430,28 @@ describe("controls on the page itself", () => {
   it("offers the tray's pieces as ordinary buttons, for keyboards", () => {
     const { container } = mount("One\n");
     const tray = within(container.querySelector(".doc-tray") as HTMLElement);
-    for (const name of ["Section", "Steps", "Checklist", "Code", "Note", "Table", "File", "Skill"]) {
-      expect(tray.getByRole("button", { name })).toBeInTheDocument();
+    fireEvent.click(tray.getByRole("button", { name: /Add guidance/ }));
+    for (const name of [
+      "Instruction",
+      "Procedure",
+      "Condition",
+      "Constraint",
+      "Example",
+      "Expected result",
+      "Resource",
+      "Skill reference",
+    ]) {
+      expect(tray.getByRole("button", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
     }
   });
 
   it("pressing a piece adds it", () => {
     const { handle, container } = mount("One\n");
     const tray = within(container.querySelector(".doc-tray") as HTMLElement);
-    fireEvent.click(tray.getByRole("button", { name: "Section" }));
-    expect(handle.current?.text()).toContain("##");
+    fireEvent.click(tray.getByRole("button", { name: /Add guidance/ }));
+    fireEvent.click(tray.getByRole("button", { name: /^Condition/ }));
+    expect(handle.current?.text()).toContain("**Condition:** When the request is ambiguous.");
+    expect(handle.current?.text()).toContain("Do: Ask one focused question before proceeding.");
   });
 
   it("the slash menu lists what can be added, and Escape puts it away", async () => {
@@ -343,4 +496,16 @@ describe("the writer alone", () => {
     const parsed = parseBody("Use the `a-b` skill.\n");
     expect(write(parsed.doc, parsed.baseline).text).toBe("Use the `a-b` skill.\n");
   });
+});
+
+it.each(["Backspace", "Delete"])("selects a divider directly and removes it with %s", (key) => {
+  const { container, view, handle } = mount("Before\n\n---\n\nAfter\n", { contextualToolbar: false });
+  const divider = container.querySelector("hr");
+  if (!divider) throw new Error("Missing divider");
+  fireEvent.mouseDown(divider, { button: 0 });
+  expect(view().state.selection instanceof NodeSelection).toBe(true);
+  fireEvent.keyDown(view().dom, { key });
+  expect(container.querySelector("hr")).toBeNull();
+  expect(handle.current?.text()).toContain("Before");
+  expect(handle.current?.text()).toContain("After");
 });

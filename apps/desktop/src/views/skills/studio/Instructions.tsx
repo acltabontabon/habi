@@ -8,8 +8,11 @@
  * narrow window it appears only when summoned.
  */
 import { type CSSProperties, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { TemplateInfo } from "../../../bindings/TemplateInfo";
+import { Icon, type IconName } from "../../../components/Icon";
 import { SourceEditor } from "../../../components/lazy";
+import { Markdown } from "../../../components/Markdown";
 import { Button } from "../../../components/ui";
 import { api } from "../../../lib/api";
 import { unfinishedLines } from "../../../lib/coach";
@@ -18,27 +21,64 @@ import { KIND_GLYPH, materialsOf } from "../../../lib/materials";
 import { packageCompletions } from "../../../lib/packageCompletions";
 import { useSkillTemplates } from "../../../lib/queries";
 import type { Composer } from "./compose/useComposer";
-import { FilePeek, type PeekTarget } from "./doc/FilePeek";
+import { CanvasPalette } from "./doc/CanvasPalette";
+import { insertCanvasPiece, insertCanvasStructure, insertionAtSelection } from "./doc/capabilityPieces";
+import { armDrag, ghostLabel } from "./doc/drag";
 import { markdownForFile } from "./doc/fileRefs";
 import { DocEditor, type DocEditorHandle } from "./doc/lazy";
+import { packagePathFromUri } from "./doc/materialUses";
 import { countInvisibles, removeInvisibles } from "./doc/plugins";
 import { nextPrompt } from "./doc/prompts";
 import type { SlashItem } from "./doc/SlashMenu";
+import { StudioPalette } from "./doc/StudioPalette";
+import { WeaveBar, type WeaveKind } from "./doc/WeaveBar";
 import type { SkillDraft } from "./useSkillDraft";
 
 const FALLBACK: TemplateInfo[] = [];
+const PATTERN_ICONS: Record<string, IconName> = {
+  workflow: "outline",
+  research: "search",
+  document: "file",
+  analysis: "layers",
+  reviewProcedure: "check",
+  troubleshooting: "settings",
+  coordinate: "branch",
+  toolAssisted: "terminal",
+  implementationGuide: "library",
+};
 
-function Starters({ onPick }: { onPick: (t: TemplateInfo) => void }) {
+function Starters({
+  onPick,
+  onBlank,
+  ready,
+}: {
+  onPick: (t: TemplateInfo) => void;
+  onBlank: () => void;
+  ready: boolean;
+}) {
   const templates = useSkillTemplates();
   const offered = (templates.data ?? FALLBACK).filter((t) => t.template !== "blank");
-  if (offered.length === 0) return null;
   return (
-    <section className="doc-starters" aria-label="Begin from a shape">
-      <span className="doc-starters-lead">Or begin from a shape</span>
+    <section className="studio-pattern-landing" aria-label="Start a new skill">
+      <header className="studio-pattern-heading">
+        <div>
+          <p className="kicker">Your next skill</p>
+          <h2>Explore patterns</h2>
+          <p>Pick a starting point. Make it your own on the canvas.</p>
+        </div>
+        <button type="button" className="studio-blank-start" disabled={!ready} onClick={onBlank}>
+          <Icon name="plus" size={18} />
+          <span>Empty canvas</span>
+          <Icon name="chevronRight" size={14} />
+        </button>
+      </header>
       <ul>
         {offered.map((t) => (
           <li key={t.template}>
-            <button type="button" className="doc-starter" onClick={() => onPick(t)}>
+            <button type="button" className="doc-starter" disabled={!ready} onClick={() => onPick(t)}>
+              <span className="studio-pattern-icon" aria-hidden="true">
+                <Icon name={PATTERN_ICONS[t.template] ?? "thread"} size={18} />
+              </span>
               <span className="doc-starter-name">{t.label}</span>
               <span className="doc-starter-what">{t.summary}</span>
             </button>
@@ -129,15 +169,19 @@ export function Instructions({
   draft,
   editor,
   sourceMode,
+  agentView,
   trayHost,
   composer,
   onCursorLine,
   onOpenFile,
+  onWeave,
 }: {
+  onWeave: (kind: WeaveKind) => void;
   draft: SkillDraft;
   editor: RefObject<DocEditorHandle | null>;
   /** The same text, as text: for those who want the Markdown itself. */
   sourceMode: boolean;
+  agentView: boolean;
   trayHost: HTMLElement | null;
   composer: Composer;
   onCursorLine: (line: number) => void;
@@ -167,11 +211,26 @@ export function Instructions({
     [skill.diagnostics, document.body],
   );
   const empty = document.body.trim() === "";
+  const [started, setStarted] = useState(!empty);
+  const landing = !started && empty && !trashed && !sourceMode && !agentView;
+  useEffect(() => {
+    if (!empty) setStarted(true);
+  }, [empty]);
+  const [editorReady, setEditorReady] = useState(false);
+  useEffect(() => {
+    if (!empty) return;
+    const timer = window.setInterval(() => {
+      if (editor.current) {
+        setEditorReady(true);
+        window.clearInterval(timer);
+      }
+    }, 50);
+    return () => window.clearInterval(timer);
+  }, [empty, editor]);
   const purpose = useRef(document.description);
   purpose.current = document.description;
   const [hidden, setHidden] = useState<{ count: number } | null>(null);
 
-  const [peek, setPeek] = useState<PeekTarget | null>(null);
   const filesRef = useRef(skill.files);
   filesRef.current = skill.files;
   const bodyRef = useRef(document.body);
@@ -180,15 +239,17 @@ export function Instructions({
     () => (empty ? [] : materialsOf(skill.files, document.body).filter((m) => !m.referenced)),
     [skill.files, document.body, empty],
   );
+  const onOpenRef = useRef(onOpenFile);
+  onOpenRef.current = onOpenFile;
   const composerContext = composer.context;
   const context = useMemo(
     () => ({
       ...composerContext,
       files: () => materialsOf(filesRef.current, bodyRef.current),
-      onFileClick: (path: string, rect: DOMRect, absent: boolean) =>
-        setPeek({ path, absent, rect: { left: rect.left, top: rect.top, bottom: rect.bottom } }),
-      imageData: async (path: string) => {
-        if (!pathsRef.current.includes(path)) return null;
+      onFileClick: (path: string) => onOpenRef.current(path),
+      imageData: async (src: string) => {
+        const path = packagePathFromUri(src);
+        if (!path || !pathsRef.current.includes(path)) return null;
         const file = await api.readSkillFile(skill.summary.id, path).catch(() => null);
         return file?.preview ?? null;
       },
@@ -266,8 +327,111 @@ export function Instructions({
     setHidden(count > 0 ? { count } : null);
   }, [document.body, editor]);
 
+  const steps =
+    !trashed && !sourceMode && !agentView ? (
+      <CanvasPalette
+        embedded
+        empty={false}
+        ready={editorReady || !!editor.current?.view()}
+        onLift={(kind, event) => {
+          const view = editor.current?.view();
+          if (!view?.editable) return;
+          armDrag(event, () => {
+            const source = view.state.doc;
+            return {
+              view,
+              ghost: ghostLabel(kind === "procedure" ? "A few steps" : kind),
+              listInsert: true,
+              stationary: true,
+              canvasOnly: true,
+              onLand: (landing) => {
+                if (
+                  landing.type === "slot" &&
+                  view.state.doc === source &&
+                  insertCanvasPiece(view, landing.slot.pos, kind)
+                )
+                  editor.current?.text();
+              },
+            };
+          });
+        }}
+        onPick={(kind) => {
+          const view = editor.current?.view();
+          if (!view) return;
+          if (insertCanvasPiece(view, empty ? 0 : insertionAtSelection(view), kind)) {
+            editor.current?.text();
+            requestAnimationFrame(() => {
+              if (!view.isDestroyed) view.focus();
+            });
+          }
+        }}
+      />
+    ) : undefined;
+  const palette = (
+    <StudioPalette
+      onLiftStructure={(kind, event) => {
+        const view = editor.current?.view();
+        if (!view?.editable) return;
+        armDrag(event, () => {
+          const source = view.state.doc;
+          return {
+            view,
+            ghost: ghostLabel(kind === "heading" ? "Heading" : "Divider"),
+            listInsert: true,
+            stationary: true,
+            canvasOnly: true,
+            onLand: (landing) => {
+              if (
+                landing.type === "slot" &&
+                view.state.doc === source &&
+                insertCanvasStructure(view, kind, landing.slot.pos)
+              )
+                editor.current?.text();
+            },
+          };
+        });
+      }}
+      onStructure={(kind) => {
+        const view = editor.current?.view();
+        if (view && insertCanvasStructure(view, kind)) editor.current?.text();
+      }}
+      view={composer.view}
+      steps={steps}
+      support={
+        !trashed && !sourceMode && !agentView ? (
+          <WeaveBar embedded view={composer.view} onWeave={onWeave} />
+        ) : undefined
+      }
+    />
+  );
+
   return (
     <div className={`ins${empty ? " is-empty" : ""}`}>
+      {!landing && (trayHost ? createPortal(palette, trayHost) : palette)}
+      {agentView ? (
+        <section className="weave-agent-view" aria-label="Agent instructions">
+          <p className="weave-agent-note">
+            The portable instructions, as currently written. Referenced skills keep their own contents.
+          </p>
+          <Markdown
+            text={document.body}
+            onLocalLink={onOpenFile}
+            files={skill.files.map((file) => file.path)}
+          />
+          <details>
+            <summary>Package contents · {skill.files.length} files</summary>
+            <ul>
+              {skill.files.map((file) => (
+                <li key={file.path}>
+                  <button type="button" className="link-btn" onClick={() => onOpenFile(file.path)}>
+                    {file.path}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
+      ) : null}
       {sourceMode ? (
         <SourceEditor
           label="Instructions, as Markdown"
@@ -281,13 +445,24 @@ export function Instructions({
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       ) : null}
-      {empty && !trashed && !sourceMode ? (
-        <p className="doc-intro">
-          Agents read the line above to decide when to open this skill, then follow what you write here.
-        </p>
+      {landing ? (
+        <Starters
+          ready={editorReady}
+          onBlank={() => {
+            setStarted(true);
+            requestAnimationFrame(() => editor.current?.view()?.focus());
+          }}
+          onPick={(t) => {
+            if (!editor.current?.text().trim()) {
+              setStarted(true);
+              editor.current?.insertMarkdown(t.body);
+            }
+          }}
+        />
       ) : null}
-      <div hidden={sourceMode}>
+      <div className={empty ? "studio-empty-canvas" : undefined} hidden={landing || sourceMode || agentView}>
         <DocEditor
+          contextualToolbar={false}
           handle={editor}
           label="Instructions"
           value={document.body}
@@ -301,14 +476,15 @@ export function Instructions({
           slashExtras={slashExtras}
           annotate={composer.annotate}
           onSettled={composer.onSettled}
-          trayHost={sourceMode ? null : trayHost}
+          trayHost={landing || sourceMode || agentView ? null : trayHost}
           onChange={(body) => setDocument((d) => ({ ...d, body }))}
         />
       </div>
-      {unmentioned.length && !sourceMode ? (
+      {unmentioned.length && !sourceMode && !agentView ? (
         <div className="doc-loose">
           <span>
-            An agent won't know about these until the words mention them. Drag one to where it belongs:
+            Available materials · drag into the guidance, or select to inspect. These files aren't directly
+            referenced yet.
           </span>
           <ul>
             {unmentioned.map((m) => (
@@ -319,14 +495,7 @@ export function Instructions({
                   onPointerDown={(e) => {
                     if (!trashed) composer.liftFile(m.path, m.name, e.nativeEvent);
                   }}
-                  onClick={(e) => {
-                    const r = e.currentTarget.getBoundingClientRect();
-                    setPeek({
-                      path: m.path,
-                      absent: false,
-                      rect: { left: r.left, top: r.top, bottom: r.bottom },
-                    });
-                  }}
+                  onClick={() => onOpenFile(m.path)}
                 >
                   <span className="sk-file-glyph" aria-hidden="true">
                     {KIND_GLYPH[m.kind]}
@@ -338,7 +507,7 @@ export function Instructions({
           </ul>
         </div>
       ) : null}
-      {hidden && !sourceMode ? (
+      {hidden && !sourceMode && !agentView ? (
         <p className="doc-invisibles-note" role="status">
           {hidden.count === 1 ? "A hidden character is" : `${hidden.count} hidden characters are`} marked on
           this page. They were kept, because they may be meant.{" "}
@@ -352,31 +521,6 @@ export function Instructions({
             Remove {hidden.count === 1 ? "it" : "them"}
           </Button>
         </p>
-      ) : null}
-      {peek ? (
-        <FilePeek
-          skillId={skill.summary.id}
-          target={peek}
-          executable={skill.files.find((f) => f.path === peek.path)?.executable ?? false}
-          onOpen={(path) => {
-            setPeek(null);
-            onOpenFile(path);
-          }}
-          onCreate={(path) => {
-            setPeek(null);
-            void api
-              .writeSkillFile(skill.summary.id, path, "", null)
-              .then((fresh) => draft.adopt(fresh, { document: false, metadata: false }))
-              .catch(draft.setActionError);
-          }}
-          onClose={() => {
-            setPeek(null);
-            editor.current?.focus();
-          }}
-        />
-      ) : null}
-      {empty && !trashed && !sourceMode ? (
-        <Starters onPick={(t) => setDocument((d) => ({ ...d, body: t.body }))} />
       ) : null}
     </div>
   );

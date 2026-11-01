@@ -39,16 +39,18 @@ function otherCopies(s: ShelfSkill): string | null {
 }
 
 export function Shelf({
+  readOnly = false,
   skills,
   loading,
   initialQuery = "",
-  title = "Link a skill",
+  title = "Thread shelf",
   note,
   currentName,
   onPick,
   onClose,
   onLift,
 }: {
+  readOnly?: boolean;
   skills: ShelfSkill[] | undefined;
   loading: boolean;
   initialQuery?: string;
@@ -97,7 +99,7 @@ export function Shelf({
     } else if (e.key === "Enter") {
       e.preventDefault();
       const s = flat[active];
-      if (s) onPick(s);
+      if (s && !readOnly) onPick(s);
     } else if (e.key === "Escape") {
       e.preventDefault();
       onClose();
@@ -111,9 +113,9 @@ export function Shelf({
 
   let index = -1;
   return (
-    <aside className="shelf" aria-label={title}>
+    <aside className="shelf" aria-label={title === "Link a skill" ? "Thread shelf" : title}>
       <header className="shelf-head">
-        <h2>{title}</h2>
+        <h2>{title === "Link a skill" ? "Thread shelf" : title}</h2>
         <button type="button" className="shelf-close" aria-label="Close" onClick={onClose}>
           <Icon name="close" size={14} />
         </button>
@@ -158,15 +160,18 @@ export function Shelf({
                   role="option"
                   tabIndex={-1}
                   aria-selected={here === active}
+                  aria-disabled={readOnly}
                   className={`shelf-row${here === active ? " is-active" : ""}${expanded ? " is-open" : ""}`}
                   onPointerDown={(e) => {
                     if ((e.target as HTMLElement).closest(".shelf-info")) return;
-                    onLift?.(s, e.nativeEvent);
+                    if (!readOnly) onLift?.(s, e.nativeEvent);
                   }}
                   onMouseEnter={() => setActive(here)}
-                  onClick={() => onPick(s)}
+                  onClick={() => {
+                    if (!readOnly) onPick(s);
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") onPick(s);
+                    if (e.key === "Enter" && !readOnly) onPick(s);
                   }}
                 >
                   <span className="shelf-words">
@@ -213,7 +218,8 @@ export function Shelf({
         ))}
       </div>
       <footer className="shelf-foot">
-        Drag one to where it applies, or press it. It's only a link: nothing is installed or run.
+        Drag a skill to an instruction, or press Enter to reference it at the caret. Use ↑↓ to browse and →
+        for details. Nothing is installed or run.
       </footer>
     </aside>
   );

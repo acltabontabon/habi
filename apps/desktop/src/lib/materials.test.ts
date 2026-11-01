@@ -35,6 +35,8 @@ describe("materials", () => {
     expect(materialKind("LICENSE.txt")).toBe("other");
     expect(materialKind("guide.md")).toBe("reference");
     expect(materialKind("run", true)).toBe("script");
+    expect(materialKind("custom/check.py")).toBe("script");
+    expect(materialKind("references/example.py")).toBe("example");
   });
 
   it("knows a file is referenced by its path or its unmistakable name", () => {
@@ -57,6 +59,19 @@ describe("materials", () => {
     expect(fileLede('#!/usr/bin/env python3\n"""Start the server, then run."""\n')).toBe(
       "Start the server, then run",
     );
+  });
+
+  it("recognizes encoded material paths without confusing literal percent filenames", () => {
+    const source =
+      "Consult [evidence](references/release%20evidence.md) and [details](references/caf%c3%a9%20%231.md).";
+    const entries = materialsOf(
+      [file("references/release evidence.md"), file("references/café #1.md")],
+      source,
+    );
+    expect(entries.find((entry) => entry.path === "references/release evidence.md")?.referenced).toBe(true);
+    expect(entries.find((entry) => entry.path === "references/café #1.md")?.referenced).toBe(true);
+    expect(mentions("[literal](references/a%2520b.md)", "references/a%20b.md")).toBe(true);
+    expect(mentions("[literal](references/a%2520b.md)", "references/a b.md")).toBe(false);
   });
 
   it("says what comes with a skill in one line", () => {
