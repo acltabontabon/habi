@@ -350,7 +350,7 @@ export function useComposer({
         else onAddFile();
       },
     }),
-    [titleOf, statusOf, openInspector, withView],
+    [titleOf, statusOf, openInspector, onAddFile],
   );
 
   const slashExtras = useCallback(

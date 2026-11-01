@@ -35,13 +35,39 @@ becomes the title, and the title becomes the identifier (until you change it or 
 
 ![The Skill Studio with a new skill, Review a pull request: its purpose under the title, when to use it and what it comes with, and the instructions as a document, with Ready, Share and Use at the top.](../media/skill-studio.jpg)
 
-Edit three layers of your skill:
+A skill is a page you write on. Title, purpose and instructions flow into each other, and two
+more layers sit behind them.
 
-**Instructions** — Markdown as a document. Type freely; headings, code, and file references
-are highlighted. Empty instructions offer starting patterns: **Step by step**, **Research a topic**,
-**Produce a document**, **Analyze a problem**, **Code review**, **Troubleshooting**,
-**Coordinate expertise**, and **Tool-assisted**. Fill in the placeholders for your work.
-These are starting text; they do not change how an agent runs the skill.
+**Instructions** — A real document. Headings, steps, checklists, code, notes and tables are
+what you see and edit, with no Markdown on screen. To add something:
+
+- Drag a piece from the **tray** at the bottom of the page to where it goes, or press it to add
+  it at the caret.
+- Type `/` for the same pieces, your files and other skills.
+- Select words for formatting.
+
+Hover a block for its handle. Drag it to move the block; drag a heading's handle and the whole
+section comes with it. The rest of the page makes room. **Alt+↑** and **Alt+↓** do the same from
+the keyboard, **Esc** cancels a drag, and every move is one undo.
+
+An empty page suggests one thing at a time and offers starting patterns: **Step by step**,
+**Research a topic**, **Produce a document**, **Analyze a problem**, **Code review**,
+**Troubleshooting**, **Coordinate expertise**, and **Tool-assisted**. These are starting text;
+they do not change how an agent runs the skill.
+
+**Markdown** in the top bar shows the same instructions as the text an agent receives. Your file
+stays ordinary Markdown: only what you change is rewritten, so a Git diff shows your edit and
+nothing else. Anything the page can't show as rich text (HTML, for instance) stays on the page
+as a block marked *kept as written*, and you can edit it as it is. Hidden characters are marked
+for you to decide about, never removed on their own.
+
+Files named in the instructions open a preview where they're named, and one that doesn't exist
+yet can be created there. Pictures from the skill show on the page; drop a file on the page to
+add it to the skill at that spot. Pictures from the web aren't fetched. Scripts are supporting
+files an agent may inspect or run, depending on the instructions and its permissions. Habi never
+runs them, including to preview them.
+
+**Inside** shows what's in the skill in the order an agent meets it, with rough sizes.
 
 **When to use** — Define signals (conditions that trigger recommendations). Examples:
 - *Playwright is used*
@@ -59,6 +85,35 @@ you choose when to add them.
 
 Top bar shows **Ready** / **Draft** status and actions: **Use**, **Share**, and more (**•••**).
 
+### Using other skills
+
+Press **Skills** (or **⌘⇧K**) to see every skill within reach: yours, the ones on this machine,
+in your projects and in your libraries. Drag one onto the page. Between blocks it brings a
+sentence with the part only you can say selected, ready to type over; inside a sentence it joins
+the words. Choosing a skill only changes your draft. Nothing is installed or run.
+
+The instructions are what an agent reads, so a skill is named in plain words:
+``When the change touches login, use the `security-review` skill.`` Agents find skills by name
+and decide for themselves when to use them, so this works anywhere and promises nothing about
+what an agent will do.
+
+A skill you add is **part of this skill**, shown with a coloured underline and a knot in the
+margin. One that's only named in the words is **mentioned**, shown with a dotted underline, and
+isn't counted until you press it and choose *Make it part of this skill*. Press a skill to say
+how it's used, see which agents would find it, or replace it. Each use is separate: changing one
+leaves the others alone.
+
+Drag a knot along the margin to move its sentence, or pull it away to take it out. **See how they
+fit** opens the whole composition as a grid of sections and skills: press an empty crossing to use
+that skill in that section, drag a knot to another section, drag a section to reorder it. A dashed
+thread means Habi can't find that skill here.
+
+When a skill you use isn't found, open it to look for a match, connect the library it came from,
+or use another. Installing and sharing say which skills it names. They aren't included, and
+installing them is always your own reviewed step. What you composed is saved in `habi.yaml`, so
+another copy of Habi can read it; the skill works without it. See
+[Habi metadata](../library-authors/metadata-schema.md).
+
 ### Readiness
 
 **Ready** or **Draft** opens what is left to do, each item with the way to it: a title, a
@@ -67,8 +122,10 @@ identifier*.
 
 ### Saving & cleanup
 
-Drafts auto-save as you type, on demand, and when you leave. If the file changes outside Habi,
-you choose which version to keep.
+Drafts auto-save when you pause, on demand, and when you leave. The instructions and the record
+of skills they use save together or not at all. If a file changes outside Habi, saving pauses and
+you choose which version to keep. Undo reaches back through the page's edits; editing in the
+Markdown view starts its history again.
 
 *Move to trash* can be restored later; *Delete permanently* is separate and confirmed.
 

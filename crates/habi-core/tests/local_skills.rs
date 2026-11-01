@@ -2787,3 +2787,43 @@ fn applicability_saves_preserve_comments_and_unknown_keys() {
         .unwrap();
     assert_eq!(std::fs::read(&path).unwrap(), original.as_bytes());
 }
+
+#[test]
+fn a_skill_created_with_nothing_filled_in_can_be_named_and_written() {
+    let home = tempfile::tempdir().unwrap();
+    let habi = open(home.path());
+    let skill = habi
+        .create_skill(
+            &NewSkill {
+                title: String::new(),
+                description: String::new(),
+                template: SkillTemplate::Blank,
+            },
+            None,
+        )
+        .unwrap();
+    let document = SkillDocument {
+        name: "write-a-status-report".into(),
+        description: "Writes a status report for a fictional project.".into(),
+        body: "Gather what happened.\n".into(),
+    };
+    let saved = habi
+        .skills()
+        .save_document(
+            &skill.summary.id,
+            "Write a status report",
+            &document,
+            skill.document_digest.as_deref(),
+            None,
+            None,
+        )
+        .unwrap();
+    assert_eq!(saved.document.name, "write-a-status-report");
+    assert_eq!(saved.document.body, "Gather what happened.\n");
+    assert!(
+        saved
+            .diagnostics
+            .iter()
+            .all(|d| d.level != DiagnosticLevel::Error)
+    );
+}

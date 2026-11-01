@@ -1091,7 +1091,12 @@ fn edit_frontmatter(
     raw: &Map<String, Value>,
     changes: &[(&str, &str)],
 ) -> Option<String> {
-    let mut text = yaml.to_string();
+    // A skill with nothing in its frontmatter yet is written as `{}`: there's nothing to keep.
+    let mut text = if yaml.trim() == "{}" {
+        String::new()
+    } else {
+        yaml.to_string()
+    };
     let mut expected = raw.clone();
     for (key, value) in changes {
         let current = raw.get(*key).and_then(Value::as_str).map(str::trim);

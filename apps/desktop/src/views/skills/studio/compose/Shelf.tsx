@@ -144,6 +144,7 @@ export function Shelf({
           </p>
         ) : null}
         {groups.map((g) => (
+          // biome-ignore lint/a11y/useSemanticElements: inside a listbox, options are grouped by this role; a fieldset isn't allowed there.
           <section key={g.label} className="shelf-group" role="group" aria-label={g.label}>
             <h3 role="presentation">{g.label}</h3>
             {g.items.map((s) => {

@@ -122,7 +122,7 @@ Updates after that are signed with Habi's own key.
 <td width="50%" valign="top"><img src="docs/media/install-review.jpg" alt="The install dialog: seven agent tools to choose from and the three files that will change." width="100%"><br><b>Seven agents, every file shown first</b></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="docs/media/skill-studio.jpg" alt="The Skill Studio: a skill written as one document, with its purpose, when to use it and its instructions." width="100%"><br><b>Write a skill as one document</b></td>
+<td width="50%" valign="top"><img src="docs/media/skill-studio.jpg" alt="The Skill Studio: a skill written as a document you edit directly, with other skills woven into its sentences and a thread in the margin." width="100%"><br><b>Write a skill as one document</b></td>
 <td width="50%" valign="top"><img src="docs/media/share-review.jpg" alt="Sharing a skill: the files that leave your machine, as a diff, and the checks that ran." width="100%"><br><b>Send it back as a pull request</b></td>
 </tr>
 </table>

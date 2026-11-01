@@ -158,10 +158,7 @@ export function BlockTools({
     const kind = tool.node.attrs.callout as string;
     const choices = KINDS.includes(kind) ? KINDS : [kind, ...KINDS];
     return (
-      <div
-        className="doc-tools is-callout"
-        style={{ top: tool.top + 6, left: tool.left + tool.width - 150, width: 144 }}
-      >
+      <div className="doc-tools is-callout" style={{ top: tool.top + 8, left: tool.left + 12 }}>
         <label>
           <span className="visually-hidden">Kind of note</span>
           <select

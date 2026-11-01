@@ -204,6 +204,14 @@ export function Instructions({
       };
     };
   }, []);
+  // What the page suggests depends on whether there's a purpose yet, which lives outside it.
+  const hasPurpose = document.description.trim() !== "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: this is what it reacts to.
+  useEffect(() => {
+    const view = editor.current?.view();
+    if (view) view.dispatch(view.state.tr.setMeta("addToHistory", false));
+  }, [hasPurpose, editor]);
+
   const composerRef = useRef(composer);
   composerRef.current = composer;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the files are what it reacts to.

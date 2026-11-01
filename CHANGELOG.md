@@ -7,10 +7,20 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ## Unreleased
 
-- Skills can record the other skills they use, save that record with their instructions, and show which copies agents can find.
-
 ### Added
 
+- **The Skill Studio is now a real document.** Instructions are edited directly, with no Markdown on screen:
+  steps, checklists, code, notes and tables. Drag pieces onto the page from a tray or type `/`, and pick up any
+  block or whole section by its handle while the page makes room. Your file stays ordinary Markdown, and only
+  what you change is rewritten, so a Git diff shows your edit and nothing else. What the page can't show as
+  rich text stays on it, kept exactly as written.
+- **Build a skill from other skills.** Drag skills in from yours, this machine, your projects and your
+  libraries, and each becomes a sentence an agent can read anywhere. A thread in the margin grows as you write;
+  drag a knot to move its sentence, or pull it away to take it out. A grid of sections and skills shows larger
+  compositions: press a crossing to use a skill in that section. Habi says which agents would find each skill,
+  and never installs one on its own.
+- **See inside a skill.** A panel shows what it holds in the order an agent meets it, with rough sizes, and
+  files open a preview right where the instructions name them.
 - **More ways to start a skill.** Start with research, a document, an analysis, or coordinating other skills, alongside the existing patterns.
 
 - **Reasons reach into the code.** A skill that fits because of a dependency or framework now says where your
@@ -118,6 +128,8 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Fixed
 
+- **Saving no longer rewrites what you didn't change.** Editing a title used to reformat the start of `SKILL.md`, and
+  editing rules dropped comments from `habi.yaml`. Both now stay exactly as written.
 - **A merge conflict in the lock file no longer locks you out of a project.** Habi reads both sides combined, keeps
   every skill either branch installed, and offers to write the result back so you can finish the merge.
 

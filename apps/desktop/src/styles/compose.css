@@ -1564,3 +1564,20 @@ body.is-lifting [role="tooltip"] {
   transform: scale(1.15);
   outline: none;
 }
+
+/* A note's kind is picked where it's written, so it's only said once. */
+.doc-tools.is-callout {
+  justify-content: flex-start;
+  background: transparent;
+}
+
+.doc-tools.is-callout select {
+  padding: 1px 3px;
+  background: var(--paper-sunken);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
