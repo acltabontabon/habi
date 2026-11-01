@@ -33,7 +33,7 @@ becomes the title, and the title becomes the identifier (until you change it or 
 
 ## The Skill Studio
 
-![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a sentence saying when it's used, its files, and the instructions as a document with other skills woven in.](../media/skill-studio.jpg)
+![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a sentence saying when it's used, and the instructions as a document with other skills woven in.](../media/skill-studio.jpg)
 
 A skill is a page you write on. Title, purpose and instructions flow into each other, with one
 sentence between them saying when the skill is used. Click that sentence and type a tool, a package

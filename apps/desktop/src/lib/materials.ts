@@ -156,7 +156,7 @@ export type Signal = { kind: ConditionKind; value: string };
 export function signalWords(s: Signal): { text: string; code?: string } {
   if (s.kind === "tag") {
     const label = TAG_LABELS[s.value];
-    if (!label) return { text: "Tagged", code: s.value };
+    if (!label) return { text: "Is tagged", code: s.value };
     if (s.value.startsWith("lang:")) return { text: `${label} code is present` };
     if (s.value === "api:openapi") return { text: "An OpenAPI specification is present" };
     return { text: `${label} is used` };
@@ -165,10 +165,11 @@ export function signalWords(s: Signal): { text: string; code?: string } {
   return { text: "Has files matching", code: s.value };
 }
 
-/** The same fact inside a sentence: "suggest it when Playwright is used", "… when it depends on x". */
+/** The same fact inside a sentence: "suggest it when Playwright is used", "… when it depends on x", "… when it is tagged y". */
 export function signalClause(s: Signal): string {
   const w = signalWords(s);
-  const text = s.kind === "tag" ? w.text : `it ${w.text.charAt(0).toLowerCase()}${w.text.slice(1)}`;
+  const known = s.kind === "tag" && !w.code;
+  const text = known ? w.text : `it ${w.text.charAt(0).toLowerCase()}${w.text.slice(1)}`;
   return w.code ? `${text} ${w.code}` : text;
 }
 

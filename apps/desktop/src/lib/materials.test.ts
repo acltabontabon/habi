@@ -8,6 +8,7 @@ import {
   materialsOf,
   mentions,
   proposeSignals,
+  signalClause,
   technologiesIn,
 } from "./materials";
 
@@ -70,6 +71,12 @@ describe("materials", () => {
       body,
     );
     expect(materialsLine(m)).toBe("1 script · 3 examples · LICENSE.txt");
+  });
+
+  it("words every signal so it reads inside a sentence", () => {
+    expect(signalClause({ kind: "tag", value: "test:playwright" })).toBe("Playwright is used");
+    expect(signalClause({ kind: "tag", value: "team:payments" })).toBe("it is tagged team:payments");
+    expect(signalClause({ kind: "dependency", value: "express" })).toBe("it depends on express");
   });
 
   it("proposes signals from a few words, and finds what the instructions keep naming", () => {

@@ -78,7 +78,8 @@ export function Outline({
     window.addEventListener("pointerdown", away);
     return () => window.removeEventListener("pointerdown", away);
   }, [pinned, onPinned]);
-  if (outline.length < 2) return null;
+  // Two sections fit on a screen, and two ticks beside them only look like stray marks.
+  if (outline.length < 3) return null;
   const top = Math.min(...outline.map((h) => h.level));
   return (
     <nav
