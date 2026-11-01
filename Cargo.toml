@@ -73,7 +73,7 @@ ctrlc = "3.5.2"
 unsafe_code = "deny"
 
 [profile.release]
-# A fifth smaller than optimizing for speed, for 10-15% on work that is mostly file and database
+# 3.5 MB smaller than optimizing for speed, for 10-15% on work that is mostly file and database
 # access. Panics still unwind: `Habi::open` relies on it to survive a bug in what it reads at start.
 opt-level = "s"
 lto = "fat"
