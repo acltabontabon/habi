@@ -318,7 +318,7 @@ describe("the skill editor", () => {
 
     const title = await screen.findByLabelText("Skill title");
     await userEvent.type(title, " checklist");
-    await userEvent.click(screen.getByRole("button", { name: "Share", exact: true }));
+    await userEvent.click(screen.getByRole("button", { name: "Share" }));
 
     expect(await screen.findByText(/Nothing was done: your latest edits are not saved/)).toBeInTheDocument();
     expect(handlers.export_skill).not.toHaveBeenCalled();
