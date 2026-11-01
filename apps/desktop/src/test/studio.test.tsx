@@ -154,8 +154,12 @@ describe("the Skill Studio", () => {
     expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
     // No tabs: the other layers are named, in a line each, at the head of the skill.
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /When to use\s*When you choose it/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Comes with\s*1 script/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "You bring this in when you want it" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Files that come with it" })).getByRole("button", {
+        name: /check\.py/,
+      }),
+    ).toBeInTheDocument();
     // The package format stays out of sight.
     expect(screen.queryByText("habi.yaml")).not.toBeInTheDocument();
     expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
@@ -231,8 +235,8 @@ describe("the Skill Studio", () => {
     const instructions = screen.getByRole("region", { name: "The skill" });
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     expect(screen.getByRole("heading", { name: "When to use" })).toBeInTheDocument();
-    // Hidden, not gone: undo history and pending saves survive.
-    expect(instructions.hidden).toBe(true);
+    // Rules open beside the page, which stays in view.
+    expect(instructions.hidden).toBe(false);
     fireEvent.keyDown(window, { key: "3", metaKey: true });
     expect(screen.getByRole("heading", { name: "Materials" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "1", metaKey: true });
@@ -528,7 +532,7 @@ describe("the Skill Studio", () => {
     handlers.save_skill_metadata = save;
     wrap(<SkillStudio id="k" />);
     await screen.findByLabelText("Skill title");
-    expect(screen.getByRole("button", { name: /When to use\s*Written as YAML/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "by rules written by hand" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     const layer = screen.getByRole("region", { name: "When to use" });
     expect(within(layer).getByText("it contains Java code")).toBeInTheDocument();

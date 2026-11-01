@@ -28,14 +28,7 @@ import { Button, ErrorNotice, Notice, Working } from "../../../components/ui";
 import { useActions } from "../../../lib/actions";
 import { api } from "../../../lib/api";
 import { purposeHint, type Refinement, refinements } from "../../../lib/coach";
-import {
-  firstHeading,
-  isMaterial,
-  materialsLine,
-  materialsOf,
-  type Signal,
-  signalClause,
-} from "../../../lib/materials";
+import { firstHeading, isMaterial, materialsOf, type Signal, signalClause } from "../../../lib/materials";
 import { useNav } from "../../../lib/nav";
 import { modShortcut } from "../../../lib/platform";
 import {
@@ -53,7 +46,8 @@ import { tagLabel } from "../../../lib/tags";
 import { useRulesPreview } from "../../../lib/useRulesPreview";
 import { ShareSkillDialog } from "../ShareSkillDialog";
 import { UseSkillDialog } from "../UseSkillDialog";
-import { useComposer } from "./compose/useComposer";
+import { SkillLine } from "./compose/SkillLine";
+import { type Panel, useComposer } from "./compose/useComposer";
 import { markdownForFile } from "./doc/fileRefs";
 import type { DocEditorHandle } from "./doc/lazy";
 import { Materials, useDropToAdd } from "./files/Materials";
@@ -237,6 +231,9 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const evalProjectRef = useRef<string | null>(null);
   const openFileRef = useRef<(path: string) => void>(() => undefined);
   const goRef = useRef<(next: StudioLayer) => void>(() => undefined);
+  const addFileRef = useRef<() => void>(() => undefined);
+  const peekFile = useRef<((path: string, rect: DOMRect) => void) | null>(null);
+  const setPanelRef = useRef<(panel: Panel | null) => void>(() => undefined);
   const editor = useRef<DocEditorHandle>(null);
   const { outline, current } = useOutline(document.body, cursorLine);
   const composer = useComposer({
@@ -244,21 +241,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
     editor,
     projectId: evalProjectRef.current,
     onOpenFile: (path) => openFileRef.current(path),
-    onAddFile: () => {
-      void api
-        .addSkillFiles(id, "auto")
-        .then((fresh) => {
-          if (!fresh) return;
-          const added = fresh.files.filter((f) => !skill.files.some((b) => b.path === f.path));
-          draft.adopt(fresh, { document: false, metadata: false });
-          if (added.length) {
-            requestAnimationFrame(() =>
-              editor.current?.insertAt(added.map((f) => markdownForFile(f.path)).join("\n\n"), null),
-            );
-          }
-        })
-        .catch(draft.setActionError);
-    },
+    onAddFile: () => addFileRef.current(),
     onWhen: () => goRef.current("when"),
     onReadiness: () =>
       window.document.querySelector<HTMLElement>(".sk-acts .sk-ready, .sk-acts [aria-haspopup]")?.click(),
@@ -285,11 +268,18 @@ function Studio({ initial }: { initial: LocalSkill }) {
   const evaluation = useRulesPreview(
     draft.previewRequest(evalProject),
     `${draft.rulesKey}|${evalProject ?? ""}`,
-    sheet === "test" || (layer === "when" && draft.yamlMode),
+    sheet === "test" || (composer.panel?.kind === "when" && draft.yamlMode),
   );
 
   evalProjectRef.current = evalProject;
+  setPanelRef.current = composer.setPanel;
   const go = useCallback((next: StudioLayer) => {
+    // When it's used is said at the head of the page, so it's changed beside the page.
+    if (next === "when") {
+      setLayer("skill");
+      setPanelRef.current({ kind: "when" });
+      return;
+    }
     setLayer(next);
     setVisited((v) => (v.has(next) ? v : new Set([...v, next])));
     if (next !== "source") setFile((f) => (f.path ? { path: null } : f));
@@ -352,6 +342,22 @@ function Studio({ initial }: { initial: LocalSkill }) {
     setFile({ path, line });
   };
 
+  const addFile = () => {
+    void api
+      .addSkillFiles(id, "auto")
+      .then((fresh) => {
+        if (!fresh) return;
+        const added = fresh.files.filter((f) => !skill.files.some((b) => b.path === f.path));
+        draft.adopt(fresh, { document: false, metadata: false });
+        if (added.length) {
+          requestAnimationFrame(() =>
+            editor.current?.insertAt(added.map((f) => markdownForFile(f.path)).join("\n\n"), null),
+          );
+        }
+      })
+      .catch(draft.setActionError);
+  };
+  addFileRef.current = addFile;
   openFileRef.current = openFile;
   goRef.current = go;
 
@@ -679,7 +685,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
   useRegisterScreenCommands(title ? `In ${title}` : "In this skill", commands);
 
   const when = whenLine(draft);
-  const brings = materialsLine(materials);
   const filePath = layer === "materials" || layer === "source" ? file.path : null;
   const purposeLength = document.description.length;
   const cameFrom = isCopy(origin) || origin.type === "instructions" || standing?.upstream != null;
@@ -901,15 +906,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
           )}
         </div>
       </header>
-      {!trashed && !broken && !fresh && available.length > 0 ? (
-        <SuggestedStrip
-          draft={draft}
-          projectIds={available.map((p) => p.id)}
-          onTest={() => openSheet("test")}
-          onRules={() => go("when")}
-        />
-      ) : null}
-
       <StudioNotices draft={draft} onRepair={() => viewSource("SKILL.md")} inert={sheet !== null} />
 
       <div className="sk-with-panel">
@@ -995,20 +991,27 @@ function Studio({ initial }: { initial: LocalSkill }) {
                       onOpen={() => openSheet("provenance")}
                     />
                   )}
-                  <nav className="sk-layers" aria-label="More of this skill" hidden={fresh}>
-                    <button type="button" className="sk-layer-link" onClick={() => go("when")}>
-                      <span className="sk-layer-label">When to use</span>
-                      <span className={`sk-layer-value${when ? "" : " is-none"}`}>
-                        {when ?? "When you choose it"}
-                      </span>
-                    </button>
-                    <button type="button" className="sk-layer-link" onClick={() => go("materials")}>
-                      <span className="sk-layer-label">Comes with</span>
-                      <span className={`sk-layer-value${brings ? "" : " is-none"}`}>
-                        {brings || "Instructions only"}
-                      </span>
-                    </button>
-                  </nav>
+                  {fresh ? null : (
+                    <SkillLine
+                      when={when}
+                      materials={materials}
+                      readOnly={trashed}
+                      onWhen={() => go("when")}
+                      onPeek={(path, rect) => peekFile.current?.(path, rect)}
+                      onLift={(m, event) => composer.liftFile(m.path, m.name, event)}
+                      onAddFile={addFile}
+                      onAllFiles={() => go("materials")}
+                    >
+                      {!trashed && !broken && available.length > 0 ? (
+                        <SuggestedStrip
+                          draft={draft}
+                          projectIds={available.map((p) => p.id)}
+                          onTest={() => openSheet("test")}
+                          onRules={() => go("when")}
+                        />
+                      ) : null}
+                    </SkillLine>
+                  )}
                 </header>
                 {broken ? (
                   <p className="sk-broken">
@@ -1023,6 +1026,7 @@ function Studio({ initial }: { initial: LocalSkill }) {
                     editor={editor}
                     sourceMode={sourceMode}
                     composer={composer}
+                    peekFile={peekFile}
                     onCursorLine={setCursorLine}
                     onOpenFile={openFile}
                   />
@@ -1030,19 +1034,6 @@ function Studio({ initial }: { initial: LocalSkill }) {
               </article>
             </div>
           </section>
-
-          {visited.has("when") ? (
-            <section className="sk-layer is-when" hidden={layer !== "when"} aria-label="When to use">
-              <div className="sk-sheet-page">
-                <WhenToUse
-                  draft={draft}
-                  projects={available}
-                  projectId={evalProject}
-                  preview={evaluation.preview}
-                />
-              </div>
-            </section>
-          ) : null}
 
           {visited.has("materials") || visited.has("source") ? (
             <section
@@ -1070,6 +1061,24 @@ function Studio({ initial }: { initial: LocalSkill }) {
             </section>
           ) : null}
         </div>
+        {composer.panel?.kind === "when" && layer === "skill" ? (
+          <section className="sk-panel is-wide sk-when-panel" aria-label="When to use">
+            <button
+              type="button"
+              className="shelf-close sk-when-close"
+              aria-label="Close"
+              onClick={() => composer.setPanel(null)}
+            >
+              <Icon name="close" size={14} />
+            </button>
+            <WhenToUse
+              draft={draft}
+              projects={available}
+              projectId={evalProject}
+              preview={evaluation.preview}
+            />
+          </section>
+        ) : null}
         {composer.panelNode && layer === "skill" ? (
           <div className={`sk-panel${composer.panel?.kind === "overview" ? " is-wide" : ""}`}>
             {composer.panelNode}

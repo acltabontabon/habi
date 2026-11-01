@@ -5,16 +5,20 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { Node as PMNode } from "prosemirror-model";
+import { TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ShelfSkill } from "../../../../bindings/ShelfSkill";
 import { useToast } from "../../../../components/Toasts";
 import { api } from "../../../../lib/api";
 import { useNav } from "../../../../lib/nav";
+import { sliceFromMarkdown } from "../doc/commands";
 import { armDrag, ghostLabel } from "../doc/drag";
+import { markdownForFile } from "../doc/fileRefs";
 import type { DocEditorHandle } from "../doc/lazy";
 import { canonOf } from "../doc/markdown/canon";
-import { moveBlocks, sectionRange, topBlockAt } from "../doc/moves";
+import { parseBody } from "../doc/markdown/parse";
+import { moveBlocks, placeBlocks, sectionRange, topBlockAt } from "../doc/moves";
 import { LOOKS_CHANGED, type SkillLook, type ViewContext } from "../doc/nodeViews";
 import type { SlashItem } from "../doc/SlashMenu";
 import type { SkillDraft } from "../useSkillDraft";
@@ -52,7 +56,9 @@ import { type ThreadStatus, Threads } from "./Threads";
 export type Panel =
   | { kind: "shelf"; query?: string; inline?: boolean; replace?: { pos: number; name: string; all: boolean } }
   | { kind: "overview" }
-  | { kind: "inside" };
+  | { kind: "inside" }
+  /** Drawn by the Studio, which holds what it needs. */
+  | { kind: "when" };
 
 const ORIGIN_RANK: Record<string, number> = { mine: 0, library: 1, community: 2, machine: 3, project: 4 };
 
@@ -314,6 +320,38 @@ export function useComposer({
       });
     },
     [withView, titleOf, toast],
+  );
+
+  /** Carries one of the skill's files to the page: it joins a sentence, or gets a line of its own. */
+  const liftFile = useCallback(
+    (path: string, name: string, event: PointerEvent) => {
+      armDrag(event, () => {
+        const current = withView();
+        if (!current) return null;
+        return {
+          view: current,
+          ghost: ghostLabel(name),
+          grip: { x: 18, y: 15 },
+          inline: true,
+          onLand: (landing) => {
+            const markdown = markdownForFile(path);
+            if (landing.type === "text") {
+              const tr = current.state.tr.setSelection(TextSelection.create(current.state.doc, landing.pos));
+              current.dispatch(tr.replaceSelection(sliceFromMarkdown(markdown)));
+            } else if (landing.type === "slot") {
+              const doc = parseBody(markdown).doc;
+              const blocks: PMNode[] = [];
+              doc.forEach((child) => {
+                blocks.push(child);
+              });
+              placeBlocks(current, landing.slot.pos, blocks);
+            }
+            current.focus();
+          },
+        };
+      });
+    },
+    [withView],
   );
 
   const pick = useCallback(
@@ -599,6 +637,7 @@ export function useComposer({
     panel,
     setPanel,
     panelNode,
+    liftFile,
     inspectorNode,
     threads,
     context,

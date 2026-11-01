@@ -33,10 +33,12 @@ becomes the title, and the title becomes the identifier (until you change it or 
 
 ## The Skill Studio
 
-![The Skill Studio with a new skill, Review a pull request: its purpose under the title, when to use it and what it comes with, and the instructions as a document, with Ready, Share and Use at the top.](../media/skill-studio.jpg)
+![The Skill Studio with a new skill, Review a pull request: its purpose under the title, a sentence saying when it's used, its files, and the instructions as a document with other skills woven in.](../media/skill-studio.jpg)
 
-A skill is a page you write on. Title, purpose and instructions flow into each other, and two
-more layers sit behind them.
+A skill is a page you write on. Title, purpose and instructions flow into each other. Between
+them, one sentence says when the skill is used, and its files sit beside it. Drag a file into the
+instructions to say what it's for; one the words don't mention yet has a dashed outline. Press the
+sentence to change when Habi suggests the skill, and the rules open beside the page.
 
 **Instructions** — A real document. Headings, steps, checklists, code, notes and tables are
 what you see and edit, with no Markdown on screen. To add something:

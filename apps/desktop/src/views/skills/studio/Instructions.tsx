@@ -128,6 +128,7 @@ export function Instructions({
   editor,
   sourceMode,
   composer,
+  peekFile,
   onCursorLine,
   onOpenFile,
 }: {
@@ -136,6 +137,8 @@ export function Instructions({
   /** The same text, as text: for those who want the Markdown itself. */
   sourceMode: boolean;
   composer: Composer;
+  /** How the head of the page opens a file's peek. */
+  peekFile: RefObject<((path: string, rect: DOMRect) => void) | null>;
   onCursorLine: (line: number) => void;
   /** A reference to one of the package's files was ⌘-clicked. */
   onOpenFile: (path: string) => void;
@@ -168,6 +171,8 @@ export function Instructions({
   const [hidden, setHidden] = useState<{ count: number } | null>(null);
 
   const [peek, setPeek] = useState<PeekTarget | null>(null);
+  peekFile.current = (path, rect) =>
+    setPeek({ path, absent: false, rect: { left: rect.left, top: rect.top, bottom: rect.bottom } });
   const composerContext = composer.context;
   const context = useMemo(
     () => ({

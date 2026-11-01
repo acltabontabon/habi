@@ -45,8 +45,6 @@ export function SuggestedStrip({
     "Checking your projects…"
   ) : preview.problem ? (
     "These rules cannot be evaluated yet."
-  ) : noRules ? (
-    "Not suggested anywhere until it says when to use it."
   ) : applies.length > 0 ? (
     <>
       Would be suggested in <strong>{named(applies)}</strong>
@@ -57,7 +55,9 @@ export function SuggestedStrip({
   ) : (
     `Would not be suggested in ${results.length === 1 ? "your project" : `any of your ${results.length} projects`}.`
   );
-  const toRules = preview !== null && (noRules || Boolean(preview.problem));
+  // With no rules, the sentence beside this one has already said so.
+  if (noRules) return null;
+  const toRules = preview !== null && Boolean(preview.problem);
 
   return (
     <p className={`sk-suggested${busy ? " is-stale" : ""}`} aria-live="polite">

@@ -29,6 +29,7 @@ import {
   type Proposal,
   proposeSignals,
   type Signal,
+  signalClause,
   signalWords,
   technologiesIn,
 } from "../../../lib/materials";
@@ -334,8 +335,7 @@ export function whenLine(draft: SkillDraft): string | null {
   if (!form.conditionsEditable) return skill.summary.hasApplicability ? "Written as YAML" : null;
   const { applies } = signalsOf(form);
   if (applies.length === 0) return null;
-  const first = signalWords(applies[0] as Signal);
-  const lead = first.code ? `${first.text} ${first.code}` : first.text;
+  const lead = signalClause(applies[0] as Signal);
   return applies.length === 1
     ? lead
     : `${lead} ${form.matchMode === "all" ? "and" : "or"} ${applies.length - 1} more`;

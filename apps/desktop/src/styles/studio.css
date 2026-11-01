@@ -392,31 +392,7 @@ button.rd-word:hover,
   position: relative;
   display: grid;
   gap: 0;
-  padding-bottom: var(--s6);
   margin-bottom: var(--s6);
-}
-
-/* One thread under the head, tied off at the left: the knowledge starts here. */
-.sk-head::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(to right, var(--hairline-strong), var(--hairline) 40%, transparent);
-}
-
-.sk-head::before {
-  content: "";
-  position: absolute;
-  left: -3px;
-  bottom: -3px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1.5px var(--hairline-strong);
 }
 
 .sk-title {
@@ -528,58 +504,6 @@ button.rd-word:hover,
 }
 
 /* ---------- The other layers, named in the head ---------- */
-
-.sk-layers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s3) var(--s7);
-  margin-top: var(--s5);
-}
-
-.sk-layers[hidden] {
-  display: none;
-}
-
-.sk-layer-link {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
-}
-
-.sk-layer-value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-md);
-  color: var(--ink-soft);
-  transition: color var(--duration) var(--ease);
-}
-
-.sk-layer-value::after {
-  content: " →";
-  color: var(--thread);
-  opacity: 0;
-  transition: opacity var(--duration) var(--ease);
-}
-
-.sk-layer-value.is-none {
-  color: var(--ink-faint);
-}
-
-.sk-layer-link:hover .sk-layer-value,
-.sk-layer-link:focus-visible .sk-layer-value {
-  color: var(--ink);
-}
-
-.sk-layer-link:hover .sk-layer-value::after,
-.sk-layer-link:focus-visible .sk-layer-value::after {
-  opacity: 1;
-}
 
 .sk-broken {
   color: var(--ink-muted);
