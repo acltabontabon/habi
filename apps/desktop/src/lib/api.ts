@@ -28,6 +28,7 @@ import type { ImportFrom } from "../bindings/ImportFrom";
 import type { ImportInspection } from "../bindings/ImportInspection";
 import type { ImportOutcome } from "../bindings/ImportOutcome";
 import type { ImportSelection } from "../bindings/ImportSelection";
+import type { Installation } from "../bindings/Installation";
 import type { InstallShadow } from "../bindings/InstallShadow";
 import type { InstructionDocument } from "../bindings/InstructionDocument";
 import type { ItemDetail } from "../bindings/ItemDetail";
@@ -300,6 +301,7 @@ export const api = {
   skillsOverview: () => call<SkillStanding[]>("skills_overview"),
   /** Skills in the person's own folders (`~/.claude/skills` and the like); reads only. */
   machineSkills: () => call<MachineSkill[]>("machine_skills"),
+  machineInstallations: () => call<Installation[]>("machine_installations"),
   /** What a copy changed since it was made or last updated; writes nothing. */
   skillLocalChanges: (id: string) => call<LocalChanges>("skill_local_changes", { id }),
   skillTemplates: () => call<TemplateInfo[]>("skill_templates"),

@@ -94,6 +94,60 @@ fn called_names(body: &str) -> Vec<String> {
     names
 }
 
+/// The `requires.tools` of a skill's metadata or of a tool in the manifest.
+fn tool_requirements(v: &Value) -> Vec<ToolRequirement> {
+    let strings = |v: Option<&Value>| -> Vec<String> {
+        v.and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    v.get("requires")
+        .and_then(|r| r.get("tools"))
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .map(|t| ToolRequirement {
+                    name: str_field(t, "name").unwrap_or_default(),
+                    commands: strings(t.get("commands")),
+                    purpose: str_field(t, "purpose"),
+                    install_hint: str_field(t, "install_hint"),
+                    provided_by: None,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// How much a library tool may hold. A tool is a small program a skill
+/// calls, read in full before it is installed; anything larger is not one.
+pub const MAX_TOOL_FILES: usize = 500;
+pub const MAX_TOOL_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Compiles a tool's paths. `*` stays within one folder, `**` crosses folders.
+pub fn tool_globs(patterns: &[String]) -> Result<globset::GlobSet, String> {
+    let mut builder = globset::GlobSetBuilder::new();
+    for pattern in patterns {
+        let unsafe_path = pattern.starts_with('/')
+            || pattern.contains('\\')
+            || pattern
+                .split('/')
+                .any(|part| part == ".." || part == ".git");
+        if unsafe_path {
+            return Err(format!("`{pattern}` is not a path inside the library"));
+        }
+        let glob = globset::GlobBuilder::new(pattern)
+            .literal_separator(true)
+            .build()
+            .map_err(|e| format!("`{pattern}` is not a valid pattern: {e}"))?;
+        builder.add(glob);
+    }
+    builder.build().map_err(|e| e.to_string())
+}
+
 /// The skills of this library that a subagent's instructions name, by id.
 /// A subagent says which skills it follows in plain words (`act-code-review`),
 /// so any whole name counts, unlike a skill's `plugin:skill` calls.
@@ -272,20 +326,7 @@ pub fn read_metadata(v: &Value, path: &str, diags: &mut Vec<Diagnostic>) -> Meta
             .unwrap_or_default()
     };
     let requires = v.get("requires");
-    let tools = requires
-        .and_then(|r| r.get("tools"))
-        .and_then(Value::as_array)
-        .map(|a| {
-            a.iter()
-                .map(|t| ToolRequirement {
-                    name: str_field(t, "name").unwrap_or_default(),
-                    commands: strings(t.get("commands")),
-                    purpose: str_field(t, "purpose"),
-                    install_hint: str_field(t, "install_hint"),
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let tools = tool_requirements(v);
     let mcp = requires
         .and_then(|r| r.get("mcp"))
         .and_then(Value::as_array)
@@ -566,6 +607,7 @@ pub fn build_index(
     // Library manifest.
     let mut skills_root = String::new();
     let mut agents_root: Option<String> = None;
+    let mut manifest_tools: Vec<Value> = Vec::new();
     let mut manifest_instructions: Vec<Value> = Vec::new();
     if let Some(manifest_path) = MANIFEST_FILES.iter().find(|m| by_path.contains_key(**m)) {
         match read_text(manifest_path).and_then(|t| parse_yaml(&t)) {
@@ -591,6 +633,11 @@ pub fn build_index(
                                 .push(Diagnostic::error(e.to_string(), Some(manifest_path))),
                         }
                     }
+                    manifest_tools = value
+                        .get("tools")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default();
                     manifest_instructions = value
                         .get("instructions")
                         .and_then(Value::as_array)
@@ -869,6 +916,7 @@ pub fn build_index(
             signals,
             calls: Vec::new(),
             complete: true,
+            tool: None,
         });
     }
 
@@ -1008,7 +1056,149 @@ pub fn build_index(
             diagnostics: diags,
             signals,
             complete: true,
+            tool: None,
         });
+    }
+
+    // Tools the manifest declares: files anywhere in the library, by path.
+    for entry in manifest_tools {
+        let manifest_path = MANIFEST_FILES[0];
+        let Some(name) = str_field(&entry, "name") else {
+            continue;
+        };
+        let command = str_field(&entry, "command").unwrap_or_else(|| name.clone());
+        let spec = ToolSpec {
+            command: command.clone(),
+            entry: str_field(&entry, "entry").unwrap_or_default(),
+            entry_windows: str_field(&entry, "entry_windows"),
+            paths: entry
+                .get("paths")
+                .and_then(Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|p| p.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default(),
+        };
+        let globs = match tool_globs(&spec.paths) {
+            Ok(globs) => globs,
+            Err(e) => {
+                index.diagnostics.push(Diagnostic::error(
+                    format!("the tool `{name}` is not read: {e}"),
+                    Some(manifest_path),
+                ));
+                continue;
+            }
+        };
+        let id = if seen_ids.contains_key(&name) {
+            format!("{name}-tool")
+        } else {
+            name.clone()
+        };
+        if seen_ids.contains_key(&id) {
+            index.diagnostics.push(Diagnostic::error(
+                format!("the tool id `{id}` is already used"),
+                Some(manifest_path),
+            ));
+            continue;
+        }
+        seen_ids.insert(id.clone(), manifest_path.to_string());
+        let mut item_files: Vec<ItemFile> = files
+            .iter()
+            .filter(|f| globs.is_match(&f.path))
+            .map(|f| ItemFile {
+                path: f.path.clone(),
+                digest: f.digest.clone(),
+                size: f.size,
+                executable: f.executable,
+            })
+            .collect();
+        item_files.sort_by(|a, b| a.path.cmp(&b.path));
+        let mut diags = Vec::new();
+        let bytes: u64 = item_files.iter().map(|f| f.size).sum();
+        if item_files.len() > MAX_TOOL_FILES || bytes > MAX_TOOL_BYTES {
+            diags.push(Diagnostic::error(
+                format!(
+                    "it holds {} files ({} KB), more than Habi installs as a tool ({MAX_TOOL_FILES} files, {} KB)",
+                    item_files.len(),
+                    bytes / 1024,
+                    MAX_TOOL_BYTES / 1024
+                ),
+                Some(manifest_path),
+            ));
+        }
+        for started in std::iter::once(&spec.entry).chain(spec.entry_windows.iter()) {
+            if !item_files.iter().any(|f| &f.path == started) {
+                diags.push(Diagnostic::error(
+                    format!("the file it starts, `{started}`, is not among its paths"),
+                    Some(manifest_path),
+                ));
+            }
+        }
+        if item_files
+            .iter()
+            .any(|f| f.path == spec.entry && !f.executable)
+        {
+            diags.push(Diagnostic::error(
+                format!("`{}` is not marked executable in the library", spec.entry),
+                Some(&spec.entry),
+            ));
+        }
+        let content_digest = item_digest(&item_files);
+        let signals = signals::scan("", &content_digest, &item_files, read);
+        index.items.push(LibraryItem {
+            key: format!("{source_id}/{id}"),
+            source_id: source_id.to_string(),
+            id,
+            kind: ItemKind::Tool,
+            title: command.clone(),
+            name,
+            description: str_field(&entry, "description")
+                .unwrap_or_else(|| format!("The `{command}` command.")),
+            path: String::new(),
+            owner: None,
+            based_on: None,
+            license_file: nearest_license("", &license_files),
+            license_restricted: false,
+            license: None,
+            compatibility: None,
+            requirement: Requirement::default(),
+            priority: Metadata::default().priority,
+            scope: Metadata::default().scope,
+            applies_when: None,
+            excludes: None,
+            tools: tool_requirements(&entry),
+            mcp: Vec::new(),
+            clients: None,
+            workflow: None,
+            bindings: Vec::new(),
+            checks: Vec::new(),
+            evidence: Vec::new(),
+            examples: Vec::new(),
+            files: item_files,
+            content_digest,
+            metadata_status: MetadataStatus::Declared,
+            diagnostics: diags,
+            signals,
+            calls: Vec::new(),
+            complete: true,
+            tool: Some(spec),
+        });
+    }
+    // A skill that needs a command this library ships is told so.
+    let shipped: HashMap<String, String> = index
+        .items
+        .iter()
+        .filter_map(|i| Some((i.tool.as_ref()?.command.clone(), i.id.clone())))
+        .collect();
+    for item in index.items.iter_mut().filter(|i| i.tool.is_none()) {
+        for needed in &mut item.tools {
+            needed.provided_by = needed
+                .commands
+                .iter()
+                .find_map(|command| shipped.get(command).cloned());
+        }
     }
 
     // Instructions declared in the manifest.
@@ -1093,6 +1283,7 @@ pub fn build_index(
             signals: Vec::new(),
             calls: Vec::new(),
             complete: true,
+            tool: None,
         });
     }
 

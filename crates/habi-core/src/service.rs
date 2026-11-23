@@ -397,6 +397,7 @@ fn required_tools(value: &serde_json::Value) -> Vec<crate::library::model::ToolR
                 .iter()
                 .filter_map(|t| {
                     Some(crate::library::model::ToolRequirement {
+                        provided_by: None,
                         name: text(t, "name")?,
                         commands: t
                             .get("commands")
@@ -1147,11 +1148,7 @@ impl Habi {
             .find(|i| i.id == item_id)
             .cloned()
             .ok_or_else(|| HabiError::NotFound(format!("item `{item_id}`")))?;
-        let main = if item.kind.is_skill() {
-            join(&item.path, crate::library::SKILL_FILE)
-        } else {
-            item.path.clone()
-        };
+        let main = item.main_file();
         let bytes = self
             .read_library_file(source_id, &index.snapshot, &main)
             .unwrap_or_default();
@@ -1179,11 +1176,7 @@ impl Habi {
         if !item.files.iter().any(|f| f.path == rel) {
             return Err(HabiError::NotFound(format!("{rel} in `{}`", item.title)));
         }
-        let library_path = if item.kind.is_skill() {
-            join(&item.path, &rel)
-        } else {
-            item.path.clone()
-        };
+        let library_path = item.library_path(&rel);
         let bytes = self.read_library_file(source_id, &index.snapshot, &library_path)?;
         let binary = !crate::fsutil::is_probably_text(&bytes);
         Ok(FileContent {
@@ -1204,11 +1197,7 @@ impl Habi {
     ) -> Result<Payload> {
         let mut files = Vec::new();
         for f in &item.files {
-            let library_path = if item.kind.is_skill() {
-                join(&item.path, &f.path)
-            } else {
-                item.path.clone()
-            };
+            let library_path = item.library_path(&f.path);
             files.push(plan::PayloadFile {
                 path: f.path.clone(),
                 bytes: self.read_library_file(&source.id, &index.snapshot, &library_path)?,
@@ -2291,6 +2280,17 @@ impl Habi {
         )?))
     }
 
+    /// What Habi installed on this machine and how each stands against its
+    /// library: skills, subagents and tools alike.
+    pub fn machine_installations(&self) -> Result<Vec<Installation>> {
+        let home = self.machine_root()?;
+        let lock = read_lock(home)?;
+        if lock.items.is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(self.installations(home, &lock, &self.libraries()?))
+    }
+
     pub fn plan_update_machine(&self, keys: &[String], decisions: &Decisions) -> Result<Plan> {
         let home = self.machine_root()?;
         let libraries = self.libraries()?;
@@ -2889,14 +2889,6 @@ impl Habi {
 
     pub fn contribution_send_route(&self, id: &str, cancel: &CancelToken) -> Result<SendRoute> {
         self.contributions().send_route(id, cancel)
-    }
-}
-
-fn join(dir: &str, name: &str) -> String {
-    if dir.is_empty() {
-        name.to_string()
-    } else {
-        format!("{dir}/{name}")
     }
 }
 

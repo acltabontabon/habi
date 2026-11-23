@@ -2,9 +2,14 @@
 import type { ClientId } from "./ClientId";
 import type { InstallState } from "./InstallState";
 import type { InstalledFile } from "./InstalledFile";
+import type { ItemKind } from "./ItemKind";
 import type { Provenance } from "./Provenance";
 
-export type Installation = { key: string, id: string, title: string, sourceName: string, snapshot: string, installedAt: string, clients: Array<ClientId>, state: InstallState, files: Array<InstalledFile>, upstreamSnapshot: string | null, 
+export type Installation = { key: string, id: string, 
+/**
+ * A skill, a subagent or a tool: what the lock file says it is.
+ */
+kind: ItemKind, title: string, sourceName: string, snapshot: string, installedAt: string, clients: Array<ClientId>, state: InstallState, files: Array<InstalledFile>, upstreamSnapshot: string | null, 
 /**
  * The library's address as the lock file records it.
  */

@@ -38,6 +38,8 @@ export type ReviewRequest =
       clients?: ClientId[];
       /** The library is not the team's own: installing on this machine carries a warning. */
       unaudited?: boolean;
+      /** A tool its library ships: for the person, so no agent is chosen. */
+      tool?: boolean;
     }
   | { kind: "update"; keys: string[]; title: string }
   | { kind: "remove"; keys: string[]; title: string }
@@ -50,6 +52,8 @@ const opGlyph: Record<ChangeOp, string> = { create: "+", modify: "~", delete: "â
 const kindTitle: Record<ChangeKind, string> = {
   skillFile: "Skill files",
   agentFile: "Agents",
+  toolFile: "Tool files",
+  toolCommand: "Command on your PATH",
   instructionsSection: "Instructions",
   claudeBridge: "Claude Code bridge",
   geminiBridge: "Gemini CLI bridge",
@@ -444,11 +448,12 @@ export function ReviewDialog({
   );
   const otherAgents = ALL_CLIENTS.length - shownAgents.length;
   const unaudited = machine && request.kind === "install" && request.unaudited === true;
+  const forTool = request.kind === "install" && request.tool === true;
 
   // What a machine install would sit next to: projects that already hold the skill.
   const shadows = useQuery({
     queryKey: ["machineShadows", request.kind === "install" ? items : null, chosen],
-    enabled: machine && request.kind === "install" && chosen.length > 0 && !detecting,
+    enabled: machine && request.kind === "install" && !forTool && chosen.length > 0 && !detecting,
     retry: false,
     queryFn: () => api.machineInstallPreview(items, chosen),
   });
@@ -534,7 +539,7 @@ export function ReviewDialog({
       switch (request.kind) {
         case "install":
           return projectId === null
-            ? api.planInstallMachine(items, chosen, decisions)
+            ? api.planInstallMachine(items, forTool ? [] : chosen, decisions)
             : api.planInstall(projectId, items, chosen, includeMcp, decisions);
         case "update":
           return projectId === null
@@ -642,53 +647,64 @@ export function ReviewDialog({
     return dyeOf(source?.id ?? "local");
   };
 
-  const setup = installing ? (
-    <aside className="review-setup">
-      <fieldset className="clients">
-        <legend className="review-heading">Install for</legend>
-        <div className="agent-list">
-          {shownAgents.map((c) => (
-            <label key={c} className="agent-pick">
-              <input
-                type="checkbox"
-                checked={chosen.includes(c)}
-                disabled={chosen.length === 1 && chosen.includes(c)}
-                title={chosen.length === 1 && chosen.includes(c) ? "At least one agent" : undefined}
-                onChange={() => toggleClient(c)}
-              />
-              <span className="agent-face">
-                <span className="agent-tick" aria-hidden="true">
-                  <Icon name="check" size={12} />
+  // A tool asks nothing of this column unless there is a warning to put in it.
+  const setup =
+    installing && !(forTool && !unaudited) ? (
+      <aside className="review-setup">
+        {forTool ? null : (
+          <fieldset className="clients">
+            <legend className="review-heading">Install for</legend>
+            <div className="agent-list">
+              {shownAgents.map((c) => (
+                <label key={c} className="agent-pick">
+                  <input
+                    type="checkbox"
+                    checked={chosen.includes(c)}
+                    disabled={chosen.length === 1 && chosen.includes(c)}
+                    title={chosen.length === 1 && chosen.includes(c) ? "At least one agent" : undefined}
+                    onChange={() => toggleClient(c)}
+                  />
+                  <span className="agent-face">
+                    <span className="agent-tick" aria-hidden="true">
+                      <Icon name="check" size={12} />
+                    </span>
+                    <strong>{clientLabel[c]}</strong>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {otherAgents > 0 || everyAgent ? (
+              <button type="button" className="link-btn agent-more" onClick={() => setEveryAgent((e) => !e)}>
+                {everyAgent ? "Only the agents on this machine" : `Other agents (${otherAgents})`}
+              </button>
+            ) : null}
+            {asksMcp ? (
+              <label
+                className="check mcp-option"
+                title="Only servers the item needs; no secrets are written."
+              >
+                <input
+                  type="checkbox"
+                  checked={includeMcp}
+                  onChange={(e) => setIncludeMcp(e.target.checked)}
+                />
+                <span>
+                  <strong>Add suggested MCP configuration</strong>
                 </span>
-                <strong>{clientLabel[c]}</strong>
-              </span>
-            </label>
-          ))}
-        </div>
-        {otherAgents > 0 || everyAgent ? (
-          <button type="button" className="link-btn agent-more" onClick={() => setEveryAgent((e) => !e)}>
-            {everyAgent ? "Only the agents on this machine" : `Other agents (${otherAgents})`}
-          </button>
-        ) : null}
-        {asksMcp ? (
-          <label className="check mcp-option" title="Only servers the item needs; no secrets are written.">
-            <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />
-            <span>
-              <strong>Add suggested MCP configuration</strong>
-            </span>
-          </label>
-        ) : null}
-      </fieldset>
+              </label>
+            ) : null}
+          </fieldset>
+        )}
 
-      {readinessWarnings.map((w) => (
-        <Notice key={w.key} tone="warn" title={w.title}>
-          {w.detail} Installing still works, but the agent may not be able to follow every step.
-        </Notice>
-      ))}
+        {readinessWarnings.map((w) => (
+          <Notice key={w.key} tone="warn" title={w.title}>
+            {w.detail} Installing still works, but the agent may not be able to follow every step.
+          </Notice>
+        ))}
 
-      {unaudited ? <AuditWarning /> : null}
-    </aside>
-  ) : null;
+        {unaudited ? <AuditWarning /> : null}
+      </aside>
+    ) : null;
 
   return (
     <Dialog

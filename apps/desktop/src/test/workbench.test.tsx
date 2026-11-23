@@ -166,6 +166,7 @@ describe("workbench", () => {
               installation: {
                 key: "k-liquibase",
                 id: r.item.id,
+                kind: "skill" as const,
                 title: r.item.title,
                 sourceName: r.item.sourceName,
                 snapshot: r.item.snapshot,

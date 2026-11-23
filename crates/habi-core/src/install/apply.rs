@@ -273,6 +273,9 @@ fn digest_on_disk(root: &Path, rel: &str) -> Result<Option<String>> {
 
 /// Directories Habi never prunes even when empty.
 const KEEP_DIRS: &[&str] = &[
+    ".habi",
+    ".local",
+    ".local/bin",
     ".agents",
     ".agents/skills",
     ".claude",

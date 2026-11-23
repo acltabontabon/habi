@@ -5,7 +5,7 @@ use super::lock::LockedItem;
 use super::plan::read_project_file;
 use crate::clients::{layout, sections};
 use crate::fsutil::digest_matches;
-use crate::library::model::{ItemKind, LibraryItem};
+use crate::library::model::LibraryItem;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -55,6 +55,8 @@ pub struct InstalledFile {
 pub struct Installation {
     pub key: String,
     pub id: String,
+    /// A skill, a subagent or a tool: what the lock file says it is.
+    pub kind: crate::library::model::ItemKind,
     pub title: String,
     pub source_name: String,
     pub snapshot: String,
@@ -104,7 +106,7 @@ fn added_files(root: &Path, locked: &LockedItem) -> Vec<String> {
         .files
         .iter()
         // A subagent is one file in a folder it shares, so it has no folder to look in.
-        .filter(|_| locked.kind != ItemKind::Agent)
+        .filter(|_| locked.kind.is_skill())
         .filter_map(|f| layout::managed_location(locked.kind, &f.path).map(|m| m.folder()))
         .collect();
     let mut added = Vec::new();
@@ -242,6 +244,7 @@ pub fn installation(
     Installation {
         key: locked.key(),
         id: locked.id.clone(),
+        kind: locked.kind,
         title: locked.title.clone(),
         source_name: locked.source.name.clone(),
         snapshot: locked.snapshot.clone(),

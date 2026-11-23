@@ -14,6 +14,7 @@ import type { Requirement } from "./Requirement";
 import type { Scope } from "./Scope";
 import type { Signal } from "./Signal";
 import type { ToolRequirement } from "./ToolRequirement";
+import type { ToolSpec } from "./ToolSpec";
 import type { WorkflowSpec } from "./WorkflowSpec";
 
 export type LibraryItem = { 
@@ -68,4 +69,8 @@ calls: Array<string>,
  * False if some of the item's files were skipped while reading the
  * library (too large, symbolic links). Incomplete items are not installable.
  */
-complete: boolean, };
+complete: boolean, 
+/**
+ * Set for a tool: its command and the files that make it up.
+ */
+tool: ToolSpec | null, };

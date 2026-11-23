@@ -28,6 +28,12 @@ the lock file or data directory, minor for features, patch for fixes.
 - **More test tools are recognized.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito,
   REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact,
   WireMock and Postman collections, from manifests or their own files.
+- **Tools a library ships.** A library can declare a command-line tool its skills call (`tools:` in
+  `habi-library.yaml`). Habi copies its files to `~/.habi/tools/` and puts the command in `~/.local/bin`,
+  on this machine only, after you have seen every file and accepted the caution. A skill that needs the
+  command offers to install it, and stops saying it is missing once it is on your PATH. Updating asks
+  again, and removing leaves nothing behind. From the command line: `habi machine install`, `status`,
+  `update` and `remove`. Habi never runs the tool and never changes your PATH.
 - **Agents from a library.** A library that names an `agents_root` in `habi-library.yaml` offers its agents
   (subagents) beside its skills. Each installs as the Markdown file it is, for Claude Code, Cursor and Junie,
   in a project or on this machine, with the same review, updates and removal as a skill. An agent is shown

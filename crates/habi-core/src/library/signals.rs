@@ -87,6 +87,9 @@ pub enum SignalKind {
     /// This plan would write an MCP server into an agent's configuration: a program the
     /// agent starts, or an address it connects to, chosen by the library.
     AddsMcpServer,
+    /// This plan would put a command on the person's PATH: a program of the
+    /// library's that runs with their rights whenever anything calls it by name.
+    AddsCommand,
     /// Comes with code an agent could run. Said of every skill that does,
     /// whatever the code looks like: patterns only see what they know.
     BundledCode,
@@ -97,7 +100,7 @@ impl SignalKind {
         use SignalKind::*;
         match self {
             DownloadAndRun | Destructive | CredentialFile | NativeBinary | HiddenText | AutoRun
-            | AddsMcpServer => SignalSeverity::Caution,
+            | AddsMcpServer | AddsCommand => SignalSeverity::Caution,
             EnvironmentSecret | Privileged | DynamicExecution | Network | PackageInstall
             | OpaqueFile | ExecutableData | ToolPermission | McpServer => SignalSeverity::Notice,
             NotFullyRead | BundledCode => SignalSeverity::Info,
@@ -125,6 +128,7 @@ impl SignalKind {
             ToolPermission => "Grants itself tools an agent can use without asking",
             McpServer => "Configures an MCP server",
             AddsMcpServer => "Adds an MCP server that your agent will start or connect to",
+            AddsCommand => "Puts a command on your PATH that runs the library's code",
             BundledCode => "Comes with code an agent could run",
         }
     }
@@ -932,6 +936,21 @@ pub(crate) fn adds_mcp_server(file: &str, name: &str, spec: &McpServerSpec) -> S
         },
     };
     simple(SignalKind::AddsMcpServer, file, Some(what))
+}
+
+/// What a plan says of a command it would put on PATH (at `file`): how much
+/// code stands behind it and, when the name is already taken, by what.
+pub fn adds_command(file: &str, command: &str, files: usize, taken_by: Option<&str>) -> Signal {
+    let mut what = format!(
+        "`{command}`: {files} file{} of the library's code. Anything that calls `{command}` runs it, with your rights.",
+        if files == 1 { "" } else { "s" }
+    );
+    if let Some(other) = taken_by {
+        what.push_str(&format!(
+            " There is already a `{command}` at {other}; which one runs depends on the order of your PATH."
+        ));
+    }
+    simple(SignalKind::AddsCommand, file, Some(what))
 }
 
 /// A caution for code changed by an update to a skill that runs commands by itself.

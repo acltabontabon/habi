@@ -67,6 +67,71 @@ pub fn agent_dirs(clients: &[ClientId]) -> Vec<SkillDir> {
     dirs
 }
 
+/// Where the files of a library's tools are kept, under the home folder: one
+/// folder per tool, Habi's own, beside its record.
+pub const TOOLS_DIR: &str = ".habi/tools";
+/// Where a tool's command is put, under the home folder: the place the XDG
+/// convention gives a person's own programs, which most shells have on PATH.
+pub const COMMANDS_DIR: &str = ".local/bin";
+
+/// A command name Habi will put on PATH: short, lower case, nothing a shell
+/// or a path would read as more than a name.
+pub fn valid_command(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        && name.len() <= 64
+        && !name.contains("..")
+        && chars
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '.' | '_' | '-'))
+}
+
+/// Programs Habi itself starts, by name, from PATH. A library that could put
+/// one of these names there would have Habi run its code. Shells and the
+/// helpers Git and SSH look up by prefix are refused for the same reason.
+const RESERVED_COMMANDS: &[&str] = &[
+    "git",
+    "ssh",
+    "scp",
+    "sftp",
+    "gh",
+    "glab",
+    "curl",
+    "open",
+    "xdg-open",
+    "notepad",
+    "taskkill",
+    "attrib",
+    "mkfifo",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "dash",
+    "ksh",
+    "cmd",
+    "powershell",
+    "pwsh",
+    "sudo",
+    "env",
+    "habi",
+];
+
+/// Whether a library may name its command this.
+pub fn reserved_command(name: &str) -> bool {
+    let name = name.strip_suffix(".exe").unwrap_or(name);
+    RESERVED_COMMANDS.contains(&name) || name.starts_with("git-") || name.starts_with("ssh-")
+}
+
+/// The command a path in `COMMANDS_DIR` is: `<command>`, or `<command>.cmd`
+/// on Windows. `None` for any other path.
+pub fn launcher_command(path: &str) -> Option<&str> {
+    let file = path.strip_prefix(COMMANDS_DIR)?.strip_prefix('/')?;
+    let name = file.strip_suffix(".cmd").unwrap_or(file);
+    (valid_command(name) && !reserved_command(name)).then_some(name)
+}
+
 /// Where a file Habi installed sits: the folder Habi writes that kind of item
 /// into, the item's name there, and the file within the item.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,7 +151,8 @@ impl Managed<'_> {
 
 /// Reads a root-relative path as a place Habi installs an item of `kind`:
 /// `<skills folder>/<name>/<file>` for a skill, `<agents folder>/<name>.md`
-/// for a subagent. `None` for anywhere else, which Habi neither writes nor
+/// for a subagent, `<tools folder>/<name>/<file>` for a tool (its command is
+/// read by `launcher_command`). `None` for anywhere else, which Habi neither writes nor
 /// deletes. Every reader of a lock file's paths goes through this.
 pub fn managed_location(kind: ItemKind, path: &str) -> Option<Managed<'_>> {
     if kind == ItemKind::Agent {
@@ -100,7 +166,11 @@ pub fn managed_location(kind: ItemKind, path: &str) -> Option<Managed<'_>> {
             })
         });
     }
-    [AGENTS_SKILLS, CLAUDE_SKILLS].iter().find_map(|base| {
+    let bases: &[&'static str] = match kind {
+        ItemKind::Tool => &[TOOLS_DIR],
+        _ => &[AGENTS_SKILLS, CLAUDE_SKILLS],
+    };
+    bases.iter().find_map(|base| {
         let rest = path.strip_prefix(base)?.strip_prefix('/')?;
         let (name, rel) = rest.split_once('/')?;
         Some(Managed { base, name, rel })
@@ -448,9 +518,40 @@ mod tests {
             (ItemKind::Agent, ".claude/skills/a/SKILL.md"),
             (ItemKind::Agent, ".agents/reviewer.md"),
             (ItemKind::Agent, ".claude/settings.json"),
+            (ItemKind::Tool, ".claude/skills/a/SKILL.md"),
+            (ItemKind::Tool, ".habi/lock.json"),
+            (ItemKind::Tool, ".local/bin/eng"),
+            (ItemKind::Skill, ".habi/tools/eng/bin/eng"),
         ] {
             assert_eq!(managed_location(kind, refused), None, "{refused}");
         }
+    }
+
+    #[test]
+    fn a_tool_keeps_to_its_folder_and_a_command_to_a_plain_name() {
+        let file = managed_location(ItemKind::Tool, ".habi/tools/eng/src/eng/cli.py").unwrap();
+        assert_eq!(
+            (file.base, file.name, file.rel),
+            (TOOLS_DIR, "eng", "src/eng/cli.py")
+        );
+        assert_eq!(launcher_command(".local/bin/eng"), Some("eng"));
+        assert_eq!(launcher_command(".local/bin/eng.cmd"), Some("eng"));
+        for refused in [
+            ".local/bin/git",
+            ".local/bin/git-credential-store",
+            ".local/bin/ssh-askpass",
+            ".local/bin/sh",
+            ".local/bin/gh.cmd",
+            ".local/bin/Eng",
+            ".local/bin/a/b",
+            ".local/bin/..",
+            ".local/eng",
+            "bin/eng",
+        ] {
+            assert_eq!(launcher_command(refused), None, "{refused}");
+        }
+        assert!(reserved_command("git.exe"));
+        assert!(!reserved_command("eng"));
     }
 
     #[test]

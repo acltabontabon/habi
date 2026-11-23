@@ -20,6 +20,67 @@
       "description": "Directory (relative to the library root) whose Markdown files are subagents. Without it, no file is read as a subagent.",
       "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath"
     },
+    "tools": {
+      "description": "Command-line tools this library ships and its skills call. Habi copies a tool's files to the person's machine and puts its command on their PATH, after they have reviewed every file. Nothing is run.",
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["name", "entry", "paths"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" },
+          "command": {
+            "description": "The command people type. Defaults to the name.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "description": { "type": "string", "maxLength": 1000 },
+          "entry": {
+            "description": "The executable file the command starts. One of the paths.",
+            "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath"
+          },
+          "entry_windows": {
+            "description": "The file the command starts on Windows, when it differs.",
+            "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath"
+          },
+          "paths": {
+            "description": "The files that make up the tool, as paths or globs from the library root. `*` stays within one folder, `**` crosses folders.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+          },
+          "requires": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tools": {
+                "description": "What the tool itself needs, such as a runtime. Shown, and looked up on PATH; a version is never checked.",
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "required": ["name", "commands"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+                    "commands": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 8,
+                      "items": { "type": "string", "pattern": "^(\\./)?[A-Za-z0-9._+-]{1,64}$" }
+                    },
+                    "purpose": { "type": "string", "maxLength": 300 },
+                    "install_hint": { "type": "string", "maxLength": 300 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "instructions": {
       "description": "Markdown files installed as managed sections of AGENTS.md.",
       "type": "array",

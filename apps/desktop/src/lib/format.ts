@@ -145,6 +145,7 @@ export const kindLabel: Record<ItemKind, string> = {
   workflow: "Skill",
   instructions: "Project instructions",
   agent: "Agent",
+  tool: "Tool",
 };
 
 export const clientLabel: Record<ClientId, string> = {

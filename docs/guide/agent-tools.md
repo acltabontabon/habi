@@ -95,6 +95,15 @@ Install skills into `~/.claude/skills` or `~/.agents/skills` to use them in *all
 Agents go into `~/.claude/agents`, `~/.cursor/agents` or `~/.junie/agents`.
 Same folder rules apply. Instructions & MCP servers aren't installed this way.
 
+A library can also ship a command-line tool its skills call. Installing one copies its files
+to `~/.habi/tools/<name>/` and adds a two-line file at `~/.local/bin/<command>` that starts
+it. Every file is in the review, and it is always a caution to accept, because the command
+then runs the library's code whenever anything calls it. If `~/.local/bin` is not on your
+PATH, the review says so; Habi does not change your PATH. Removing the tool removes all of it.
+
+From the command line: `habi machine install <id>`, `habi machine status`,
+`habi machine update` and `habi machine remove <id>`.
+
 **Key details:**
 - Habi tracks installs in `~/.habi/lock.json` for updates & removal later
 - Skills you didn't install are never changed (name conflicts are flagged, not overwritten)

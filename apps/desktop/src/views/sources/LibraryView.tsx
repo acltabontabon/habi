@@ -60,6 +60,7 @@ import {
 } from "../../lib/skillFacts";
 import { useMedia } from "../../lib/useMedia";
 import { ContentsToggle, SkillReader, usePackage } from "../reader/SkillReader";
+import { InstallTool } from "../review/InstallTool";
 import { ReviewDialog } from "../review/ReviewDialog";
 import { AddToProjectDialog } from "./AddToProjectDialog";
 import { DisconnectButton } from "./DisconnectButton";
@@ -134,6 +135,7 @@ function IndexRow({
           {required ? <span>required</span> : null}
           {item.kind === "instructions" ? <span>instructions</span> : null}
           {item.kind === "agent" ? <span>agent</span> : null}
+          {item.kind === "tool" ? <span>tool</span> : null}
           {item.workflow ? <span>has steps</span> : null}
           {item.metadataStatus === "declared" ? <span>rules</span> : null}
           {code > 0 ? (
@@ -546,10 +548,14 @@ function SkillHead({
       <div className="skill-title-row">
         <h2 className="skill-head-title">{item.title}</h2>
         <div className="skill-actions">
-          <Button variant="primary" icon="download" onClick={() => setAdding(true)}>
-            Add to a project…
-          </Button>
-          {item.kind !== "instructions" ? (
+          {item.kind === "tool" ? (
+            <InstallTool sourceId={source.id} toolId={item.id} name={item.title} primary />
+          ) : (
+            <Button variant="primary" icon="download" onClick={() => setAdding(true)}>
+              Add to a project…
+            </Button>
+          )}
+          {item.kind !== "instructions" && item.kind !== "tool" ? (
             <Menu
               label="More ways to use this skill"
               trigger={
@@ -653,6 +659,7 @@ function SkillHead({
                 {item.tools.map((t) => (
                   <span key={t.name} className="skill-details-tool">
                     {t.name} <span className="mono muted">{t.commands.join(", ")}</span>
+                    {t.providedBy ? <span className="muted"> · this library ships it</span> : null}
                   </span>
                 ))}
               </dd>

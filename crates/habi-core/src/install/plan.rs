@@ -21,7 +21,7 @@ use crate::library::signals::{
 };
 use crate::paths::{RelPath, resolve_for_read, resolve_links};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use ts_rs::TS;
 
@@ -80,6 +80,10 @@ pub enum ChangeKind {
     SkillFile,
     /// A subagent's Markdown file, in an agents folder.
     AgentFile,
+    /// A file of a library's tool, in the tool's own folder.
+    ToolFile,
+    /// The file that puts a tool's command on PATH.
+    ToolCommand,
     InstructionsSection,
     ClaudeBridge,
     GeminiBridge,
@@ -636,6 +640,14 @@ impl<'a> Planner<'a> {
                     item.id
                 )));
             }
+        } else if let Some(item) = lock.items.iter().find(|i| i.kind == ItemKind::Tool) {
+            // A project's lock is shared and editable. A tool is a command on
+            // one person's PATH, which nothing in a project may place or remove.
+            return Err(HabiError::Conflict(format!(
+                "{} lists the tool `{}`, which Habi installs only on a person's own machine, never in a project. Fix or remove the lock file.",
+                crate::brand::LOCK_FILE,
+                item.id
+            )));
         }
         Ok(Planner {
             scope,
@@ -1416,7 +1428,7 @@ impl<'a> Planner<'a> {
             let link = match self.link_target(&target) {
                 Ok(None) => None,
                 Ok(Some(to)) => Some(format!("to {to}")),
-                Err(e) => Some(format!("that Habi will not follow ({e})")),
+                Err(_) => Some("that leaves this folder".to_string()),
             };
             if let Some(link) = link {
                 self.conflicts.push(conflict(
@@ -1492,6 +1504,272 @@ impl<'a> Planner<'a> {
             mcp: Vec::new(),
             provenance: Some(p.provenance.clone()),
         })
+    }
+
+    /// Puts a library's tool on this machine: its files, as the library has
+    /// them, in a folder of its own, and one small file that starts it under
+    /// the command's name. Nothing is run, and PATH is not changed.
+    fn install_tool(&mut self, p: &Payload, existing: Option<&LockedItem>) -> Result<LockedItem> {
+        let item = &p.item;
+        let refused =
+            |why: &str| HabiError::invalid(format!("`{}` cannot be installed: {why}", item.title));
+        if self.scope != Scope::Machine {
+            return Err(refused(
+                "it is a command-line tool, which Habi installs on this machine, not in a project",
+            ));
+        }
+        let Some(spec) = &item.tool else {
+            return Err(refused("the library does not say what it starts"));
+        };
+        if !item.complete {
+            return Err(refused("it was not read in full from the library"));
+        }
+        if let Some(broken) = item
+            .diagnostics
+            .iter()
+            .find(|d| d.level == DiagnosticLevel::Error)
+        {
+            return Err(refused(&broken.message));
+        }
+        if !layout::valid_command(&spec.command) || !layout::valid_command(&item.name) {
+            return Err(refused(
+                "its name and command must be lowercase letters, digits, `.`, `_` and `-`",
+            ));
+        }
+        if layout::reserved_command(&spec.command) {
+            return Err(refused(&format!(
+                "`{}` is the name of a program Habi or your shell already relies on",
+                spec.command
+            )));
+        }
+        if p.files.len() > crate::library::MAX_TOOL_FILES {
+            return Err(refused("it holds more files than Habi installs as a tool"));
+        }
+        let folder = format!("{}/{}", layout::TOOLS_DIR, item.name);
+        let (started, launcher) = if cfg!(windows) {
+            (
+                spec.entry_windows.as_deref().unwrap_or(&spec.entry),
+                format!("{}/{}.cmd", layout::COMMANDS_DIR, spec.command),
+            )
+        } else {
+            (
+                spec.entry.as_str(),
+                format!("{}/{}", layout::COMMANDS_DIR, spec.command),
+            )
+        };
+        // The launcher names the tool by its full path, in quotes. A home
+        // folder whose name would end the quotes is not written into one.
+        let target = RelPath::new(&format!("{folder}/{started}"))?.to_path(self.ws.root);
+        let target = target.to_string_lossy();
+        if target.contains(['\'', '"', '%', '\n', '\r']) {
+            return Err(refused(
+                "your home folder's path holds a character that cannot be written safely into the command",
+            ));
+        }
+        let script = if cfg!(windows) {
+            format!("@echo off\r\n\"{target}\" %*\r\n")
+        } else {
+            format!("#!/bin/sh\nexec '{target}' \"$@\"\n")
+        };
+
+        let baselines: HashMap<&str, &str> = existing
+            .map(|e| {
+                e.files
+                    .iter()
+                    .map(|f| (f.path.as_str(), f.digest.as_str()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut files = Vec::new();
+        let mut touched = BTreeSet::new();
+        let mut put = |planner: &mut Self,
+                       path: String,
+                       bytes: &[u8],
+                       executable: bool,
+                       kind: ChangeKind,
+                       why: &str|
+         -> Result<()> {
+            touched.insert(path.clone());
+            // Something else may have left a link here (a tool's own
+            // installer does). Writing through it would change another file.
+            let link = match planner.link_target(&path) {
+                Ok(None) => None,
+                Ok(Some(to)) => Some(format!("to {to}")),
+                Err(_) => Some("that leaves this folder".to_string()),
+            };
+            if let Some(link) = link {
+                planner.conflicts.push(conflict(
+                    &path,
+                    ConflictKind::SymbolicLink,
+                    &item.title,
+                    format!(
+                        "{path} is reached through a symbolic link {link}. Habi does not write through links. Remove the link, then check again."
+                    ),
+                    vec![],
+                    None,
+                ));
+                return Ok(());
+            }
+            if let Some(owner) = planner.lock.owner_of(&path).filter(|o| o.key() != p.key()) {
+                planner.conflicts.push(conflict(
+                    &path,
+                    ConflictKind::PathCollision,
+                    &item.title,
+                    format!(
+                        "{path} is already installed by `{}` from {}. Remove the installed one first, or leave this one out of the install.",
+                        owner.title, owner.source.name
+                    ),
+                    vec![],
+                    None,
+                ));
+                return Ok(());
+            }
+            let baseline = baselines.get(path.as_str()).copied();
+            if let Some(digest) =
+                planner.put_file(&path, bytes, executable, baseline, &item.title, &[], why)?
+            {
+                files.push(LockedFile {
+                    path: path.clone(),
+                    digest,
+                    clients: Vec::new(),
+                    executable: Some(executable),
+                });
+            }
+            if let Some(meta) = planner.ws.meta.get_mut(&path) {
+                meta.kind = Some(kind);
+            }
+            Ok(())
+        };
+        let why = format!("Part of `{}`, kept in a folder of its own.", spec.command);
+        for file in &p.files {
+            let path = RelPath::new(&format!("{folder}/{}", file.path))?.to_string();
+            put(
+                self,
+                path,
+                &file.bytes,
+                file.executable,
+                ChangeKind::ToolFile,
+                &why,
+            )?;
+        }
+        let why = format!(
+            "Starts {folder}/{started} when `{}` is typed. Two lines; it runs nothing else.",
+            spec.command
+        );
+        put(
+            self,
+            launcher.clone(),
+            script.as_bytes(),
+            true,
+            ChangeKind::ToolCommand,
+            &why,
+        )?;
+        // Files of an earlier version that this one no longer has.
+        if let Some(prev) = existing {
+            for f in &prev.files {
+                if touched.insert(f.path.clone()) {
+                    let why = "No longer part of this tool.";
+                    if !self.delete_file(&f.path, &f.digest, &item.title, &[], why)? {
+                        files.push(f.clone());
+                    }
+                    if let Some(meta) = self.ws.meta.get_mut(&f.path) {
+                        meta.kind = Some(ChangeKind::ToolFile);
+                    }
+                }
+            }
+        }
+
+        // Asked about when it is new, and again whenever its code changes:
+        // what was accepted was the code as it was.
+        let changed = existing.is_none_or(|e| e.content_digest != item.content_digest);
+        if changed {
+            let ours = RelPath::new(&launcher)?.to_path(self.ws.root);
+            let taken_by = which::which(&spec.command)
+                .ok()
+                .filter(|found| *found != ours)
+                .map(|found| crate::paths::display_path(&found));
+            self.mcp_signals.push(crate::library::signals::adds_command(
+                &launcher,
+                &spec.command,
+                p.files.len(),
+                taken_by.as_deref(),
+            ));
+        }
+        let bin = RelPath::new(layout::COMMANDS_DIR)?.to_path(self.ws.root);
+        let on_path = std::env::var_os("PATH")
+            .is_some_and(|path| std::env::split_paths(&path).any(|dir| dir == bin));
+        if !on_path {
+            self.notes.push(format!(
+                "{} is not on your PATH, so `{}` will not be found until it is. Habi does not change your PATH or your shell's files.",
+                crate::paths::display_path(&bin),
+                spec.command
+            ));
+        }
+        Ok(LockedItem {
+            source: p.source.clone(),
+            id: item.id.clone(),
+            kind: item.kind,
+            title: item.title.clone(),
+            snapshot: p.snapshot.clone(),
+            content_digest: item.content_digest.clone(),
+            installed_at: crate::time::now(),
+            clients: Vec::new(),
+            files,
+            sections: Vec::new(),
+            mcp: Vec::new(),
+            provenance: Some(p.provenance.clone()),
+        })
+    }
+
+    /// What is in an installed tool's own folder that Habi did not put there:
+    /// what running it left behind (Python's `__pycache__`, say). The folder is
+    /// Habi's, so removing the tool removes these too, shown like any deletion.
+    fn sweep_tool_folder(&mut self, locked: &LockedItem) -> Result<()> {
+        let folders: BTreeSet<String> = locked
+            .files
+            .iter()
+            .filter_map(|f| layout::managed_location(ItemKind::Tool, &f.path).map(|m| m.folder()))
+            .collect();
+        let listed: HashSet<&str> = locked.files.iter().map(|f| f.path.as_str()).collect();
+        for folder in folders {
+            let mut queue = vec![folder];
+            let mut seen = 0usize;
+            while let Some(dir) = queue.pop() {
+                let Ok(entries) = std::fs::read_dir(RelPath::new(&dir)?.to_path(self.ws.root))
+                else {
+                    continue;
+                };
+                for entry in entries.flatten() {
+                    let Some(name) = entry.file_name().to_str().map(str::to_string) else {
+                        continue;
+                    };
+                    let path = format!("{dir}/{name}");
+                    let Ok(kind) = entry.file_type() else {
+                        continue;
+                    };
+                    seen += 1;
+                    if seen > 5_000 {
+                        self.notes.push(format!(
+                            "{dir} holds more files than Habi removes for you; delete what is left by hand."
+                        ));
+                        return Ok(());
+                    }
+                    if kind.is_dir() {
+                        queue.push(path);
+                    } else if kind.is_file() && !listed.contains(path.as_str()) {
+                        self.ws.write(
+                            &path,
+                            None,
+                            ChangeKind::ToolFile,
+                            &locked.title,
+                            &[],
+                            "Created after install, in the tool's own folder.",
+                        )?;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// A person's own folder on this machine that holds files this skill does not ship is theirs:
@@ -2454,13 +2732,19 @@ fn install_in(
     decisions: &Decisions,
     scope: Scope,
 ) -> Result<Plan> {
-    if clients.is_empty() {
+    // A tool is for the person, whichever agent tools they use.
+    let is_tool = |p: &Payload| p.item.kind == ItemKind::Tool;
+    if clients.is_empty() && !payloads.iter().all(is_tool) {
         return Err(HabiError::invalid("choose at least one client"));
     }
     let mut planner = Planner::new(root, decisions, scope)?;
     let mut all_clients = BTreeSet::new();
     for p in payloads {
-        let (mut wanted, notes) = compatible_clients(&p.item, clients);
+        let (mut wanted, notes) = if is_tool(p) {
+            (Vec::new(), Vec::new())
+        } else {
+            compatible_clients(&p.item, clients)
+        };
         planner.notes.extend(notes);
         let existing = planner.lock.find(&p.key()).cloned();
         if let Some(e) = &existing {
@@ -2471,7 +2755,7 @@ fn install_in(
             }
             wanted.sort();
         }
-        if wanted.is_empty() {
+        if wanted.is_empty() && !is_tool(p) {
             continue;
         }
         all_clients.extend(wanted.iter().copied());
@@ -2480,11 +2764,12 @@ fn install_in(
                 planner.install_instructions(p, &wanted, existing.as_ref())?
             }
             ItemKind::Agent => planner.install_agent(p, &wanted, existing.as_ref())?,
+            ItemKind::Tool => planner.install_tool(p, existing.as_ref())?,
             ItemKind::Skill | ItemKind::Workflow => {
                 planner.install_skill(p, &wanted, existing.as_ref())?
             }
         };
-        if include_mcp {
+        if include_mcp && !is_tool(p) {
             planner.add_mcp(p, &wanted, &mut locked, None)?;
         }
         // Keep the original install time when nothing about the item changed.
@@ -2517,7 +2802,12 @@ fn install_in(
         planner.upsert_lock(locked);
     }
     let clients: Vec<ClientId> = all_clients.into_iter().collect();
-    let title = format!("Install for {} {}", clients_phrase(&clients), scope.on());
+    let title = if clients.is_empty() {
+        let names: Vec<&str> = payloads.iter().map(|p| p.item.title.as_str()).collect();
+        format!("Install {} {}", names.join(" and "), scope.on())
+    } else {
+        format!("Install for {} {}", clients_phrase(&clients), scope.on())
+    };
     planner.finish(root, PlanAction::Install, title)
 }
 
@@ -2644,6 +2934,7 @@ fn update_in(
         let mut locked = match p.item.kind {
             ItemKind::Instructions => planner.install_instructions(p, &clients, Some(&existing))?,
             ItemKind::Agent => planner.install_agent(p, &clients, Some(&existing))?,
+            ItemKind::Tool => planner.install_tool(p, Some(&existing))?,
             ItemKind::Skill | ItemKind::Workflow => {
                 planner.install_skill(p, &clients, Some(&existing))?
             }
@@ -2753,6 +3044,9 @@ fn remove_in(root: &Path, keys: &[String], decisions: &Decisions, scope: Scope) 
             )?;
         }
         planner.remove_mcp(&existing)?;
+        if existing.kind == ItemKind::Tool {
+            planner.sweep_tool_folder(&existing)?;
+        }
         planner.items.push(PlanItem {
             key: key.clone(),
             title: existing.title.clone(),

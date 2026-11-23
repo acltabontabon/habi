@@ -364,7 +364,8 @@ impl LockFile {
                 )));
             }
             // No reader left for its files reads as "delete them all" at the next update.
-            if item.clients.is_empty() && !item.files.is_empty() {
+            // (A tool is for the person, not for an agent tool, and has none.)
+            if item.clients.is_empty() && !item.files.is_empty() && item.kind != ItemKind::Tool {
                 return Err(HabiError::Conflict(format!(
                     "{} lists `{}` with files but no agent tools. Fix or remove the lock file.",
                     crate::brand::LOCK_FILE,
@@ -373,8 +374,10 @@ impl LockFile {
             }
             for f in &item.files {
                 let rel = crate::paths::RelPath::new(&f.path)?;
-                let managed =
-                    crate::clients::layout::managed_location(item.kind, rel.as_str()).is_some();
+                let managed = crate::clients::layout::managed_location(item.kind, rel.as_str())
+                    .is_some()
+                    || (item.kind == ItemKind::Tool
+                        && crate::clients::layout::launcher_command(rel.as_str()).is_some());
                 if !managed {
                     return Err(invalid(&format!("the file `{rel}`")));
                 }

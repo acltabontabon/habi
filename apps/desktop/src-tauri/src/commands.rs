@@ -1631,6 +1631,16 @@ pub async fn skills_overview(
     blocking(habi, move |h| h.skills_overview()).await
 }
 
+/// What Habi installed on this machine, by its own record: skills, and also
+/// the subagents and tools that no skill folder shows.
+#[tauri::command]
+pub async fn machine_installations(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<habi_core::install::status::Installation>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.machine_installations()).await
+}
+
 /// Skills in the person's own folders (`~/.claude/skills` and the like), and
 /// how each relates to My skills and to the projects Habi knows. Reads only.
 #[tauri::command]

@@ -36,6 +36,7 @@ import { useSkills } from "../../lib/queries";
 import { tabKeyHandler } from "../../lib/tabs";
 import { tagLabel } from "../../lib/tags";
 import { SkillReader } from "../reader/SkillReader";
+import { InstallTool } from "../review/InstallTool";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { ChecksPanel } from "./ChecksPanel";
 import { answerable, DeclareQuestion, MatchedReasons, ModuleExplanation, sentence } from "./Explain";
@@ -579,6 +580,9 @@ export function ItemDetailPane({
                       {p.purpose ? <p className="muted">{p.purpose}</p> : null}
                       <p className="prereq-detail">{p.detail}</p>
                       {p.hint ? <p className="prereq-hint">{p.hint}</p> : null}
+                      {p.providedBy && p.status === "missing" ? (
+                        <InstallTool sourceId={r.item.sourceId} toolId={p.providedBy} name={p.name} />
+                      ) : null}
                     </li>
                   ))}
                 </ul>

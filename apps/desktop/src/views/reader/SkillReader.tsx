@@ -224,7 +224,7 @@ export function SkillReader({
   const item = detail.data?.item;
   // Instructions and agents are one file each; a skill's main file is its SKILL.md.
   const oneFile = item?.kind === "instructions" || item?.kind === "agent";
-  const main = oneFile ? (item?.files[0]?.path ?? "") : "SKILL.md";
+  const main = item?.tool ? item.tool.entry : oneFile ? (item?.files[0]?.path ?? "") : "SKILL.md";
   const shape = useMemo(() => (item ? packageShape(item.files, main) : null), [item, main]);
 
   // The inspector folds away after its last frame, so closing is seen.
@@ -336,7 +336,12 @@ export function SkillReader({
                   </div>
                 )}
                 <div className="reader-doc" id="reader-doc" tabIndex={-1}>
-                  <Markdown text={body} files={paths} onLocalLink={openLink} />
+                  {/* What a tool starts is code, and is shown as code. */}
+                  <Markdown
+                    text={item?.tool ? `\`\`\`\`\n${body}\n\`\`\`\`` : body}
+                    files={paths}
+                    onLocalLink={openLink}
+                  />
                 </div>
               </div>
             </div>

@@ -196,6 +196,7 @@ fn item_kind(k: ItemKind) -> &'static str {
         ItemKind::Skill | ItemKind::Workflow => "skill",
         ItemKind::Instructions => "instructions",
         ItemKind::Agent => "agent",
+        ItemKind::Tool => "tool",
     }
 }
 
@@ -748,6 +749,13 @@ pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
             prerequisite_status(p.status),
             p.detail
         );
+        if let Some(tool) = p
+            .provided_by
+            .as_ref()
+            .filter(|_| p.status == PrerequisiteStatus::Missing)
+        {
+            println!("    Its library ships it. Install it with: habi machine install {tool}");
+        }
     }
     println!("Installation: {}", install_state(r.install_state));
     if !r.item.installable {

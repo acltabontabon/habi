@@ -259,6 +259,20 @@ export function useKnowledge(projectId: string | undefined, enabled = true) {
   });
 }
 
+/**
+ * What Habi's own record says is on this machine. Agents and tools sit in no
+ * skill folder, so this is the only place they are listed. Keyed under the
+ * machine skills, so whatever refreshes those refreshes this.
+ */
+export function useMachineInstallations() {
+  return useQuery({
+    queryKey: [...keys.machineSkills, "installations"],
+    queryFn: api.machineInstallations,
+    staleTime: 5000,
+    refetchOnMount: "always",
+  });
+}
+
 /** After local skills change: lists, and anything matched against projects. */
 export function invalidateSkills(client: QueryClient) {
   void client.invalidateQueries({ queryKey: keys.skills });

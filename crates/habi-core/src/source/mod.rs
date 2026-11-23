@@ -1989,14 +1989,20 @@ impl Sources {
             } else {
                 format!("{}/", item.path)
             };
+            // A tool's files are picked by path from anywhere in the library,
+            // so what was skipped elsewhere is not its concern.
+            let tool_paths = item
+                .tool
+                .as_ref()
+                .and_then(|t| library::tool_globs(&t.paths).ok());
+            let within = |p: &str| match &tool_paths {
+                Some(paths) => paths.is_match(p),
+                None => prefix.is_empty() || p.starts_with(&prefix),
+            };
             let missing: Vec<&Diagnostic> = data
                 .skipped
                 .iter()
-                .filter(|d| {
-                    d.path
-                        .as_deref()
-                        .is_some_and(|p| prefix.is_empty() || p.starts_with(&prefix))
-                })
+                .filter(|d| d.path.as_deref().is_some_and(within))
                 .collect();
             if !missing.is_empty() {
                 item.complete = false;

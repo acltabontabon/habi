@@ -11,6 +11,8 @@ untrusted too, even though it renders Habi's own UI.
 - Verification checks are listed, never run. Neither the app nor the CLI has a way to start one.
   Results recorded by earlier versions stay visible.
 - MCP servers are never launched or contacted by Habi. "Configured" means an entry exists.
+- A tool a library ships is never run by Habi, never installed into a project, and never put
+  on PATH by changing PATH or a shell's files.
 
 ## Git
 
@@ -89,7 +91,8 @@ and it is what makes authentication work without Habi handling secrets.
   writing it; a journal that cannot be saved rolls the operation back.
 - `.habi/lock.json` is untrusted too: a skill's entries may only name files under
   `.agents/skills/` or `.claude/skills/`, an agent's exactly one `.md` file directly in
-  `.claude/agents/`, `.cursor/agents/` or `.junie/agents/`, and the rest sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
+  `.claude/agents/`, `.cursor/agents/` or `.junie/agents/`, a tool's files under
+  `.habi/tools/` and one plainly named file in `.local/bin/`, and the rest sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
   and MCP entries in each client's own configuration file. Anything else makes Habi refuse the lock file instead of deleting files.
 - Managed-section bodies may not contain Habi markers, and every write is re-parsed to confirm
   exactly one well-formed section results.
@@ -135,7 +138,8 @@ and it is what makes authentication work without Habi handling secrets.
   secret scan, isolated branch, explicit push.
 - Installing on this machine uses the same planner with the home folder as its root: it writes
   only skill folders under `~/.claude/skills` and `~/.agents/skills`, agent files in
-  `~/.claude/agents`, `~/.cursor/agents` and `~/.junie/agents`, and its record,
+  `~/.claude/agents`, `~/.cursor/agents` and `~/.junie/agents`, a library tool's files under
+  `~/.habi/tools/<name>` with its command in `~/.local/bin`, and its record,
   `~/.habi/lock.json`; it never writes instructions or MCP configuration there, never through
   a symbolic link, and never over a folder it did not install.
 
@@ -280,6 +284,17 @@ re-creation of deleted files. All were fixed, with regression tests.
 
 By design, or not solved yet:
 
+- **A library tool is ordinary code once you run it.** Habi never runs it, but it puts the
+  command where you, a skill or an agent will, with your rights. That is why it is always a
+  caution, why every file is shown, and why it is asked about again when any file changes.
+  The scan of its files sees only patterns it knows. The runtime a tool states is looked up on
+  PATH, and its version is not checked. Which of two same-named commands runs is decided by
+  the order of your PATH; Habi says when the name is already taken and does not reorder it.
+- **A tool is placed only by the person, on their own machine.** A project's lock file that
+  lists a tool is refused, so a commit cannot place or remove a command. A tool may not be
+  named after a program Habi itself starts (`git`, `ssh`, `gh`, `glab`, a shell), or Habi
+  would run a library's code. Removing a tool also deletes what running it left in its own
+  folder under `~/.habi/tools/`, shown in the review like any other deletion.
 - **An older Habi cannot read a lock file that lists an agent.** The file is marked as a newer
   format, but an older version stops at the kind it does not know and says the file is not valid.
   Everyone who shares the project needs a version that knows agents.
