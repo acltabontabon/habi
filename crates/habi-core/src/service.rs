@@ -520,7 +520,10 @@ fn provenance_of(source: &Source, item: &LibraryItem) -> crate::install::lock::P
             .and_then(|e| e.review.as_ref())
             .map(|r| r.revision.clone()),
         picked: entry.is_some_and(|e| e.picks.iter().any(|p| p.skill == item.path)),
-        license: item.license.clone(),
+        license: item
+            .license
+            .clone()
+            .or_else(|| item.license_file.as_ref().map(|file| format!("see {file}"))),
         claimed_origin: item.based_on.clone(),
     }
 }
@@ -571,8 +574,19 @@ impl Habi {
         self
     }
 
+    /// Opens Habi where the environment says: `HABI_HOME` for its own data,
+    /// `HABI_USER_HOME` for the home folder (see `with_env_home`).
     pub fn from_env() -> Result<Habi> {
-        Habi::open(AppPaths::from_env()?)
+        Ok(Habi::open(AppPaths::from_env()?)?.with_env_home())
+    }
+
+    /// Takes `HABI_USER_HOME`, when set, as the home folder to read and
+    /// install into, so Habi can be tried without touching your own.
+    pub fn with_env_home(self) -> Habi {
+        match std::env::var_os("HABI_USER_HOME") {
+            Some(home) if !home.is_empty() => self.with_user_home(home.into()),
+            _ => self,
+        }
     }
 
     pub fn sources(&self) -> &Sources {

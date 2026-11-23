@@ -542,6 +542,21 @@ pub async fn add_source(state: State<'_, AppState>, source: NewSource) -> CmdRes
     blocking(habi, move |h| h.sources().add(&source)).await
 }
 
+/// What a pasted address names. A page of a repository on the web asks the
+/// remote which of its words are the branch or tag.
+#[tauri::command]
+pub async fn read_address(
+    state: State<'_, AppState>,
+    input: String,
+) -> CmdResult<habi_core::source::Address> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.sources()
+            .read_address(&input, &habi_core::cancel::CancelToken::new())
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn remove_source(state: State<'_, AppState>, source_id: String) -> CmdResult<()> {
     let habi = state.habi()?;

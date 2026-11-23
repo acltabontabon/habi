@@ -67,6 +67,15 @@ beforeEach(() => {
     )
       return [];
     if (cmd === "log_ui_error" || cmd === "cancel_job") return null;
+    // An address that is already a repository reads as itself.
+    if (cmd === "read_address")
+      return {
+        location: args.input,
+        tracked: { kind: "default" },
+        subdir: null,
+        focus: null,
+        alternative: null,
+      };
     throw { code: "notFound", message: `no mock for ${cmd}` };
   });
 });
@@ -679,6 +688,68 @@ describe("connecting a library", () => {
     view.unmount();
     await waitFor(() => expect(handlers.remove_source).toHaveBeenCalledWith({ sourceId: "s1" }));
     expect(onConnected).not.toHaveBeenCalled();
+  });
+
+  it("connects the repository, branch and folder a web address shows", async () => {
+    const source = { id: "s1", name: "skills" } as Source;
+    const add = vi.fn(() => source);
+    handlers.add_source = add;
+    handlers.read_address = () => ({
+      location: "https://github.com/acme/skills",
+      tracked: { kind: "branch", name: "next" },
+      subdir: "engineering",
+      focus: null,
+      alternative: "git@github.com:acme/skills.git",
+    });
+    handlers.refresh_source = () => ({ source, changed: true });
+    handlers.library = () => ({ items: [] });
+    wrap(<ConnectLibrary onConnected={vi.fn()} />);
+    await userEvent.type(
+      screen.getByLabelText("Repository URL"),
+      "https://github.com/acme/skills/tree/next/engineering",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    expect(add.mock.calls[0]).toEqual([
+      {
+        source: {
+          name: "skills",
+          location: "https://github.com/acme/skills",
+          subdir: "engineering",
+          tracked: { kind: "branch", name: "next" },
+        },
+      },
+    ]);
+  });
+
+  it("offers SSH when https is refused, and leaves the refused library behind", async () => {
+    const add = vi.fn(({ source }: { source: { location: string } }) => ({
+      id: source.location.startsWith("git@") ? "s2" : "s1",
+      name: "skills",
+    }));
+    handlers.add_source = add as unknown as Handler;
+    handlers.read_address = ({ input }) => ({
+      location: input === "acme/skills" ? "https://github.com/acme/skills" : input,
+      tracked: { kind: "default" },
+      subdir: null,
+      focus: null,
+      alternative:
+        input === "acme/skills" ? "git@github.com:acme/skills.git" : "https://github.com/acme/skills",
+    });
+    handlers.refresh_source = ({ sourceId }) => {
+      if (sourceId === "s1") throw { code: "gitNotFound", message: "repository not found" };
+      return { source: { id: "s2", name: "skills" }, changed: true };
+    };
+    handlers.library = () => ({ items: [] });
+    handlers.remove_source = vi.fn(() => null);
+    const onConnected = vi.fn();
+    wrap(<ConnectLibrary onConnected={onConnected} />);
+    await userEvent.type(screen.getByLabelText("Repository URL"), "acme/skills");
+    await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Try over SSH" }));
+    await waitFor(() => expect(onConnected).toHaveBeenCalled());
+    expect(handlers.remove_source).toHaveBeenCalledWith({ sourceId: "s1" });
+    expect(add.mock.calls[1]?.[0].source.location).toBe("git@github.com:acme/skills.git");
   });
 
   it("keeps a library that was fetched", async () => {

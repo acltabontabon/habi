@@ -513,6 +513,10 @@ function SkillTree({ root, skills }: { root: string; skills: ImportCandidate[] |
   );
 }
 
+/** Refused in a way SSH might not be: a private repository answers "not found" over https. */
+const refusedOverHttps = (error: unknown) =>
+  error instanceof HabiError && (error.code === "gitAuthentication" || error.code === "gitNotFound");
+
 const isLocalPath = (location: string) => location.trim().startsWith("/") || location.trim().startsWith("~");
 
 export function ConnectLibrary({
@@ -542,6 +546,8 @@ export function ConnectLibrary({
   const [job, setJob] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  // The same repository over SSH, to offer when https is refused.
+  const [overSsh, setOverSsh] = useState<string | null>(null);
 
   // Leaving cancels a running fetch and unregisters a library that was
   // never fetched, so a failed or abandoned connect leaves nothing behind.
@@ -617,12 +623,25 @@ export function ConnectLibrary({
     }
   };
 
-  const submit = async () => {
+  const submit = async (retryAt?: string) => {
     setError(null);
     setBusy(true);
     try {
-      let source = registered;
+      let source = retryAt ? null : registered;
+      if (retryAt && registered) {
+        // The first address was refused: what it registered goes with it.
+        setRegistered(null);
+        await api.removeSource(registered.id);
+      }
       if (!source) {
+        const typed = (retryAt ?? location).trim();
+        // `owner/repo` and the address of a page on GitHub or GitLab are read
+        // into the repository, and the branch and folder that page shows.
+        const address = mode === "git" && !isLocalPath(typed) ? await api.readAddress(typed) : null;
+        if (address) {
+          setLocation(address.location);
+          setOverSsh(address.alternative?.startsWith("git@") ? address.alternative : null);
+        }
         const tracked: TrackedRef =
           trackKind === "default"
             ? { kind: "default" }
@@ -630,10 +649,10 @@ export function ConnectLibrary({
               ? { kind: "latestRelease" }
               : { kind: trackKind, name: refName.trim() };
         source = await api.addSource({
-          name: shownName.trim(),
-          location: location.trim(),
-          subdir: subdir.trim() || null,
-          tracked,
+          name: nameEdited ? name.trim() : nameFromLocation(address?.location ?? typed).trim(),
+          location: address?.location ?? typed,
+          subdir: subdir.trim() || address?.subdir || null,
+          tracked: trackKind === "default" && address ? address.tracked : tracked,
         });
         if (role === "community") source = await api.setSourceRole(source.id, "community");
         setRegistered(source);
@@ -831,6 +850,13 @@ export function ConnectLibrary({
         <ErrorNotice
           error={error}
           title={registered ? "The library could not be fetched" : "The library could not be connected"}
+          action={
+            overSsh && refusedOverHttps(error) ? (
+              <Button variant="quiet" onClick={() => void submit(overSsh)} disabled={busy}>
+                Try over SSH
+              </Button>
+            ) : undefined
+          }
         />
       ) : null}
       {cancelled ? <p className="muted">Fetching was cancelled. Nothing was downloaded.</p> : null}

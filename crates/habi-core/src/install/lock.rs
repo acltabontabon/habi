@@ -119,7 +119,8 @@ pub struct Provenance {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     #[ts(optional, as = "Option<bool>")]
     pub picked: bool,
-    /// The licence its author declares. Never an interpretation.
+    /// The licence its author declares, or where the terms are when only a
+    /// licence file says. Never an interpretation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub license: Option<String>,
@@ -179,10 +180,12 @@ impl Provenance {
                 None => "not inspected by Habi or your team".to_string(),
             });
         }
-        parts.push(match &self.license {
-            Some(l) => format!("licence: {l}"),
-            None => "no licence stated".to_string(),
-        });
+        match &self.license {
+            Some(l) => parts.push(format!("licence: {l}")),
+            // Your own work, or your team's: whose terms it is under is not in question.
+            None if matches!(self.curation, Curation::Team | Curation::Personal) => {}
+            None => parts.push("no licence stated".to_string()),
+        }
         if let Some(origin) = &self.claimed_origin {
             parts.push(format!("says it is based on {origin} (not checked)"));
         }

@@ -164,6 +164,9 @@ impl Bridge {
                 None => Value::Null,
             }),
             "add_source" => out(h.sources().add(&arg(a, "source")?)?),
+            "read_address" => out(h
+                .sources()
+                .read_address(&arg::<String>(a, "input")?, &CancelToken::new())?),
             "remove_source" => out(h.sources().remove(&s("sourceId")?)?),
             "set_source_role" => out(h.sources().set_role(&s("sourceId")?, arg(a, "role")?)?),
             "refresh_source" => out(h.sources().refresh(&s("sourceId")?, cancel)?),
@@ -447,11 +450,6 @@ fn handle(bridge: &Bridge, mut stream: TcpStream) {
 fn main() {
     let port = std::env::var("HABI_BRIDGE_PORT").unwrap_or_else(|_| "1430".into());
     let habi = Habi::from_env().expect("could not open Habi's data directory");
-    // HABI_USER_HOME stands in for the home folder whose skill folders are read.
-    let habi = match std::env::var_os("HABI_USER_HOME") {
-        Some(home) => habi.with_user_home(home.into()),
-        None => habi,
-    };
     println!(
         "Habi development bridge on http://127.0.0.1:{port} — data in {}",
         habi.paths.root.display()

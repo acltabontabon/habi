@@ -6,6 +6,7 @@
  * module only moves data.
  */
 import { invoke } from "@tauri-apps/api/core";
+import type { Address } from "../bindings/Address";
 import type { AppInfo } from "../bindings/AppInfo";
 import type { CatalogEntry } from "../bindings/CatalogEntry";
 import type { CatalogFit } from "../bindings/CatalogFit";
@@ -161,6 +162,7 @@ export const api = {
     call<CatalogFit[]>("catalog_fits", { projectId, jobId: jobId ?? null }),
   pickLibraryFolder: () => call<string | null>("pick_library_folder"),
   addSource: (source: NewSource) => call<Source>("add_source", { source }),
+  readAddress: (input: string) => call<Address>("read_address", { input }),
   removeSource: (sourceId: string) => call<void>("remove_source", { sourceId }),
   setSourceRole: (sourceId: string, role: SourceRole) => call<Source>("set_source_role", { sourceId, role }),
   refreshSource: (sourceId: string, jobId?: string) =>

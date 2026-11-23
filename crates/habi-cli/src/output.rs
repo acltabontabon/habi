@@ -708,7 +708,7 @@ fn licence(item: &LibraryItem) -> String {
         (Some(declared), Some(file)) => format!("{declared} (terms: {file})"),
         (Some(declared), None) => declared.clone(),
         (None, Some(file)) => format!("not declared in SKILL.md; terms in {file}"),
-        (None, None) => "none found in the skill or its library".to_string(),
+        (None, None) => "none stated".to_string(),
     }
 }
 

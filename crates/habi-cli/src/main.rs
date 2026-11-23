@@ -264,7 +264,8 @@ enum SourceCmd {
     Add {
         /// A short name to refer to the library by (e.g. Team).
         name: String,
-        /// Git URL (https/ssh) or a folder on this machine (relative paths are fine).
+        /// Git URL (https/ssh), `owner/repo` on GitHub, the web address of a branch or folder
+        /// on GitHub or GitLab, or a folder on this machine (relative paths are fine).
         location: String,
         /// Only use this folder inside the repository.
         #[arg(long)]
@@ -1445,15 +1446,23 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
             team,
             community: _,
         } => {
+            // A folder here wins: `team/skills` is `owner/repo` on GitHub only
+            // when there is no such folder.
+            let typed = match local_location(&location) {
+                Ok(found) => found,
+                Err(_) if habi_core::source::parse_address(&location).is_ok() => location,
+                Err(e) => return Err(e),
+            };
+            let address = habi.sources().read_address(&typed, &ctx.cancel)?;
             let tracked = match (branch, tag) {
                 (Some(b), _) => TrackedRef::Branch { name: b },
                 (_, Some(t)) => TrackedRef::Tag { name: t },
-                _ => TrackedRef::Default,
+                _ => address.tracked,
             };
             let s = habi.sources().add(&NewSource {
                 name,
-                location: local_location(&location)?,
-                subdir,
+                location: address.location,
+                subdir: subdir.or(address.subdir),
                 tracked,
             })?;
             let s = if team {

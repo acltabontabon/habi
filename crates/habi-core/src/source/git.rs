@@ -147,6 +147,40 @@ fn parse_ls_remote(text: &str, source: &str) -> Option<RemoteHead> {
     })
 }
 
+/// What `ls-remote` lists of a repository: see `Git::list_refs`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RemoteRefs {
+    /// The branch `HEAD` names, when the remote says.
+    pub head: Option<String>,
+    pub branches: Vec<String>,
+    pub tags: Vec<String>,
+}
+
+fn parse_remote_refs(text: &str) -> RemoteRefs {
+    let mut refs = RemoteRefs::default();
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("ref: ") {
+            if let Some((target, "HEAD")) = rest.split_once('\t') {
+                refs.head = target.strip_prefix("refs/heads/").map(str::to_string);
+            }
+            continue;
+        }
+        let Some((_, name)) = line.split_once('\t') else {
+            continue;
+        };
+        // An annotated tag is listed twice; the peeled line names no new tag.
+        if name.ends_with("^{}") {
+            continue;
+        }
+        if let Some(branch) = name.strip_prefix("refs/heads/") {
+            refs.branches.push(branch.to_string());
+        } else if let Some(tag) = name.strip_prefix("refs/tags/") {
+            refs.tags.push(tag.to_string());
+        }
+    }
+    refs
+}
+
 /// Removes what an interrupted fetch left in a cache: `shallow.lock`, the lock
 /// on the ref it was updating (either one fails every later fetch) and its
 /// temporary packs, which nothing else removes while `gc.auto` is off. Only for
@@ -491,6 +525,27 @@ impl Git {
             .collect())
     }
 
+    /// The branches and tags a remote has and the branch its `HEAD` names,
+    /// without downloading anything. Bounded like `list_tags`.
+    pub fn list_refs(&self, url: &str, cancel: &CancelToken) -> Result<RemoteRefs> {
+        let out = self.run_limited(
+            None,
+            &[
+                "ls-remote",
+                "--symref",
+                "--",
+                url,
+                "HEAD",
+                "refs/heads/*",
+                "refs/tags/*",
+            ],
+            Duration::from_secs(60),
+            LIST_TAGS_LIMIT,
+            cancel,
+        )?;
+        Ok(parse_remote_refs(&out.stdout_text()))
+    }
+
     pub fn rev_parse_commit(
         &self,
         git_dir: &Path,
@@ -790,6 +845,19 @@ mod tests {
 
     const SHA_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const SHA_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    #[test]
+    fn remote_refs_are_branches_tags_and_the_head_branch() {
+        let text = format!(
+            "ref: refs/heads/main\tHEAD\n{SHA_A}\tHEAD\n{SHA_A}\trefs/heads/main\n\
+             {SHA_B}\trefs/heads/feat/x\n{SHA_A}\trefs/tags/v1\n{SHA_B}\trefs/tags/v1^{{}}\n\
+             {SHA_B}\trefs/pull/1/head\n"
+        );
+        let refs = parse_remote_refs(&text);
+        assert_eq!(refs.head.as_deref(), Some("main"));
+        assert_eq!(refs.branches, ["main", "feat/x"]);
+        assert_eq!(refs.tags, ["v1"]);
+    }
 
     #[test]
     fn ls_remote_names_the_head_branch() {

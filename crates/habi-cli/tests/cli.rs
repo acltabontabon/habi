@@ -607,6 +607,30 @@ fn the_catalog_lists_every_library_without_touching_the_network() {
 }
 
 #[test]
+fn owner_and_repository_is_github_unless_it_is_a_folder_here() {
+    let env = Env::new();
+    let (out, v) = env.json(env.work.path(), &["source", "add", "Theirs", "acme/skills"]);
+    assert!(out.status.success());
+    assert_eq!(v["location"], "https://github.com/acme/skills");
+    let (out, v) = env.json(
+        env.work.path(),
+        &["source", "add", "Bare", "github.com/acme/other"],
+    );
+    assert!(out.status.success());
+    assert_eq!(v["location"], "https://github.com/acme/other");
+
+    copy_dir(&library_fixture(), &env.work.path().join("team/skills"));
+    let (out, v) = env.json(env.work.path(), &["source", "add", "Ours", "team/skills"]);
+    assert!(out.status.success());
+    let location = v["location"].as_str().unwrap();
+    assert!(!location.contains("github.com"), "{location}");
+
+    let out = env.run(env.work.path(), &["source", "add", "Gone", "nowhere"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("No folder `nowhere`"));
+}
+
+#[test]
 fn a_community_library_is_not_listed_as_a_team_requirement() {
     let env = Env::new();
     copy_dir(&library_fixture(), &env.work.path().join("lib"));
