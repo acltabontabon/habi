@@ -28,6 +28,11 @@ the lock file or data directory, minor for features, patch for fixes.
 - **More test tools are recognized.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito,
   REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact,
   WireMock and Postman collections, from manifests or their own files.
+- **Agents from a library.** A library that names an `agents_root` in `habi-library.yaml` offers its agents
+  (subagents) beside its skills. Each installs as the Markdown file it is, for Claude Code, Cursor and Junie,
+  in a project or on this machine, with the same review, updates and removal as a skill. An agent is shown
+  beside the skills it follows, and installing it offers them. Hooks, a permission mode that stops the tool
+  asking, and an MCP server of its own are cautions.
 - **Paste the address you have.** A library can be connected as `owner/repo`, as `github.com/owner/repo`, or
   by the address of a branch, folder or `SKILL.md` on GitHub or GitLab: Habi follows that branch or tag and
   reads that folder. When https is refused and the repository is also reachable over SSH, Habi offers SSH.

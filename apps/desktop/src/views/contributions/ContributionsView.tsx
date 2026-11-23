@@ -1556,7 +1556,7 @@ function StartContribution() {
             <select className="input" value={itemId} onChange={(e) => setItemId(e.target.value)}>
               <option value="">Choose…</option>
               {(library.data?.items ?? [])
-                .filter((i) => i.kind !== "instructions")
+                .filter((i) => i.kind === "skill" || i.kind === "workflow")
                 .map((i) => (
                   <option key={i.id} value={i.id}>
                     {i.title}

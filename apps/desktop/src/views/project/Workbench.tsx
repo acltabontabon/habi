@@ -247,6 +247,7 @@ export function Workbench({
             </span>
             {/* Everything here is a skill; only what changes how it reads is worth saying. */}
             {r.item.kind === "instructions" ? <span>Project instructions</span> : null}
+            {r.item.kind === "agent" ? <span>Agent</span> : null}
             {r.item.hasWorkflow ? <span>has steps</span> : null}
             {r.item.requirement === "required" ? <span>required</span> : null}
             {/* Whose rule it is, when it is not the author's. */}

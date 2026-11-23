@@ -87,7 +87,7 @@ function InstalledFor({ r }: { r: Recommendation }) {
  * for every tool that reads Agent Skills: the name and description at the start, the rest on use.
  */
 function ReachLine({ r }: { r: Recommendation }) {
-  if (r.item.kind === "instructions") return null;
+  if (r.item.kind === "instructions" || r.item.kind === "agent") return null;
   const installation = r.installation;
   const where = installation ? installedPlaces(installation.files).join(" and ") : "";
   return (
@@ -309,7 +309,11 @@ export function ItemDetailPane({
                 Edit in My skills
               </Button>
             ) : null}
-            {key && !isLocal && installedFolder && r.item.kind !== "instructions" ? (
+            {key &&
+            !isLocal &&
+            installedFolder &&
+            r.item.kind !== "instructions" &&
+            r.item.kind !== "agent" ? (
               <Button
                 icon="pencil"
                 title="Copies the installed files, with this project's edits, to My skills. It stays linked to the library."

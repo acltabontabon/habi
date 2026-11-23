@@ -222,7 +222,9 @@ export function SkillReader({
   const page = useRef<HTMLDivElement>(null);
   const skillScroll = useRef(0);
   const item = detail.data?.item;
-  const main = item?.kind === "instructions" ? (item.files[0]?.path ?? "") : "SKILL.md";
+  // Instructions and agents are one file each; a skill's main file is its SKILL.md.
+  const oneFile = item?.kind === "instructions" || item?.kind === "agent";
+  const main = oneFile ? (item?.files[0]?.path ?? "") : "SKILL.md";
   const shape = useMemo(() => (item ? packageShape(item.files, main) : null), [item, main]);
 
   // The inspector folds away after its last frame, so closing is seen.

@@ -78,6 +78,8 @@ pub enum ChangeOp {
 #[ts(export)]
 pub enum ChangeKind {
     SkillFile,
+    /// A subagent's Markdown file, in an agents folder.
+    AgentFile,
     InstructionsSection,
     ClaudeBridge,
     GeminiBridge,
@@ -1101,7 +1103,7 @@ impl<'a> Planner<'a> {
             self.lock
                 .items
                 .iter()
-                .filter(|other| other.key() != p.key() && other.kind != ItemKind::Instructions)
+                .filter(|other| other.key() != p.key() && other.kind.is_skill())
                 .find_map(|other| {
                     let in_folder = |path: &str| -> Option<String> {
                         [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
@@ -1361,6 +1363,133 @@ impl<'a> Planner<'a> {
             files,
             sections: Vec::new(),
             mcp: existing.map(|e| e.mcp.clone()).unwrap_or_default(),
+            provenance: Some(p.provenance.clone()),
+        })
+    }
+
+    /// Writes a subagent: its one Markdown file, as the library has it, into
+    /// each agents folder the selected clients read.
+    fn install_agent(
+        &mut self,
+        p: &Payload,
+        clients: &[ClientId],
+        existing: Option<&LockedItem>,
+    ) -> Result<LockedItem> {
+        let item = &p.item;
+        let refused =
+            |why: &str| HabiError::invalid(format!("`{}` cannot be installed: {why}", item.title));
+        if !item.complete {
+            return Err(refused("it was not read in full from the library"));
+        }
+        if let Some(broken) = item
+            .diagnostics
+            .iter()
+            .find(|d| d.level == DiagnosticLevel::Error)
+        {
+            return Err(refused(&broken.message));
+        }
+        let Some(file) = p.files.first() else {
+            return Err(refused("the library has no file for it"));
+        };
+        let baselines: HashMap<&str, &str> = existing
+            .map(|e| {
+                e.files
+                    .iter()
+                    .map(|f| (f.path.as_str(), f.digest.as_str()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut files = Vec::new();
+        let mut touched = BTreeSet::new();
+        for dir in layout::agent_dirs(clients) {
+            let names: Vec<&str> = dir.clients.iter().map(|c| c.label()).collect();
+            let verb = if names.len() == 1 { "reads" } else { "read" };
+            let why = format!(
+                "{} {verb} subagents from {}.",
+                names.join(" and "),
+                dir.base
+            );
+            let target = RelPath::new(&format!("{}/{}", dir.base, file.path))?.to_string();
+            touched.insert(target.clone());
+            // Another installer may have left a link here. Writing through it
+            // would change a file somewhere else.
+            let link = match self.link_target(&target) {
+                Ok(None) => None,
+                Ok(Some(to)) => Some(format!("to {to}")),
+                Err(e) => Some(format!("that Habi will not follow ({e})")),
+            };
+            if let Some(link) = link {
+                self.conflicts.push(conflict(
+                    &target,
+                    ConflictKind::SymbolicLink,
+                    &item.title,
+                    format!(
+                        "{target} is reached through a symbolic link {link}. Habi does not write through links. Remove the link, then check again."
+                    ),
+                    vec![],
+                    None,
+                ));
+                continue;
+            }
+            if let Some(owner) = self.lock.owner_of(&target).filter(|o| o.key() != p.key()) {
+                self.conflicts.push(conflict(
+                    &target,
+                    ConflictKind::PathCollision,
+                    &item.title,
+                    format!(
+                        "{target} is already installed by `{}` from {}. Remove the installed one first, or leave this one out of the install.",
+                        owner.title, owner.source.name
+                    ),
+                    vec![],
+                    None,
+                ));
+                continue;
+            }
+            if let Some(digest) = self.put_file(
+                &target,
+                &file.bytes,
+                false,
+                baselines.get(target.as_str()).copied(),
+                &item.title,
+                &dir.clients,
+                &why,
+            )? {
+                files.push(LockedFile {
+                    path: target,
+                    digest,
+                    clients: dir.clients,
+                    executable: Some(false),
+                });
+            }
+        }
+        // Copies for clients that are no longer selected.
+        if let Some(prev) = existing {
+            for f in &prev.files {
+                if touched.insert(f.path.clone()) {
+                    let why = "No longer needed for the selected clients.";
+                    if !self.delete_file(&f.path, &f.digest, &item.title, &f.clients, why)? {
+                        files.push(f.clone());
+                    }
+                }
+            }
+        }
+        for path in &touched {
+            if let Some(meta) = self.ws.meta.get_mut(path) {
+                meta.kind = Some(ChangeKind::AgentFile);
+            }
+        }
+        Ok(LockedItem {
+            source: p.source.clone(),
+            id: item.id.clone(),
+            kind: item.kind,
+            title: item.title.clone(),
+            snapshot: p.snapshot.clone(),
+            content_digest: item.content_digest.clone(),
+            installed_at: crate::time::now(),
+            clients: clients.to_vec(),
+            files,
+            sections: Vec::new(),
+            mcp: Vec::new(),
             provenance: Some(p.provenance.clone()),
         })
     }
@@ -2255,7 +2384,13 @@ fn compatible_clients(item: &LibraryItem, requested: &[ClientId]) -> (Vec<Client
             .copied()
             .filter(|c| {
                 let ok = declared.contains(c);
-                if !ok {
+                if !ok && item.kind == ItemKind::Agent {
+                    notes.push(format!(
+                        "{} does not take a subagent as a Markdown file, so `{}` is not installed for it.",
+                        c.label(),
+                        item.title
+                    ));
+                } else if !ok {
                     notes.push(format!(
                         "`{}` is not declared compatible with {}; skipped for that client.",
                         item.title,
@@ -2344,7 +2479,10 @@ fn install_in(
             ItemKind::Instructions => {
                 planner.install_instructions(p, &wanted, existing.as_ref())?
             }
-            _ => planner.install_skill(p, &wanted, existing.as_ref())?,
+            ItemKind::Agent => planner.install_agent(p, &wanted, existing.as_ref())?,
+            ItemKind::Skill | ItemKind::Workflow => {
+                planner.install_skill(p, &wanted, existing.as_ref())?
+            }
         };
         if include_mcp {
             planner.add_mcp(p, &wanted, &mut locked, None)?;
@@ -2394,15 +2532,13 @@ fn new_since(root: &Path, existing: &LockedItem, p: &Payload) -> Vec<Signal> {
     let mut folder = None;
     let mut files = Vec::new();
     for locked in &existing.files {
-        let Some((base, rel)) = [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
-            .iter()
-            .find_map(|base| {
-                let rest = locked.path.strip_prefix(&format!("{base}/"))?;
-                let (name, rel) = rest.split_once('/')?;
-                Some((format!("{base}/{name}"), rel.to_string()))
-            })
-        else {
+        let Some(managed) = layout::managed_location(existing.kind, &locked.path) else {
             continue;
+        };
+        // A skill's files are read from its folder; a subagent is its one file.
+        let (base, rel) = match existing.kind {
+            ItemKind::Agent => (managed.base.to_string(), managed.rel.to_string()),
+            _ => (managed.folder(), managed.rel.to_string()),
         };
         // One copy is enough: every client has the same files.
         if *folder.get_or_insert_with(|| base.clone()) != base {
@@ -2426,7 +2562,10 @@ fn new_since(root: &Path, existing: &LockedItem, p: &Payload) -> Vec<Signal> {
             .map_err(|e| e.to_string())?
             .ok_or_else(|| format!("{rel} is missing"))
     };
-    let (before, _) = scan_files(&files, &read);
+    let before = match (existing.kind, files.first()) {
+        (ItemKind::Agent, Some(file)) => crate::library::signals::scan_agent(file, &read),
+        _ => scan_files(&files, &read).0,
+    };
     let same_file = |signal: &str, rel: &str| signal == rel || signal.ends_with(&format!("/{rel}"));
     let changed: Vec<&PayloadFile> = p
         .files
@@ -2504,7 +2643,10 @@ fn update_in(
         let clients = existing.clients.clone();
         let mut locked = match p.item.kind {
             ItemKind::Instructions => planner.install_instructions(p, &clients, Some(&existing))?,
-            _ => planner.install_skill(p, &clients, Some(&existing))?,
+            ItemKind::Agent => planner.install_agent(p, &clients, Some(&existing))?,
+            ItemKind::Skill | ItemKind::Workflow => {
+                planner.install_skill(p, &clients, Some(&existing))?
+            }
         };
         planner.update_mcp(p, &mut locked, add_mcp)?;
         let mut new_signals = new_since(root, &existing, p);

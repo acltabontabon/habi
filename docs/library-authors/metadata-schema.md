@@ -150,6 +150,7 @@ owner: Developer Experience
 description: …
 contact: "#platform (chat channel)"
 skills_root: skills             # optional; default: find SKILL.md anywhere
+agents_root: agents             # optional; Markdown files here are agents
 instructions:                   # Markdown → managed sections in AGENTS.md
   - id: java-conventions
     title: Java conventions
@@ -163,7 +164,31 @@ instructions:                   # Markdown → managed sections in AGENTS.md
 - `habi`: schema version (required)
 - `name`, `owner`, `description`, `contact`: metadata
 - `skills_root`: subfolder to search (optional; default searches everywhere)
+- `agents_root`: folder whose Markdown files are agents (optional; without it none are read)
 - `instructions[]`: shared instructions, each with condition (same format as skills)
+
+## Agents
+
+An agent (a subagent) is one Markdown file that an agent tool hands work to. Habi reads the
+`.md` files directly inside `agents_root`, and only there: a folder called `agents` is as often
+documentation, so nothing is read as an agent unless the manifest names the folder.
+
+```markdown
+---
+name: code-reviewer
+description: Reviews a change. Use after writing code.
+---
+
+Follow the `code-review` skill, then report what you found.
+```
+
+- `name` and `description` are required. The file name must be lowercase letters, digits and
+  hyphens, because the file is installed under its own name.
+- A skill of this library that the text names is offered with the agent, and each is shown
+  beside the other.
+- `hooks`, a `permissionMode` that stops the tool asking, and an MCP server defined in
+  `mcpServers` are cautions, asked about before installing and again when the file changes.
+- The file is installed as it is. Habi does not translate it for tools with another format.
 
 ## Lineage
 

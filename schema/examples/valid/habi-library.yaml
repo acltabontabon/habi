@@ -2,6 +2,7 @@ habi: 1
 name: Platform team know-how
 owner: Developer Experience
 skills_root: skills
+agents_root: agents
 instructions:
   - id: java-conventions
     title: Java conventions

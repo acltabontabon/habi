@@ -144,6 +144,7 @@ export const kindLabel: Record<ItemKind, string> = {
   // One concept: a workflow is a skill whose steps Habi can show.
   workflow: "Skill",
   instructions: "Project instructions",
+  agent: "Agent",
 };
 
 export const clientLabel: Record<ClientId, string> = {

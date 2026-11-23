@@ -195,6 +195,7 @@ fn item_kind(k: ItemKind) -> &'static str {
         // One concept: a workflow is a skill with steps.
         ItemKind::Skill | ItemKind::Workflow => "skill",
         ItemKind::Instructions => "instructions",
+        ItemKind::Agent => "agent",
     }
 }
 

@@ -133,6 +133,7 @@ function IndexRow({
           {fits ? <span className="index-fit">fits</span> : null}
           {required ? <span>required</span> : null}
           {item.kind === "instructions" ? <span>instructions</span> : null}
+          {item.kind === "agent" ? <span>agent</span> : null}
           {item.workflow ? <span>has steps</span> : null}
           {item.metadataStatus === "declared" ? <span>rules</span> : null}
           {code > 0 ? (
@@ -395,7 +396,12 @@ function SkillHead({
   onOpenDetails,
   onFocusIndex,
   onOpenFile,
+  related,
+  onOpenItem,
 }: {
+  /** The skills an agent follows, or the agents that follow a skill. */
+  related: LibraryItem[];
+  onOpenItem: (id: string) => void;
   item: LibraryItem;
   source: Source;
   entry: CatalogEntry | undefined;
@@ -557,11 +563,17 @@ function SkillHead({
                   hint: "Your own agent folders: every project reads it",
                   onSelect: () => setOnMachine(true),
                 },
-                {
-                  label: "Edit a copy",
-                  hint: `A copy in My skills, linked to ${source.name}`,
-                  onSelect: () => addSkills({ source: "library", sourceId: source.id, preselect: item.id }),
-                },
+                // An agent is one file kept in the library; only a skill is copied to edit.
+                ...(item.kind === "agent"
+                  ? []
+                  : [
+                      {
+                        label: "Edit a copy",
+                        hint: `A copy in My skills, linked to ${source.name}`,
+                        onSelect: () =>
+                          addSkills({ source: "library", sourceId: source.id, preselect: item.id }),
+                      },
+                    ]),
               ]}
             />
           ) : null}
@@ -588,6 +600,23 @@ function SkillHead({
         </div>
       ) : null}
       <p className="skill-purpose">{summary.text}</p>
+      {related.length > 0 ? (
+        <p className="skill-related muted">
+          {item.kind === "agent"
+            ? "Follows "
+            : related.length === 1
+              ? "Followed by the agent "
+              : "Followed by the agents "}
+          {related.map((other, i) => (
+            <span key={other.id}>
+              {i > 0 ? ", " : null}
+              <button type="button" className="link-quiet" onClick={() => onOpenItem(other.id)}>
+                {other.title}
+              </button>
+            </span>
+          ))}
+        </p>
+      ) : null}
       <div className="skill-sig">
         <p className="sig mono">{signature}</p>
         <div className="sig-tools">
@@ -975,6 +1004,12 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
                 onOpenDetails={() => setDetails(true)}
                 onFocusIndex={focusIndex}
                 onOpenFile={(path) => navigate(route(selected.id, path))}
+                related={(library.data?.items ?? []).filter((other) =>
+                  selected.kind === "agent"
+                    ? selected.calls.includes(other.id)
+                    : other.kind === "agent" && other.calls.includes(selected.id),
+                )}
+                onOpenItem={(id) => navigate(route(id))}
               />
             }
           />

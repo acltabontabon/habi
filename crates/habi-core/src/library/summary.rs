@@ -2,7 +2,7 @@
 //! indexed snapshot, never typed in. Kept with the snapshot so a list of
 //! libraries does not have to read every library to describe it.
 
-use super::model::{DiagnosticLevel, ItemKind, LibraryIndex, LibraryItem};
+use super::model::{DiagnosticLevel, LibraryIndex, LibraryItem};
 use super::signals::SignalCounts;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -84,7 +84,7 @@ pub fn summarize(
             .iter()
             .filter(|f| f.path.starts_with("scripts/") || f.executable)
             .count();
-        if scripts > 0 && item.kind != ItemKind::Instructions {
+        if scripts > 0 && item.kind.is_skill() {
             summary.with_scripts += 1;
             summary.script_files += u32::try_from(scripts).unwrap_or(u32::MAX);
         }

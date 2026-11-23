@@ -16,6 +16,10 @@
       "description": "Directory (relative to the library root) to search for skills. Defaults to the whole library.",
       "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath"
     },
+    "agents_root": {
+      "description": "Directory (relative to the library root) whose Markdown files are subagents. Without it, no file is read as a subagent.",
+      "$ref": "https://raw.githubusercontent.com/acltabontabon/habi/main/schema/habi-skill.schema.json#/$defs/relativePath"
+    },
     "instructions": {
       "description": "Markdown files installed as managed sections of AGENTS.md.",
       "type": "array",

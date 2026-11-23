@@ -87,8 +87,9 @@ and it is what makes authentication work without Habi handling secrets.
   repository (with its own hooks) inside a project.
 - Apply verifies each file's digest before backing it up, and again immediately before
   writing it; a journal that cannot be saved rolls the operation back.
-- `.habi/lock.json` is untrusted too: entries may only name files under `.agents/skills/` or
-  `.claude/skills/`, sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
+- `.habi/lock.json` is untrusted too: a skill's entries may only name files under
+  `.agents/skills/` or `.claude/skills/`, an agent's exactly one `.md` file directly in
+  `.claude/agents/`, `.cursor/agents/` or `.junie/agents/`, and the rest sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
   and MCP entries in each client's own configuration file. Anything else makes Habi refuse the lock file instead of deleting files.
 - Managed-section bodies may not contain Habi markers, and every write is re-parsed to confirm
   exactly one well-formed section results.
@@ -133,7 +134,8 @@ and it is what makes authentication work without Habi handling secrets.
 - Sharing a local skill goes through the contribution pipeline unchanged: explicit file list,
   secret scan, isolated branch, explicit push.
 - Installing on this machine uses the same planner with the home folder as its root: it writes
-  only skill folders under `~/.claude/skills` and `~/.agents/skills` and its record,
+  only skill folders under `~/.claude/skills` and `~/.agents/skills`, agent files in
+  `~/.claude/agents`, `~/.cursor/agents` and `~/.junie/agents`, and its record,
   `~/.habi/lock.json`; it never writes instructions or MCP configuration there, never through
   a symbolic link, and never over a folder it did not install.
 
@@ -277,6 +279,12 @@ re-creation of deleted files. All were fixed, with regression tests.
 ## Known limitations
 
 By design, or not solved yet:
+
+- **An older Habi cannot read a lock file that lists an agent.** The file is marked as a newer
+  format, but an older version stops at the kind it does not know and says the file is not valid.
+  Everyone who shares the project needs a version that knows agents.
+- **An agent's frontmatter is read for what is documented.** `hooks`, `permissionMode` and
+  `mcpServers` are flagged. A field a tool adds later is not, until Habi learns it.
 
 - **The parsers have no sandbox.** They run in Habi's process. A memory-safety bug in tree-sitter or a
   grammar, reached by a crafted source file or script, would run with Habi's rights. Nothing from a

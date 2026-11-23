@@ -15,6 +15,15 @@ pub enum ItemKind {
     Workflow,
     /// Portable project instructions installed into AGENTS.md.
     Instructions,
+    /// A subagent: one Markdown file an agent tool delegates work to.
+    Agent,
+}
+
+impl ItemKind {
+    /// A folder with a `SKILL.md`, as opposed to the kinds that are one file.
+    pub fn is_skill(self) -> bool {
+        matches!(self, ItemKind::Skill | ItemKind::Workflow)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]

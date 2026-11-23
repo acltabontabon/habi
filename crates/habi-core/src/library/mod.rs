@@ -94,11 +94,33 @@ fn called_names(body: &str) -> Vec<String> {
     names
 }
 
+/// The skills of this library that a subagent's instructions name, by id.
+/// A subagent says which skills it follows in plain words (`act-code-review`),
+/// so any whole name counts, unlike a skill's `plugin:skill` calls.
+fn named_skills(body: &str, skills: &HashMap<String, String>) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    for word in body.split(|c: char| !(c.is_ascii_alphanumeric() || c == '-')) {
+        let name = word.trim_matches('-');
+        if let Some(id) = skills.get(name)
+            && !ids.contains(id)
+        {
+            ids.push(id.clone());
+        }
+    }
+    if ids.len() > MAX_CALLS {
+        ids.clear();
+    }
+    ids
+}
+
 /// Turns called names into sibling ids: skills in the same folder as the
 /// caller (one plugin, or a library's `skills/`), by their SKILL.md name.
 fn resolve_calls(items: &mut [LibraryItem], called: &HashMap<String, Vec<String>>) {
     let mut siblings: HashMap<String, HashMap<String, String>> = HashMap::new();
-    for i in items.iter().filter(|i| i.kind != ItemKind::Instructions) {
+    for i in items
+        .iter()
+        .filter(|i| !matches!(i.kind, ItemKind::Instructions | ItemKind::Agent))
+    {
         siblings
             .entry(dir_of(&i.path).to_string())
             .or_default()
@@ -543,6 +565,7 @@ pub fn build_index(
 
     // Library manifest.
     let mut skills_root = String::new();
+    let mut agents_root: Option<String> = None;
     let mut manifest_instructions: Vec<Value> = Vec::new();
     if let Some(manifest_path) = MANIFEST_FILES.iter().find(|m| by_path.contains_key(**m)) {
         match read_text(manifest_path).and_then(|t| parse_yaml(&t)) {
@@ -555,6 +578,14 @@ pub fn build_index(
                     if let Some(root) = str_field(&value, "skills_root") {
                         match crate::paths::RelPath::new(&root) {
                             Ok(r) => skills_root = r.to_string(),
+                            Err(e) => index
+                                .diagnostics
+                                .push(Diagnostic::error(e.to_string(), Some(manifest_path))),
+                        }
+                    }
+                    if let Some(root) = str_field(&value, "agents_root") {
+                        match crate::paths::RelPath::new(&root) {
+                            Ok(r) => agents_root = Some(r.to_string()),
                             Err(e) => index
                                 .diagnostics
                                 .push(Diagnostic::error(e.to_string(), Some(manifest_path))),
@@ -843,6 +874,143 @@ pub fn build_index(
 
     let mut seen_ids = settle_ids(&mut index.items, source_id);
 
+    // Subagents: the Markdown files directly in the folder the manifest names.
+    // Only there, and only when it names one: a folder called `agents` is as
+    // often documentation.
+    let skill_names: HashMap<String, String> = index
+        .items
+        .iter()
+        .map(|i| (i.name.clone(), i.id.clone()))
+        .collect();
+    let mut agent_files: Vec<&SnapshotFile> = agents_root
+        .iter()
+        .flat_map(|root| {
+            files
+                .iter()
+                .filter(move |f| dir_of(&f.path) == root && f.path.ends_with(".md"))
+        })
+        .collect();
+    agent_files.sort_by(|a, b| a.path.cmp(&b.path));
+    for file in agent_files {
+        let file_name = file
+            .path
+            .rsplit('/')
+            .next()
+            .unwrap_or(&file.path)
+            .to_string();
+        let stem = file_name.strip_suffix(".md").unwrap_or(&file_name);
+        let text = read_text(&file.path);
+        let parsed = text
+            .as_deref()
+            .map_err(String::clone)
+            .and_then(parse_frontmatter);
+        let (front, body) = match parsed {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                index.diagnostics.push(Diagnostic::warning(
+                    format!("`{}` is not read as a subagent: {e}", file.path),
+                    Some(&file.path),
+                ));
+                continue;
+            }
+        };
+        let (Some(name), Some(description)) = (front.name.clone(), front.description.clone())
+        else {
+            index.diagnostics.push(Diagnostic::warning(
+                format!(
+                    "`{}` is not read as a subagent: its frontmatter needs a name and a description",
+                    file.path
+                ),
+                Some(&file.path),
+            ));
+            continue;
+        };
+        let mut diags = Vec::new();
+        if let Err(e) = check_skill_name(&name) {
+            diags.push(Diagnostic::error(format!("its name {e}"), Some(&file.path)));
+        }
+        // Installed under the file's own name, which is what tells two apart on disk.
+        if check_skill_name(stem).is_err() {
+            diags.push(Diagnostic::error(
+                format!(
+                    "its file name `{file_name}` must be lowercase letters, digits and hyphens"
+                ),
+                Some(&file.path),
+            ));
+        } else if stem != name {
+            diags.push(Diagnostic::warning(
+                format!("it is named `{name}` in a file called `{file_name}`"),
+                Some(&file.path),
+            ));
+        }
+        // A skill of the same name keeps the id: it was here first, and is what `name` finds.
+        let id = if seen_ids.contains_key(&name) {
+            format!("{name}-agent")
+        } else {
+            name.clone()
+        };
+        if seen_ids.contains_key(&id) {
+            index.diagnostics.push(Diagnostic::error(
+                format!("the subagent id `{id}` is already used"),
+                Some(&file.path),
+            ));
+            continue;
+        }
+        seen_ids.insert(id.clone(), file.path.clone());
+        let item_files = vec![ItemFile {
+            path: file_name.clone(),
+            digest: file.digest.clone(),
+            size: file.size,
+            executable: file.executable,
+        }];
+        let signals = item_files.first().map_or_else(Vec::new, |f| {
+            signals::scan_agent(f, &|_| read(&file.path))
+                .into_iter()
+                .map(|s| signals::Signal {
+                    path: file.path.clone(),
+                    ..s
+                })
+                .collect()
+        });
+        let content_digest = item_digest(&item_files);
+        index.items.push(LibraryItem {
+            key: format!("{source_id}/{id}"),
+            source_id: source_id.to_string(),
+            id,
+            kind: ItemKind::Agent,
+            title: humanize(&name),
+            calls: named_skills(body, &skill_names),
+            name,
+            description,
+            path: file.path.clone(),
+            owner: None,
+            based_on: provenance::read(&front.raw),
+            license_file: nearest_license(dir_of(&file.path), &license_files),
+            license_restricted: front.license.as_deref().is_some_and(is_restricted_license),
+            license: front.license,
+            compatibility: front.compatibility,
+            requirement: Requirement::default(),
+            priority: Metadata::default().priority,
+            scope: Metadata::default().scope,
+            applies_when: None,
+            excludes: None,
+            tools: Vec::new(),
+            mcp: Vec::new(),
+            clients: Some(crate::clients::layout::AGENT_CLIENTS.to_vec()),
+            workflow: None,
+            bindings: Vec::new(),
+            checks: Vec::new(),
+            evidence: Vec::new(),
+            examples: Vec::new(),
+            files: item_files,
+            content_digest,
+            metadata_status: MetadataStatus::Undeclared,
+            diagnostics: diags,
+            signals,
+            complete: true,
+        });
+    }
+
     // Instructions declared in the manifest.
     for entry in manifest_instructions {
         let mut diags = Vec::new();
@@ -933,7 +1101,7 @@ pub fn build_index(
     // Name collisions matter at install time (same directory name).
     let mut by_name: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     for item in &index.items {
-        if item.kind != ItemKind::Instructions {
+        if !matches!(item.kind, ItemKind::Instructions | ItemKind::Agent) {
             by_name.entry(&item.name).or_default().push(&item.path);
         }
     }

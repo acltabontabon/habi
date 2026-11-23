@@ -276,9 +276,20 @@ pub fn summarize(item: &LibraryItem, source_name: &str, snapshot: &str) -> ItemS
 /// Mirrors the refusals in install planning, so an item that cannot be
 /// installed is never offered for installation.
 pub fn installable(item: &LibraryItem) -> bool {
+    let broken = || {
+        item.diagnostics
+            .iter()
+            .any(|d| d.level == crate::library::model::DiagnosticLevel::Error)
+    };
     item.complete
-        && (item.kind == ItemKind::Instructions
-            || crate::library::check_skill_name(&item.name).is_ok())
+        && match item.kind {
+            ItemKind::Instructions => true,
+            // A subagent is refused for any error in its one file.
+            ItemKind::Agent => !broken(),
+            ItemKind::Skill | ItemKind::Workflow => {
+                crate::library::check_skill_name(&item.name).is_ok()
+            }
+        }
 }
 
 /// Whether the tools a skill needs are available here, without executing
@@ -822,7 +833,7 @@ pub fn recommend(
                 },
                 _ => NextAction::None,
             };
-            let unmanaged_copies = if item.kind == ItemKind::Instructions {
+            let unmanaged_copies = if !item.kind.is_skill() {
                 Vec::new()
             } else {
                 folders.unmanaged_copies(root, &item.name, lock)

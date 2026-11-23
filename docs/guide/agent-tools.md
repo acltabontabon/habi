@@ -43,6 +43,25 @@ them, so existing skills are found.
 - **Claude Code + Cursor/Copilot/OpenCode only** → `.claude/skills/<name>/`
 - **Claude Code + Codex/Gemini/Junie** → Both folders (two copies)
 
+## Where agents go
+
+An agent (a subagent) is one Markdown file. Habi installs it, as the library has it, for the
+tools that take it that way:
+
+| Folder | Readers |
+|--------|---------|
+| `.claude/agents/` | Claude Code, Cursor |
+| `.cursor/agents/` | Cursor |
+| `.junie/agents/` | Junie |
+
+- **With Claude Code** → `.claude/agents/<file>.md`, which also serves Cursor
+- **Cursor without Claude Code** → `.cursor/agents/<file>.md`
+- **Junie** → `.junie/agents/<file>.md`
+
+Codex and OpenCode define agents in formats of their own, and the other tools have none, so
+an agent is not installed for them and the review says so. These are the only folders owned by
+a single tool that Habi writes to.
+
 ## Instructions
 
 Go into a managed section of `AGENTS.md`. Most tools read it directly. Claude Code and Gemini
@@ -73,6 +92,7 @@ tests server startup or authorization.
 ## Install on your machine
 
 Install skills into `~/.claude/skills` or `~/.agents/skills` to use them in *all* your projects.
+Agents go into `~/.claude/agents`, `~/.cursor/agents` or `~/.junie/agents`.
 Same folder rules apply. Instructions & MCP servers aren't installed this way.
 
 **Key details:**
@@ -136,7 +156,8 @@ Habi never writes through links or creates them. Links inside the project are re
 **Not supported:**
 - Windsurf (Devin Desktop) — paths documented but MCP config unconfirmed
 - Antigravity CLI — paths only in third-party posts
-- Tool extensions, plugins, subagents, hooks, or settings beyond MCP
+- Tool extensions, plugins, hooks, or settings beyond MCP
+- Agents for Codex and OpenCode, whose formats differ from the Markdown file a library ships
 
 ## Verification
 

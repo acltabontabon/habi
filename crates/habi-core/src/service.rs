@@ -1147,9 +1147,10 @@ impl Habi {
             .find(|i| i.id == item_id)
             .cloned()
             .ok_or_else(|| HabiError::NotFound(format!("item `{item_id}`")))?;
-        let main = match item.kind {
-            crate::library::model::ItemKind::Instructions => item.path.clone(),
-            _ => join(&item.path, crate::library::SKILL_FILE),
+        let main = if item.kind.is_skill() {
+            join(&item.path, crate::library::SKILL_FILE)
+        } else {
+            item.path.clone()
         };
         let bytes = self
             .read_library_file(source_id, &index.snapshot, &main)
@@ -1178,9 +1179,10 @@ impl Habi {
         if !item.files.iter().any(|f| f.path == rel) {
             return Err(HabiError::NotFound(format!("{rel} in `{}`", item.title)));
         }
-        let library_path = match item.kind {
-            crate::library::model::ItemKind::Instructions => item.path.clone(),
-            _ => join(&item.path, &rel),
+        let library_path = if item.kind.is_skill() {
+            join(&item.path, &rel)
+        } else {
+            item.path.clone()
         };
         let bytes = self.read_library_file(source_id, &index.snapshot, &library_path)?;
         let binary = !crate::fsutil::is_probably_text(&bytes);
@@ -1202,9 +1204,10 @@ impl Habi {
     ) -> Result<Payload> {
         let mut files = Vec::new();
         for f in &item.files {
-            let library_path = match item.kind {
-                crate::library::model::ItemKind::Instructions => item.path.clone(),
-                _ => join(&item.path, &f.path),
+            let library_path = if item.kind.is_skill() {
+                join(&item.path, &f.path)
+            } else {
+                item.path.clone()
             };
             files.push(plan::PayloadFile {
                 path: f.path.clone(),
@@ -1989,11 +1992,7 @@ impl Habi {
                 let index = self.sources.index(&source.id)?;
                 let upstream = self.upstream_base(source);
                 let mut packages = Vec::new();
-                for item in index
-                    .items
-                    .iter()
-                    .filter(|i| i.kind != crate::library::model::ItemKind::Instructions)
-                {
+                for item in index.items.iter().filter(|i| i.kind.is_skill()) {
                     cancel.check()?;
                     let mut tree = Tree::default();
                     for f in &item.files {

@@ -277,7 +277,11 @@ const KEEP_DIRS: &[&str] = &[
     ".agents/skills",
     ".claude",
     ".claude/skills",
+    ".claude/agents",
     ".cursor",
+    ".cursor/agents",
+    ".junie",
+    ".junie/agents",
     ".codex",
 ];
 

@@ -49,6 +49,7 @@ const opGlyph: Record<ChangeOp, string> = { create: "+", modify: "~", delete: "â
 
 const kindTitle: Record<ChangeKind, string> = {
   skillFile: "Skill files",
+  agentFile: "Agents",
   instructionsSection: "Instructions",
   claudeBridge: "Claude Code bridge",
   geminiBridge: "Gemini CLI bridge",
@@ -97,12 +98,12 @@ export function groupChanges(changes: FileChange[]): ChangeGroup[] {
     return {
       key,
       title:
-        head.kind === "skillFile" && head.clients.length > 0
+        (head.kind === "skillFile" || head.kind === "agentFile") && head.clients.length > 0
           ? head.clients.map((c) => clientLabel[c]).join(", ")
           : kindTitle[head.kind],
       dir: common.length > 0 ? `${common.join("/")}/` : "",
       why: whys.size === 1 ? ([...whys][0] ?? null) : null,
-      explain: head.kind !== "skillFile" && head.kind !== "lockFile",
+      explain: head.kind !== "skillFile" && head.kind !== "agentFile" && head.kind !== "lockFile",
       rows,
     };
   });
@@ -126,6 +127,7 @@ function folderPurpose(dir: string): string | null {
 }
 
 function filePurpose(change: FileChange, name: string): string | null {
+  if (change.kind === "agentFile") return "The agent itself: what the tool hands work to.";
   if (change.kind !== "skillFile") return change.explanation || null;
   if (name === "SKILL.md") return "The skill itself: what the agent reads and follows.";
   if (name === "habi.yaml") return "Habi's notes on the skill: when it applies and what it needs.";
