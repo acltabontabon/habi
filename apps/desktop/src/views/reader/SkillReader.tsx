@@ -122,7 +122,7 @@ export function FileReader({
     queryFn: () => api.itemFile(sourceId, itemId, path),
   });
   if (file.isPending) return <Working>Reading {path}…</Working>;
-  if (file.isError) return <ErrorNotice error={file.error} />;
+  if (file.isError) return <ErrorNotice title="The file could not be read" error={file.error} />;
   const text = file.data.text;
   if (file.data.binary || text === null) {
     return <p className="muted file-reader-note">Not a text file · {size(file.data.size)}</p>;
@@ -296,7 +296,7 @@ export function SkillReader({
   }, [file, open, openFile, setOpen]);
 
   if (detail.isPending) return <Working stage>Reading the skill…</Working>;
-  if (detail.isError) return <ErrorNotice error={detail.error} />;
+  if (detail.isError) return <ErrorNotice title="The skill could not be read" error={detail.error} />;
   if (!item || !shape) return null;
   const { body, source } = detail.data;
   const paths = item.files.map((f) => f.path);

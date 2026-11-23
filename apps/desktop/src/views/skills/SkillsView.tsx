@@ -332,6 +332,7 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
   if (skills.isError) {
     return (
       <ErrorNotice
+        title="Your skills could not be read"
         error={skills.error}
         action={
           <Button size="sm" onClick={() => void skills.refetch()}>
@@ -503,7 +504,7 @@ export function SkillsView({ skillId, tab }: { skillId?: string; tab?: "collecti
           </Button>
         </div>
       </header>
-      {error ? <ErrorNotice error={error} /> : null}
+      {error ? <ErrorNotice title="That did not go through" error={error} /> : null}
 
       {live.length === 0 ? (
         <SkillsEmpty />

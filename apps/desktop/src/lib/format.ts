@@ -1,4 +1,5 @@
 /** Plain-language labels and small formatting helpers. */
+
 import type { Applicability } from "../bindings/Applicability";
 import type { CheckCoverage } from "../bindings/CheckCoverage";
 import type { CheckStatus } from "../bindings/CheckStatus";
@@ -12,6 +13,7 @@ import type { PrerequisiteStatus } from "../bindings/PrerequisiteStatus";
 import type { PruneReport } from "../bindings/PruneReport";
 import type { ReadinessState } from "../bindings/ReadinessState";
 import type { Source } from "../bindings/Source";
+import type { SourceRole } from "../bindings/SourceRole";
 
 export type Tone = "ok" | "unknown" | "warn" | "danger" | "muted" | "thread";
 
@@ -137,6 +139,18 @@ export const groupHint: Record<Group, string> = {
   available:
     "No rules for when they apply, and nothing their descriptions name was found here — use them deliberately.",
   notApplicable: "Conditions do not hold, or an exclusion applies.",
+};
+
+/**
+ * Whose library it is, in the one pair of words used everywhere. It is the
+ * person's own word for it: Habi never checks it against the address.
+ */
+export const roleLabel: Record<SourceRole, string> = { team: "Team", community: "Community" };
+
+/** What each means, said once and the same wherever it is explained. */
+export const roleGist: Record<SourceRole, string> = {
+  team: "You or your team review what goes in, and it can require skills.",
+  community: "Published by others, and not reviewed by your team.",
 };
 
 export const kindLabel: Record<ItemKind, string> = {

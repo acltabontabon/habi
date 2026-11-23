@@ -391,7 +391,8 @@ describe("global shortcuts", () => {
     await act(async () => {
       fail();
     });
-    expect(await screen.findByText("disk full")).toBeInTheDocument();
+    // The toast says what was being done, not only what went wrong.
+    expect(await screen.findByText(/^The skill could not be created: disk full/)).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "n", metaKey: true });
     expect(handlers.create_skill).toHaveBeenCalledTimes(2);
   });

@@ -977,7 +977,9 @@ export function Materials({
   const errorNotice = error ? (
     <ErrorNotice
       error={error}
-      title={error instanceof HabiError && error.code === "conflict" ? "Not changed" : undefined}
+      title={
+        error instanceof HabiError && error.code === "conflict" ? "Not changed" : "That did not go through"
+      }
     />
   ) : null;
 

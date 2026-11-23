@@ -702,6 +702,7 @@ function Editor({ id }: { id: string }) {
       <div className="page">
         <BackLink fallback={{ name: "contributions" }} fallbackLabel="Contributions" />
         <ErrorNotice
+          title="The contribution could not be read"
           error={contribution.error}
           action={
             <Button size="sm" onClick={() => void contribution.refetch()}>
@@ -937,7 +938,7 @@ function EditorBody({ id, c }: { id: string; c: Contribution }) {
         </p>
       </header>
 
-      {error ? <ErrorNotice error={error} /> : null}
+      {error ? <ErrorNotice title="That did not go through" error={error} /> : null}
       {result ? <Notice tone="ok">{result}</Notice> : null}
       {attention?.kind === "remoteMoved" && editable ? (
         <Notice
@@ -1475,7 +1476,7 @@ function StartContribution() {
   }
   return (
     <div className="start-contribution">
-      {error ? <ErrorNotice error={error} /> : null}
+      {error ? <ErrorNotice title="The contribution could not be started" error={error} /> : null}
       <fieldset className="field">
         <legend className="field-label">Start from</legend>
         <div className="start-from">
@@ -1679,8 +1680,7 @@ export function ContributionsView({ contributionId }: { contributionId?: string 
   return (
     <div className="page narrow sharing">
       <header className="sharing-head">
-        <p className="kicker">Contributions</p>
-        <h1 className="page-title">What you&rsquo;re sharing</h1>
+        <h1 className="page-title">Contributions</h1>
         <p className="lead-sm">
           What you prepared for your team and what the Git host reported. Nothing joins a library until a
           maintainer merges it.
@@ -1694,6 +1694,7 @@ export function ContributionsView({ contributionId }: { contributionId?: string 
       {list.isPending ? <Working>Loading…</Working> : null}
       {list.isError ? (
         <ErrorNotice
+          title="Your contributions could not be read"
           error={list.error}
           action={
             <Button size="sm" onClick={() => void list.refetch()}>

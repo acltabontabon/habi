@@ -12,8 +12,7 @@ import { Dialog } from "../../components/Dialog";
 import { useToast } from "../../components/Toasts";
 import { Button, ErrorNotice, Notice } from "../../components/ui";
 import { api, HabiError } from "../../lib/api";
-import { relativeTime, shortId } from "../../lib/format";
-import { useNav } from "../../lib/nav";
+import { relativeTime, roleGist, roleLabel, shortId } from "../../lib/format";
 import { invalidateProjectData, useRefreshSource } from "../../lib/queries";
 import { useOpenExternal } from "../../lib/safeInvoke";
 
@@ -34,10 +33,7 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
   const client = useQueryClient();
   const toast = useToast();
   const openExternal = useOpenExternal();
-  const { navigate } = useNav();
   const refresh = useRefreshSource();
-  const [confirm, setConfirm] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
   // A toast would sit behind this dialog, out of reach: failures show here instead.
   const [failure, setFailure] = useState<{ title: string; error: unknown } | null>(null);
   const web = webUrl(source.location);
@@ -62,23 +58,6 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
     }
   };
 
-  const disconnect = async () => {
-    if (disconnecting) return;
-    setDisconnecting(true);
-    setFailure(null);
-    try {
-      await api.removeSource(source.id);
-    } catch (e) {
-      setFailure({ title: `Could not disconnect ${source.name}`, error: e });
-      setDisconnecting(false);
-      return;
-    }
-    invalidateProjectData(client);
-    toast.show(`${source.name} disconnected. Installed content in projects was not changed.`);
-    onClose();
-    navigate({ name: "sources" });
-  };
-
   return (
     <Dialog
       open
@@ -86,28 +65,13 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
         if (!open) onClose();
       }}
       title={source.name}
+      // Checking for updates and disconnecting are on the library's own page, once each.
+      // What is left here is the first fetch of a library that has none.
       footer={
-        confirm ? (
-          <>
-            <span className="muted sheet-confirm">
-              Remove Habi's copy? Installed skills stay as they are.
-            </span>
-            <Button variant="quiet" onClick={() => setConfirm(false)}>
-              Keep
-            </Button>
-            <Button variant="danger" busy={disconnecting} onClick={() => void disconnect()}>
-              Disconnect
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="quiet" icon="trash" onClick={() => setConfirm(true)}>
-              Disconnect…
-            </Button>
-            <Button icon="refresh" busy={refresh.isPending} onClick={doRefresh}>
-              {source.snapshot ? "Refresh" : "Fetch"}
-            </Button>
-          </>
+        source.snapshot ? undefined : (
+          <Button icon="refresh" busy={refresh.isPending} onClick={doRefresh}>
+            Fetch
+          </Button>
         )
       }
     >
@@ -140,7 +104,7 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
             <dd>{source.commitSummary}</dd>
           </>
         ) : null}
-        <dt>Reviewed by</dt>
+        <dt>Whose library</dt>
         <dd>
           <fieldset className="role-switch" aria-label="Whose library is this?">
             {(["team", "community"] as const).map((r) => (
@@ -149,9 +113,10 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
                 type="button"
                 aria-pressed={source.role === r}
                 className={`role-option${source.role === r ? " is-active" : ""}`}
+                title={roleGist[r]}
                 onClick={() => (source.role === r ? undefined : void setRole(r))}
               >
-                {r === "team" ? "Your team" : "Its authors (community)"}
+                {roleLabel[r]}
               </button>
             ))}
           </fieldset>

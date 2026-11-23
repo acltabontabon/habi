@@ -9,7 +9,7 @@ import { AgentReach } from "../../components/AgentReach";
 import { Icon } from "../../components/Icon";
 import { Menu } from "../../components/Menu";
 import { useToast } from "../../components/Toasts";
-import { Button, Facet, Label, Notice, Section, Status } from "../../components/ui";
+import { Button, errorLine, Facet, Label, Notice, Section, Status } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import {
@@ -237,7 +237,7 @@ export function ItemDetailPane({
       void client.invalidateQueries({ queryKey: ["contributions"] });
       navigate({ name: "contributions", contributionId: draft.id });
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      toast.show(errorLine("Sharing could not be started", e), "danger");
     } finally {
       setSharing(false);
     }

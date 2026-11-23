@@ -8,7 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loading } from "./components/lazy";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { Tooltips } from "./components/Tooltips";
-import { Button, ErrorNotice, Working } from "./components/ui";
+import { Button, ErrorNotice, errorLine, Working } from "./components/ui";
 import { type Actions, ActionsContext, type NewSkillContext } from "./lib/actions";
 import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
@@ -153,7 +153,7 @@ function Shell() {
     const next = { ...current, showWelcome: !hideNext };
     client.setQueryData(keys.settings, next);
     api.setSettings(next).catch((e: unknown) => {
-      toast.show(`Settings not saved: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      toast.show(errorLine("Settings not saved", e), "danger");
       void client.invalidateQueries({ queryKey: keys.settings });
     });
   };
@@ -177,7 +177,7 @@ function Shell() {
         if (picked.kind === "skills") setOpening({ step: "skills", pick: picked, stay });
         else opened(picked.project, stay);
       } catch (e) {
-        toast.show(e instanceof Error ? e.message : String(e), "danger");
+        toast.show(errorLine("The folder could not be opened", e), "danger");
       }
     },
     [opened, toast],
@@ -190,7 +190,7 @@ function Shell() {
     try {
       opened(await open, stay);
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      toast.show(errorLine("The project could not be opened", e), "danger");
     }
   };
   const connectAsLibrary = (location: string) => {
@@ -212,7 +212,7 @@ function Shell() {
         invalidateSkills(client);
         navigate({ name: "skills", skillId: skill.summary.id });
       } catch (e) {
-        toast.show(e instanceof Error ? e.message : String(e), "danger");
+        toast.show(errorLine("The skill could not be created", e), "danger");
       } finally {
         creating.current = false;
       }

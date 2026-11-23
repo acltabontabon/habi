@@ -14,7 +14,7 @@ import { Icon } from "../../components/Icon";
 import { Button, ErrorNotice, Working } from "../../components/ui";
 import { WaitingLoom, Weaving } from "../../components/Weaving";
 import { api, HabiError, newJobId } from "../../lib/api";
-import { plural } from "../../lib/format";
+import { plural, roleGist, roleLabel } from "../../lib/format";
 import { invalidateProjectData, keys } from "../../lib/queries";
 
 /** "git@github.com:acme/team-skills.git" -> "team-skills". */
@@ -49,11 +49,6 @@ const TRACKS: { kind: Track; label: string }[] = [
   { kind: "branch", label: "a branch" },
   { kind: "tag", label: "a tag" },
 ];
-
-const ROLE_GIST: Record<SourceRole, string> = {
-  team: "Team: you or your team review what goes in, and it can require skills.",
-  community: "Community: published by others, and not reviewed by your team.",
-};
 
 function trackOf(tracked: TrackedRef): { kind: Track; name: string } {
   switch (tracked.kind) {
@@ -420,8 +415,8 @@ export function ConnectLibrary({
         disabled={locked || !started}
         onChange={(e) => setRoleEdit(e.target.value as SourceRole)}
       >
-        <option value="team">team</option>
-        <option value="community">community</option>
+        <option value="team">{roleLabel.team.toLowerCase()}</option>
+        <option value="community">{roleLabel.community.toLowerCase()}</option>
       </select>{" "}
       library.
     </p>
@@ -429,7 +424,7 @@ export function ConnectLibrary({
 
   const notes = started ? (
     <p className="connect-note">
-      {ROLE_GIST[role]}
+      {roleLabel[role]}. {roleGist[role]}
       {isLocal && found !== undefined
         ? ` ${found === 0 ? "No SKILL.md found in it yet." : `${plural(found, "skill")} found.`}`
         : ""}

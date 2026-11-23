@@ -128,7 +128,7 @@ export function Welcome() {
           projects={listed}
           also={also.slice(0, ALSO_SHOWN)}
           onOpenAnother={() => void openProject()}
-          onExplore={() => navigate({ name: "sources" })}
+          onExplore={() => navigate({ name: "sources", view: "explore" })}
         />
       ) : (
         <header className="home-head">

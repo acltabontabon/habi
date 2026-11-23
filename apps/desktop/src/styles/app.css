@@ -5822,11 +5822,6 @@ dl.facets,
   overflow-wrap: anywhere;
 }
 
-.sheet-confirm {
-  margin-right: auto;
-  font-size: var(--text-sm);
-}
-
 .choice-note {
   font-size: var(--text-xs);
   color: var(--ok-ink);

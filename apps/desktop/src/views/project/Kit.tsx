@@ -348,8 +348,11 @@ export function Kit({
                             ) : null}
                             {basis ? <span className="kit-basis">{basis}</span> : null}
                             {s.caution[0] ? (
+                              // A focus stop, so the cautions in its tooltip reach the keyboard too.
                               <span
                                 className="kit-caution"
+                                // biome-ignore lint/a11y/noNoninteractiveTabindex: the tooltip holds the cautions.
+                                tabIndex={0}
                                 data-tip={`${s.caution.join(". ")}. ${SIGNALS_LIMIT}`}
                               >
                                 <Icon name="warning" size={12} />

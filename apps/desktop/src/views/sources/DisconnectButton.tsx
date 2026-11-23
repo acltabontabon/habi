@@ -9,7 +9,7 @@ import { useState } from "react";
 import type { Source } from "../../bindings/Source";
 import { Dialog } from "../../components/Dialog";
 import { useToast } from "../../components/Toasts";
-import { Button } from "../../components/ui";
+import { Button, errorLine } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useNav } from "../../lib/nav";
 import { invalidateProjectData } from "../../lib/queries";
@@ -26,10 +26,7 @@ export function DisconnectButton({ source }: { source: Source }) {
     try {
       await api.removeSource(source.id);
     } catch (e) {
-      toast.show(
-        `Could not disconnect ${source.name}: ${e instanceof Error ? e.message : String(e)}`,
-        "danger",
-      );
+      toast.show(errorLine(`${source.name} could not be disconnected`, e), "danger");
       setBusy(false);
       return;
     }

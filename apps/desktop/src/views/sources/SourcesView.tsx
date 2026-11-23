@@ -37,7 +37,7 @@ import { WaitingLoom, Weaving } from "../../components/Weaving";
 import { api, HabiError, newJobId } from "../../lib/api";
 import { groupOfEntry } from "../../lib/catalog";
 import { type Dye, useDyes } from "../../lib/dye";
-import { compactCount, plural, relativeTime } from "../../lib/format";
+import { compactCount, plural, relativeTime, roleLabel } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import {
   invalidateProjectData,
@@ -164,7 +164,7 @@ function originOf(source: Source, entry: CatalogEntry | undefined): Origin {
 function originLabel(source: Source, origin: Origin): string {
   if (origin === "builders") return "Builder";
   if (origin === "community") return "Community";
-  return source.kind === "directory" ? "Your folder" : "Your team";
+  return source.kind === "directory" ? "Folder" : roleLabel.team;
 }
 
 /**
@@ -386,7 +386,7 @@ function YourLibraries() {
   }, [catalog.data, sources.data, newer]);
 
   if (catalog.isPending || sources.isPending) return <Working>Loading libraries…</Working>;
-  if (sources.isError) return <ErrorNotice error={sources.error} />;
+  if (sources.isError) return <ErrorNotice title="Your libraries could not be read" error={sources.error} />;
 
   const adoptedAny = (skills.data ?? []).some((s) => s.origin.type === "library");
   const explore = (catalog.data ?? []).filter((e) => e.availability !== "connected").length;
@@ -540,7 +540,7 @@ function Explore() {
   useSlashFocus(filter);
 
   if (catalog.isPending) return <Working>Loading the catalog…</Working>;
-  if (catalog.isError) return <ErrorNotice error={catalog.error} />;
+  if (catalog.isError) return <ErrorNotice title="The catalog could not be read" error={catalog.error} />;
 
   // Libraries with something for your projects come first: that is why you would connect one.
   const open = catalog.data
@@ -733,8 +733,17 @@ function LibraryPage({ entryId }: { entryId: string }) {
   }, [connectedAs, navigate]);
 
   if (catalog.isPending) return <Working>Loading libraries…</Working>;
-  if (catalog.isError) return <ErrorNotice error={catalog.error} />;
-  if (!entry) return <Explore />;
+  if (catalog.isError) return <ErrorNotice title="The catalog could not be read" error={catalog.error} />;
+  // Said, not skipped: a catalog page that is gone is not the catalog.
+  if (!entry)
+    return (
+      <>
+        <Notice tone="warn" title="That library is no longer in the catalog">
+          It was removed or renamed. These are the libraries the catalog lists now.
+        </Notice>
+        <Explore />
+      </>
+    );
 
   const cancelled = error instanceof HabiError && error.code === "cancelled";
   const idle = !job && !error;
@@ -961,5 +970,15 @@ export function SourcesView({
   if (entry) return <LibraryPage key={entry} entryId={entry} />;
   const source = sources.data?.find((s) => s.id === sourceId);
   if (source) return <LibraryView key={source.id} source={source} itemId={itemId} file={file} />;
+  // A library that is gone is said to be gone, not swapped for the list without a word.
+  if (sourceId && sources.isSuccess)
+    return (
+      <>
+        <Notice tone="warn" title="That library is no longer connected">
+          It was disconnected. These are the libraries you have.
+        </Notice>
+        <YourLibraries />
+      </>
+    );
   return <YourLibraries />;
 }

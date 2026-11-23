@@ -109,7 +109,12 @@ export function Notice({
   );
 }
 
-const guidance: Record<string, string> = {
+/**
+ * What to do next, for the errors whose message does not already say. The
+ * others (a wrong input, something not found, a conflict, something Habi does
+ * not support) are written to stand on their own.
+ */
+export const guidance: Record<string, string> = {
   gitNetwork: "Check your network or VPN. Anything fetched earlier stays available.",
   gitAuthentication:
     "Git could not authenticate. Habi uses your existing Git credentials: try `git fetch` in a terminal, or load your SSH key into the agent.",
@@ -119,7 +124,29 @@ const guidance: Record<string, string> = {
   busy: "Another Habi window or the CLI is working on this. Try again in a moment.",
   permissionDenied: "Habi was not allowed to read or write a file. Check the folder's permissions.",
   diskFull: "The disk is full. Free some space; nothing was partially applied.",
+  gitRejected: "The host refused it. Check that your account may write to that repository and branch.",
+  git: "Git reported this. Running the same command in a terminal usually says more.",
+  pathEscape: "A path pointed outside the folder it belongs to, so Habi refused it. Nothing was changed.",
+  io: "A file could not be read or written. Nothing was partially applied.",
+  database:
+    "Habi could not read or write its own data. Restart Habi; if it happens again, save a troubleshooting report from Settings.",
+  internal:
+    "This is a fault in Habi, not in what you did. Save a troubleshooting report from Settings and report it.",
 };
+
+/** The error codes Habi's core returns whose message says all there is to say. */
+export const SELF_EXPLAINING = ["invalidInput", "notFound", "conflict", "unsupported", "cancelled"];
+
+/**
+ * An error as one line for a toast: what was being done, what went wrong, and
+ * what to do about it when the message alone does not say.
+ */
+export function errorLine(what: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = error instanceof HabiError ? error.code : "";
+  const next = guidance[code];
+  return `${what}: ${message}${next ? ` ${next}` : ""}`;
+}
 
 export function ErrorNotice({
   error,
@@ -127,13 +154,14 @@ export function ErrorNotice({
   action,
 }: {
   error: unknown;
-  title?: string;
+  /** What could not be done, in the words of the screen it happened on. */
+  title: string;
   action?: ReactNode;
 }) {
   const message = error instanceof Error ? error.message : String(error);
   const code = error instanceof HabiError ? error.code : "internal";
   return (
-    <Notice tone="danger" title={title ?? "Something went wrong"} action={action}>
+    <Notice tone="danger" title={title} action={action}>
       <p>{message}</p>
       {guidance[code] ? <p className="muted">{guidance[code]}</p> : null}
     </Notice>

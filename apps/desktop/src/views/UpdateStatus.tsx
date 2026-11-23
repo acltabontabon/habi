@@ -1,6 +1,6 @@
 /**
  * Where Habi stands with its own updates: the one place to check, install and restart, shown on the
- * About page and in Settings. The download's progress is the real byte count, not an animation.
+ * About page. The download's progress is the real byte count, not an animation.
  */
 import { Button, Status } from "../components/ui";
 import { sizeLabel } from "../lib/format";

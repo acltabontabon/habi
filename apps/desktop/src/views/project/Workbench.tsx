@@ -42,8 +42,6 @@ function rowStatus(r: Recommendation) {
     return <Status tone={installTone[r.installState]}>{installLabel[r.installState]}</Status>;
   if (r.applicability.applicability === "needsInformation")
     return <Status tone="unknown">Needs information</Status>;
-  if (r.readiness.state === "missing" && r.applicability.applicability === "applies")
-    return <Status tone="warn">Prerequisite missing</Status>;
   return null;
 }
 

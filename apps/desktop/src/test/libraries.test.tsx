@@ -249,9 +249,9 @@ describe("your libraries, one line each", () => {
     const ledger = await screen.findByRole("list", { name: "Your libraries" });
     const rows = within(ledger).getAllByRole("button");
     expect(rows.map((r) => r.textContent)).toEqual([
-      expect.stringMatching(/^Zeta offline.*Your folder3offline/),
+      expect.stringMatching(/^Zeta offline.*Folder3offline/),
       expect.stringMatching(/^Anthropic.*anthropics\/skills.*Builder17current/),
-      expect.stringMatching(/^Team skills.*Your team7current/),
+      expect.stringMatching(/^Team skills.*Team7current/),
     ]);
     // The catalog is its own page; this one lists only what is connected.
     expect(screen.queryByRole("button", { name: /OpenAI/ })).toBeNull();

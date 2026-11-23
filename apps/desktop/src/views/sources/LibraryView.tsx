@@ -37,7 +37,7 @@ import { Strand } from "../../components/Weave";
 import { useActions } from "../../lib/actions";
 import { countSignals, groupItems, shortCommit, worstSignal } from "../../lib/catalog";
 import { type Dye, useDyes } from "../../lib/dye";
-import { freshnessText, levelLabel, plural, relativeTime } from "../../lib/format";
+import { freshnessText, levelLabel, plural, relativeTime, roleGist, roleLabel } from "../../lib/format";
 import { useInspectorOpen } from "../../lib/inspector";
 import { lastProject, type Route, useNav } from "../../lib/nav";
 import {
@@ -285,11 +285,9 @@ const IndexPanel = memo(function IndexPanel({
           ) : (
             <span className="index-repo">{shortRepo(source)}</span>
           )}
-          <span
-            title={source.role === "community" ? "Published by others; not reviewed by your team" : undefined}
-          >
+          <span title={roleGist[source.role]}>
             {" · "}
-            {source.role === "community" ? "community" : "team"}
+            {roleLabel[source.role].toLowerCase()}
           </span>
           {source.freshness !== "current" ? (
             <span
@@ -530,8 +528,8 @@ function SkillHead({
         <button type="button" className="skill-coord-lib" onClick={onFocusIndex} title="Back to the index">
           {libraryName}
         </button>
-        <span className="skill-coord-trust">
-          {entry?.ownership ? "not audited" : community ? "community" : "team library"}
+        <span className="skill-coord-trust" title={roleGist[source.role]}>
+          {roleLabel[source.role].toLowerCase()} library
         </span>
         {fits.length > 0 ? (
           // Focusable, so the reasons in its tooltip reach the keyboard too; a screen reader reads them with it.
@@ -937,6 +935,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         {library.isPending && source.snapshot ? <Working>Reading the library…</Working> : null}
         {library.isError ? (
           <ErrorNotice
+            title="The library could not be read"
             error={library.error}
             action={
               <Button size="sm" onClick={() => void library.refetch()}>

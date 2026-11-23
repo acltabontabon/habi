@@ -51,6 +51,11 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Changed
 
+- **Plainer words, and errors that say what failed.** A library is *Team* or *Community* everywhere, in
+  those words. Every error names what could not be done on the screen it happened on, and says what to do
+  next when the message alone does not. A library or catalog page that is gone says so, where it used to
+  show a different page without a word. Disconnecting and checking for updates are each in one place, on
+  the library's own page.
 - **One way to connect a library.** A single box takes a Git address, `owner/repo`, a web address or a
   folder, and one sentence under it says what Habi understood. Each part is changed where it stands: the
   folder read, the branch or tag followed, the name, whose library it is. The same form is used everywhere.

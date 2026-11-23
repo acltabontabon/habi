@@ -1,10 +1,10 @@
 /**
  * On this machine: skills kept in the person's own folders (`~/.claude/skills`
- * and the like). They sit apart from My skills because they are not Habi's:
- * the agents own those files and Habi only reads them, so nothing here can be
- * edited or removed. The two ways out are copies — into My skills, or into a
- * project through the usual reviewed install — and the original is never
- * touched. Where a project holds a copy too, the row says which one a client
+ * and the like), and the agents and tools Habi installed there. They sit apart
+ * from My skills because they are not Habi's to edit: the agents own those
+ * files. A skill found here can be copied into My skills or into a project
+ * through the usual reviewed install, and the original is never touched. What
+ * Habi itself installed can be updated and removed, each through its review. Where a project holds a copy too, the row says which one a client
  * will use. Skills whose library has a newer version come first, with a
  * filter to see only those. As its own page it always shows; elsewhere,
  * nothing is shown when there are no such skills.
@@ -311,7 +311,7 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
           <p className="mach-lead">{lead}</p>
         </header>
       )}
-      {error ? <ErrorNotice error={error} /> : null}
+      {error ? <ErrorNotice title="The skill could not be copied" error={error} /> : null}
       {alwaysShow && machine.isPending ? <Working>Reading global skills…</Working> : null}
       {alwaysShow && machine.isError ? (
         <ErrorNotice error={machine.error} title="Could not read machine skills" />
@@ -425,8 +425,8 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
       ) : null}
       {alwaysShow && found.length === 0 && others.length === 0 && !machine.isPending && !machine.isError ? (
         <p className="mys-empty">
-          No global skills found. Use a skill’s <strong>On this machine</strong> action to review an
-          installation here. Previous changes remain in history.
+          Nothing here yet. In a library, a skill’s <strong>Add to this machine…</strong> installs it for
+          every project. Earlier changes stay in history.
         </p>
       ) : null}
 
