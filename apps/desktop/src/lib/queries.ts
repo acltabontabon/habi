@@ -26,6 +26,7 @@ export const keys = {
   skillsOverview: ["skillsOverview"] as const,
   machineSkills: ["machineSkills"] as const,
   machineHistory: ["machineHistory"] as const,
+  pendingUpdates: ["pendingUpdates"] as const,
   skillTemplates: ["skillTemplates"] as const,
   knowledge: (projectId: string) => ["knowledge", projectId] as const,
 };
@@ -273,8 +274,22 @@ export function useMachineInstallations() {
   });
 }
 
+/**
+ * Everything that is behind what it came from, across projects, this machine
+ * and My skills: the one count the sidebar shows and the Updates page lists.
+ */
+export function usePendingUpdates() {
+  return useQuery({
+    queryKey: keys.pendingUpdates,
+    queryFn: api.pendingUpdates,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 /** After local skills change: lists, and anything matched against projects. */
 export function invalidateSkills(client: QueryClient) {
+  void client.invalidateQueries({ queryKey: keys.pendingUpdates });
   void client.invalidateQueries({ queryKey: keys.skills });
   void client.invalidateQueries({ queryKey: keys.skillsOverview });
   void client.invalidateQueries({ queryKey: keys.machineSkills });
@@ -292,6 +307,7 @@ export function useCheckRuns(projectId: string, itemKey: string) {
 
 /** After anything that may change recommendations, refresh the dependent views. */
 export function invalidateProjectData(client: QueryClient, projectId?: string) {
+  void client.invalidateQueries({ queryKey: keys.pendingUpdates });
   void client.invalidateQueries({ queryKey: keys.machineSkills });
   void client.invalidateQueries({ queryKey: keys.skillsOverview });
   void client.invalidateQueries({ queryKey: keys.sources });

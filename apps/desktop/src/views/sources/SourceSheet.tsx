@@ -47,7 +47,7 @@ export function SourceSheet({ source, onClose }: { source: Source; onClose: () =
       onSuccess: (r) =>
         toast.show(
           r.changed
-            ? `${source.name}: ${r.updated.length} updated, ${r.added.length} new, ${r.removed.length} removed. Installed copies were not changed.`
+            ? `${source.name}: ${r.updated.length} updated, ${r.added.length} new, ${r.removed.length} removed. Installed copies follow from Updates.`
             : `${source.name} is up to date.`,
         ),
     });

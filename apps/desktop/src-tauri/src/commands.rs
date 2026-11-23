@@ -1631,6 +1631,16 @@ pub async fn skills_overview(
     blocking(habi, move |h| h.skills_overview()).await
 }
 
+/// Everything that is behind what it came from: libraries with something
+/// newer, and installed copies that can follow. Fetches and changes nothing.
+#[tauri::command]
+pub async fn pending_updates(
+    state: State<'_, AppState>,
+) -> CmdResult<habi_core::service::PendingUpdates> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.pending_updates()).await
+}
+
 /// What Habi installed on this machine, by its own record: skills, and also
 /// the subagents and tools that no skill folder shows.
 #[tauri::command]

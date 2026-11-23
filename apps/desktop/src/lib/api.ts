@@ -41,6 +41,7 @@ import type { MachineSkill } from "../bindings/MachineSkill";
 import type { NewSkill } from "../bindings/NewSkill";
 import type { NewSource } from "../bindings/NewSource";
 import type { OperationSummary } from "../bindings/OperationSummary";
+import type { PendingUpdates } from "../bindings/PendingUpdates";
 import type { Plan } from "../bindings/Plan";
 import type { PreviewRequest } from "../bindings/PreviewRequest";
 import type { ProjectKnowledge } from "../bindings/ProjectKnowledge";
@@ -302,6 +303,7 @@ export const api = {
   /** Skills in the person's own folders (`~/.claude/skills` and the like); reads only. */
   machineSkills: () => call<MachineSkill[]>("machine_skills"),
   machineInstallations: () => call<Installation[]>("machine_installations"),
+  pendingUpdates: () => call<PendingUpdates>("pending_updates"),
   /** What a copy changed since it was made or last updated; writes nothing. */
   skillLocalChanges: (id: string) => call<LocalChanges>("skill_local_changes", { id }),
   skillTemplates: () => call<TemplateInfo[]>("skill_templates"),

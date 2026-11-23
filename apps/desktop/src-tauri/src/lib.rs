@@ -387,6 +387,7 @@ pub fn run() {
             commands::skills_overview,
             commands::machine_skills,
             commands::machine_installations,
+            commands::pending_updates,
             commands::open_git_copy,
             commands::forget_git_copy,
             commands::search_skill_files,

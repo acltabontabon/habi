@@ -41,6 +41,7 @@ const ContributionsView = lazy(() =>
   import("./views/contributions/ContributionsView").then((m) => ({ default: m.ContributionsView })),
 );
 const SettingsView = lazy(() => import("./views/SettingsView").then((m) => ({ default: m.SettingsView })));
+const UpdatesView = lazy(() => import("./views/UpdatesView").then((m) => ({ default: m.UpdatesView })));
 const AboutView = lazy(() => import("./views/AboutView").then((m) => ({ default: m.AboutView })));
 const PrivacyView = lazy(() => import("./views/PrivacyView").then((m) => ({ default: m.PrivacyView })));
 const AddSkillsDialog = lazy(() =>
@@ -367,6 +368,7 @@ function Shell() {
                 />
               )}
               {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
+              {route.name === "updates" && <UpdatesView />}
               {route.name === "settings" && <SettingsView />}
               {route.name === "about" && <AboutView />}
               {route.name === "privacy" && <PrivacyView />}

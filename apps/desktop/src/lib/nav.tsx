@@ -29,6 +29,8 @@ export type Route =
       file?: string;
     }
   | { name: "contributions"; contributionId?: string }
+  /** Everything that is behind what it came from, wherever it is. */
+  | { name: "updates" }
   | { name: "settings" }
   /** The version, what changed in each one, and who made Habi. */
   | { name: "about" }

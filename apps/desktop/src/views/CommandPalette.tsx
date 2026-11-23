@@ -62,7 +62,7 @@ function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
     const failed = list.filter((_, i) => results[i]?.status === "rejected").map((s) => s.name);
     if (failed.length === 0) {
       toast.show(
-        `${list.length === 1 ? list[0]?.name : `All ${list.length} libraries`} refreshed. Installed copies were not changed.`,
+        `${list.length === 1 ? list[0]?.name : `All ${list.length} libraries`} refreshed. Installed copies follow from Updates.`,
       );
     } else {
       toast.show(

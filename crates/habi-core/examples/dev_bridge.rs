@@ -373,6 +373,7 @@ impl Bridge {
             "skills_overview" => out(h.skills_overview()?),
             "machine_skills" => out(h.machine_skills()?),
             "machine_installations" => out(h.machine_installations()?),
+            "pending_updates" => out(h.pending_updates()?),
             "search_skill_files" => out(h.search_skill_files(&s("id")?, &s("query")?)?),
             "skill_local_changes" => out(h.skill_local_changes(&s("id")?)?),
             "skill_templates" => out(h.skill_templates()),

@@ -2185,6 +2185,15 @@ impl Sources {
         if let Ok(json) = serde_json::to_string(&report) {
             let _ = self.set_setting(&format!("update-report:{}", after.id), &json);
         }
+        // What was just read is the newest the remote had. A check made before
+        // it would otherwise go on saying there is something newer.
+        let check = StoredCheck {
+            latest: report.to,
+            checked_at: report.at,
+        };
+        if let Ok(json) = serde_json::to_string(&check) {
+            let _ = self.set_setting(&format!("update:{}", after.id), &json);
+        }
     }
 
     pub fn setting(&self, key: &str) -> Result<Option<String>> {
