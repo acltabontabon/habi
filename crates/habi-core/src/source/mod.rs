@@ -11,7 +11,7 @@ pub mod git;
 pub mod release;
 
 use crate::cancel::CancelToken;
-use crate::error::{ErrorInfo, HabiError, Result};
+use crate::error::{ErrorInfo, GitFailure, HabiError, Result};
 use crate::fsutil::{Bounded, read_bounded, short, tree_digest};
 use crate::library::model::{Diagnostic, LibraryIndex, SnapshotFile};
 use crate::library::{self};
@@ -1516,11 +1516,35 @@ impl Sources {
     /// `parse_address`, then one question to the remote when the address is
     /// a page of a repository: which of its words are the branch or tag.
     pub fn read_address(&self, input: &str, cancel: &CancelToken) -> Result<Address> {
-        let address = parse_address(input)?;
+        let mut address = parse_address(input)?;
         if address.unresolved.is_none() {
             return Ok(address);
         }
-        let refs = self.git()?.list_refs(&address.location, cancel)?;
+        let git = self.git()?;
+        let refs = match git.list_refs(&address.location, cancel) {
+            Ok(refs) => refs,
+            // A private repository refuses https from someone who reaches it
+            // over SSH, and answers "not found". The same question over SSH,
+            // which cannot prompt, settles it; the address then stays on SSH.
+            Err(HabiError::Git { failure, message })
+                if matches!(failure, GitFailure::Authentication | GitFailure::NotFound) =>
+            {
+                let over_ssh = address
+                    .alternative
+                    .clone()
+                    .filter(|a| a.starts_with("git@"));
+                let Some(refs) = over_ssh
+                    .as_ref()
+                    .and_then(|ssh| git.list_refs(ssh, cancel).ok())
+                else {
+                    return Err(HabiError::Git { failure, message });
+                };
+                let https = std::mem::replace(&mut address.location, over_ssh.unwrap_or_default());
+                address.alternative = Some(https);
+                refs
+            }
+            Err(e) => return Err(e),
+        };
         settle_address(address, &refs)
     }
 

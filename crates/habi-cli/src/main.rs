@@ -448,6 +448,15 @@ impl std::fmt::Display for CliError {
 
 impl std::error::Error for CliError {}
 
+/// The same repository over SSH, when https was refused in a way SSH might
+/// not be: a private repository answers "not found" to someone not signed in.
+fn over_ssh(code: &str, location: &str) -> Option<String> {
+    matches!(code, "gitAuthentication" | "gitNotFound")
+        .then(|| habi_core::source::other_transport(location))
+        .flatten()
+        .filter(|other| other.starts_with("git@"))
+}
+
 fn fail(code: &str, message: impl Into<String>) -> anyhow::Error {
     CliError {
         code: code.into(),
@@ -1516,6 +1525,12 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
                                 "{}: refresh failed: {} — the cached copy is kept.",
                                 s.name, info.message
                             );
+                            if let Some(ssh) = over_ssh(&info.code, &s.location) {
+                                eprintln!(
+                                    "If you reach this host over SSH, remove `{}` and add it again as {ssh}",
+                                    s.name
+                                );
+                            }
                         }
                         failed.push(json!({ "source": s.name, "error": info }));
                     }

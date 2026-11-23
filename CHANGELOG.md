@@ -28,11 +28,16 @@ the lock file or data directory, minor for features, patch for fixes.
 - **More test tools are recognized.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito,
   REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact,
   WireMock and Postman collections, from manifests or their own files.
+- **Paste the address you have.** A library can be connected as `owner/repo`, as `github.com/owner/repo`, or
+  by the address of a branch, folder or `SKILL.md` on GitHub or GitLab: Habi follows that branch or tag and
+  reads that folder. When https is refused and the repository is also reachable over SSH, Habi offers SSH.
 - **OpenAPI tools count.** `openapi-generator`, `@nestjs/swagger` and similar show that a project has an
   OpenAPI specification, as a specification file already did.
 
 ### Changed
 
+- **One line about the licence.** A skill whose library states no licence says *no licence stated*, in the same
+  words in the app, the CLI and the install review. Your own and your team's skills no longer carry the line.
 - **Habi is a third smaller and much faster.** Screens that read a project or your libraries answer several
   times faster, and the app no longer waits for your shell's startup files each time it opens.
 - **Shell scripts in a skill are read as the shell reads them.** A `curl … | sh` split over several lines is one
