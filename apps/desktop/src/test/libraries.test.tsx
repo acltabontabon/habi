@@ -264,8 +264,7 @@ describe("your libraries, one line each", () => {
         .getAllByRole("menuitem")
         .map((i) => i.textContent),
     ).toEqual([
-      expect.stringMatching(/^Git repository…/),
-      expect.stringMatching(/^Folder…/),
+      expect.stringMatching(/^A repository or a folder…/),
       expect.stringMatching(/^From the catalog/),
     ]);
     // How it works is shown only until something is connected.
@@ -318,8 +317,7 @@ describe("your libraries, one line each", () => {
     wrap();
     expect(await screen.findByText("Put skills to work")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Explore the catalog" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Connect a Git repository" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Use a folder" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect your own" })).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

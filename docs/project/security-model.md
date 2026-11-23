@@ -307,7 +307,7 @@ By design, or not solved yet:
 - **Signals are not a sandbox.** Static patterns catch what they know. A hook or script written to avoid them
   will pass, which is why every skill that ships code says so and the preview shows new scripts.
 - **A library's role is your word.** `habi source add` connects a library as community unless you pass `--team`, and the
-  app asks, with team preselected. Either way, Habi does not check the choice against the URL, and only a team library's
+  app takes a repository for community and a folder on your machine for your team's until you say otherwise. Either way, Habi does not check the choice against the URL, and only a team library's
   required skills count.
 - **A re-hosted copy** is only noticed when it is installed beside its original with the same content; a re-host with any
   edit, or one that is not installed here, is not recognized.

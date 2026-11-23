@@ -47,6 +47,12 @@ the lock file or data directory, minor for features, patch for fixes.
 
 ### Changed
 
+- **One way to connect a library.** A single box takes a Git address, `owner/repo`, a web address or a
+  folder, and one sentence under it says what Habi understood. Each part is changed where it stands: the
+  folder read, the branch or tag followed, the name, whose library it is. The same form is used everywhere.
+  A repository now starts as a community library and a folder as your team's, as the command line always
+  did; say so in the sentence when a repository is your team's. In My skills, a Git address copies skills
+  to edit, and connecting it as a library is a link to this page.
 - **One line about the licence.** A skill whose library states no licence says *no licence stated*, in the same
   words in the app, the CLI and the install review. Your own and your team's skills no longer carry the line.
 - **Habi is a third smaller and much faster.** Screens that read a project or your libraries answer several

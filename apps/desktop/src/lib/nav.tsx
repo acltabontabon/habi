@@ -21,9 +21,9 @@ export type Route =
       sourceId?: string;
       /** A catalog library, connected or only being previewed. */
       entry?: string;
-      /** A page for bringing in a library of your own, or the catalog to explore. */
-      view?: "git" | "folder" | "explore";
-      /** A folder already chosen, for the folder page. */
+      /** The page for connecting a library of your own, or the catalog to explore. */
+      view?: "connect" | "explore";
+      /** An address or folder already given, for the connect page. */
       location?: string;
       itemId?: string;
       file?: string;

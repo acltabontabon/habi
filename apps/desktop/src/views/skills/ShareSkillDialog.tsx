@@ -145,7 +145,7 @@ export function ShareSkillDialog({
         <Unfinished diagnostics={errors} action="shared" onFix={onFix} />
       ) : connecting ? (
         <ConnectLibrary
-          compact
+          inDialog
           onCancel={() => setConnecting(false)}
           onConnected={(source) => {
             setConnecting(false);

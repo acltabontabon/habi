@@ -243,16 +243,10 @@ function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
                   <Icon name="library" /> <span>Explore libraries</span>
                 </Command.Item>
                 <Command.Item
-                  value="connect git repository library team url"
-                  onSelect={() => run(() => navigate({ name: "sources", view: "git" }))}
+                  value="connect library git repository team url github folder local directory"
+                  onSelect={() => run(() => navigate({ name: "sources", view: "connect" }))}
                 >
-                  <Icon name="branch" /> <span>Connect a Git repository…</span>
-                </Command.Item>
-                <Command.Item
-                  value="use folder local library directory"
-                  onSelect={() => run(() => navigate({ name: "sources", view: "folder" }))}
-                >
-                  <Icon name="folder" /> <span>Use a folder as a library…</span>
+                  <Icon name="branch" /> <span>Connect a library…</span>
                 </Command.Item>
                 <Command.Item
                   value="welcome setup git tools prerequisites intro"

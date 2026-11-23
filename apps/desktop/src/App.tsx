@@ -194,7 +194,7 @@ function Shell() {
   };
   const connectAsLibrary = (location: string) => {
     setOpening(null);
-    navigate({ name: "sources", view: "folder", location });
+    navigate({ name: "sources", view: "connect", location });
   };
   // A new skill is a page to write on, at once: no form, nothing to decide first.
   // One at a time: a double click or a held ⌘N makes one skill, not several.

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,7 +24,7 @@ import { ProjectView } from "../views/project/ProjectView";
 import { SettingsView } from "../views/SettingsView";
 import { Sidebar } from "../views/Sidebar";
 import { SkillStudio } from "../views/skills/studio/SkillStudio";
-import { ConnectLibrary, locationParts, treeOf } from "../views/sources/ConnectLibrary";
+import { ConnectLibrary, locationParts } from "../views/sources/ConnectLibrary";
 import { Welcome } from "../views/Welcome";
 import billing from "./fixtures/overview-billing-service.json";
 
@@ -67,6 +67,8 @@ beforeEach(() => {
     )
       return [];
     if (cmd === "log_ui_error" || cmd === "cancel_job") return null;
+    // A library is whose its form says it is.
+    if (cmd === "set_source_role") return { id: args.sourceId, name: "skills", role: args.role };
     // An address that is already a repository reads as itself.
     if (cmd === "read_address")
       return {
@@ -680,7 +682,7 @@ describe("connecting a library", () => {
     handlers.remove_source = vi.fn(() => null);
     const onConnected = vi.fn();
     const view = wrap(<ConnectLibrary onConnected={onConnected} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "https://github.com/acme/skills.git");
+    await userEvent.type(screen.getByLabelText("Library address"), "https://github.com/acme/skills.git");
     await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
     expect(await screen.findByText("could not reach github.com")).toBeInTheDocument();
     expect(handlers.remove_source).not.toHaveBeenCalled();
@@ -705,7 +707,7 @@ describe("connecting a library", () => {
     handlers.library = () => ({ items: [] });
     wrap(<ConnectLibrary onConnected={vi.fn()} />);
     await userEvent.type(
-      screen.getByLabelText("Repository URL"),
+      screen.getByLabelText("Library address"),
       "https://github.com/acme/skills/tree/next/engineering",
     );
     await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
@@ -744,7 +746,7 @@ describe("connecting a library", () => {
     handlers.remove_source = vi.fn(() => null);
     const onConnected = vi.fn();
     wrap(<ConnectLibrary onConnected={onConnected} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "acme/skills");
+    await userEvent.type(screen.getByLabelText("Library address"), "acme/skills");
     await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
     await userEvent.click(await screen.findByRole("button", { name: "Try over SSH" }));
     await waitFor(() => expect(onConnected).toHaveBeenCalled());
@@ -760,7 +762,7 @@ describe("connecting a library", () => {
     handlers.remove_source = vi.fn(() => null);
     const onConnected = vi.fn();
     const view = wrap(<ConnectLibrary onConnected={onConnected} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "https://github.com/acme/skills.git");
+    await userEvent.type(screen.getByLabelText("Library address"), "https://github.com/acme/skills.git");
     await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
     await waitFor(() => expect(onConnected).toHaveBeenCalled());
     view.unmount();
@@ -770,6 +772,16 @@ describe("connecting a library", () => {
 });
 
 describe("connecting your own library", () => {
+  const sentence = () => document.querySelector(".connect-sentence")?.textContent ?? "";
+  const box = () => screen.getByLabelText("Library address");
+  const connected = (source: Source) => {
+    const add = vi.fn(() => source);
+    handlers.add_source = add;
+    handlers.refresh_source = () => ({ source, changed: true });
+    handlers.library = () => ({ items: [] });
+    return add;
+  };
+
   it("reads an address the way a person would say it", () => {
     expect(locationParts("git@github.com:acme/team-skills.git")).toEqual({
       host: "github.com",
@@ -787,151 +799,101 @@ describe("connecting your own library", () => {
     expect(locationParts("   ")).toBeNull();
   });
 
-  it("says the whole form as one sentence, filling its blanks as they are known", async () => {
-    wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    const sentence = () =>
-      (document.querySelector(".connect-sentence")?.textContent ?? "").replace(/\s+/g, " ");
-    expect(sentence()).toContain("Habi will read a repository");
-
-    await userEvent.type(screen.getByLabelText("Repository URL"), "git@github.com:acme/team-skills.git");
-    expect(sentence()).toContain("acme/team-skills on github.com");
-    expect(sentence()).toContain("a team library");
-    // The name is written over where it is read.
-    const name = screen.getByLabelText("Shown as");
-    expect(name).toHaveValue("team-skills");
-    await userEvent.clear(name);
-    await userEvent.type(name, "Team packs");
-    expect(screen.getByLabelText("Shown as")).toHaveValue("Team packs");
-
-    // Team is the answer unless it is changed, and the choice needs no heading to be understood.
-    // Its heading is for screen readers only.
-    expect(screen.getByText("Whose library is this?")).toHaveClass("visually-hidden");
-    await userEvent.click(screen.getByRole("radio", { name: "Community" }));
-    expect(sentence()).toContain("a community library");
-    expect(screen.getByText(/not reviewed by your team/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("radio", { name: "Your team's" }));
-    expect(sentence()).toContain("a team library");
-  });
-
-  it("ends every station on a block that takes the spare room, so the three stand level", async () => {
-    wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    const ends = () =>
-      [...document.querySelectorAll(".station-body")].map((b) =>
-        b.lastElementChild?.classList.contains("grow"),
-      );
-    expect(ends()).toEqual([true, true, true]);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "git@github.com:acme/team-skills.git");
-    expect(ends()).toEqual([true, true, true]);
-  });
-
-  it("opens the chosen folder to show what is in it, before anything is connected", async () => {
-    const candidate = (name: string, files: string[]) => ({
-      path: name,
-      name,
-      title: name,
-      description: `Does ${name}`,
-      license: null,
-      hasMetadata: false,
-      files,
-      size: 0,
-      problems: [],
-      complete: true,
-      digest: name,
-      duplicate: null,
-      suggestedName: null,
+  it("is one box, and a sentence that fills in as the address is understood", async () => {
+    handlers.read_address = () => ({
+      location: "https://github.com/acme/team-skills",
+      tracked: { kind: "default" },
+      subdir: null,
+      focus: null,
+      alternative: null,
     });
+    wrap(<ConnectLibrary onConnected={vi.fn()} />);
+    expect(screen.getAllByRole("textbox")).toHaveLength(2);
+    expect(sentence()).toContain("a repository or a folder");
+    expect(screen.getByRole("button", { name: "Connect library" })).toBeDisabled();
+    await userEvent.type(box(), "acme/team-skills");
+    await waitFor(() => expect(sentence()).toContain("acme/team-skills on github.com"));
+    expect(screen.getByLabelText("Shown as")).toHaveValue("team-skills");
+    expect(screen.getByRole("button", { name: "Connect library" })).toBeEnabled();
+  });
+
+  it("takes a repository for a community library until told it is the team's", async () => {
+    const source = { id: "s1", name: "skills", role: "team" } as Source;
+    const add = connected(source);
+    const role = vi.fn(({ role }: { role: string }) => ({ ...source, role }));
+    handlers.set_source_role = role as unknown as Handler;
+    wrap(<ConnectLibrary onConnected={vi.fn()} />);
+    await userEvent.type(box(), "https://github.com/acme/skills.git");
+    expect(screen.getByLabelText("Whose library")).toHaveValue("community");
+    expect(screen.getByText(/not reviewed by your team/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    expect(role).toHaveBeenCalledWith({ sourceId: "s1", role: "community" });
+  });
+
+  it("leaves a library the team's when the sentence is changed to say so", async () => {
+    const source = { id: "s1", name: "skills", role: "team" } as Source;
+    const add = connected(source);
+    handlers.set_source_role = vi.fn();
+    wrap(<ConnectLibrary onConnected={vi.fn()} />);
+    await userEvent.type(box(), "https://github.com/acme/skills.git");
+    await userEvent.selectOptions(screen.getByLabelText("Whose library"), "team");
+    expect(sentence()).toContain("library.");
+    await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    expect(handlers.set_source_role).not.toHaveBeenCalled();
+  });
+
+  it("looks into a chosen folder, takes it for the team's, and adds nothing by looking", async () => {
     handlers.pick_library_folder = () => "/Users/me/packs";
     handlers.inspect_import = vi.fn(() => ({
       origin: "packs",
-      candidates: [
-        candidate("review-pr", ["SKILL.md", "scripts/run.sh"]),
-        candidate("release-notes", ["SKILL.md"]),
-      ],
+      candidates: [{ path: "review-pr" }, { path: "release-notes" }],
       notes: [],
     }));
     handlers.add_source = vi.fn();
-    wrap(<ConnectLibrary mode="folder" onConnected={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /Choose a folder/ }));
-    expect(await screen.findByText("skills found")).toBeInTheDocument();
-    const list = screen.getByRole("list", { name: "Skills found in the folder" });
-    expect(within(list).getByText("review-pr")).toBeInTheDocument();
-    expect(within(list).getByText("release-notes")).toBeInTheDocument();
-    expect(screen.getByText(/1 has scripts/)).toBeInTheDocument();
-    // Looking changed nothing: no library was added.
+    wrap(<ConnectLibrary onConnected={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Choose folder…" }));
+    expect(await screen.findByText(/2 skills found\./)).toBeInTheDocument();
+    expect(box()).toHaveValue("/Users/me/packs");
+    expect(sentence()).toContain("in place");
+    expect(screen.getByLabelText("Whose library")).toHaveValue("team");
+    // A folder has no branches to follow.
+    expect(screen.queryByLabelText("Follow")).toBeNull();
     expect(handlers.add_source).not.toHaveBeenCalled();
     expect(handlers.inspect_import).toHaveBeenCalledWith(
       expect.objectContaining({ from: { type: "folder", path: "/Users/me/packs" } }),
     );
   });
 
-  it("draws the chosen folder's own tree, within the room it has", () => {
-    const skill = (path: string, files: string[]) =>
-      ({ path, name: path, files, problems: [], complete: true }) as unknown as Parameters<
-        typeof treeOf
-      >[1][number];
-    expect(
-      treeOf("packs", [
-        skill("review-pr", ["SKILL.md", "scripts/run.sh", "scripts/lint.sh", "habi.yaml"]),
-        skill("release-notes", ["SKILL.md"]),
-      ]),
-    ).toEqual([
-      "packs/",
-      "├─ review-pr/",
-      "│  ├─ SKILL.md",
-      "│  └─ habi.yaml",
-      "└─ release-notes/",
-      "   └─ SKILL.md",
-    ]);
-
-    // A folder that is itself one skill has its files directly under it.
-    expect(treeOf("solo", [skill("", ["SKILL.md", "references/guide.md"])])).toEqual([
-      "solo/",
-      "├─ SKILL.md",
-      "└─ references/",
-    ]);
-
-    // Many skills: the first few are shown, then how many more.
-    const many = Array.from({ length: 40 }, (_, i) => skill(`s${i}`, ["SKILL.md"]));
-    const lines = treeOf("big", many);
-    expect(lines.length).toBeLessThanOrEqual(10);
-    expect(lines.at(-1)).toMatch(/^└─ … \d+ more$/);
-  });
-
   it("says so when the chosen folder holds no skills", async () => {
     handlers.pick_library_folder = () => "/Users/me/empty";
-    handlers.inspect_import = () => ({
-      origin: "empty",
-      candidates: [],
-      notes: ["No SKILL.md was found in this folder or the folders inside it."],
-    });
-    wrap(<ConnectLibrary mode="folder" onConnected={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /Choose a folder/ }));
-    expect(await screen.findByText("No skills in here")).toBeInTheDocument();
-    expect(screen.getByText(/Choose the folder that holds your skill folders/)).toBeInTheDocument();
+    handlers.inspect_import = () => ({ origin: "empty", candidates: [], notes: [] });
+    wrap(<ConnectLibrary onConnected={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Choose folder…" }));
+    expect(await screen.findByText(/No SKILL\.md found in it yet\./)).toBeInTheDocument();
   });
 
-  it("keeps the occasional options out of the way: no name or subfolder field until wanted", async () => {
+  it("narrows to a folder where the sentence says it, and widens again", async () => {
     wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "https://github.com/acme/skills.git");
-    expect(screen.queryByLabelText("Only this subfolder")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Only read a subfolder…" }));
-    await userEvent.type(screen.getByLabelText("Only this subfolder"), "engineering/skills");
-    expect(document.querySelector(".connect-sentence")?.textContent).toContain("engineering/skills");
+    await userEvent.type(box(), "https://github.com/acme/skills.git");
+    expect(screen.queryByLabelText("Only this folder")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Only read a folder…" }));
+    await userEvent.type(screen.getByLabelText("Only this folder"), "engineering/skills");
+    expect(sentence()).toContain(", only");
+    await userEvent.click(screen.getByRole("button", { name: "Read the whole repository" }));
+    expect(screen.queryByLabelText("Only this folder")).toBeNull();
   });
 
-  it("sends the renamed library, and the narrowed subfolder, when connecting", async () => {
-    const source = { id: "s1", name: "Packs" } as Source;
-    const add = vi.fn(() => source);
-    handlers.add_source = add;
-    handlers.refresh_source = () => ({ source, changed: true });
-    handlers.library = () => ({ items: [] });
+  it("sends the renamed library, and the narrowed folder, when connecting", async () => {
+    const add = connected({ id: "s1", name: "Packs", role: "community" } as Source);
     wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "https://github.com/acme/skills.git");
+    await userEvent.type(box(), "https://github.com/acme/skills.git");
     const name = screen.getByLabelText("Shown as");
     await userEvent.clear(name);
     await userEvent.type(name, "Packs");
-    await userEvent.click(screen.getByRole("button", { name: "Only read a subfolder…" }));
-    await userEvent.type(screen.getByLabelText("Only this subfolder"), "engineering/skills");
+    await userEvent.click(screen.getByRole("button", { name: "Only read a folder…" }));
+    await userEvent.type(screen.getByLabelText("Only this folder"), "engineering/skills");
     await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
     await waitFor(() => expect(add).toHaveBeenCalled());
     expect(add.mock.calls[0]).toEqual([
@@ -939,25 +901,11 @@ describe("connecting your own library", () => {
     ]);
   });
 
-  it("opens the later steps only once there is an address to read", async () => {
+  it("follows the newest release when the sentence is changed to say so", async () => {
+    const add = connected({ id: "s1", name: "skills", role: "community" } as Source);
     wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    expect(screen.getByRole("group", { name: "How to read it" })).toBeDisabled();
-    expect(screen.getByRole("group", { name: "What it becomes" })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText("Repository URL"), "git@github.com:acme/team-skills.git");
-    expect(screen.getByRole("group", { name: "How to read it" })).toBeEnabled();
-    expect(screen.getByRole("group", { name: "What it becomes" })).toBeEnabled();
-  });
-
-  it("follows the latest release when asked, and says so before connecting", async () => {
-    const source = { id: "s1", name: "skills" } as Source;
-    const add = vi.fn(() => source);
-    handlers.add_source = add;
-    handlers.refresh_source = () => ({ source, changed: true });
-    handlers.library = () => ({ items: [] });
-    wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "https://github.com/acme/skills.git");
-    await userEvent.click(screen.getByRole("radio", { name: "Latest release" }));
-    expect(document.querySelector(".connect-sentence")?.textContent).toContain("at its newest release");
+    await userEvent.type(box(), "https://github.com/acme/skills.git");
+    await userEvent.selectOptions(screen.getByLabelText("Follow"), "release");
     await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
     await waitFor(() => expect(add).toHaveBeenCalled());
     expect(add.mock.calls[0]).toEqual([
@@ -965,13 +913,19 @@ describe("connecting your own library", () => {
     ]);
   });
 
-  it("needs a branch name before it connects a branch", async () => {
+  it("needs a branch name before it connects a branch, and says why", async () => {
+    const add = connected({ id: "s1", name: "skills", role: "community" } as Source);
     wrap(<ConnectLibrary onConnected={vi.fn()} />);
-    await userEvent.type(screen.getByLabelText("Repository URL"), "https://github.com/acme/skills.git");
-    await userEvent.click(screen.getByRole("radio", { name: "A branch" }));
+    await userEvent.type(box(), "https://github.com/acme/skills.git");
+    await userEvent.selectOptions(screen.getByLabelText("Follow"), "branch");
     expect(screen.getByRole("button", { name: "Connect library" })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText("branch name"), "release");
-    expect(screen.getByRole("button", { name: "Connect library" })).toBeEnabled();
+    expect(screen.getByText("Say which branch or tag.")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Branch name"), "release");
+    await userEvent.click(screen.getByRole("button", { name: "Connect library" }));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    expect(add.mock.calls[0]).toEqual([
+      { source: expect.objectContaining({ tracked: { kind: "branch", name: "release" } }) },
+    ]);
   });
 });
 

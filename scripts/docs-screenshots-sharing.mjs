@@ -96,13 +96,19 @@ async function run() {
   // The team's library, connected from its address.
   await until(`[...document.querySelectorAll("button, a")].some((b) => b.textContent.includes("Connect a library"))`, "the start screen");
   await click("Connect a library");
-  await until(`[...document.querySelectorAll("button")].some((b) => b.textContent.includes("Connect a Git repository"))`, "the libraries page");
-  await click("Connect a Git repository");
-  await until(`document.querySelector("[placeholder^='git@github.com']")`, "the address field");
-  await page(`document.querySelector("[placeholder^='git@github.com']").focus()`);
+  await until(`[...document.querySelectorAll("button")].some((b) => b.textContent.includes("Connect your own"))`, "the libraries page");
+  await click("Connect your own");
+  await until(`document.querySelector("#connect-location")`, "the address field");
+  await page(`document.querySelector("#connect-location").focus()`);
   await type(library);
   await until(`document.body.textContent.includes(${JSON.stringify(repo)})`, "the address to be read");
-  await page(`(() => { const f = document.querySelector("[placeholder^='git@github.com']"); f.blur(); f.scrollLeft = 0; })()`);
+  // It is the team's own library, which the sentence is changed to say.
+  await page(`(() => {
+    const whose = document.querySelector("select[aria-label='Whose library']");
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(whose, "team");
+    whose.dispatchEvent(new Event("change", { bubbles: true }));
+    const f = document.querySelector("#connect-location"); f.blur(); f.scrollLeft = 0;
+  })()`);
   await shot("share-connect.jpg");
   await click("Connect library");
   await until(`document.querySelector(".skill-title-row")`, "the library", 120000);
