@@ -299,7 +299,12 @@ fn a_tool_installs_on_this_machine_only_and_only_once_accepted() {
 
     let script = std::fs::read_to_string(env.home.join(launcher)).unwrap();
     let entry = env.home.join(".habi/tools/eng/bin/eng");
-    assert!(script.contains(&*entry.to_string_lossy()), "{script}");
+    // Windows writes the entry with its own separators; the path is the same.
+    let slashed = |text: &str| text.replace('\\', "/");
+    assert!(
+        slashed(&script).contains(&slashed(&entry.to_string_lossy())),
+        "{script}"
+    );
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
