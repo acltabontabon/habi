@@ -26,6 +26,7 @@ import { api, type Decisions, HabiError } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
 import { ALL_CLIENTS, andList, clientLabel, plural } from "../../lib/format";
 import { copyState, precedenceNote } from "../../lib/machine";
+import { useNav } from "../../lib/nav";
 import { beginOwnChange, endOwnChange, staleKey } from "../../lib/ownChanges";
 import { invalidateProjectData, invalidateSkills, keys, useSources } from "../../lib/queries";
 
@@ -290,14 +291,28 @@ function cautionsOf(plan: Plan): number {
   );
 }
 
+/** Each caution by what it is and where, so the same one is known again in a later preview. */
+function cautionKeys(plan: Plan): string[] {
+  return plan.items
+    .flatMap((i) =>
+      signalsOf(plan, i)
+        .filter((s) => s.severity === "caution")
+        .map((s) => JSON.stringify([i.key, i.version, s.kind, s.path, s.detail])),
+    )
+    .sort();
+}
+
 /** Where each item comes from and what its scan found: what a person decides on, ahead of the file list. */
 function PlanTrust({
   plan,
   accepted,
+  changed,
   onAccept,
 }: {
   plan: Plan;
   accepted: boolean;
+  /** Cautions were accepted, and this preview has one that was not among them. */
+  changed: boolean;
   onAccept: (accepted: boolean) => void;
 }) {
   if ((plan.action !== "install" && plan.action !== "update") || plan.items.length === 0) return null;
@@ -345,10 +360,13 @@ function PlanTrust({
         })}
       </ul>
       {cautions > 0 ? (
-        <label className="review-accept">
-          <input type="checkbox" checked={accepted} onChange={(e) => onAccept(e.target.checked)} /> I have
-          read {cautions === 1 ? "this caution" : `these ${cautions} cautions`} and want to go ahead
-        </label>
+        <>
+          {changed ? <p className="muted">New cautions since you accepted.</p> : null}
+          <label className="review-accept">
+            <input type="checkbox" checked={accepted} onChange={(e) => onAccept(e.target.checked)} /> I have
+            read {cautions === 1 ? "this caution" : `these ${cautions} cautions`} and want to go ahead
+          </label>
+        </>
       ) : null}
     </section>
   );
@@ -405,6 +423,7 @@ export function ReviewDialog({
   const dyeOf = useDyes();
   const client = useQueryClient();
   const toast = useToast();
+  const { navigate } = useNav();
   const [clients, setClients] = useState<ClientId[] | null>(
     request.kind === "install" ? (request.clients ?? null) : null,
   );
@@ -419,8 +438,13 @@ export function ReviewDialog({
   const items: ItemRef[] = request.kind === "install" ? [...request.items, ...extra] : [];
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
-  // By plan: accepting the cautions of one preview says nothing of the next.
-  const [acceptedPlan, setAcceptedPlan] = useState<string | null>(null);
+  // The cautions that were accepted, not the preview they were in: choosing other agents makes a
+  // new preview, and the tick holds unless that preview has a caution not among these.
+  const [acceptedCautions, setAcceptedCautions] = useState<string[] | null>(null);
+  const cautionsAccepted = (p: Plan) => {
+    const keys = cautionKeys(p);
+    return keys.length > 0 && acceptedCautions !== null && keys.every((k) => acceptedCautions.includes(k));
+  };
   // At least one agent is always picked: the last one cannot be unticked, so there is never an empty preview.
   // Preselected: the agents the project (or this machine) already shows signs of using.
   const detected = useQuery({
@@ -572,14 +596,15 @@ export function ReviewDialog({
     setApplyError(null);
     if (projectId !== null) beginOwnChange(projectId);
     try {
-      const op = await api.applyPlan(p.id, cautionsOf(p) > 0 && acceptedPlan === p.id);
+      const op = await api.applyPlan(p.id, cautionsAccepted(p));
       if (projectId !== null) {
         // These are Habi's own writes, not outside changes to warn about.
         client.setQueryData(staleKey(projectId), null);
         invalidateProjectData(client, projectId);
-        toast.show(
-          `${p.title}: done (${plural(op.files.length, "file")}). You can restore it from Installed & history.`,
-        );
+        toast.show(`${p.title}: done (${plural(op.files.length, "file")}). Restore it from History.`, "ok", {
+          label: "Open History",
+          run: () => navigate({ name: "project", projectId, tab: "history" }),
+        });
       } else {
         // A skill on this machine can change what any project's agents read.
         invalidateSkills(client);
@@ -602,6 +627,21 @@ export function ReviewDialog({
 
   const p = plan.data;
   const unresolved = p ? p.conflicts.filter((c) => c.options.length > 0 && !decisions[c.path]).length : 0;
+  const byHand = p ? p.conflicts.filter((c) => c.options.length === 0).length : 0;
+  // Why the change cannot be made yet, said beside the button that would make it.
+  const blocked = !p
+    ? null
+    : byHand > 0
+      ? byHand === 1
+        ? "One file needs fixing by hand"
+        : `${byHand} files need fixing by hand`
+      : cautionsOf(p) > 0 && !cautionsAccepted(p)
+        ? cautionsOf(p) === 1
+          ? "Accept the caution above"
+          : "Accept the cautions above"
+        : unresolved > 0
+          ? `Choose what to do with ${plural(unresolved, "file")}`
+          : null;
   const keepLabel =
     request.kind === "remove"
       ? "Keep my file"
@@ -726,6 +766,7 @@ export function ReviewDialog({
       steady={installing}
       footer={
         <>
+          {p && p.changes.length > 0 && blocked ? <span className="muted">{blocked}</span> : null}
           <Button variant="quiet" onClick={onClose} disabled={applying}>
             Cancel
           </Button>
@@ -736,11 +777,7 @@ export function ReviewDialog({
               // While the preview for new choices loads, the shown plan is the old one: the button is
               // busy until the matching preview arrives, so a click never applies other choices.
               busy={applying || plan.isPlaceholderData}
-              disabled={
-                unresolved > 0 ||
-                p.conflicts.some((c) => c.options.length === 0) ||
-                (cautionsOf(p) > 0 && acceptedPlan !== p.id)
-              }
+              disabled={blocked !== null}
               onClick={() => {
                 if (!plan.isPlaceholderData) void apply(p);
               }}
@@ -778,8 +815,9 @@ export function ReviewDialog({
               <div className="review">
                 <PlanTrust
                   plan={p}
-                  accepted={acceptedPlan === p.id}
-                  onAccept={(yes) => setAcceptedPlan(yes ? p.id : null)}
+                  accepted={cautionsAccepted(p)}
+                  changed={acceptedCautions !== null && !cautionsAccepted(p)}
+                  onAccept={(yes) => setAcceptedCautions(yes ? cautionKeys(p) : null)}
                 />
                 {p.items.length > 1 ? (
                   <ul className="review-items">
@@ -824,7 +862,12 @@ export function ReviewDialog({
                             ))}
                           </div>
                         ) : (
-                          <p className="muted">Fix this by hand, then reopen this preview.</p>
+                          <p className="muted">
+                            Fix this by hand, then check again.{" "}
+                            <Button size="sm" busy={plan.isFetching} onClick={() => void plan.refetch()}>
+                              Check again
+                            </Button>
+                          </p>
                         )}
                         {c.diff ? (
                           <details>
