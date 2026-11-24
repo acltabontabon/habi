@@ -7,7 +7,7 @@ mod common;
 use habi_core::cancel::CancelToken;
 use habi_core::clients::ClientId;
 use habi_core::install::lock::LockFile;
-use habi_core::install::plan::{ChangeKind, ConflictKind, Decisions, Plan};
+use habi_core::install::plan::{ChangeKind, Decisions, Plan};
 use habi_core::library::model::{ItemKind, LibraryItem};
 use habi_core::library::signals::{SignalKind, SignalSeverity};
 use habi_core::service::{Habi, ItemRef};
@@ -396,7 +396,10 @@ fn a_link_another_installer_left_is_not_written_through() {
         .unwrap();
     let plan = env.plan("code-reviewer", &[ClientId::ClaudeCode]);
     assert_eq!(plan.conflicts.len(), 1, "{:?}", plan.conflicts);
-    assert_eq!(plan.conflicts[0].kind, ConflictKind::SymbolicLink);
+    assert_eq!(
+        plan.conflicts[0].kind,
+        habi_core::install::plan::ConflictKind::SymbolicLink
+    );
     assert!(plan.conflicts[0].message.contains("Remove the link"));
     assert!(env.habi.apply(&plan.id).is_err());
     assert_eq!(std::fs::read_to_string(&theirs).unwrap(), "theirs\n");
