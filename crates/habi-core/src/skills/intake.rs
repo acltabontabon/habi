@@ -503,7 +503,7 @@ pub(crate) fn packages_in(tree: &Tree, origin: impl Fn(&str) -> SkillOrigin) -> 
     index
         .items
         .iter()
-        .filter(|i| i.kind != crate::library::model::ItemKind::Instructions)
+        .filter(|i| i.kind.is_skill())
         .map(|i| Package {
             path: i.path.clone(),
             tree: if i.path.is_empty() {

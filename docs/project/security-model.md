@@ -11,6 +11,8 @@ untrusted too, even though it renders Habi's own UI.
 - Verification checks are listed, never run. Neither the app nor the CLI has a way to start one.
   Results recorded by earlier versions stay visible.
 - MCP servers are never launched or contacted by Habi. "Configured" means an entry exists.
+- A tool a library ships is never run by Habi, never installed into a project, and never put
+  on PATH by changing PATH or a shell's files.
 
 ## Git
 
@@ -87,8 +89,10 @@ and it is what makes authentication work without Habi handling secrets.
   repository (with its own hooks) inside a project.
 - Apply verifies each file's digest before backing it up, and again immediately before
   writing it; a journal that cannot be saved rolls the operation back.
-- `.habi/lock.json` is untrusted too: entries may only name files under `.agents/skills/` or
-  `.claude/skills/`, sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
+- `.habi/lock.json` is untrusted too: a skill's entries may only name files under
+  `.agents/skills/` or `.claude/skills/`, an agent's exactly one `.md` file directly in
+  `.claude/agents/`, `.cursor/agents/` or `.junie/agents/`, a tool's files under
+  `.habi/tools/` and one plainly named file in `.local/bin/`, and the rest sections in `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` or `GEMINI.md`,
   and MCP entries in each client's own configuration file. Anything else makes Habi refuse the lock file instead of deleting files.
 - Managed-section bodies may not contain Habi markers, and every write is re-parsed to confirm
   exactly one well-formed section results.
@@ -133,7 +137,9 @@ and it is what makes authentication work without Habi handling secrets.
 - Sharing a local skill goes through the contribution pipeline unchanged: explicit file list,
   secret scan, isolated branch, explicit push.
 - Installing on this machine uses the same planner with the home folder as its root: it writes
-  only skill folders under `~/.claude/skills` and `~/.agents/skills` and its record,
+  only skill folders under `~/.claude/skills` and `~/.agents/skills`, agent files in
+  `~/.claude/agents`, `~/.cursor/agents` and `~/.junie/agents`, a library tool's files under
+  `~/.habi/tools/<name>` with its command in `~/.local/bin`, and its record,
   `~/.habi/lock.json`; it never writes instructions or MCP configuration there, never through
   a symbolic link, and never over a folder it did not install.
 
@@ -278,13 +284,30 @@ re-creation of deleted files. All were fixed, with regression tests.
 
 By design, or not solved yet:
 
+- **A library tool is ordinary code once you run it.** Habi never runs it, but it puts the
+  command where you, a skill or an agent will, with your rights. That is why it is always a
+  caution, why every file is shown, and why it is asked about again when any file changes.
+  The scan of its files sees only patterns it knows. The runtime a tool states is looked up on
+  PATH, and its version is not checked. Which of two same-named commands runs is decided by
+  the order of your PATH; Habi says when the name is already taken and does not reorder it.
+- **A tool is placed only by the person, on their own machine.** A project's lock file that
+  lists a tool is refused, so a commit cannot place or remove a command. A tool may not be
+  named after a program Habi itself starts (`git`, `ssh`, `gh`, `glab`, a shell), or Habi
+  would run a library's code. Removing a tool also deletes what running it left in its own
+  folder under `~/.habi/tools/`, shown in the review like any other deletion.
+- **An older Habi cannot read a lock file that lists an agent.** The file is marked as a newer
+  format, but an older version stops at the kind it does not know and says the file is not valid.
+  Everyone who shares the project needs a version that knows agents.
+- **An agent's frontmatter is read for what is documented.** `hooks`, `permissionMode` and
+  `mcpServers` are flagged. A field a tool adds later is not, until Habi learns it.
+
 - **The parsers have no sandbox.** They run in Habi's process. A memory-safety bug in tree-sitter or a
   grammar, reached by a crafted source file or script, would run with Habi's rights. Nothing from a
   parse is executed, and input is bounded, but that is not isolation.
 - **Signals are not a sandbox.** Static patterns catch what they know. A hook or script written to avoid them
   will pass, which is why every skill that ships code says so and the preview shows new scripts.
 - **A library's role is your word.** `habi source add` connects a library as community unless you pass `--team`, and the
-  app asks, with team preselected. Either way, Habi does not check the choice against the URL, and only a team library's
+  app takes a repository for community and a folder on your machine for your team's until you say otherwise. Either way, Habi does not check the choice against the URL, and only a team library's
   required skills count.
 - **A re-hosted copy** is only noticed when it is installed beside its original with the same content; a re-host with any
   edit, or one that is not installed here, is not recognized.

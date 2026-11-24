@@ -125,10 +125,10 @@ you choose.
 
 1. **A project you opened.** The skill folders found there.
 2. **A folder on this machine.** One skill, or a folder of skills such as your personal ones.
-3. **A Git repository**, two different ways:
-   - *Make my own copy* reads the repository once, copies what you choose, and connects
-     nothing. Each copy remembers the repository and the version.
-   - *Connect as a library* keeps it to browse and update from. Nothing is copied.
+3. **A Git repository.** *Copy skills to edit* reads the repository once, copies what you
+   choose, and connects nothing. Each copy remembers the repository and the version. To browse
+   it and follow its updates instead, *Connect as a library instead* takes the address to the
+   connect page.
 4. **A library you connected.** Copies stay linked to it, so you can review its updates.
 
 The inspection lists each package with its origin, files, license, whether it has rules for

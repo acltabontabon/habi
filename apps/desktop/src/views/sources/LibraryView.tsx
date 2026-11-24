@@ -37,7 +37,7 @@ import { Strand } from "../../components/Weave";
 import { useActions } from "../../lib/actions";
 import { countSignals, groupItems, shortCommit, worstSignal } from "../../lib/catalog";
 import { type Dye, useDyes } from "../../lib/dye";
-import { freshnessText, levelLabel, plural, relativeTime } from "../../lib/format";
+import { freshnessText, levelLabel, plural, relativeTime, roleGist, roleLabel } from "../../lib/format";
 import { useInspectorOpen } from "../../lib/inspector";
 import { lastProject, type Route, useNav } from "../../lib/nav";
 import {
@@ -60,6 +60,7 @@ import {
 } from "../../lib/skillFacts";
 import { useMedia } from "../../lib/useMedia";
 import { ContentsToggle, SkillReader, usePackage } from "../reader/SkillReader";
+import { InstallTool } from "../review/InstallTool";
 import { ReviewDialog } from "../review/ReviewDialog";
 import { AddToProjectDialog } from "./AddToProjectDialog";
 import { DisconnectButton } from "./DisconnectButton";
@@ -133,6 +134,8 @@ function IndexRow({
           {fits ? <span className="index-fit">fits</span> : null}
           {required ? <span>required</span> : null}
           {item.kind === "instructions" ? <span>instructions</span> : null}
+          {item.kind === "agent" ? <span>agent</span> : null}
+          {item.kind === "tool" ? <span>tool</span> : null}
           {item.workflow ? <span>has steps</span> : null}
           {item.metadataStatus === "declared" ? <span>rules</span> : null}
           {code > 0 ? (
@@ -282,11 +285,9 @@ const IndexPanel = memo(function IndexPanel({
           ) : (
             <span className="index-repo">{shortRepo(source)}</span>
           )}
-          <span
-            title={source.role === "community" ? "Published by others; not reviewed by your team" : undefined}
-          >
+          <span title={roleGist[source.role]}>
             {" · "}
-            {source.role === "community" ? "community" : "team"}
+            {roleLabel[source.role].toLowerCase()}
           </span>
           {source.freshness !== "current" ? (
             <span
@@ -395,7 +396,12 @@ function SkillHead({
   onOpenDetails,
   onFocusIndex,
   onOpenFile,
+  related,
+  onOpenItem,
 }: {
+  /** The skills an agent follows, or the agents that follow a skill. */
+  related: LibraryItem[];
+  onOpenItem: (id: string) => void;
   item: LibraryItem;
   source: Source;
   entry: CatalogEntry | undefined;
@@ -522,8 +528,8 @@ function SkillHead({
         <button type="button" className="skill-coord-lib" onClick={onFocusIndex} title="Back to the index">
           {libraryName}
         </button>
-        <span className="skill-coord-trust">
-          {entry?.ownership ? "not audited" : community ? "community" : "team library"}
+        <span className="skill-coord-trust" title={roleGist[source.role]}>
+          {roleLabel[source.role].toLowerCase()} library
         </span>
         {fits.length > 0 ? (
           // Focusable, so the reasons in its tooltip reach the keyboard too; a screen reader reads them with it.
@@ -540,10 +546,14 @@ function SkillHead({
       <div className="skill-title-row">
         <h2 className="skill-head-title">{item.title}</h2>
         <div className="skill-actions">
-          <Button variant="primary" icon="download" onClick={() => setAdding(true)}>
-            Add to a project…
-          </Button>
-          {item.kind !== "instructions" ? (
+          {item.kind === "tool" ? (
+            <InstallTool sourceId={source.id} toolId={item.id} name={item.title} primary />
+          ) : (
+            <Button variant="primary" icon="download" onClick={() => setAdding(true)}>
+              Add to a project…
+            </Button>
+          )}
+          {item.kind !== "instructions" && item.kind !== "tool" ? (
             <Menu
               label="More ways to use this skill"
               trigger={
@@ -557,11 +567,17 @@ function SkillHead({
                   hint: "Your own agent folders: every project reads it",
                   onSelect: () => setOnMachine(true),
                 },
-                {
-                  label: "Edit a copy",
-                  hint: `A copy in My skills, linked to ${source.name}`,
-                  onSelect: () => addSkills({ source: "library", sourceId: source.id, preselect: item.id }),
-                },
+                // An agent is one file kept in the library; only a skill is copied to edit.
+                ...(item.kind === "agent"
+                  ? []
+                  : [
+                      {
+                        label: "Edit a copy",
+                        hint: `A copy in My skills, linked to ${source.name}`,
+                        onSelect: () =>
+                          addSkills({ source: "library", sourceId: source.id, preselect: item.id }),
+                      },
+                    ]),
               ]}
             />
           ) : null}
@@ -588,6 +604,23 @@ function SkillHead({
         </div>
       ) : null}
       <p className="skill-purpose">{summary.text}</p>
+      {related.length > 0 ? (
+        <p className="skill-related muted">
+          {item.kind === "agent"
+            ? "Follows "
+            : related.length === 1
+              ? "Followed by the agent "
+              : "Followed by the agents "}
+          {related.map((other, i) => (
+            <span key={other.id}>
+              {i > 0 ? ", " : null}
+              <button type="button" className="link-quiet" onClick={() => onOpenItem(other.id)}>
+                {other.title}
+              </button>
+            </span>
+          ))}
+        </p>
+      ) : null}
       <div className="skill-sig">
         <p className="sig mono">{signature}</p>
         <div className="sig-tools">
@@ -624,6 +657,7 @@ function SkillHead({
                 {item.tools.map((t) => (
                   <span key={t.name} className="skill-details-tool">
                     {t.name} <span className="mono muted">{t.commands.join(", ")}</span>
+                    {t.providedBy ? <span className="muted"> · this library ships it</span> : null}
                   </span>
                 ))}
               </dd>
@@ -901,6 +935,7 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
         {library.isPending && source.snapshot ? <Working>Reading the library…</Working> : null}
         {library.isError ? (
           <ErrorNotice
+            title="The library could not be read"
             error={library.error}
             action={
               <Button size="sm" onClick={() => void library.refetch()}>
@@ -975,6 +1010,12 @@ export function LibraryView({ source, itemId, file }: { source: Source; itemId?:
                 onOpenDetails={() => setDetails(true)}
                 onFocusIndex={focusIndex}
                 onOpenFile={(path) => navigate(route(selected.id, path))}
+                related={(library.data?.items ?? []).filter((other) =>
+                  selected.kind === "agent"
+                    ? selected.calls.includes(other.id)
+                    : other.kind === "agent" && other.calls.includes(selected.id),
+                )}
+                onOpenItem={(id) => navigate(route(id))}
               />
             }
           />

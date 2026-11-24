@@ -87,6 +87,9 @@ pub enum SignalKind {
     /// This plan would write an MCP server into an agent's configuration: a program the
     /// agent starts, or an address it connects to, chosen by the library.
     AddsMcpServer,
+    /// This plan would put a command on the person's PATH: a program of the
+    /// library's that runs with their rights whenever anything calls it by name.
+    AddsCommand,
     /// Comes with code an agent could run. Said of every skill that does,
     /// whatever the code looks like: patterns only see what they know.
     BundledCode,
@@ -97,7 +100,7 @@ impl SignalKind {
         use SignalKind::*;
         match self {
             DownloadAndRun | Destructive | CredentialFile | NativeBinary | HiddenText | AutoRun
-            | AddsMcpServer => SignalSeverity::Caution,
+            | AddsMcpServer | AddsCommand => SignalSeverity::Caution,
             EnvironmentSecret | Privileged | DynamicExecution | Network | PackageInstall
             | OpaqueFile | ExecutableData | ToolPermission | McpServer => SignalSeverity::Notice,
             NotFullyRead | BundledCode => SignalSeverity::Info,
@@ -125,6 +128,7 @@ impl SignalKind {
             ToolPermission => "Grants itself tools an agent can use without asking",
             McpServer => "Configures an MCP server",
             AddsMcpServer => "Adds an MCP server that your agent will start or connect to",
+            AddsCommand => "Puts a command on your PATH that runs the library's code",
             BundledCode => "Comes with code an agent could run",
         }
     }
@@ -818,6 +822,77 @@ pub fn scan_files(files: &[ItemFile], read: Reader) -> (Vec<Signal>, bool) {
     (found, complete)
 }
 
+/// Signals for a subagent: one Markdown file (`file.path`, read through
+/// `read`) that an agent tool follows the way it follows a skill's
+/// instructions, so it is read by the same rules. Its frontmatter can also
+/// set how it runs, which a skill's cannot.
+pub fn scan_agent(file: &ItemFile, read: Reader) -> Vec<Signal> {
+    let as_instructions = [ItemFile {
+        path: SKILL_FILE.to_string(),
+        ..file.clone()
+    }];
+    let (mut found, _) = scan_files(&as_instructions, &|_| read(&file.path));
+    if let Ok(bytes) = read(&file.path) {
+        scan_agent_frontmatter(&String::from_utf8_lossy(&bytes), &mut found);
+    }
+    for signal in &mut found {
+        if signal.path == SKILL_FILE {
+            signal.path.clone_from(&file.path);
+        }
+    }
+    found.sort_by(|a, b| {
+        b.severity
+            .cmp(&a.severity)
+            .then_with(|| a.line.cmp(&b.line))
+    });
+    found
+}
+
+/// What only a subagent's frontmatter sets: a permission mode that stops the
+/// tool asking, and MCP servers of its own. (`tools` narrows what it may use,
+/// so it is no grant; `hooks` are read as a skill's are.)
+fn scan_agent_frontmatter(text: &str, found: &mut Vec<Signal>) {
+    let Ok((yaml, _)) = super::split_frontmatter(text) else {
+        return;
+    };
+    let parsed = super::parse_yaml(yaml).unwrap_or_default();
+    let mode = parsed
+        .get("permissionMode")
+        .and_then(|m| m.as_str())
+        .unwrap_or_default();
+    if !matches!(mode, "" | "default" | "plan") {
+        found.push(Signal {
+            severity: SignalSeverity::Caution,
+            ..simple(
+                SignalKind::ToolPermission,
+                SKILL_FILE,
+                Some(excerpt(&format!("permissionMode: {mode}"))),
+            )
+        });
+    }
+    if let Some(servers) = parsed.get("mcpServers").filter(|s| !s.is_null()) {
+        // A name refers to a server the person already has. A definition is a
+        // program the tool starts, or an address it connects to.
+        let defines = servers.is_object()
+            || servers
+                .as_array()
+                .is_some_and(|list| list.iter().any(|s| s.is_object()));
+        let plain = simple(
+            SignalKind::McpServer,
+            SKILL_FILE,
+            Some("mcpServers in the frontmatter".to_string()),
+        );
+        found.push(Signal {
+            severity: if defines {
+                SignalSeverity::Caution
+            } else {
+                plain.severity
+            },
+            ..plain
+        });
+    }
+}
+
 /// Signals for a command line (a check's program and arguments), read as
 /// code. Paths in the result are `command`.
 pub fn scan_command(argv: &[String]) -> Vec<Signal> {
@@ -861,6 +936,21 @@ pub(crate) fn adds_mcp_server(file: &str, name: &str, spec: &McpServerSpec) -> S
         },
     };
     simple(SignalKind::AddsMcpServer, file, Some(what))
+}
+
+/// What a plan says of a command it would put on PATH (at `file`): how much
+/// code stands behind it and, when the name is already taken, by what.
+pub fn adds_command(file: &str, command: &str, files: usize, taken_by: Option<&str>) -> Signal {
+    let mut what = format!(
+        "`{command}`: {files} file{} of the library's code. Anything that calls `{command}` runs it, with your rights.",
+        if files == 1 { "" } else { "s" }
+    );
+    if let Some(other) = taken_by {
+        what.push_str(&format!(
+            " There is already a `{command}` at {other}; which one runs depends on the order of your PATH."
+        ));
+    }
+    simple(SignalKind::AddsCommand, file, Some(what))
 }
 
 /// A caution for code changed by an update to a skill that runs commands by itself.

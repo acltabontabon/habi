@@ -12,7 +12,10 @@ use crate::library::model::ItemKind;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub const LOCK_VERSION: u32 = 1;
+/// The newest lock format this version reads. A lock is written as format 1
+/// unless it lists a kind of item that format 1 did not have.
+pub const LOCK_VERSION: u32 = 2;
+const FIRST_LOCK_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -119,7 +122,8 @@ pub struct Provenance {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     #[ts(optional, as = "Option<bool>")]
     pub picked: bool,
-    /// The licence its author declares. Never an interpretation.
+    /// The licence its author declares, or where the terms are when only a
+    /// licence file says. Never an interpretation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub license: Option<String>,
@@ -179,10 +183,12 @@ impl Provenance {
                 None => "not inspected by Habi or your team".to_string(),
             });
         }
-        parts.push(match &self.license {
-            Some(l) => format!("licence: {l}"),
-            None => "no licence stated".to_string(),
-        });
+        match &self.license {
+            Some(l) => parts.push(format!("licence: {l}")),
+            // Your own work, or your team's: whose terms it is under is not in question.
+            None if matches!(self.curation, Curation::Team | Curation::Personal) => {}
+            None => parts.push("no licence stated".to_string()),
+        }
         if let Some(origin) = &self.claimed_origin {
             parts.push(format!("says it is based on {origin} (not checked)"));
         }
@@ -213,7 +219,7 @@ pub struct LockFile {
 impl Default for LockFile {
     fn default() -> Self {
         LockFile {
-            habi_lock: LOCK_VERSION,
+            habi_lock: FIRST_LOCK_VERSION,
             items: Vec::new(),
         }
     }
@@ -358,7 +364,8 @@ impl LockFile {
                 )));
             }
             // No reader left for its files reads as "delete them all" at the next update.
-            if item.clients.is_empty() && !item.files.is_empty() {
+            // (A tool is for the person, not for an agent tool, and has none.)
+            if item.clients.is_empty() && !item.files.is_empty() && item.kind != ItemKind::Tool {
                 return Err(HabiError::Conflict(format!(
                     "{} lists `{}` with files but no agent tools. Fix or remove the lock file.",
                     crate::brand::LOCK_FILE,
@@ -367,17 +374,11 @@ impl LockFile {
             }
             for f in &item.files {
                 let rel = crate::paths::RelPath::new(&f.path)?;
-                let under_skills = [
-                    crate::clients::layout::AGENTS_SKILLS,
-                    crate::clients::layout::CLAUDE_SKILLS,
-                ]
-                .iter()
-                .any(|base| {
-                    rel.as_str()
-                        .strip_prefix(&format!("{base}/"))
-                        .is_some_and(|rest| rest.contains('/'))
-                });
-                if !under_skills {
+                let managed = crate::clients::layout::managed_location(item.kind, rel.as_str())
+                    .is_some()
+                    || (item.kind == ItemKind::Tool
+                        && crate::clients::layout::launcher_command(rel.as_str()).is_some());
+                if !managed {
                     return Err(invalid(&format!("the file `{rel}`")));
                 }
             }
@@ -400,6 +401,14 @@ impl LockFile {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut sorted = self.clone();
+        // An older Habi does not know what a subagent is, so it must not take
+        // this for a file it can read.
+        let newer = sorted.items.iter().any(|i| i.kind == ItemKind::Agent);
+        sorted.habi_lock = if newer {
+            LOCK_VERSION
+        } else {
+            FIRST_LOCK_VERSION
+        };
         sorted.items.sort_by_key(|i| i.key());
         for item in &mut sorted.items {
             item.files.sort_by(|a, b| a.path.cmp(&b.path));

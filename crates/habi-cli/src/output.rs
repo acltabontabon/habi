@@ -195,6 +195,8 @@ fn item_kind(k: ItemKind) -> &'static str {
         // One concept: a workflow is a skill with steps.
         ItemKind::Skill | ItemKind::Workflow => "skill",
         ItemKind::Instructions => "instructions",
+        ItemKind::Agent => "agent",
+        ItemKind::Tool => "tool",
     }
 }
 
@@ -708,7 +710,7 @@ fn licence(item: &LibraryItem) -> String {
         (Some(declared), Some(file)) => format!("{declared} (terms: {file})"),
         (Some(declared), None) => declared.clone(),
         (None, Some(file)) => format!("not declared in SKILL.md; terms in {file}"),
-        (None, None) => "none found in the skill or its library".to_string(),
+        (None, None) => "none stated".to_string(),
     }
 }
 
@@ -747,6 +749,13 @@ pub fn explain(r: &Recommendation, item: Option<&LibraryItem>) {
             prerequisite_status(p.status),
             p.detail
         );
+        if let Some(tool) = p
+            .provided_by
+            .as_ref()
+            .filter(|_| p.status == PrerequisiteStatus::Missing)
+        {
+            println!("    Its library ships it. Install it with: habi machine install {tool}");
+        }
     }
     println!("Installation: {}", install_state(r.install_state));
     if !r.item.installable {

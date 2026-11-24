@@ -1079,7 +1079,7 @@ function StudioNotices({
           with the files on disk; “Keep mine” writes what is on screen over them.
         </Notice>
       ) : null}
-      {actionError ? <ErrorNotice error={actionError} /> : null}
+      {actionError ? <ErrorNotice title="That did not go through" error={actionError} /> : null}
       {broken ? (
         <Notice
           tone="warn"

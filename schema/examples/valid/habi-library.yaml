@@ -2,6 +2,11 @@ habi: 1
 name: Platform team know-how
 owner: Developer Experience
 skills_root: skills
+agents_root: agents
+tools:
+  - name: eng
+    entry: bin/eng
+    paths: [bin/eng, "src/eng/**"]
 instructions:
   - id: java-conventions
     title: Java conventions

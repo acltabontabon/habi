@@ -249,9 +249,9 @@ describe("your libraries, one line each", () => {
     const ledger = await screen.findByRole("list", { name: "Your libraries" });
     const rows = within(ledger).getAllByRole("button");
     expect(rows.map((r) => r.textContent)).toEqual([
-      expect.stringMatching(/^Zeta offline.*Your folder3offline/),
+      expect.stringMatching(/^Zeta offline.*Folder3offline/),
       expect.stringMatching(/^Anthropic.*anthropics\/skills.*Builder17current/),
-      expect.stringMatching(/^Team skills.*Your team7current/),
+      expect.stringMatching(/^Team skills.*Team7current/),
     ]);
     // The catalog is its own page; this one lists only what is connected.
     expect(screen.queryByRole("button", { name: /OpenAI/ })).toBeNull();
@@ -264,8 +264,7 @@ describe("your libraries, one line each", () => {
         .getAllByRole("menuitem")
         .map((i) => i.textContent),
     ).toEqual([
-      expect.stringMatching(/^Git repository…/),
-      expect.stringMatching(/^Folder…/),
+      expect.stringMatching(/^A repository or a folder…/),
       expect.stringMatching(/^From the catalog/),
     ]);
     // How it works is shown only until something is connected.
@@ -318,8 +317,7 @@ describe("your libraries, one line each", () => {
     wrap();
     expect(await screen.findByText("Put skills to work")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Explore the catalog" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Connect a Git repository" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Use a folder" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect your own" })).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

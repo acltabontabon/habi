@@ -18,7 +18,7 @@ export function ChecksPanel({
   const detail = useItemDetail(recommendation.item.sourceId, recommendation.item.id);
   const runs = useCheckRuns(overview.project.id, recommendation.item.key);
   if (detail.isPending) return <Working>Loading checks…</Working>;
-  if (detail.isError) return <ErrorNotice error={detail.error} />;
+  if (detail.isError) return <ErrorNotice title="The checks could not be read" error={detail.error} />;
   return (
     <div className="checks">
       <p className="muted">

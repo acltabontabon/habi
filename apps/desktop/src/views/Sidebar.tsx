@@ -12,7 +12,6 @@ import { api } from "../lib/api";
 import { groupOfEntry } from "../lib/catalog";
 import { type Dye, useDyes } from "../lib/dye";
 import { compactCount, freshnessText, plural, relativeTime } from "../lib/format";
-import { groupMachineSkills, hasUpdate } from "../lib/machine";
 import { forgetRememberedProject, lastProject, useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
 import {
@@ -21,9 +20,8 @@ import {
   useCatalog,
   useContributions,
   useKnownRepoFacts,
-  useMachineSkills,
+  usePendingUpdates,
   useRecentProjects,
-  useSkillsOverview,
   useSources,
 } from "../lib/queries";
 import { useNewVersionMark, useUpdates } from "../lib/updates";
@@ -35,8 +33,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const recent = useRecentProjects();
   const sources = useSources();
   const contributions = useContributions();
-  const skillsOverview = useSkillsOverview();
-  const machine = useMachineSkills();
+  const pending = usePendingUpdates();
   const info = useAppInfo();
   const { state: update } = useUpdates();
   const version = info.data?.version;
@@ -51,9 +48,8 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     (c) => c.state === "draft" || c.state === "committed",
   ).length;
   const hasSharing = (contributions.data ?? []).length > 0;
-  // Skills whose library has a newer version, so they are seen without opening each page.
-  const draftUpdates = (skillsOverview.data ?? []).filter((s) => s.upstream === "changed").length;
-  const machineUpdates = groupMachineSkills(machine.data ?? []).filter(hasUpdate).length;
+  // One count for everything that is behind its library, wherever it is.
+  const updates = (pending.data?.libraries.length ?? 0) + (pending.data?.copies.length ?? 0);
   const skillsArea =
     route.name === "skills" ? (route.tab === "machine" && !route.skillId ? "machine" : "collection") : null;
   const PROJECTS_SHOWN = 8;
@@ -220,7 +216,6 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               icon="pencil"
               label="My skills"
               active={skillsArea === "collection"}
-              updates={draftUpdates}
               onOpen={() => navigate({ name: "skills", tab: "collection" })}
             />
           </li>
@@ -229,7 +224,6 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
               icon="layers"
               label="On this machine"
               active={skillsArea === "machine"}
-              updates={machineUpdates}
               onOpen={() => navigate({ name: "skills", tab: "machine" })}
             />
           </li>
@@ -296,6 +290,25 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
           </li>
         </ul>
       </div>
+
+      {/* Shown only while something is behind: a row that is always there is one nobody reads. */}
+      {updates > 0 ? (
+        <div className="sidebar-group">
+          <button
+            type="button"
+            className={`sidebar-item${route.name === "updates" ? " is-active" : ""}`}
+            aria-current={route.name === "updates" ? "page" : undefined}
+            onClick={() => navigate({ name: "updates" })}
+          >
+            <Icon name="refresh" />
+            <span className="sidebar-item-text">Updates</span>
+            <span className="sidebar-count">
+              {updates}
+              <span className="visually-hidden"> waiting</span>
+            </span>
+          </button>
+        </div>
+      ) : null}
 
       {hasSharing ? (
         <div className="sidebar-group">
@@ -451,13 +464,11 @@ function SkillsItem({
   icon,
   label,
   active,
-  updates,
   onOpen,
 }: {
   icon: "pencil" | "layers";
   label: string;
   active: boolean;
-  updates: number;
   onOpen: () => void;
 }) {
   return (
@@ -465,17 +476,10 @@ function SkillsItem({
       type="button"
       className={`sidebar-item${active ? " is-active" : ""}`}
       aria-current={active ? "page" : undefined}
-      title={updates > 0 ? `${label} · ${plural(updates, "update")} available` : undefined}
       onClick={onOpen}
     >
       <Icon name={icon} />
       <span className="sidebar-item-text">{label}</span>
-      {updates > 0 ? (
-        <span className="sidebar-count">
-          {updates}
-          <span className="visually-hidden"> {updates === 1 ? "update" : "updates"} available</span>
-        </span>
-      ) : null}
     </button>
   );
 }

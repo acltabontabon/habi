@@ -2,13 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Plan } from "../bindings/Plan";
 import type { Signal } from "../bindings/Signal";
 import { ToastProvider } from "../components/Toasts";
 import { type Actions, ActionsContext } from "../lib/actions";
-import { NavProvider } from "../lib/nav";
+import { NavProvider, useNav } from "../lib/nav";
 import { ReviewDialog, type ReviewRequest } from "../views/review/ReviewDialog";
 
 const invoke = vi.fn();
@@ -104,6 +104,23 @@ function mock(p: Plan) {
   });
 }
 
+/** A removal in a project, closed once applied as the app closes it, with the route beside it. */
+function RemoveFromProject() {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <output>{JSON.stringify(useNav().route)}</output>
+      {open ? (
+        <ReviewDialog
+          projectId="p1"
+          request={{ kind: "remove", title: "Hooked", keys: ["k"] }}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 const applied = () => invoke.mock.calls.find(([cmd]) => cmd === "apply_plan");
 
 describe("the install review", () => {
@@ -162,6 +179,118 @@ describe("the install review", () => {
     wrap(<ReviewDialog projectId={null} request={request} onClose={() => {}} />);
     expect(await screen.findByText("New in this update:")).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: /read this caution/ })).toBeTruthy();
+  });
+
+  it("keeps the tick when other agents are chosen and the cautions are the same", async () => {
+    let n = 0;
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd?.startsWith("plan_")) return { ...plan([hook]), id: `plan-${++n}` };
+      if (cmd === "apply_plan") return { id: "op", files: [] };
+      if (cmd === "library") return { items: [] };
+      if (cmd === "detected_clients") return ["claude-code", "codex"];
+      return [];
+    });
+    const user = userEvent.setup();
+    wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
+    const accept = (await screen.findByRole("checkbox", { name: /read this caution/ })) as HTMLInputElement;
+    await user.click(accept);
+    await user.click(screen.getByRole("checkbox", { name: "Codex" }));
+    await waitFor(() => expect(n).toBe(2));
+
+    const button = screen.getByRole("button", { name: /^Install/ }) as HTMLButtonElement;
+    await waitFor(() => expect(button.getAttribute("aria-busy")).not.toBe("true"));
+    expect(accept.checked).toBe(true);
+    expect(screen.queryByText(/New cautions since you accepted/)).toBeNull();
+    await user.click(button);
+    await waitFor(() => expect(applied()).toBeTruthy());
+    expect(applied()?.[1]).toEqual({ planId: "plan-2", acceptCautions: true });
+  });
+
+  it("clears the tick when a new caution appears, and says so", async () => {
+    const other = { ...hook, path: "skills/hooked/hooks.json", detail: "command: rm -rf ~" };
+    invoke.mockImplementation(async (cmd: string, args: { clients?: string[] }) => {
+      if (cmd?.startsWith("plan_")) return plan(args.clients?.length === 1 ? [hook, other] : [hook]);
+      if (cmd === "library") return { items: [] };
+      if (cmd === "detected_clients") return ["claude-code", "codex"];
+      return [];
+    });
+    const user = userEvent.setup();
+    wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
+    await user.click(await screen.findByRole("checkbox", { name: /read this caution/ }));
+    await user.click(screen.getByRole("checkbox", { name: "Codex" }));
+
+    const accept = (await screen.findByRole("checkbox", {
+      name: /read these 2 cautions/,
+    })) as HTMLInputElement;
+    expect(accept.checked).toBe(false);
+    expect(screen.getByText(/New cautions since you accepted/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: /^Install/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Accept the cautions above")).toBeTruthy();
+
+    await user.click(accept);
+    expect(screen.queryByText(/New cautions since you accepted/)).toBeNull();
+    expect(screen.queryByText("Accept the cautions above")).toBeNull();
+  });
+
+  it("says a choice is needed, until it is made", async () => {
+    mock({
+      ...plan([]),
+      conflicts: [
+        {
+          path: "AGENTS.md",
+          kind: "localEdits",
+          item: null,
+          message: "edited here",
+          options: ["keep", "overwrite"],
+        },
+      ],
+    } as unknown as Plan);
+    const user = userEvent.setup();
+    wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
+    const button = (await screen.findByRole("button", { name: /^Install/ })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText("Choose what to do with 1 file")).toBeTruthy();
+
+    await user.click(screen.getByRole("radio", { name: "Keep mine" }));
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(screen.queryByText(/Choose what to do/)).toBeNull();
+  });
+
+  it("checks again in place once a file is fixed by hand", async () => {
+    let fixed = false;
+    const stuck = {
+      ...plan([]),
+      conflicts: [{ path: "AGENTS.md", kind: "symbolicLink", item: null, message: "is a link", options: [] }],
+    } as unknown as Plan;
+    invoke.mockImplementation(async (cmd: string) => {
+      if (cmd?.startsWith("plan_")) return fixed ? plan([]) : stuck;
+      if (cmd === "library") return { items: [] };
+      if (cmd === "detected_clients") return ["claude-code"];
+      return [];
+    });
+    const user = userEvent.setup();
+    wrap(<ReviewDialog projectId={null} request={install} onClose={() => {}} />);
+    const button = (await screen.findByRole("button", { name: /^Install/ })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText("One file needs fixing by hand")).toBeTruthy();
+
+    fixed = true;
+    await user.click(screen.getByRole("button", { name: "Check again" }));
+    await waitFor(() => expect(button.disabled).toBe(false));
+    expect(screen.queryByText("One file needs fixing by hand")).toBeNull();
+    expect(screen.queryByText("AGENTS.md")).toBeNull();
+  });
+
+  it("points to History once a project is changed, and opens it", async () => {
+    mock(plan([], [], "remove"));
+    const user = userEvent.setup();
+    wrap(<RemoveFromProject />);
+    await user.click(await screen.findByRole("button", { name: /^Install for/ }));
+    expect(await screen.findByText(/Restore it from History\.$/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Open History" }));
+    expect(screen.getByRole("status").textContent).toBe(
+      JSON.stringify({ name: "project", projectId: "p1", tab: "history" }),
+    );
   });
 
   it("is accessible", async () => {

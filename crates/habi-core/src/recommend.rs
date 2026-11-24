@@ -59,6 +59,10 @@ pub struct Prerequisite {
     pub detail: String,
     pub purpose: Option<String>,
     pub hint: Option<String>,
+    /// The id of a tool in the item's own library that is this: what is
+    /// missing can be installed from where the skill came from.
+    #[serde(default)]
+    pub provided_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -276,9 +280,20 @@ pub fn summarize(item: &LibraryItem, source_name: &str, snapshot: &str) -> ItemS
 /// Mirrors the refusals in install planning, so an item that cannot be
 /// installed is never offered for installation.
 pub fn installable(item: &LibraryItem) -> bool {
+    let broken = || {
+        item.diagnostics
+            .iter()
+            .any(|d| d.level == crate::library::model::DiagnosticLevel::Error)
+    };
     item.complete
-        && (item.kind == ItemKind::Instructions
-            || crate::library::check_skill_name(&item.name).is_ok())
+        && match item.kind {
+            ItemKind::Instructions => true,
+            // A subagent or a tool is refused for any error in what it declares.
+            ItemKind::Agent | ItemKind::Tool => !broken(),
+            ItemKind::Skill | ItemKind::Workflow => {
+                crate::library::check_skill_name(&item.name).is_ok()
+            }
+        }
 }
 
 /// Whether the tools a skill needs are available here, without executing
@@ -342,6 +357,7 @@ pub fn tool_prerequisites(
             }),
             purpose: tool.purpose.clone(),
             hint: tool.install_hint.clone(),
+            provided_by: tool.provided_by.clone(),
         });
     }
     prerequisites
@@ -421,6 +437,7 @@ pub fn readiness_for_clients(
                 name: requirement.name.clone(), status, detail,
                 purpose: requirement.purpose.clone(),
                 hint: requirement.server.as_ref().map(|_| "Habi can add the suggested configuration when you install this item.".into()),
+                provided_by: None,
             });
         }
         ClientReadiness { client, state: readiness_state(&prerequisites), prerequisites }
@@ -718,6 +735,8 @@ pub fn recommend(
     let project_clients = std::cell::OnceCell::new();
     let mut out: Vec<Recommendation> = candidates
         .iter()
+        // A tool is for the person's machine: no project fits it or lacks it.
+        .filter(|c| c.item.kind != ItemKind::Tool)
         .map(|c| {
             let item = c.item;
             let undeclared = item.metadata_status == MetadataStatus::Undeclared;
@@ -822,7 +841,7 @@ pub fn recommend(
                 },
                 _ => NextAction::None,
             };
-            let unmanaged_copies = if item.kind == ItemKind::Instructions {
+            let unmanaged_copies = if !item.kind.is_skill() {
                 Vec::new()
             } else {
                 folders.unmanaged_copies(root, &item.name, lock)

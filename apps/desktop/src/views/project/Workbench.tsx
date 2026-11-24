@@ -42,8 +42,6 @@ function rowStatus(r: Recommendation) {
     return <Status tone={installTone[r.installState]}>{installLabel[r.installState]}</Status>;
   if (r.applicability.applicability === "needsInformation")
     return <Status tone="unknown">Needs information</Status>;
-  if (r.readiness.state === "missing" && r.applicability.applicability === "applies")
-    return <Status tone="warn">Prerequisite missing</Status>;
   return null;
 }
 
@@ -247,6 +245,7 @@ export function Workbench({
             </span>
             {/* Everything here is a skill; only what changes how it reads is worth saying. */}
             {r.item.kind === "instructions" ? <span>Project instructions</span> : null}
+            {r.item.kind === "agent" ? <span>Agent</span> : null}
             {r.item.hasWorkflow ? <span>has steps</span> : null}
             {r.item.requirement === "required" ? <span>required</span> : null}
             {/* Whose rule it is, when it is not the author's. */}

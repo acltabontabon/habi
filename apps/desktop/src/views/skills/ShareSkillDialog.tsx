@@ -140,12 +140,12 @@ export function ShareSkillDialog({
         )
       }
     >
-      {error ? <ErrorNotice error={error} /> : null}
+      {error ? <ErrorNotice title="The skill could not be shared" error={error} /> : null}
       {errors.length > 0 ? (
         <Unfinished diagnostics={errors} action="shared" onFix={onFix} />
       ) : connecting ? (
         <ConnectLibrary
-          compact
+          inDialog
           onCancel={() => setConnecting(false)}
           onConnected={(source) => {
             setConnecting(false);

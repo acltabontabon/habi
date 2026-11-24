@@ -8,7 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Loading } from "./components/lazy";
 import { ToastProvider, useToast } from "./components/Toasts";
 import { Tooltips } from "./components/Tooltips";
-import { Button, ErrorNotice, Working } from "./components/ui";
+import { Button, ErrorNotice, errorLine, Working } from "./components/ui";
 import { type Actions, ActionsContext, type NewSkillContext } from "./lib/actions";
 import { api } from "./lib/api";
 import { guardWindowClose } from "./lib/closing";
@@ -41,6 +41,7 @@ const ContributionsView = lazy(() =>
   import("./views/contributions/ContributionsView").then((m) => ({ default: m.ContributionsView })),
 );
 const SettingsView = lazy(() => import("./views/SettingsView").then((m) => ({ default: m.SettingsView })));
+const UpdatesView = lazy(() => import("./views/UpdatesView").then((m) => ({ default: m.UpdatesView })));
 const AboutView = lazy(() => import("./views/AboutView").then((m) => ({ default: m.AboutView })));
 const PrivacyView = lazy(() => import("./views/PrivacyView").then((m) => ({ default: m.PrivacyView })));
 const AddSkillsDialog = lazy(() =>
@@ -152,7 +153,7 @@ function Shell() {
     const next = { ...current, showWelcome: !hideNext };
     client.setQueryData(keys.settings, next);
     api.setSettings(next).catch((e: unknown) => {
-      toast.show(`Settings not saved: ${e instanceof Error ? e.message : String(e)}`, "danger");
+      toast.show(errorLine("Settings not saved", e), "danger");
       void client.invalidateQueries({ queryKey: keys.settings });
     });
   };
@@ -176,7 +177,7 @@ function Shell() {
         if (picked.kind === "skills") setOpening({ step: "skills", pick: picked, stay });
         else opened(picked.project, stay);
       } catch (e) {
-        toast.show(e instanceof Error ? e.message : String(e), "danger");
+        toast.show(errorLine("The folder could not be opened", e), "danger");
       }
     },
     [opened, toast],
@@ -189,12 +190,12 @@ function Shell() {
     try {
       opened(await open, stay);
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      toast.show(errorLine("The project could not be opened", e), "danger");
     }
   };
   const connectAsLibrary = (location: string) => {
     setOpening(null);
-    navigate({ name: "sources", view: "folder", location });
+    navigate({ name: "sources", view: "connect", location });
   };
   // A new skill is a page to write on, at once: no form, nothing to decide first.
   // One at a time: a double click or a held ⌘N makes one skill, not several.
@@ -211,7 +212,7 @@ function Shell() {
         invalidateSkills(client);
         navigate({ name: "skills", skillId: skill.summary.id });
       } catch (e) {
-        toast.show(e instanceof Error ? e.message : String(e), "danger");
+        toast.show(errorLine("The skill could not be created", e), "danger");
       } finally {
         creating.current = false;
       }
@@ -367,6 +368,7 @@ function Shell() {
                 />
               )}
               {route.name === "contributions" && <ContributionsView contributionId={route.contributionId} />}
+              {route.name === "updates" && <UpdatesView />}
               {route.name === "settings" && <SettingsView />}
               {route.name === "about" && <AboutView />}
               {route.name === "privacy" && <PrivacyView />}

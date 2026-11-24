@@ -122,7 +122,7 @@ export function FileReader({
     queryFn: () => api.itemFile(sourceId, itemId, path),
   });
   if (file.isPending) return <Working>Reading {path}…</Working>;
-  if (file.isError) return <ErrorNotice error={file.error} />;
+  if (file.isError) return <ErrorNotice title="The file could not be read" error={file.error} />;
   const text = file.data.text;
   if (file.data.binary || text === null) {
     return <p className="muted file-reader-note">Not a text file · {size(file.data.size)}</p>;
@@ -222,7 +222,9 @@ export function SkillReader({
   const page = useRef<HTMLDivElement>(null);
   const skillScroll = useRef(0);
   const item = detail.data?.item;
-  const main = item?.kind === "instructions" ? (item.files[0]?.path ?? "") : "SKILL.md";
+  // Instructions and agents are one file each; a skill's main file is its SKILL.md.
+  const oneFile = item?.kind === "instructions" || item?.kind === "agent";
+  const main = item?.tool ? item.tool.entry : oneFile ? (item?.files[0]?.path ?? "") : "SKILL.md";
   const shape = useMemo(() => (item ? packageShape(item.files, main) : null), [item, main]);
 
   // The inspector folds away after its last frame, so closing is seen.
@@ -294,7 +296,7 @@ export function SkillReader({
   }, [file, open, openFile, setOpen]);
 
   if (detail.isPending) return <Working stage>Reading the skill…</Working>;
-  if (detail.isError) return <ErrorNotice error={detail.error} />;
+  if (detail.isError) return <ErrorNotice title="The skill could not be read" error={detail.error} />;
   if (!item || !shape) return null;
   const { body, source } = detail.data;
   const paths = item.files.map((f) => f.path);
@@ -334,7 +336,12 @@ export function SkillReader({
                   </div>
                 )}
                 <div className="reader-doc" id="reader-doc" tabIndex={-1}>
-                  <Markdown text={body} files={paths} onLocalLink={openLink} />
+                  {/* What a tool starts is code, and is shown as code. */}
+                  <Markdown
+                    text={item?.tool ? `\`\`\`\`\n${body}\n\`\`\`\`` : body}
+                    files={paths}
+                    onLocalLink={openLink}
+                  />
                 </div>
               </div>
             </div>

@@ -9,7 +9,13 @@ import { useActions } from "../lib/actions";
 import { relativeTime } from "../lib/format";
 import { useNav } from "../lib/nav";
 import { modShortcut } from "../lib/platform";
-import { useAppInfo, useContributions, useRecentProjects, useSources } from "../lib/queries";
+import {
+  useAppInfo,
+  useContributions,
+  usePendingUpdates,
+  useRecentProjects,
+  useSources,
+} from "../lib/queries";
 import { HomeFront, type HomeNote, type HomeProject } from "./HomeFront";
 
 const ALSO_SHOWN = 4;
@@ -20,6 +26,8 @@ export function Welcome() {
   const info = useAppInfo();
   const recent = useRecentProjects();
   const sources = useSources();
+  const pending = usePendingUpdates();
+  const behind = (pending.data?.libraries.length ?? 0) + (pending.data?.copies.length ?? 0);
   const contributions = useContributions();
 
   const projects = (recent.data ?? []).filter((p) => p.exists);
@@ -45,6 +53,16 @@ export function Welcome() {
   const returning = projects.length > 0;
   // What asks something of the person and is not already a project's count.
   const also: HomeNote[] = [
+    ...(behind > 0
+      ? [
+          {
+            key: "updates",
+            name: "Updates",
+            detail: `${behind} waiting`,
+            go: () => navigate({ name: "updates" }),
+          },
+        ]
+      : []),
     ...(sources.data ?? [])
       .filter((s) => s.lastError)
       .map((s) => ({
@@ -110,7 +128,7 @@ export function Welcome() {
           projects={listed}
           also={also.slice(0, ALSO_SHOWN)}
           onOpenAnother={() => void openProject()}
-          onExplore={() => navigate({ name: "sources" })}
+          onExplore={() => navigate({ name: "sources", view: "explore" })}
         />
       ) : (
         <header className="home-head">

@@ -26,6 +26,7 @@ import { api, type Decisions, HabiError } from "../../lib/api";
 import { useDyes } from "../../lib/dye";
 import { ALL_CLIENTS, andList, clientLabel, plural } from "../../lib/format";
 import { copyState, precedenceNote } from "../../lib/machine";
+import { useNav } from "../../lib/nav";
 import { beginOwnChange, endOwnChange, staleKey } from "../../lib/ownChanges";
 import { invalidateProjectData, invalidateSkills, keys, useSources } from "../../lib/queries";
 
@@ -38,6 +39,8 @@ export type ReviewRequest =
       clients?: ClientId[];
       /** The library is not the team's own: installing on this machine carries a warning. */
       unaudited?: boolean;
+      /** A tool its library ships: for the person, so no agent is chosen. */
+      tool?: boolean;
     }
   | { kind: "update"; keys: string[]; title: string }
   | { kind: "remove"; keys: string[]; title: string }
@@ -49,6 +52,9 @@ const opGlyph: Record<ChangeOp, string> = { create: "+", modify: "~", delete: "â
 
 const kindTitle: Record<ChangeKind, string> = {
   skillFile: "Skill files",
+  agentFile: "Agents",
+  toolFile: "Tool files",
+  toolCommand: "Command on your PATH",
   instructionsSection: "Instructions",
   claudeBridge: "Claude Code bridge",
   geminiBridge: "Gemini CLI bridge",
@@ -97,12 +103,12 @@ export function groupChanges(changes: FileChange[]): ChangeGroup[] {
     return {
       key,
       title:
-        head.kind === "skillFile" && head.clients.length > 0
+        (head.kind === "skillFile" || head.kind === "agentFile") && head.clients.length > 0
           ? head.clients.map((c) => clientLabel[c]).join(", ")
           : kindTitle[head.kind],
       dir: common.length > 0 ? `${common.join("/")}/` : "",
       why: whys.size === 1 ? ([...whys][0] ?? null) : null,
-      explain: head.kind !== "skillFile" && head.kind !== "lockFile",
+      explain: head.kind !== "skillFile" && head.kind !== "agentFile" && head.kind !== "lockFile",
       rows,
     };
   });
@@ -126,6 +132,7 @@ function folderPurpose(dir: string): string | null {
 }
 
 function filePurpose(change: FileChange, name: string): string | null {
+  if (change.kind === "agentFile") return "The agent itself: what the tool hands work to.";
   if (change.kind !== "skillFile") return change.explanation || null;
   if (name === "SKILL.md") return "The skill itself: what the agent reads and follows.";
   if (name === "habi.yaml") return "Habi's notes on the skill: when it applies and what it needs.";
@@ -284,14 +291,28 @@ function cautionsOf(plan: Plan): number {
   );
 }
 
+/** Each caution by what it is and where, so the same one is known again in a later preview. */
+function cautionKeys(plan: Plan): string[] {
+  return plan.items
+    .flatMap((i) =>
+      signalsOf(plan, i)
+        .filter((s) => s.severity === "caution")
+        .map((s) => JSON.stringify([i.key, i.version, s.kind, s.path, s.detail])),
+    )
+    .sort();
+}
+
 /** Where each item comes from and what its scan found: what a person decides on, ahead of the file list. */
 function PlanTrust({
   plan,
   accepted,
+  changed,
   onAccept,
 }: {
   plan: Plan;
   accepted: boolean;
+  /** Cautions were accepted, and this preview has one that was not among them. */
+  changed: boolean;
   onAccept: (accepted: boolean) => void;
 }) {
   if ((plan.action !== "install" && plan.action !== "update") || plan.items.length === 0) return null;
@@ -339,10 +360,13 @@ function PlanTrust({
         })}
       </ul>
       {cautions > 0 ? (
-        <label className="review-accept">
-          <input type="checkbox" checked={accepted} onChange={(e) => onAccept(e.target.checked)} /> I have
-          read {cautions === 1 ? "this caution" : `these ${cautions} cautions`} and want to go ahead
-        </label>
+        <>
+          {changed ? <p className="muted">New cautions since you accepted.</p> : null}
+          <label className="review-accept">
+            <input type="checkbox" checked={accepted} onChange={(e) => onAccept(e.target.checked)} /> I have
+            read {cautions === 1 ? "this caution" : `these ${cautions} cautions`} and want to go ahead
+          </label>
+        </>
       ) : null}
     </section>
   );
@@ -399,6 +423,7 @@ export function ReviewDialog({
   const dyeOf = useDyes();
   const client = useQueryClient();
   const toast = useToast();
+  const { navigate } = useNav();
   const [clients, setClients] = useState<ClientId[] | null>(
     request.kind === "install" ? (request.clients ?? null) : null,
   );
@@ -413,8 +438,13 @@ export function ReviewDialog({
   const items: ItemRef[] = request.kind === "install" ? [...request.items, ...extra] : [];
   const [applyError, setApplyError] = useState<unknown>(null);
   const [applying, setApplying] = useState(false);
-  // By plan: accepting the cautions of one preview says nothing of the next.
-  const [acceptedPlan, setAcceptedPlan] = useState<string | null>(null);
+  // The cautions that were accepted, not the preview they were in: choosing other agents makes a
+  // new preview, and the tick holds unless that preview has a caution not among these.
+  const [acceptedCautions, setAcceptedCautions] = useState<string[] | null>(null);
+  const cautionsAccepted = (p: Plan) => {
+    const keys = cautionKeys(p);
+    return keys.length > 0 && acceptedCautions !== null && keys.every((k) => acceptedCautions.includes(k));
+  };
   // At least one agent is always picked: the last one cannot be unticked, so there is never an empty preview.
   // Preselected: the agents the project (or this machine) already shows signs of using.
   const detected = useQuery({
@@ -442,11 +472,12 @@ export function ReviewDialog({
   );
   const otherAgents = ALL_CLIENTS.length - shownAgents.length;
   const unaudited = machine && request.kind === "install" && request.unaudited === true;
+  const forTool = request.kind === "install" && request.tool === true;
 
   // What a machine install would sit next to: projects that already hold the skill.
   const shadows = useQuery({
     queryKey: ["machineShadows", request.kind === "install" ? items : null, chosen],
-    enabled: machine && request.kind === "install" && chosen.length > 0 && !detecting,
+    enabled: machine && request.kind === "install" && !forTool && chosen.length > 0 && !detecting,
     retry: false,
     queryFn: () => api.machineInstallPreview(items, chosen),
   });
@@ -532,7 +563,7 @@ export function ReviewDialog({
       switch (request.kind) {
         case "install":
           return projectId === null
-            ? api.planInstallMachine(items, chosen, decisions)
+            ? api.planInstallMachine(items, forTool ? [] : chosen, decisions)
             : api.planInstall(projectId, items, chosen, includeMcp, decisions);
         case "update":
           return projectId === null
@@ -565,14 +596,15 @@ export function ReviewDialog({
     setApplyError(null);
     if (projectId !== null) beginOwnChange(projectId);
     try {
-      const op = await api.applyPlan(p.id, cautionsOf(p) > 0 && acceptedPlan === p.id);
+      const op = await api.applyPlan(p.id, cautionsAccepted(p));
       if (projectId !== null) {
         // These are Habi's own writes, not outside changes to warn about.
         client.setQueryData(staleKey(projectId), null);
         invalidateProjectData(client, projectId);
-        toast.show(
-          `${p.title}: done (${plural(op.files.length, "file")}). You can restore it from Installed & history.`,
-        );
+        toast.show(`${p.title}: done (${plural(op.files.length, "file")}). Restore it from History.`, "ok", {
+          label: "Open History",
+          run: () => navigate({ name: "project", projectId, tab: "history" }),
+        });
       } else {
         // A skill on this machine can change what any project's agents read.
         invalidateSkills(client);
@@ -595,6 +627,21 @@ export function ReviewDialog({
 
   const p = plan.data;
   const unresolved = p ? p.conflicts.filter((c) => c.options.length > 0 && !decisions[c.path]).length : 0;
+  const byHand = p ? p.conflicts.filter((c) => c.options.length === 0).length : 0;
+  // Why the change cannot be made yet, said beside the button that would make it.
+  const blocked = !p
+    ? null
+    : byHand > 0
+      ? byHand === 1
+        ? "One file needs fixing by hand"
+        : `${byHand} files need fixing by hand`
+      : cautionsOf(p) > 0 && !cautionsAccepted(p)
+        ? cautionsOf(p) === 1
+          ? "Accept the caution above"
+          : "Accept the cautions above"
+        : unresolved > 0
+          ? `Choose what to do with ${plural(unresolved, "file")}`
+          : null;
   const keepLabel =
     request.kind === "remove"
       ? "Keep my file"
@@ -640,53 +687,64 @@ export function ReviewDialog({
     return dyeOf(source?.id ?? "local");
   };
 
-  const setup = installing ? (
-    <aside className="review-setup">
-      <fieldset className="clients">
-        <legend className="review-heading">Install for</legend>
-        <div className="agent-list">
-          {shownAgents.map((c) => (
-            <label key={c} className="agent-pick">
-              <input
-                type="checkbox"
-                checked={chosen.includes(c)}
-                disabled={chosen.length === 1 && chosen.includes(c)}
-                title={chosen.length === 1 && chosen.includes(c) ? "At least one agent" : undefined}
-                onChange={() => toggleClient(c)}
-              />
-              <span className="agent-face">
-                <span className="agent-tick" aria-hidden="true">
-                  <Icon name="check" size={12} />
+  // A tool asks nothing of this column unless there is a warning to put in it.
+  const setup =
+    installing && !(forTool && !unaudited) ? (
+      <aside className="review-setup">
+        {forTool ? null : (
+          <fieldset className="clients">
+            <legend className="review-heading">Install for</legend>
+            <div className="agent-list">
+              {shownAgents.map((c) => (
+                <label key={c} className="agent-pick">
+                  <input
+                    type="checkbox"
+                    checked={chosen.includes(c)}
+                    disabled={chosen.length === 1 && chosen.includes(c)}
+                    title={chosen.length === 1 && chosen.includes(c) ? "At least one agent" : undefined}
+                    onChange={() => toggleClient(c)}
+                  />
+                  <span className="agent-face">
+                    <span className="agent-tick" aria-hidden="true">
+                      <Icon name="check" size={12} />
+                    </span>
+                    <strong>{clientLabel[c]}</strong>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {otherAgents > 0 || everyAgent ? (
+              <button type="button" className="link-btn agent-more" onClick={() => setEveryAgent((e) => !e)}>
+                {everyAgent ? "Only the agents on this machine" : `Other agents (${otherAgents})`}
+              </button>
+            ) : null}
+            {asksMcp ? (
+              <label
+                className="check mcp-option"
+                title="Only servers the item needs; no secrets are written."
+              >
+                <input
+                  type="checkbox"
+                  checked={includeMcp}
+                  onChange={(e) => setIncludeMcp(e.target.checked)}
+                />
+                <span>
+                  <strong>Add suggested MCP configuration</strong>
                 </span>
-                <strong>{clientLabel[c]}</strong>
-              </span>
-            </label>
-          ))}
-        </div>
-        {otherAgents > 0 || everyAgent ? (
-          <button type="button" className="link-btn agent-more" onClick={() => setEveryAgent((e) => !e)}>
-            {everyAgent ? "Only the agents on this machine" : `Other agents (${otherAgents})`}
-          </button>
-        ) : null}
-        {asksMcp ? (
-          <label className="check mcp-option" title="Only servers the item needs; no secrets are written.">
-            <input type="checkbox" checked={includeMcp} onChange={(e) => setIncludeMcp(e.target.checked)} />
-            <span>
-              <strong>Add suggested MCP configuration</strong>
-            </span>
-          </label>
-        ) : null}
-      </fieldset>
+              </label>
+            ) : null}
+          </fieldset>
+        )}
 
-      {readinessWarnings.map((w) => (
-        <Notice key={w.key} tone="warn" title={w.title}>
-          {w.detail} Installing still works, but the agent may not be able to follow every step.
-        </Notice>
-      ))}
+        {readinessWarnings.map((w) => (
+          <Notice key={w.key} tone="warn" title={w.title}>
+            {w.detail} Installing still works, but the agent may not be able to follow every step.
+          </Notice>
+        ))}
 
-      {unaudited ? <AuditWarning /> : null}
-    </aside>
-  ) : null;
+        {unaudited ? <AuditWarning /> : null}
+      </aside>
+    ) : null;
 
   return (
     <Dialog
@@ -708,6 +766,7 @@ export function ReviewDialog({
       steady={installing}
       footer={
         <>
+          {p && p.changes.length > 0 && blocked ? <span className="muted">{blocked}</span> : null}
           <Button variant="quiet" onClick={onClose} disabled={applying}>
             Cancel
           </Button>
@@ -718,11 +777,7 @@ export function ReviewDialog({
               // While the preview for new choices loads, the shown plan is the old one: the button is
               // busy until the matching preview arrives, so a click never applies other choices.
               busy={applying || plan.isPlaceholderData}
-              disabled={
-                unresolved > 0 ||
-                p.conflicts.some((c) => c.options.length === 0) ||
-                (cautionsOf(p) > 0 && acceptedPlan !== p.id)
-              }
+              disabled={blocked !== null}
               onClick={() => {
                 if (!plan.isPlaceholderData) void apply(p);
               }}
@@ -760,8 +815,9 @@ export function ReviewDialog({
               <div className="review">
                 <PlanTrust
                   plan={p}
-                  accepted={acceptedPlan === p.id}
-                  onAccept={(yes) => setAcceptedPlan(yes ? p.id : null)}
+                  accepted={cautionsAccepted(p)}
+                  changed={acceptedCautions !== null && !cautionsAccepted(p)}
+                  onAccept={(yes) => setAcceptedCautions(yes ? cautionKeys(p) : null)}
                 />
                 {p.items.length > 1 ? (
                   <ul className="review-items">
@@ -806,7 +862,12 @@ export function ReviewDialog({
                             ))}
                           </div>
                         ) : (
-                          <p className="muted">Fix this by hand, then reopen this preview.</p>
+                          <p className="muted">
+                            Fix this by hand, then check again.{" "}
+                            <Button size="sm" busy={plan.isFetching} onClick={() => void plan.refetch()}>
+                              Check again
+                            </Button>
+                          </p>
                         )}
                         {c.diff ? (
                           <details>

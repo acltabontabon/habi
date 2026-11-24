@@ -21,7 +21,8 @@ reviewedAt?: string,
  */
 picked?: boolean, 
 /**
- * The licence its author declares. Never an interpretation.
+ * The licence its author declares, or where the terms are when only a
+ * licence file says. Never an interpretation.
  */
 license?: string, 
 /**

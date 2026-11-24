@@ -62,7 +62,7 @@ function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
     const failed = list.filter((_, i) => results[i]?.status === "rejected").map((s) => s.name);
     if (failed.length === 0) {
       toast.show(
-        `${list.length === 1 ? list[0]?.name : `All ${list.length} libraries`} refreshed. Installed copies were not changed.`,
+        `${list.length === 1 ? list[0]?.name : `All ${list.length} libraries`} refreshed. Installed copies follow from Updates.`,
       );
     } else {
       toast.show(
@@ -243,16 +243,10 @@ function Palette({ onOpenChange }: { onOpenChange: (o: boolean) => void }) {
                   <Icon name="library" /> <span>Explore libraries</span>
                 </Command.Item>
                 <Command.Item
-                  value="connect git repository library team url"
-                  onSelect={() => run(() => navigate({ name: "sources", view: "git" }))}
+                  value="connect library git repository team url github folder local directory"
+                  onSelect={() => run(() => navigate({ name: "sources", view: "connect" }))}
                 >
-                  <Icon name="branch" /> <span>Connect a Git repository…</span>
-                </Command.Item>
-                <Command.Item
-                  value="use folder local library directory"
-                  onSelect={() => run(() => navigate({ name: "sources", view: "folder" }))}
-                >
-                  <Icon name="folder" /> <span>Use a folder as a library…</span>
+                  <Icon name="branch" /> <span>Connect a library…</span>
                 </Command.Item>
                 <Command.Item
                   value="welcome setup git tools prerequisites intro"

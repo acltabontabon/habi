@@ -31,6 +31,8 @@ beforeEach(() => {
     if (cmd === "skill_templates") return templates;
     if (cmd === "skill_upstream") return null;
     if (cmd === "cancel_job") return null;
+    // An address that is already a repository reads as itself.
+    if (cmd === "read_address") return { location: args.input, tracked: { kind: "default" } };
     throw { code: "notFound", message: `no mock for ${cmd}` };
   });
 });
@@ -979,32 +981,31 @@ describe("Add skills", () => {
     const onClose = vi.fn();
     const view = wrap(<AddSkillsDialog start={{ source: "choose" }} onClose={onClose} />, { name: "skills" });
     const dialog = await screen.findByRole("dialog", { name: "Add skills" });
-    // Two different things, said apart, before anything is fetched.
-    expect(within(dialog).getByRole("button", { name: /Make my own copy/ })).toBeDisabled();
+    // Copying is what this dialog is for; it waits for an address.
+    expect(within(dialog).getByRole("button", { name: "Copy skills to edit" })).toBeDisabled();
     await userEvent.type(
       within(dialog).getByLabelText("Repository address"),
       "https://github.com/acme/skills",
     );
     expect(within(dialog).getByText(/Nothing stays connected/)).toBeInTheDocument();
-    expect(
-      within(dialog).getByText("Keep it to browse and update from. Nothing is copied."),
-    ).toBeInTheDocument();
-    await userEvent.click(within(dialog).getByRole("button", { name: /Make my own copy/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Copy skills to edit" }));
     expect(await screen.findByRole("dialog", { name: "Copy from acme/skills" })).toBeInTheDocument();
     expect(screen.getByText(/connect it later to follow its updates/)).toBeInTheDocument();
     view.unmount();
     await waitFor(() => expect(forgotten).toHaveBeenCalled());
   });
 
-  it("connects a repository as a library from the same address", async () => {
-    wrap(<AddSkillsDialog start={{ source: "choose" }} onClose={() => {}} />, { name: "skills" });
+  it("hands the address to the connect page when a library is what is wanted", async () => {
+    const onClose = vi.fn();
+    wrap(<AddSkillsDialog start={{ source: "choose" }} onClose={onClose} />, { name: "skills" });
     const dialog = await screen.findByRole("dialog", { name: "Add skills" });
     await userEvent.type(
       within(dialog).getByLabelText("Repository address"),
       "https://github.com/acme/skills",
     );
-    await userEvent.click(within(dialog).getByRole("button", { name: /Connect as a library/ }));
-    expect(await screen.findByDisplayValue("https://github.com/acme/skills")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Connect as a library instead" }));
+    // Connecting has one page of its own; nothing is fetched or copied from here.
+    expect(onClose).toHaveBeenCalled();
     expect(invoke.mock.calls.some((c) => c[0] === "open_git_copy")).toBe(false);
   });
 });

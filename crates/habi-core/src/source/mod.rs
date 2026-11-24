@@ -11,7 +11,7 @@ pub mod git;
 pub mod release;
 
 use crate::cancel::CancelToken;
-use crate::error::{ErrorInfo, HabiError, Result};
+use crate::error::{ErrorInfo, GitFailure, HabiError, Result};
 use crate::fsutil::{Bounded, read_bounded, short, tree_digest};
 use crate::library::model::{Diagnostic, LibraryIndex, SnapshotFile};
 use crate::library::{self};
@@ -495,6 +495,220 @@ pub fn parse_location(input: &str) -> Result<Location> {
         return Err(HabiError::invalid("local folders must be absolute paths"));
     }
     local_location(&expanded)
+}
+
+/// What a pasted address names: a repository or folder and, for a page of a
+/// repository on the web, the branch or tag and folder that page shows.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Address {
+    /// The repository or folder, as `parse_location` accepts it.
+    pub location: String,
+    pub tracked: TrackedRef,
+    /// The folder of the repository to read, when the address names one.
+    pub subdir: Option<String>,
+    /// The skill the address points at. The whole repository is still read,
+    /// so what its root declares is not lost.
+    pub focus: Option<String>,
+    /// What follows `/tree/` or `/blob/`: a branch or tag, then a path. A ref
+    /// may hold slashes, so where one ends only the remote can say
+    /// (`Sources::resolve_address`). Until then `tracked` is the default.
+    pub unresolved: Option<String>,
+    /// Whether `unresolved` ends in a file (`/blob/`) or a folder (`/tree/`).
+    pub file: bool,
+    /// The same repository over the other protocol (`other_transport`), to
+    /// offer when this one is refused.
+    pub alternative: Option<String>,
+}
+
+/// Hosts whose web addresses Habi reads, and the marker that ends the
+/// repository's path in them (GitLab groups nest, so its marker is `/-/`).
+const WEB_HOSTS: &[(&str, &str)] = &[("github.com", ""), ("gitlab.com", "-")];
+
+/// Reads what a person pasted: anything `parse_location` accepts, and also
+/// `owner/repo`, `github.com/owner/repo`, and the address of a branch, folder
+/// or file on github.com or gitlab.com. Asks nothing of the network, and what
+/// `parse_location` refuses is refused here too.
+pub fn parse_address(input: &str) -> Result<Address> {
+    let s = input.trim();
+    let plain = |location: &str| Address {
+        location: location.to_string(),
+        tracked: TrackedRef::Default,
+        subdir: None,
+        focus: None,
+        unresolved: None,
+        file: false,
+        alternative: other_transport(location),
+    };
+    let checked = |address: Address| parse_location(&address.location).map(|_| address);
+    if is_shorthand(s) {
+        return checked(plain(&format!("https://github.com/{s}")));
+    }
+    // `github.com/owner/repo`, as copied without its scheme.
+    let lower = s.to_ascii_lowercase();
+    let bare_host = WEB_HOSTS.iter().any(|(host, _)| {
+        [*host, &format!("www.{host}")]
+            .iter()
+            .any(|h| lower.strip_prefix(h).is_some_and(|r| r.starts_with('/')))
+    });
+    let url = if bare_host {
+        let from = if lower.starts_with("www.") { 4 } else { 0 };
+        format!("https://{}", s.get(from..).unwrap_or(s))
+    } else {
+        s.to_string()
+    };
+    let Some(web) = web_parts(&url) else {
+        return checked(plain(&url));
+    };
+    let mut address = plain(&web.repository);
+    if let Some((file, rest)) = web.page {
+        address.unresolved = Some(rest);
+        address.file = file;
+    }
+    checked(address)
+}
+
+/// `owner/repo`: two plain names and nothing else. A folder is never read as
+/// one: callers that accept relative folders look for the folder first.
+fn is_shorthand(s: &str) -> bool {
+    let name = |part: &str, extra: &[char]| {
+        !part.is_empty()
+            && part.len() <= 100
+            && !part.starts_with(['-', '.'])
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || extra.contains(&c))
+    };
+    s.split_once('/')
+        .is_some_and(|(owner, repo)| name(owner, &['-']) && name(repo, &['-', '_', '.']))
+}
+
+struct WebAddress {
+    repository: String,
+    /// Whether the page is a file, and what follows `/tree/` or `/blob/`.
+    page: Option<(bool, String)>,
+}
+
+/// The repository, and the page of it, that an https address on a host in
+/// `WEB_HOSTS` shows. `None` for any other address, and for one that is
+/// already just the repository.
+fn web_parts(url: &str) -> Option<WebAddress> {
+    let (scheme, rest) = url.split_once("://")?;
+    if !scheme.eq_ignore_ascii_case("https") {
+        return None;
+    }
+    let (authority, path) = rest.split_once('/')?;
+    let host = authority.to_ascii_lowercase();
+    let host = host.strip_prefix("www.").unwrap_or(&host);
+    let (host, marker) = WEB_HOSTS.iter().find(|(h, _)| *h == host)?;
+    // A query or fragment is dropped only from a page address, where the
+    // browser put it. On a repository address it is refused as before.
+    let page_path = path.split(['?', '#']).next().unwrap_or(path);
+    let parts: Vec<&str> = page_path.split('/').filter(|p| !p.is_empty()).collect();
+    let (repo, after): (&[&str], &[&str]) = if marker.is_empty() {
+        if parts.len() <= 2 {
+            return None;
+        }
+        parts.split_at(2)
+    } else {
+        let at = parts.iter().position(|p| p == marker)?;
+        let (repo, after) = parts.split_at(at);
+        (repo, after.get(1..)?)
+    };
+    if repo.len() < 2 {
+        return None;
+    }
+    let page = match after {
+        [kind @ ("tree" | "blob"), rest @ ..] if !rest.is_empty() => {
+            let rest = rest.join("/");
+            Some((
+                *kind == "blob",
+                library::percent_decode(&rest).unwrap_or(rest),
+            ))
+        }
+        _ => None,
+    };
+    Some(WebAddress {
+        repository: format!("https://{host}/{}", repo.join("/")),
+        page,
+    })
+}
+
+/// Finds where the ref ends in what a web address left open: the longest
+/// branch or tag the remote has that the text starts with. The rest is the
+/// folder to read, or for a file the skill it belongs to.
+fn settle_address(mut address: Address, refs: &git::RemoteRefs) -> Result<Address> {
+    let Some(rest) = address.unresolved.take() else {
+        return Ok(address);
+    };
+    let parts: Vec<&str> = rest.split('/').collect();
+    for end in (1..=parts.len()).rev() {
+        let (named, path) = parts.split_at(end);
+        let name = named.join("/");
+        address.tracked = if refs.branches.contains(&name) {
+            if refs.head.as_deref() == Some(name.as_str()) {
+                TrackedRef::Default
+            } else {
+                TrackedRef::Branch { name }
+            }
+        } else if refs.tags.contains(&name) {
+            TrackedRef::Tag { name }
+        } else {
+            continue;
+        };
+        match path {
+            [] => {}
+            [dir @ .., "SKILL.md"] if address.file && !dir.is_empty() => {
+                address.focus = Some(RelPath::new(&dir.join("/"))?.to_string());
+            }
+            _ if address.file => {}
+            folder => address.subdir = Some(RelPath::new(&folder.join("/"))?.to_string()),
+        }
+        return Ok(address);
+    }
+    let commit = parts
+        .first()
+        .is_some_and(|first| first.len() == 40 && first.chars().all(|c| c.is_ascii_hexdigit()));
+    if commit {
+        return Err(HabiError::invalid(
+            "that address shows one commit, which never changes. Give the address of a branch or a tag instead.",
+        ));
+    }
+    Err(HabiError::NotFound(format!(
+        "a branch or tag for `{rest}` in the remote repository"
+    )))
+}
+
+/// The same repository over the other protocol: ssh for an https address on
+/// github.com or gitlab.com, https for an ssh one. For offering a second try
+/// when the first was refused; `repository_key` holds the two to be one.
+pub fn other_transport(location: &str) -> Option<String> {
+    let known = |host: &str| {
+        WEB_HOSTS
+            .iter()
+            .any(|(h, _)| host.eq_ignore_ascii_case(h))
+            .then(|| host.to_ascii_lowercase())
+    };
+    let repo = |path: &str| {
+        let path = path.trim_matches('/');
+        let path = path.strip_suffix(".git").unwrap_or(path);
+        (path.split('/').count() >= 2).then(|| path.to_string())
+    };
+    if let Some((scheme, rest)) = location.split_once("://") {
+        let (authority, path) = rest.split_once('/')?;
+        return match scheme.to_ascii_lowercase().as_str() {
+            "https" => Some(format!("git@{}:{}.git", known(authority)?, repo(path)?)),
+            "ssh" => {
+                let host = authority.strip_prefix("git@")?;
+                Some(format!("https://{}/{}", known(host)?, repo(path)?))
+            }
+            _ => None,
+        };
+    }
+    let (user, host, path) = scp_parts(location)?;
+    (user == Some("git")).then_some(())?;
+    Some(format!("https://{}/{}", known(host)?, repo(path)?))
 }
 
 /// Words that are never a host name in an scp-like address.
@@ -1299,6 +1513,41 @@ impl Sources {
         }
     }
 
+    /// `parse_address`, then one question to the remote when the address is
+    /// a page of a repository: which of its words are the branch or tag.
+    pub fn read_address(&self, input: &str, cancel: &CancelToken) -> Result<Address> {
+        let mut address = parse_address(input)?;
+        if address.unresolved.is_none() {
+            return Ok(address);
+        }
+        let git = self.git()?;
+        let refs = match git.list_refs(&address.location, cancel) {
+            Ok(refs) => refs,
+            // A private repository refuses https from someone who reaches it
+            // over SSH, and answers "not found". The same question over SSH,
+            // which cannot prompt, settles it; the address then stays on SSH.
+            Err(HabiError::Git { failure, message })
+                if matches!(failure, GitFailure::Authentication | GitFailure::NotFound) =>
+            {
+                let over_ssh = address
+                    .alternative
+                    .clone()
+                    .filter(|a| a.starts_with("git@"));
+                let Some(refs) = over_ssh
+                    .as_ref()
+                    .and_then(|ssh| git.list_refs(ssh, cancel).ok())
+                else {
+                    return Err(HabiError::Git { failure, message });
+                };
+                let https = std::mem::replace(&mut address.location, over_ssh.unwrap_or_default());
+                address.alternative = Some(https);
+                refs
+            }
+            Err(e) => return Err(e),
+        };
+        settle_address(address, &refs)
+    }
+
     /// The ref to read a source at. A source that follows releases reads the
     /// newest release tag, or the default branch while the repository has none.
     fn resolve(
@@ -1740,14 +1989,20 @@ impl Sources {
             } else {
                 format!("{}/", item.path)
             };
+            // A tool's files are picked by path from anywhere in the library,
+            // so what was skipped elsewhere is not its concern.
+            let tool_paths = item
+                .tool
+                .as_ref()
+                .and_then(|t| library::tool_globs(&t.paths).ok());
+            let within = |p: &str| match &tool_paths {
+                Some(paths) => paths.is_match(p),
+                None => prefix.is_empty() || p.starts_with(&prefix),
+            };
             let missing: Vec<&Diagnostic> = data
                 .skipped
                 .iter()
-                .filter(|d| {
-                    d.path
-                        .as_deref()
-                        .is_some_and(|p| prefix.is_empty() || p.starts_with(&prefix))
-                })
+                .filter(|d| d.path.as_deref().is_some_and(within))
                 .collect();
             if !missing.is_empty() {
                 item.complete = false;
@@ -1929,6 +2184,15 @@ impl Sources {
         };
         if let Ok(json) = serde_json::to_string(&report) {
             let _ = self.set_setting(&format!("update-report:{}", after.id), &json);
+        }
+        // What was just read is the newest the remote had. A check made before
+        // it would otherwise go on saying there is something newer.
+        let check = StoredCheck {
+            latest: report.to,
+            checked_at: report.at,
+        };
+        if let Ok(json) = serde_json::to_string(&check) {
+            let _ = self.set_setting(&format!("update:{}", after.id), &json);
         }
     }
 
@@ -2178,6 +2442,167 @@ fn diff_indexes(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn refs(head: &str, branches: &[&str], tags: &[&str]) -> git::RemoteRefs {
+        git::RemoteRefs {
+            head: Some(head.to_string()),
+            branches: branches.iter().map(|b| b.to_string()).collect(),
+            tags: tags.iter().map(|t| t.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn an_address_may_be_shorthand_or_lack_its_scheme() {
+        for (typed, location) in [
+            ("acme/skills", "https://github.com/acme/skills"),
+            ("  acme/skills.rs ", "https://github.com/acme/skills.rs"),
+            ("github.com/acme/skills", "https://github.com/acme/skills"),
+            (
+                "www.github.com/acme/skills",
+                "https://github.com/acme/skills",
+            ),
+            (
+                "gitlab.com/group/sub/skills",
+                "https://gitlab.com/group/sub/skills",
+            ),
+            (
+                "git@github.com:acme/skills.git",
+                "git@github.com:acme/skills.git",
+            ),
+            (
+                "https://example.com/team/skills.git",
+                "https://example.com/team/skills.git",
+            ),
+        ] {
+            let address = parse_address(typed).unwrap();
+            assert_eq!(address.location, location, "{typed}");
+            assert_eq!(address.unresolved, None, "{typed}");
+        }
+        for not_shorthand in [
+            "acme",
+            "acme/skills/extra",
+            "-acme/skills",
+            "../skills",
+            "a b/c",
+        ] {
+            let read = parse_address(not_shorthand);
+            assert!(
+                read.is_err() || !read.unwrap().location.starts_with("https://github.com/"),
+                "{not_shorthand}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_web_address_names_the_repository_and_leaves_the_ref_open() {
+        let tree =
+            parse_address("https://github.com/acme/skills/tree/main/skills/review?tab=x#top")
+                .unwrap();
+        assert_eq!(tree.location, "https://github.com/acme/skills");
+        assert_eq!(tree.unresolved.as_deref(), Some("main/skills/review"));
+        assert!(!tree.file);
+        let blob = parse_address("github.com/acme/skills/blob/v1/skills/review/SKILL.md").unwrap();
+        assert_eq!(
+            blob.unresolved.as_deref(),
+            Some("v1/skills/review/SKILL.md")
+        );
+        assert!(blob.file);
+        let nested =
+            parse_address("https://gitlab.com/group/sub/skills/-/tree/main/a%20b").unwrap();
+        assert_eq!(nested.location, "https://gitlab.com/group/sub/skills");
+        assert_eq!(nested.unresolved.as_deref(), Some("main/a b"));
+        // Any other page of a repository is the repository.
+        let issues = parse_address("https://github.com/acme/skills/issues/4").unwrap();
+        assert_eq!(issues.location, "https://github.com/acme/skills");
+        assert_eq!(issues.unresolved, None);
+    }
+
+    #[test]
+    fn an_address_refuses_what_a_location_refuses() {
+        for refused in [
+            "https://user:token@github.com/acme/skills/tree/main",
+            "https://github.com/o/r.git?access_token=abc123",
+            "https://github.com/o/r#abc123",
+            "http://github.com/acme/skills/tree/main",
+            "ext::sh -c touch% /tmp/pwned",
+            "--upload-pack=touch /tmp/x",
+            "alice:hunter2@github.com/org/repo.git",
+        ] {
+            assert!(parse_address(refused).is_err(), "{refused}");
+        }
+    }
+
+    #[test]
+    fn the_longest_ref_the_remote_has_ends_the_ref() {
+        let known = refs("main", &["main", "feat/x", "feat"], &["v1"]);
+        let settle = |typed: &str| settle_address(parse_address(typed).unwrap(), &known);
+        let main = settle("acme/skills").unwrap();
+        assert_eq!((main.tracked, main.subdir), (TrackedRef::Default, None));
+        let folder = settle("https://github.com/acme/skills/tree/main/skills").unwrap();
+        assert_eq!(folder.tracked, TrackedRef::Default);
+        assert_eq!(folder.subdir.as_deref(), Some("skills"));
+        assert_eq!(folder.unresolved, None);
+        let slashed = settle("https://github.com/acme/skills/tree/feat/x/skills/a").unwrap();
+        assert_eq!(
+            slashed.tracked,
+            TrackedRef::Branch {
+                name: "feat/x".into()
+            }
+        );
+        assert_eq!(slashed.subdir.as_deref(), Some("skills/a"));
+        let file = settle("https://github.com/acme/skills/blob/v1/skills/a/SKILL.md").unwrap();
+        assert_eq!(file.tracked, TrackedRef::Tag { name: "v1".into() });
+        assert_eq!(
+            (file.subdir, file.focus.as_deref()),
+            (None, Some("skills/a"))
+        );
+        let readme = settle("https://github.com/acme/skills/blob/main/README.md").unwrap();
+        assert_eq!((readme.subdir, readme.focus), (None, None));
+        assert!(settle("https://github.com/acme/skills/tree/gone/skills").is_err());
+        let commit = format!(
+            "https://github.com/acme/skills/tree/{}/skills",
+            "a".repeat(40)
+        );
+        assert!(
+            settle(&commit)
+                .unwrap_err()
+                .to_string()
+                .contains("one commit")
+        );
+        assert!(settle("https://github.com/acme/skills/tree/main/../x").is_err());
+    }
+
+    #[test]
+    fn the_other_transport_is_the_same_repository() {
+        for (one, other) in [
+            (
+                "https://github.com/Acme/skills",
+                "git@github.com:Acme/skills.git",
+            ),
+            (
+                "https://github.com/acme/skills.git",
+                "git@github.com:acme/skills.git",
+            ),
+            (
+                "git@github.com:acme/skills.git",
+                "https://github.com/acme/skills",
+            ),
+            (
+                "ssh://git@gitlab.com/group/sub/skills.git",
+                "https://gitlab.com/group/sub/skills",
+            ),
+        ] {
+            assert_eq!(other_transport(one).as_deref(), Some(other), "{one}");
+            assert!(same_repository(one, other), "{one}");
+        }
+        for none in [
+            "https://example.com/team/skills.git",
+            "/srv/skills",
+            "https://github.com/acme",
+        ] {
+            assert_eq!(other_transport(none), None, "{none}");
+        }
+    }
 
     #[test]
     fn location_validation() {

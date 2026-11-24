@@ -55,6 +55,8 @@ pub struct InstalledFile {
 pub struct Installation {
     pub key: String,
     pub id: String,
+    /// A skill, a subagent or a tool: what the lock file says it is.
+    pub kind: crate::library::model::ItemKind,
     pub title: String,
     pub source_name: String,
     pub snapshot: String,
@@ -103,15 +105,9 @@ fn added_files(root: &Path, locked: &LockedItem) -> Vec<String> {
     let folders: std::collections::BTreeSet<String> = locked
         .files
         .iter()
-        .filter_map(|f| {
-            [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
-                .iter()
-                .find_map(|base| {
-                    let rest = f.path.strip_prefix(&format!("{base}/"))?;
-                    let (name, _) = rest.split_once('/')?;
-                    Some(format!("{base}/{name}"))
-                })
-        })
+        // A subagent is one file in a folder it shares, so it has no folder to look in.
+        .filter(|_| locked.kind.is_skill())
+        .filter_map(|f| layout::managed_location(locked.kind, &f.path).map(|m| m.folder()))
         .collect();
     let mut added = Vec::new();
     for folder in folders {
@@ -186,12 +182,7 @@ pub fn installation(
         upstream.is_some_and(|(item, _)| item.content_digest != locked.content_digest);
     let mut files = Vec::new();
     for f in &locked.files {
-        // `<base>/<name>/<rel>` -> `<rel>`
-        let rel = [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
-            .iter()
-            .find_map(|base| f.path.strip_prefix(&format!("{base}/")))
-            .and_then(|rest| rest.split_once('/').map(|(_, r)| r))
-            .unwrap_or(&f.path);
+        let rel = layout::managed_location(locked.kind, &f.path).map_or(f.path.as_str(), |m| m.rel);
         let upstream_changed =
             upstream_changed_item && upstream_files.get(rel).is_none_or(|d| *d != f.digest);
         let state = match file_state(root, &f.path, &f.digest) {
@@ -237,11 +228,8 @@ pub fn installation(
     let lock_disagrees = |locked: &LockedItem, item: &LibraryItem| {
         item.content_digest != locked.content_digest
             || locked.files.iter().any(|f| {
-                [layout::AGENTS_SKILLS, layout::CLAUDE_SKILLS]
-                    .iter()
-                    .find_map(|base| f.path.strip_prefix(&format!("{base}/")))
-                    .and_then(|rest| rest.split_once('/').map(|(_, rel)| rel))
-                    .is_some_and(|rel| upstream_files.get(rel).is_some_and(|d| *d != f.digest))
+                layout::managed_location(locked.kind, &f.path)
+                    .is_some_and(|m| upstream_files.get(m.rel).is_some_and(|d| *d != f.digest))
             })
     };
     if let Some((item, snapshot)) = upstream
@@ -256,6 +244,7 @@ pub fn installation(
     Installation {
         key: locked.key(),
         id: locked.id.clone(),
+        kind: locked.kind,
         title: locked.title.clone(),
         source_name: locked.source.name.clone(),
         snapshot: locked.snapshot.clone(),

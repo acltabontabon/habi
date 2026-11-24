@@ -150,6 +150,11 @@ owner: Developer Experience
 description: …
 contact: "#platform (chat channel)"
 skills_root: skills             # optional; default: find SKILL.md anywhere
+agents_root: agents             # optional; Markdown files here are agents
+tools:                          # optional; a command the skills call
+  - name: eng
+    entry: bin/eng
+    paths: [bin/eng, "src/eng/**"]
 instructions:                   # Markdown → managed sections in AGENTS.md
   - id: java-conventions
     title: Java conventions
@@ -163,7 +168,69 @@ instructions:                   # Markdown → managed sections in AGENTS.md
 - `habi`: schema version (required)
 - `name`, `owner`, `description`, `contact`: metadata
 - `skills_root`: subfolder to search (optional; default searches everywhere)
+- `agents_root`: folder whose Markdown files are agents (optional; without it none are read)
+- `tools[]`: command-line tools the library ships (see Tools)
 - `instructions[]`: shared instructions, each with condition (same format as skills)
+
+## Agents
+
+An agent (a subagent) is one Markdown file that an agent tool hands work to. Habi reads the
+`.md` files directly inside `agents_root`, and only there: a folder called `agents` is as often
+documentation, so nothing is read as an agent unless the manifest names the folder.
+
+```markdown
+---
+name: code-reviewer
+description: Reviews a change. Use after writing code.
+---
+
+Follow the `code-review` skill, then report what you found.
+```
+
+- `name` and `description` are required. The file name must be lowercase letters, digits and
+  hyphens, because the file is installed under its own name.
+- A skill of this library that the text names is offered with the agent, and each is shown
+  beside the other.
+- `hooks`, a `permissionMode` that stops the tool asking, and an MCP server defined in
+  `mcpServers` are cautions, asked about before installing and again when the file changes.
+- The file is installed as it is. Habi does not translate it for tools with another format.
+
+## Tools
+
+A skill often drives a command-line tool that lives beside it in the repository, outside
+every skill folder. Declare it, and Habi can put it on a person's machine after they have
+reviewed every file:
+
+```yaml
+tools:
+  - name: eng                       # the folder it is kept in, and its id
+    command: eng                    # what people type; defaults to the name
+    description: Deterministic checks for Gradle projects.
+    entry: bin/eng                  # the executable file the command starts
+    entry_windows: bin/eng.cmd      # optional; what it starts on Windows
+    paths: [bin/eng, bin/eng.cmd, "src/eng/**"]
+    requires:
+      tools:
+        - name: Python
+          commands: [python3]
+          purpose: Python 3.12 or newer runs it.
+```
+
+- `paths` are files or globs from the library root. `*` stays in one folder, `**` crosses
+  folders. A tool may hold at most 500 files and 8 MB.
+- `entry` must be one of the paths and be marked executable in the repository.
+- The files are copied to `~/.habi/tools/<name>/`, keeping their paths, so a launcher that
+  finds its own code relative to itself keeps working. One two-line file,
+  `~/.local/bin/<command>`, starts the entry.
+- A skill whose `requires.tools` names the command is linked to the tool: when the command is
+  missing, Habi offers to install it from the library.
+- `requires.tools` on the tool is shown and looked up on PATH. A version is never checked.
+- A command may not take the name of a program Habi or a shell relies on (`git`, `ssh`, `gh`,
+  `sh` and the like).
+
+Installing a tool is always a caution, asked about again whenever its files change: it is
+code that runs with the person's rights whenever anything calls the command. Habi never runs
+it, never changes PATH, and never installs a tool into a project.
 
 ## Lineage
 

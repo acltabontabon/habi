@@ -542,6 +542,21 @@ pub async fn add_source(state: State<'_, AppState>, source: NewSource) -> CmdRes
     blocking(habi, move |h| h.sources().add(&source)).await
 }
 
+/// What a pasted address names. A page of a repository on the web asks the
+/// remote which of its words are the branch or tag.
+#[tauri::command]
+pub async fn read_address(
+    state: State<'_, AppState>,
+    input: String,
+) -> CmdResult<habi_core::source::Address> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| {
+        h.sources()
+            .read_address(&input, &habi_core::cancel::CancelToken::new())
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn remove_source(state: State<'_, AppState>, source_id: String) -> CmdResult<()> {
     let habi = state.habi()?;
@@ -1614,6 +1629,26 @@ pub async fn skills_overview(
 ) -> CmdResult<Vec<habi_core::service::SkillStanding>> {
     let habi = state.habi()?;
     blocking(habi, move |h| h.skills_overview()).await
+}
+
+/// Everything that is behind what it came from: libraries with something
+/// newer, and installed copies that can follow. Fetches and changes nothing.
+#[tauri::command]
+pub async fn pending_updates(
+    state: State<'_, AppState>,
+) -> CmdResult<habi_core::service::PendingUpdates> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.pending_updates()).await
+}
+
+/// What Habi installed on this machine, by its own record: skills, and also
+/// the subagents and tools that no skill folder shows.
+#[tauri::command]
+pub async fn machine_installations(
+    state: State<'_, AppState>,
+) -> CmdResult<Vec<habi_core::install::status::Installation>> {
+    let habi = state.habi()?;
+    blocking(habi, move |h| h.machine_installations()).await
 }
 
 /// Skills in the person's own folders (`~/.claude/skills` and the like), and

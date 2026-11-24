@@ -248,7 +248,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let state = match (paths, paths_error) {
-                (Some(paths), _) => match Habi::open(paths) {
+                (Some(paths), _) => match Habi::open(paths).map(Habi::with_env_home) {
                     Ok(habi) => AppState::new(Some(habi), None, guard),
                     Err(e) => {
                         tracing::error!(error = %e, "could not open local data");
@@ -310,6 +310,7 @@ pub fn run() {
             commands::list_sources,
             commands::pick_library_folder,
             commands::add_source,
+            commands::read_address,
             commands::remove_source,
             commands::set_source_role,
             commands::refresh_source,
@@ -385,6 +386,8 @@ pub fn run() {
             commands::import_skills,
             commands::skills_overview,
             commands::machine_skills,
+            commands::machine_installations,
+            commands::pending_updates,
             commands::open_git_copy,
             commands::forget_git_copy,
             commands::search_skill_files,

@@ -12,7 +12,7 @@ import type { ProjectOverview } from "../../bindings/ProjectOverview";
 import type { Tri } from "../../bindings/Tri";
 import { Icon } from "../../components/Icon";
 import { useToast } from "../../components/Toasts";
-import { Button, ErrorNotice } from "../../components/ui";
+import { Button, ErrorNotice, errorLine } from "../../components/ui";
 import { api } from "../../lib/api";
 import { invalidateProjectData } from "../../lib/queries";
 import { useSafeInvoke } from "../../lib/safeInvoke";
@@ -128,9 +128,9 @@ function NodeEvidence({ node, overview }: { node: EvalNode; overview: ProjectOve
     try {
       await api.retract(overview.project.id, id);
       invalidateProjectData(client, overview.project.id);
-      toast.show("Declaration removed. Recommendations updated.");
+      toast.show("Your answer was removed. What fits was worked out again.");
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      toast.show(errorLine("Your answer could not be removed", e), "danger");
     } finally {
       setUndoing(null);
     }
@@ -363,7 +363,7 @@ export function DeclareQuestion({
       invalidateProjectData(client, overview.project.id);
       toast.show("Answer saved. It is shown as yours and can be undone.");
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      toast.show(errorLine("Your answer could not be saved", e), "danger");
     } finally {
       setBusy(false);
     }

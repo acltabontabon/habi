@@ -6,6 +6,7 @@
  * module only moves data.
  */
 import { invoke } from "@tauri-apps/api/core";
+import type { Address } from "../bindings/Address";
 import type { AppInfo } from "../bindings/AppInfo";
 import type { CatalogEntry } from "../bindings/CatalogEntry";
 import type { CatalogFit } from "../bindings/CatalogFit";
@@ -27,6 +28,7 @@ import type { ImportFrom } from "../bindings/ImportFrom";
 import type { ImportInspection } from "../bindings/ImportInspection";
 import type { ImportOutcome } from "../bindings/ImportOutcome";
 import type { ImportSelection } from "../bindings/ImportSelection";
+import type { Installation } from "../bindings/Installation";
 import type { InstallShadow } from "../bindings/InstallShadow";
 import type { InstructionDocument } from "../bindings/InstructionDocument";
 import type { ItemDetail } from "../bindings/ItemDetail";
@@ -39,6 +41,7 @@ import type { MachineSkill } from "../bindings/MachineSkill";
 import type { NewSkill } from "../bindings/NewSkill";
 import type { NewSource } from "../bindings/NewSource";
 import type { OperationSummary } from "../bindings/OperationSummary";
+import type { PendingUpdates } from "../bindings/PendingUpdates";
 import type { Plan } from "../bindings/Plan";
 import type { PreviewRequest } from "../bindings/PreviewRequest";
 import type { ProjectKnowledge } from "../bindings/ProjectKnowledge";
@@ -161,6 +164,7 @@ export const api = {
     call<CatalogFit[]>("catalog_fits", { projectId, jobId: jobId ?? null }),
   pickLibraryFolder: () => call<string | null>("pick_library_folder"),
   addSource: (source: NewSource) => call<Source>("add_source", { source }),
+  readAddress: (input: string) => call<Address>("read_address", { input }),
   removeSource: (sourceId: string) => call<void>("remove_source", { sourceId }),
   setSourceRole: (sourceId: string, role: SourceRole) => call<Source>("set_source_role", { sourceId, role }),
   refreshSource: (sourceId: string, jobId?: string) =>
@@ -298,6 +302,8 @@ export const api = {
   skillsOverview: () => call<SkillStanding[]>("skills_overview"),
   /** Skills in the person's own folders (`~/.claude/skills` and the like); reads only. */
   machineSkills: () => call<MachineSkill[]>("machine_skills"),
+  machineInstallations: () => call<Installation[]>("machine_installations"),
+  pendingUpdates: () => call<PendingUpdates>("pending_updates"),
   /** What a copy changed since it was made or last updated; writes nothing. */
   skillLocalChanges: (id: string) => call<LocalChanges>("skill_local_changes", { id }),
   skillTemplates: () => call<TemplateInfo[]>("skill_templates"),

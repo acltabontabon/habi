@@ -107,7 +107,7 @@ export function History({ overview, onClose }: { overview: ProjectOverview | nul
 
       {failure ? <ErrorNotice error={failure} title="The check did not finish" /> : null}
       {history.isPending ? <Working>Loading history…</Working> : null}
-      {history.isError ? <ErrorNotice error={history.error} /> : null}
+      {history.isError ? <ErrorNotice title="The history could not be read" error={history.error} /> : null}
       {checked ? (
         <p className="history-checked" role="status">
           <Icon name="check" />

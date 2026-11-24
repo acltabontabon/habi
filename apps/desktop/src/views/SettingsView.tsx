@@ -39,6 +39,7 @@ export function SettingsView() {
   if (settings.isError) {
     return (
       <ErrorNotice
+        title="Settings could not be read"
         error={settings.error}
         action={
           <Button size="sm" onClick={() => void settings.refetch()}>
@@ -202,7 +203,9 @@ export function SettingsView() {
             label="Troubleshooting report"
             hint="Versions, library health and recent log lines, redacted. Never any content, files or credentials."
           >
-            {error && !bundle ? <ErrorNotice error={error} /> : null}
+            {error && !bundle ? (
+              <ErrorNotice title="The report could not be put together" error={error} />
+            ) : null}
             <SettingAction busy={building} onClick={() => void previewReport()}>
               Preview report
             </SettingAction>
@@ -229,7 +232,7 @@ export function SettingsView() {
           </>
         }
       >
-        {error ? <ErrorNotice error={error} /> : null}
+        {error ? <ErrorNotice title="The report could not be saved" error={error} /> : null}
         <pre className="code output diagnostics-preview">{bundle?.text}</pre>
       </Dialog>
     </div>

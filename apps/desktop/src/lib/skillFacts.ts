@@ -21,7 +21,7 @@ export function licenseText(declared: string | null, file: string | null): strin
   if (declared && file) return `${declared} (terms: ${file})`;
   if (declared) return declared;
   if (file) return `see ${file}`;
-  return "none found";
+  return "none stated";
 }
 
 /** A rule, in words. */

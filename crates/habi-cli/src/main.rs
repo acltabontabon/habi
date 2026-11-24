@@ -104,6 +104,10 @@ Examples:
     },
     /// Show installed items, local edits and available updates.
     Status(ProjectArg),
+    /// Install, update and remove on this machine rather than in a project:
+    /// skills and agents for every project, and the tools a library ships.
+    #[command(subcommand)]
+    Machine(MachineCmd),
     /// Preview and adopt library updates for installed items.
     Update {
         /// Installed item ids to update (default: every item with an update).
@@ -264,7 +268,8 @@ enum SourceCmd {
     Add {
         /// A short name to refer to the library by (e.g. Team).
         name: String,
-        /// Git URL (https/ssh) or a folder on this machine (relative paths are fine).
+        /// Git URL (https/ssh), `owner/repo` on GitHub, the web address of a branch or folder
+        /// on GitHub or GitLab, or a folder on this machine (relative paths are fine).
         location: String,
         /// Only use this folder inside the repository.
         #[arg(long)]
@@ -446,6 +451,15 @@ impl std::fmt::Display for CliError {
 }
 
 impl std::error::Error for CliError {}
+
+/// The same repository over SSH, when https was refused in a way SSH might
+/// not be: a private repository answers "not found" to someone not signed in.
+fn over_ssh(code: &str, location: &str) -> Option<String> {
+    matches!(code, "gitAuthentication" | "gitNotFound")
+        .then(|| habi_core::source::other_transport(location))
+        .flatten()
+        .filter(|other| other.starts_with("git@"))
+}
 
 fn fail(code: &str, message: impl Into<String>) -> anyhow::Error {
     CliError {
@@ -919,6 +933,18 @@ fn review_and_apply(
     project: &ProjectHandle,
     action: &str,
 ) -> Result<Value> {
+    let undo = |op: &str| format!("Undo with: habi restore {op}{}", project.flag());
+    review_and_apply_with(ctx, plan, args, action, &undo)
+}
+
+/// `review_and_apply` for any root: `undo` says how to take an operation back.
+fn review_and_apply_with(
+    ctx: &Ctx,
+    plan: Plan,
+    args: &ApplyArgs,
+    action: &str,
+    undo: &dyn Fn(&str) -> String,
+) -> Result<Value> {
     if !ctx.json {
         output::plan(&plan);
     }
@@ -962,12 +988,11 @@ fn review_and_apply(
     APPLYING.store(false, Ordering::SeqCst);
     let op = applied?;
     if !ctx.json {
+        let short = &op.id[..8.min(op.id.len())];
         println!(
-            "Done. Operation {} ({}). Undo with: habi restore {}{}",
-            &op.id[..8.min(op.id.len())],
+            "Done. Operation {short} ({}). {}",
             output::plural(op.files.len(), "file"),
-            &op.id[..8.min(op.id.len())],
-            project.flag()
+            undo(short)
         );
     }
     Ok(json!({ "plan": plan_value, "operation": op, "applied": true }))
@@ -1019,12 +1044,140 @@ fn has_update(state: InstallState) -> bool {
     )
 }
 
+#[derive(Subcommand)]
+enum MachineCmd {
+    /// Preview and install items into your own folders.
+    #[command(after_help = "Examples:
+  habi machine install eng                       # a tool a library ships: no --client needed
+  habi machine install code-review --client claude-code")]
+    Install {
+        /// Item ids, or `<library>/<id>`.
+        #[arg(required = true)]
+        items: Vec<String>,
+        /// Agent tools to install skills and agents for (comma-separated). A tool needs none.
+        #[arg(long, value_delimiter = ',')]
+        client: Vec<String>,
+        #[command(flatten)]
+        apply: ApplyArgs,
+    },
+    /// Show what Habi installed on this machine.
+    Status,
+    /// Preview and adopt library updates (default: every item with an update).
+    Update {
+        items: Vec<String>,
+        #[command(flatten)]
+        apply: ApplyArgs,
+    },
+    /// Preview and remove what Habi installed on this machine.
+    Remove {
+        #[arg(required = true)]
+        items: Vec<String>,
+        #[command(flatten)]
+        apply: ApplyArgs,
+    },
+}
+
+fn machine(ctx: &Ctx, cmd: MachineCmd) -> Result<Value> {
+    let habi = &ctx.habi;
+    let undo =
+        |_: &str| "Undo in the app: Skills, On this machine, History and restore.".to_string();
+    let installed = || -> Result<Vec<(String, String, InstallState)>> {
+        Ok(habi
+            .machine_installations()?
+            .into_iter()
+            .map(|i| (i.id, i.key, i.state))
+            .collect())
+    };
+    let pick = |installed: &[(String, String, InstallState)], spec: &str| -> Result<String> {
+        let id = spec.rsplit('/').next().unwrap_or(spec);
+        installed
+            .iter()
+            .find(|(i, k, _)| i == id || k == spec)
+            .map(|(_, k, _)| k.clone())
+            .ok_or_else(|| {
+                fail(
+                    "notFound",
+                    format!("`{spec}` is not installed on this machine. See what is with `habi machine status`."),
+                )
+            })
+    };
+    match cmd {
+        MachineCmd::Install {
+            items,
+            client,
+            apply,
+        } => {
+            require_yes(ctx, apply.yes, apply.dry_run, "install")?;
+            let refs = items
+                .iter()
+                .map(|i| resolve_item(habi, i).map(|(r, _)| r))
+                .collect::<Result<Vec<_>>>()?;
+            let clients = parse_clients(&client)?;
+            let plan = habi.plan_install_machine(&refs, &clients, &decisions(&apply))?;
+            review_and_apply_with(ctx, plan, &apply, "install", &undo)
+        }
+        MachineCmd::Status => {
+            let installs = habi.machine_installations()?;
+            emit(ctx, &installs, || {
+                if installs.is_empty() {
+                    println!("Nothing is installed by Habi on this machine.");
+                }
+                for i in &installs {
+                    println!(
+                        "{}  {}  ({} · {})",
+                        i.title,
+                        output::install_state(i.state),
+                        i.source_name,
+                        i.snapshot.get(..10).unwrap_or(&i.snapshot)
+                    );
+                }
+            })
+        }
+        MachineCmd::Update { items, apply } => {
+            require_yes(ctx, apply.yes, apply.dry_run, "update")?;
+            let installed = installed()?;
+            let keys: Vec<String> = if items.is_empty() {
+                installed
+                    .iter()
+                    .filter(|(_, _, s)| has_update(*s))
+                    .map(|(_, k, _)| k.clone())
+                    .collect()
+            } else {
+                items
+                    .iter()
+                    .map(|spec| pick(&installed, spec))
+                    .collect::<Result<_>>()?
+            };
+            if keys.is_empty() {
+                return emit(
+                    ctx,
+                    &json!({ "plan": null, "operation": null, "applied": false, "upToDate": true }),
+                    || println!("Everything on this machine is up to date."),
+                );
+            }
+            let plan = habi.plan_update_machine(&keys, &decisions(&apply))?;
+            review_and_apply_with(ctx, plan, &apply, "update", &undo)
+        }
+        MachineCmd::Remove { items, apply } => {
+            require_yes(ctx, apply.yes, apply.dry_run, "remove")?;
+            let installed = installed()?;
+            let keys = items
+                .iter()
+                .map(|spec| pick(&installed, spec))
+                .collect::<Result<Vec<_>>>()?;
+            let plan = habi.plan_remove_machine(&keys, &decisions(&apply))?;
+            review_and_apply_with(ctx, plan, &apply, "remove", &undo)
+        }
+    }
+}
+
 // ----- commands -------------------------------------------------------------------------
 
 fn run(ctx: &Ctx, command: Command) -> Result<Value> {
     let habi = &ctx.habi;
     match command {
         Command::Source(cmd) => source(ctx, cmd),
+        Command::Machine(cmd) => machine(ctx, cmd),
         Command::Catalog(cmd) => catalog(ctx, cmd),
         Command::Inspect(p) => {
             let project = project(ctx, &p, false)?;
@@ -1445,15 +1598,23 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
             team,
             community: _,
         } => {
+            // A folder here wins: `team/skills` is `owner/repo` on GitHub only
+            // when there is no such folder.
+            let typed = match local_location(&location) {
+                Ok(found) => found,
+                Err(_) if habi_core::source::parse_address(&location).is_ok() => location,
+                Err(e) => return Err(e),
+            };
+            let address = habi.sources().read_address(&typed, &ctx.cancel)?;
             let tracked = match (branch, tag) {
                 (Some(b), _) => TrackedRef::Branch { name: b },
                 (_, Some(t)) => TrackedRef::Tag { name: t },
-                _ => TrackedRef::Default,
+                _ => address.tracked,
             };
             let s = habi.sources().add(&NewSource {
                 name,
-                location: local_location(&location)?,
-                subdir,
+                location: address.location,
+                subdir: subdir.or(address.subdir),
                 tracked,
             })?;
             let s = if team {
@@ -1507,6 +1668,12 @@ fn source(ctx: &Ctx, cmd: SourceCmd) -> Result<Value> {
                                 "{}: refresh failed: {} — the cached copy is kept.",
                                 s.name, info.message
                             );
+                            if let Some(ssh) = over_ssh(&info.code, &s.location) {
+                                eprintln!(
+                                    "If you reach this host over SSH, remove `{}` and add it again as {ssh}",
+                                    s.name
+                                );
+                            }
                         }
                         failed.push(json!({ "source": s.name, "error": info }));
                     }

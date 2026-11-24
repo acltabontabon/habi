@@ -2,4 +2,9 @@
 import type { PrerequisiteKind } from "./PrerequisiteKind";
 import type { PrerequisiteStatus } from "./PrerequisiteStatus";
 
-export type Prerequisite = { kind: PrerequisiteKind, name: string, status: PrerequisiteStatus, detail: string, purpose: string | null, hint: string | null, };
+export type Prerequisite = { kind: PrerequisiteKind, name: string, status: PrerequisiteStatus, detail: string, purpose: string | null, hint: string | null, 
+/**
+ * The id of a tool in the item's own library that is this: what is
+ * missing can be installed from where the skill came from.
+ */
+providedBy: string | null, };

@@ -68,6 +68,68 @@ pub struct SkillStanding {
     pub upstream: Option<crate::skills::upstream::UpstreamState>,
 }
 
+/// Everything that is behind what it came from, in one list: libraries whose
+/// remote has moved on, and the copies of each library Habi reads that can
+/// follow it. Nothing here was fetched or changed by asking.
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PendingUpdates {
+    /// Libraries whose remote has something newer than what Habi reads.
+    pub libraries: Vec<LibraryAhead>,
+    /// Installed copies that can follow the library as Habi reads it now.
+    pub copies: Vec<CopiesBehind>,
+    /// Projects whose record could not be read, so nothing is known of them.
+    pub unreadable: Vec<UnreadableProject>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct LibraryAhead {
+    pub source_id: String,
+    pub name: String,
+    pub current: Option<crate::source::SourceVersion>,
+    pub latest: crate::source::SourceVersion,
+}
+
+/// Where copies of a library's items are.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+#[ts(export)]
+pub enum UpdatePlace {
+    Project {
+        id: String,
+        name: String,
+    },
+    /// The person's own folders: skills, subagents and tools.
+    Machine,
+    /// Editable copies in My skills, each merged in its own review.
+    MySkills,
+}
+
+/// The items from one library, in one place, that the library has moved past.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct CopiesBehind {
+    pub place: UpdatePlace,
+    /// The library's name, as the place recorded it.
+    pub library: String,
+    /// Lock keys to update, or skill ids for My skills.
+    pub keys: Vec<String>,
+    pub titles: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct UnreadableProject {
+    pub id: String,
+    pub name: String,
+    pub reason: String,
+}
+
 impl SkillStanding {
     fn new(skill_id: &str) -> Self {
         SkillStanding {
@@ -397,6 +459,7 @@ fn required_tools(value: &serde_json::Value) -> Vec<crate::library::model::ToolR
                 .iter()
                 .filter_map(|t| {
                     Some(crate::library::model::ToolRequirement {
+                        provided_by: None,
                         name: text(t, "name")?,
                         commands: t
                             .get("commands")
@@ -520,7 +583,10 @@ fn provenance_of(source: &Source, item: &LibraryItem) -> crate::install::lock::P
             .and_then(|e| e.review.as_ref())
             .map(|r| r.revision.clone()),
         picked: entry.is_some_and(|e| e.picks.iter().any(|p| p.skill == item.path)),
-        license: item.license.clone(),
+        license: item
+            .license
+            .clone()
+            .or_else(|| item.license_file.as_ref().map(|file| format!("see {file}"))),
         claimed_origin: item.based_on.clone(),
     }
 }
@@ -571,8 +637,19 @@ impl Habi {
         self
     }
 
+    /// Opens Habi where the environment says: `HABI_HOME` for its own data,
+    /// `HABI_USER_HOME` for the home folder (see `with_env_home`).
     pub fn from_env() -> Result<Habi> {
-        Habi::open(AppPaths::from_env()?)
+        Ok(Habi::open(AppPaths::from_env()?)?.with_env_home())
+    }
+
+    /// Takes `HABI_USER_HOME`, when set, as the home folder to read and
+    /// install into, so Habi can be tried without touching your own.
+    pub fn with_env_home(self) -> Habi {
+        match std::env::var_os("HABI_USER_HOME") {
+            Some(home) if !home.is_empty() => self.with_user_home(home.into()),
+            _ => self,
+        }
     }
 
     pub fn sources(&self) -> &Sources {
@@ -1133,10 +1210,7 @@ impl Habi {
             .find(|i| i.id == item_id)
             .cloned()
             .ok_or_else(|| HabiError::NotFound(format!("item `{item_id}`")))?;
-        let main = match item.kind {
-            crate::library::model::ItemKind::Instructions => item.path.clone(),
-            _ => join(&item.path, crate::library::SKILL_FILE),
-        };
+        let main = item.main_file();
         let bytes = self
             .read_library_file(source_id, &index.snapshot, &main)
             .unwrap_or_default();
@@ -1164,10 +1238,7 @@ impl Habi {
         if !item.files.iter().any(|f| f.path == rel) {
             return Err(HabiError::NotFound(format!("{rel} in `{}`", item.title)));
         }
-        let library_path = match item.kind {
-            crate::library::model::ItemKind::Instructions => item.path.clone(),
-            _ => join(&item.path, &rel),
-        };
+        let library_path = item.library_path(&rel);
         let bytes = self.read_library_file(source_id, &index.snapshot, &library_path)?;
         let binary = !crate::fsutil::is_probably_text(&bytes);
         Ok(FileContent {
@@ -1188,10 +1259,7 @@ impl Habi {
     ) -> Result<Payload> {
         let mut files = Vec::new();
         for f in &item.files {
-            let library_path = match item.kind {
-                crate::library::model::ItemKind::Instructions => item.path.clone(),
-                _ => join(&item.path, &f.path),
-            };
+            let library_path = item.library_path(&f.path);
             files.push(plan::PayloadFile {
                 path: f.path.clone(),
                 bytes: self.read_library_file(&source.id, &index.snapshot, &library_path)?,
@@ -1975,11 +2043,7 @@ impl Habi {
                 let index = self.sources.index(&source.id)?;
                 let upstream = self.upstream_base(source);
                 let mut packages = Vec::new();
-                for item in index
-                    .items
-                    .iter()
-                    .filter(|i| i.kind != crate::library::model::ItemKind::Instructions)
-                {
+                for item in index.items.iter().filter(|i| i.kind.is_skill()) {
                     cancel.check()?;
                     let mut tree = Tree::default();
                     for f in &item.files {
@@ -2276,6 +2340,140 @@ impl Habi {
         Ok(self.keep(plan::plan_install_on_machine(
             home, &payloads, clients, decisions,
         )?))
+    }
+
+    /// Everything that can be updated, wherever it is: see [`PendingUpdates`].
+    /// Reads lock files and installed files; fetches and changes nothing.
+    pub fn pending_updates(&self) -> Result<PendingUpdates> {
+        let mut pending = PendingUpdates::default();
+        let sources = self.sources.list()?;
+        for update in self.sources.updates()?.into_iter().filter(|u| u.available) {
+            if let Some(source) = sources.iter().find(|s| s.id == update.source_id) {
+                pending.libraries.push(LibraryAhead {
+                    source_id: source.id.clone(),
+                    name: source.name.clone(),
+                    current: update.current,
+                    latest: update.latest,
+                });
+            }
+        }
+        let libraries = self.libraries()?;
+        let behind =
+            |installs: Vec<Installation>, place: &UpdatePlace, out: &mut Vec<CopiesBehind>| {
+                for i in installs.into_iter().filter(|i| {
+                    matches!(
+                        i.state,
+                        status::InstallState::UpdateAvailable | status::InstallState::Conflict
+                    )
+                }) {
+                    match out
+                        .iter_mut()
+                        .find(|c| &c.place == place && c.library == i.source_name)
+                    {
+                        Some(row) => {
+                            row.keys.push(i.key);
+                            row.titles.push(i.title);
+                        }
+                        None => out.push(CopiesBehind {
+                            place: place.clone(),
+                            library: i.source_name,
+                            keys: vec![i.key],
+                            titles: vec![i.title],
+                        }),
+                    }
+                }
+            };
+        let project_ids: Vec<String> = {
+            let conn = self.store.conn()?;
+            let mut stmt = conn.prepare("SELECT id FROM projects ORDER BY last_opened_at DESC")?;
+            stmt.query_map([], |r| r.get(0))?
+                .collect::<rusqlite::Result<_>>()?
+        };
+        for id in project_ids {
+            let Ok(project) = self.project(&id) else {
+                continue;
+            };
+            if !project.exists {
+                continue;
+            }
+            match read_lock(&project.root) {
+                Ok(lock) if lock.items.is_empty() => {}
+                Ok(lock) => behind(
+                    self.installations(&project.root, &lock, &libraries),
+                    &UpdatePlace::Project {
+                        id: project.id.clone(),
+                        name: project.name.clone(),
+                    },
+                    &mut pending.copies,
+                ),
+                // Said, not hidden: a project nothing is known of is not one with nothing to do.
+                Err(e) => pending.unreadable.push(UnreadableProject {
+                    id: project.id.clone(),
+                    name: project.name.clone(),
+                    reason: e.to_string(),
+                }),
+            }
+        }
+        if let Ok(home) = self.machine_root()
+            && let Ok(lock) = read_lock(home)
+            && !lock.items.is_empty()
+        {
+            behind(
+                self.installations(home, &lock, &libraries),
+                &UpdatePlace::Machine,
+                &mut pending.copies,
+            );
+        }
+        // Copies in My skills: each is merged file by file, so they are listed, not planned.
+        let names: HashMap<String, String> = self
+            .skills()
+            .list()?
+            .into_iter()
+            .map(|s| (s.id, s.title))
+            .collect();
+        for standing in self.skills_overview()? {
+            if standing.upstream != Some(crate::skills::upstream::UpstreamState::Changed) {
+                continue;
+            }
+            let Ok(status) = self.skill_upstream(&standing.skill_id) else {
+                continue;
+            };
+            let Some(status) = status else {
+                continue;
+            };
+            let title = names
+                .get(&standing.skill_id)
+                .cloned()
+                .unwrap_or_else(|| standing.skill_id.clone());
+            match pending
+                .copies
+                .iter_mut()
+                .find(|c| c.place == UpdatePlace::MySkills && c.library == status.source_name)
+            {
+                Some(row) => {
+                    row.keys.push(standing.skill_id);
+                    row.titles.push(title);
+                }
+                None => pending.copies.push(CopiesBehind {
+                    place: UpdatePlace::MySkills,
+                    library: status.source_name,
+                    keys: vec![standing.skill_id],
+                    titles: vec![title],
+                }),
+            }
+        }
+        Ok(pending)
+    }
+
+    /// What Habi installed on this machine and how each stands against its
+    /// library: skills, subagents and tools alike.
+    pub fn machine_installations(&self) -> Result<Vec<Installation>> {
+        let home = self.machine_root()?;
+        let lock = read_lock(home)?;
+        if lock.items.is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(self.installations(home, &lock, &self.libraries()?))
     }
 
     pub fn plan_update_machine(&self, keys: &[String], decisions: &Decisions) -> Result<Plan> {
@@ -2876,14 +3074,6 @@ impl Habi {
 
     pub fn contribution_send_route(&self, id: &str, cancel: &CancelToken) -> Result<SendRoute> {
         self.contributions().send_route(id, cancel)
-    }
-}
-
-fn join(dir: &str, name: &str) -> String {
-    if dir.is_empty() {
-        name.to_string()
-    } else {
-        format!("{dir}/{name}")
     }
 }
 

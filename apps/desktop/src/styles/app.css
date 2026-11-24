@@ -5822,11 +5822,6 @@ dl.facets,
   overflow-wrap: anywhere;
 }
 
-.sheet-confirm {
-  margin-right: auto;
-  font-size: var(--text-sm);
-}
-
 .choice-note {
   font-size: var(--text-xs);
   color: var(--ok-ink);
@@ -6077,230 +6072,9 @@ dl.facets,
   gap: var(--s4);
 }
 
-/* ---------- Connect your own library ---------- */
-
-/* The folder, as one large stitched target instead of a box and a button. */
-.pick {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  width: 100%;
-  min-width: 0;
-  padding: var(--s4);
-  border: 1.5px dashed var(--hairline-strong);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--ink-soft);
-  text-align: left;
-  transition:
-    border-color var(--duration) var(--ease),
-    background var(--duration) var(--ease);
-}
-
-.pick:hover:not(:disabled),
-.pick:focus-visible {
-  border-color: var(--thread);
-  background: var(--thread-wash);
-}
-
-.pick.is-chosen {
-  border-style: solid;
-  border-color: var(--thread);
-}
-
-.pick svg {
-  flex: none;
-  color: var(--thread-strong);
-}
-
-.pick-text {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.pick-empty {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.pick-path {
-  overflow-wrap: anywhere;
-  color: var(--ink);
-}
-
-.pick-sub {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
 /* The chosen folder, opened: how many skills are in it, then each by name. */
 .field.grow > .scan {
   height: 100%;
-}
-
-.scan {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border: 1.5px solid var(--thread);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.scan-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  min-width: 0;
-  padding: var(--s3);
-  border-bottom: 1px solid var(--hairline);
-  font-size: var(--text-sm);
-}
-
-.scan-head svg {
-  flex: none;
-  color: var(--thread-strong);
-}
-
-/* The folder's own name always shows; the path in front of it gives way. */
-.scan-path {
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
-  white-space: nowrap;
-  color: var(--ink-soft);
-}
-
-.scan-parent {
-  flex: 0 1000 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ink-muted);
-}
-
-.scan-path strong {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ink);
-}
-
-.scan-head .link-quiet {
-  flex: none;
-  white-space: nowrap;
-}
-
-.scan-figure {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--s2);
-  margin: 0;
-  padding: var(--s3) var(--s3) var(--s2);
-}
-
-.scan-count {
-  font-size: 34px;
-  font-weight: 620;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-}
-
-.scan-label {
-  color: var(--ink-muted);
-}
-
-.scan-marks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--s3);
-  margin-left: auto;
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
-/* Scrolls inside the box, so a large folder never makes the station taller. */
-.scan-list {
-  display: grid;
-  flex: 1 1 0;
-  align-content: start;
-  min-height: 0;
-  margin: 0;
-  padding: 0 var(--s3) var(--s2);
-  overflow-y: auto;
-  list-style: none;
-}
-
-.scan-item {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: var(--s3);
-  padding: 7px 0 7px var(--s4);
-  border-top: 1px solid var(--hairline);
-  animation: scan-in 360ms var(--ease) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
-}
-
-/* A knot on the thread for each skill found. */
-.scan-item::before {
-  content: "";
-  position: absolute;
-  top: 13px;
-  left: 2px;
-  inline-size: 7px;
-  block-size: 7px;
-  border-radius: 50%;
-  background: var(--thread);
-}
-
-.scan-name,
-.scan-desc {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.scan-name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.scan-desc {
-  grid-column: 1;
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
-.scan-meta {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: center;
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-}
-
-.scan-state {
-  display: grid;
-  gap: var(--s2);
-  margin: 0;
-  padding: var(--s4) var(--s3);
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
-.scan-state p {
-  margin: 0;
-}
-
-.scan-none {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--ink);
 }
 
 @keyframes scan-in {
@@ -6308,110 +6082,6 @@ dl.facets,
     opacity: 0;
     transform: translateX(-6px);
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .scan-item {
-    animation: none;
-  }
-}
-
-/* One pill each, side by side; the chosen one is explained underneath. */
-.choice-field {
-  gap: var(--s2);
-}
-
-.choice-field .field-hint {
-  margin-top: var(--s1);
-}
-
-.choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
-.choice-pill {
-  position: relative;
-  display: inline-flex;
-}
-
-.choice-pill input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  margin: 0;
-  cursor: pointer;
-}
-
-.choice-pill span {
-  padding: 5px 12px;
-  border: 1px solid var(--hairline-strong);
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  transition:
-    border-color var(--duration) var(--ease),
-    background var(--duration) var(--ease);
-}
-
-.choice-pill:hover span {
-  border-color: var(--ink-faint);
-}
-
-.choice-pill input:checked + span {
-  border-color: var(--thread);
-  background: var(--thread-wash);
-  color: var(--ink);
-}
-
-.choice-pill input:focus-visible + span {
-  outline: 2px solid var(--thread);
-  outline-offset: 2px;
-}
-
-.choice-pill input:disabled + span {
-  opacity: 0.55;
-}
-
-/* The options: closed, they say what they are set to. */
-.options {
-  border-top: 1px solid var(--hairline);
-  padding-top: var(--s3);
-}
-
-.options summary {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  cursor: pointer;
-  list-style: none;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.options summary::-webkit-details-marker {
-  display: none;
-}
-
-.options summary svg {
-  transition: transform var(--duration) var(--ease);
-}
-
-.options[open] summary svg {
-  transform: rotate(90deg);
-}
-
-.options-now {
-  margin-left: auto;
-  font-size: var(--text-xs);
-  font-weight: 400;
-}
-
-.options-body {
-  display: grid;
-  gap: var(--s4);
-  padding-top: var(--s3);
 }
 
 /* The page: three stations on one thread, what it comes to in a sentence, and
@@ -6424,13 +6094,6 @@ dl.facets,
   flex-direction: column;
   min-height: 100vh;
   padding: var(--s4) clamp(var(--s5), 3vw, 72px);
-}
-
-.connect-board {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
 }
 
 .connect-head {
@@ -6457,116 +6120,6 @@ dl.facets,
   line-height: 1.55;
 }
 
-.stations {
-  display: grid;
-  flex: none;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s6);
-}
-
-.station {
-  position: relative;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: stretch;
-  gap: var(--s1);
-  min-width: 0;
-  margin: 0;
-  padding: 34px 0 0;
-  border: 0;
-  transition: opacity var(--duration) var(--ease);
-}
-
-/* The thread runs from knot to knot, and takes the colour as each is reached. */
-.station::before {
-  content: "";
-  position: absolute;
-  top: 10px;
-  left: 30px;
-  right: calc(var(--s6) * -1 + 8px);
-  border-top: 1.5px dashed var(--hairline-strong);
-  transition: border-color var(--duration) var(--ease);
-}
-
-.station:last-child::before {
-  right: 0;
-}
-
-.station.is-lit::before {
-  border-top-color: var(--thread);
-}
-
-.station.is-locked {
-  opacity: 0.5;
-}
-
-.station-knot {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: grid;
-  place-items: center;
-  inline-size: 22px;
-  block-size: 22px;
-  border: 1.5px solid var(--hairline-strong);
-  border-radius: 50%;
-  background: var(--paper);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-  transition:
-    background var(--duration) var(--ease),
-    border-color var(--duration) var(--ease);
-}
-
-.station.is-lit .station-knot {
-  border-color: var(--thread);
-  background: var(--thread-wash);
-  color: var(--thread-strong);
-}
-
-/* Start here: the first knot breathes until it has something. */
-.station.is-next .station-knot {
-  border-color: var(--thread);
-  color: var(--thread-strong);
-}
-
-.station.is-next .station-knot::after {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border: 1.5px solid var(--thread);
-  border-radius: 50%;
-  opacity: 0;
-  animation: knot-breathe 2.4s var(--ease) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .station.is-next .station-knot::after {
-    animation: none;
-    opacity: 0.5;
-  }
-}
-
-.station-title {
-  margin: 0 0 var(--s3);
-  font-size: clamp(20px, 0.5vw + 14px, 28px);
-  font-weight: 620;
-  letter-spacing: -0.02em;
-}
-
-.station-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  min-width: 0;
-}
-
-/* The three stations stand level: whatever is last in a short one takes the room left. */
-.station-body > .grow {
-  flex: 1 1 auto;
-}
-
 .field.grow {
   align-content: stretch;
   grid-template-rows: minmax(0, 1fr);
@@ -6577,231 +6130,16 @@ dl.facets,
   height: 100%;
 }
 
-.address {
-  display: grid;
-  align-content: center;
-  gap: 2px;
-  min-height: 92px;
-  padding: var(--s4);
-  border: 1.5px solid var(--thread);
-  border-radius: var(--radius);
-  background: var(--thread-wash);
-}
-
-.address-host {
-  font-size: clamp(11px, 0.2vw + 9px, 14px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.address-repo {
-  font-size: clamp(16px, 0.7vw + 10px, 26px);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-  color: var(--ink);
-}
-
-.address-how {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
-.panel {
-  display: grid;
-  align-content: center;
-  gap: var(--s2);
-  padding: var(--s4);
-  border: 1px dashed var(--hairline-strong);
-  border-radius: var(--radius);
-}
-
-.panel .kicker {
-  margin: 0;
-}
-
-/* The choice as cloth: two tiles, each a piece of weave in the thread that kind of library has. */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-  gap: var(--s2);
-  min-height: 150px;
-}
-
-.tile {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s1);
-  min-width: 0;
-  padding: var(--s3);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition:
-    border-color var(--duration) var(--ease),
-    background var(--duration) var(--ease);
-}
-
-.tile:hover {
-  border-color: var(--ink-faint);
-}
-
-.tile input {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.tile.is-chosen {
-  border-color: var(--thread);
-  background: var(--thread-wash);
-}
-
-.tile:has(input:focus-visible) {
-  outline: 2px solid var(--thread);
-  outline-offset: 2px;
-}
-
-.tile:has(input:disabled) {
-  cursor: default;
-  opacity: 0.6;
-}
-
-/* Warp threads, long as the tile allows, over a faint weft. */
-.cloth {
-  display: flex;
-  flex: 1 1 auto;
-  justify-content: space-evenly;
-  min-height: 44px;
-  margin-bottom: var(--s2);
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: repeating-linear-gradient(to bottom, transparent 0 13px, var(--hairline) 13px 14px);
-}
-
-.cloth-thread {
-  flex: none;
-  inline-size: 3px;
-  border-radius: 2px;
-  background: var(--ink-faint);
-  opacity: 0.55;
-  transition: opacity var(--duration) var(--ease);
-}
-
-/* Stitched: a community thread is drawn in dashes. */
-.cloth-thread.is-stitched {
-  background: repeating-linear-gradient(to bottom, var(--ink-faint) 0 9px, transparent 9px 15px);
-}
-
-/* The one that would be yours, once chosen. */
-.tile.is-chosen .cloth-thread {
-  opacity: 0.8;
-}
-
-.tile.is-chosen .cloth-thread.is-new {
-  inline-size: 5px;
-  opacity: 1;
-  background: var(--thread);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--thread) 60%, transparent);
-  transform-origin: top;
-  animation: thread-draw 520ms var(--ease) both;
-}
-
-.tile.is-chosen .cloth-thread.is-new.is-stitched {
-  background: repeating-linear-gradient(to bottom, var(--thread) 0 9px, transparent 9px 15px);
-}
-
 @keyframes thread-draw {
   from {
     transform: scaleY(0);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tile.is-chosen .cloth-thread.is-new {
-    animation: none;
-  }
-}
-
-.tile-title {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.tile-gist {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
-.panel-text {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-}
-
-.station.is-locked .station-body {
-  pointer-events: none;
-}
-
 .input-lg {
   min-height: 44px;
   padding-inline: var(--s3);
   font-size: 15px;
-}
-
-.station .pick {
-  min-height: 92px;
-}
-
-.guide {
-  display: grid;
-  gap: var(--s2);
-  padding-top: var(--s3);
-  border-top: 1px solid var(--hairline);
-}
-
-.guide .kicker {
-  margin: 0;
-}
-
-.guide-forms {
-  display: grid;
-  gap: var(--s2);
-  margin: 0;
-}
-
-.guide-forms dt {
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-}
-
-.guide-forms dd {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-  overflow-wrap: anywhere;
-}
-
-.skill-tree {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: 1.55;
-  color: var(--ink-soft);
-}
-
-.connect-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s5) var(--s6);
-  margin-top: var(--s4);
-  padding-top: var(--s3);
-  border-top: 1px solid var(--hairline);
 }
 
 .connect-say {
@@ -6904,8 +6242,96 @@ dl.facets,
   cursor: default;
 }
 
-.narrow-link {
-  justify-self: start;
+/* One box takes whatever names the library; the sentence under it is the form. */
+.connect-one {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--s5);
+  min-height: 0;
+}
+
+.connect-box {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  max-width: 72rem;
+}
+
+.connect-box .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.connect-one .connect-say {
+  flex: none;
+}
+
+.connect-note {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--ink-faint);
+  line-height: 1.55;
+}
+
+/* A word of the sentence that is one of a few: it opens where it stands. */
+.tok-select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 1px 0.4em;
+  border: 0;
+  border-radius: 6px;
+  background: var(--paper-raised);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline-strong),
+    inset 0 -2px 0 var(--thread);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.tok-select:hover:not(:disabled) {
+  background: var(--thread-wash);
+}
+
+.tok-select:disabled {
+  background: var(--thread-wash);
+  box-shadow: none;
+  opacity: 1;
+  cursor: default;
+}
+
+.tok-clear {
+  display: inline-grid;
+  place-items: center;
+  width: 1.1em;
+  height: 1.1em;
+  margin-left: 0.2em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-faint);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.tok-clear:hover {
+  background: var(--thread-wash);
+  color: var(--ink);
+}
+
+/* In a dialog the sentence is read at the size of the text around it. */
+.connect-compact .connect-sentence {
+  font-size: 16px;
+}
+
+.connect-compact {
+  display: grid;
+  gap: var(--s4);
 }
 
 .connect-actions {
@@ -6961,32 +6387,6 @@ dl.facets,
 @media (max-width: 1000px) {
   .connect-head {
     margin-bottom: var(--s6);
-  }
-  .stations {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s5);
-    max-width: 40rem;
-  }
-  /* One column: the thread runs down the left. */
-  .station {
-    padding: 0 0 0 46px;
-  }
-  .station::before {
-    top: 30px;
-    bottom: calc(var(--s5) * -1 + 8px);
-    left: 10px;
-    right: auto;
-    border-top: 0;
-    border-left: 1.5px dashed var(--hairline-strong);
-  }
-  .station.is-lit::before {
-    border-left-color: var(--thread);
-  }
-  .station:last-child::before {
-    display: none;
-  }
-  .connect-foot {
-    margin-top: var(--s6);
   }
 }
 

@@ -1,10 +1,10 @@
 /**
  * On this machine: skills kept in the person's own folders (`~/.claude/skills`
- * and the like). They sit apart from My skills because they are not Habi's:
- * the agents own those files and Habi only reads them, so nothing here can be
- * edited or removed. The two ways out are copies — into My skills, or into a
- * project through the usual reviewed install — and the original is never
- * touched. Where a project holds a copy too, the row says which one a client
+ * and the like), and the agents and tools Habi installed there. They sit apart
+ * from My skills because they are not Habi's to edit: the agents own those
+ * files. A skill found here can be copied into My skills or into a project
+ * through the usual reviewed install, and the original is never touched. What
+ * Habi itself installed can be updated and removed, each through its review. Where a project holds a copy too, the row says which one a client
  * will use. Skills whose library has a newer version come first, with a
  * filter to see only those. As its own page it always shows; elsewhere,
  * nothing is shown when there are no such skills.
@@ -21,7 +21,7 @@ import { Menu } from "../../components/Menu";
 import { Button, ErrorNotice, Status, Working } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
-import { clientLabel, plural } from "../../lib/format";
+import { clientLabel, kindLabel, plural } from "../../lib/format";
 import {
   copyState,
   groupMachineSkills,
@@ -32,7 +32,12 @@ import {
   precedenceNote,
 } from "../../lib/machine";
 import { useNav } from "../../lib/nav";
-import { invalidateSkills, useMachineHistory, useMachineSkills } from "../../lib/queries";
+import {
+  invalidateSkills,
+  useMachineHistory,
+  useMachineInstallations,
+  useMachineSkills,
+} from "../../lib/queries";
 import { purpose } from "../../lib/skills";
 import { History } from "../project/History";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
@@ -201,6 +206,9 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
   const alwaysShow = page;
   const machine = useMachineSkills();
   const operations = useMachineHistory();
+  // Agents and tools Habi installed: one file or a command, in no skill folder.
+  const installations = useMachineInstallations();
+  const others = (installations.data ?? []).filter((i) => i.kind === "agent" || i.kind === "tool");
   const [history, setHistory] = useState(false);
   const [query, setQuery] = useState("");
   const [onlyUpdates, setOnlyUpdates] = useState(false);
@@ -229,7 +237,14 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
           .includes(q),
     )
     .sort((a, b) => Number(hasUpdate(b)) - Number(hasUpdate(a)));
-  if (!alwaysShow && found.length === 0 && !operations.data?.length && !operations.isError) return null;
+  if (
+    !alwaysShow &&
+    found.length === 0 &&
+    others.length === 0 &&
+    !operations.data?.length &&
+    !operations.isError
+  )
+    return null;
 
   /** Puts the skill in My skills if it is not there, then opens the dialog that chooses the project. */
   const bringToProject = async (group: MachineGroup) => {
@@ -296,7 +311,7 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
           <p className="mach-lead">{lead}</p>
         </header>
       )}
-      {error ? <ErrorNotice error={error} /> : null}
+      {error ? <ErrorNotice title="The skill could not be copied" error={error} /> : null}
       {alwaysShow && machine.isPending ? <Working>Reading global skills…</Working> : null}
       {alwaysShow && machine.isError ? (
         <ErrorNotice error={machine.error} title="Could not read machine skills" />
@@ -364,10 +379,54 @@ export function OnThisMachine({ page = false }: { page?: boolean }) {
           />
         ))}
       </ul>
-      {alwaysShow && found.length === 0 && !machine.isPending && !machine.isError ? (
+      {others.length > 0 ? (
+        <ul className="mach-rows" aria-label="Agents and tools on this machine">
+          {others.map((i) => (
+            <li className="mach-item" key={i.key}>
+              <div className="mach-main">
+                <span className={`mach-title${i.kind === "tool" ? " mono" : ""}`}>
+                  {i.title}
+                  <span className="mach-tag">{kindLabel[i.kind]}</span>
+                  {managedState[i.state] ? (
+                    <span className="mach-tag is-state">{managedState[i.state]}</span>
+                  ) : null}
+                </span>
+                <span className="mys-purpose">
+                  {i.kind === "tool"
+                    ? `A command on your PATH, from ${i.sourceName}`
+                    : `From ${i.sourceName}, for ${i.clients.map((c) => clientLabel[c]).join(", ")}`}
+                </span>
+              </div>
+              <span className="mach-acts">
+                <Menu
+                  label={`More for ${i.title}`}
+                  items={[
+                    [
+                      {
+                        label: "Update…",
+                        hint: `From ${i.sourceName}`,
+                        icon: "refresh",
+                        onSelect: () => setReview({ kind: "update", keys: [i.key], title: i.title }),
+                      },
+                      {
+                        label: "Remove from this machine…",
+                        hint: "Only what Habi installed",
+                        icon: "trash",
+                        danger: true,
+                        onSelect: () => setReview({ kind: "remove", keys: [i.key], title: i.title }),
+                      },
+                    ],
+                  ]}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {alwaysShow && found.length === 0 && others.length === 0 && !machine.isPending && !machine.isError ? (
         <p className="mys-empty">
-          No global skills found. Use a skill’s <strong>On this machine</strong> action to review an
-          installation here. Previous changes remain in history.
+          Nothing here yet. In a library, a skill’s <strong>Add to this machine…</strong> installs it for
+          every project. Earlier changes stay in history.
         </p>
       ) : null}
 

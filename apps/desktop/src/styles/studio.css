@@ -3276,47 +3276,6 @@ button.rd-word:hover,
   height: 32px;
 }
 
-.way-fork {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: var(--s2);
-  margin-top: 4px;
-}
-
-.way-choice {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--hairline-strong);
-  border-left: 3px solid var(--hairline-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  text-align: left;
-  transition: border-color var(--duration) var(--ease);
-}
-
-.way-choice:not(:disabled):hover,
-.way-choice:not(:disabled):focus-visible {
-  border-left-color: var(--thread);
-}
-
-.way-choice:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.way-choice-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.way-choice-note {
-  font-size: var(--text-xs);
-  line-height: 1.45;
-  color: var(--ink-muted);
-}
-
 /* ---------- Code in rendered Markdown, in the dyes ---------- */
 
 .prose pre code .tok-keyword,

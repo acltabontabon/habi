@@ -9,7 +9,7 @@ import { AgentReach } from "../../components/AgentReach";
 import { Icon } from "../../components/Icon";
 import { Menu } from "../../components/Menu";
 import { useToast } from "../../components/Toasts";
-import { Button, Facet, Label, Notice, Section, Status } from "../../components/ui";
+import { Button, errorLine, Facet, Label, Notice, Section, Status } from "../../components/ui";
 import { useActions } from "../../lib/actions";
 import { api } from "../../lib/api";
 import {
@@ -36,6 +36,7 @@ import { useSkills } from "../../lib/queries";
 import { tabKeyHandler } from "../../lib/tabs";
 import { tagLabel } from "../../lib/tags";
 import { SkillReader } from "../reader/SkillReader";
+import { InstallTool } from "../review/InstallTool";
 import { ReviewDialog, type ReviewRequest } from "../review/ReviewDialog";
 import { ChecksPanel } from "./ChecksPanel";
 import { answerable, DeclareQuestion, MatchedReasons, ModuleExplanation, sentence } from "./Explain";
@@ -87,7 +88,7 @@ function InstalledFor({ r }: { r: Recommendation }) {
  * for every tool that reads Agent Skills: the name and description at the start, the rest on use.
  */
 function ReachLine({ r }: { r: Recommendation }) {
-  if (r.item.kind === "instructions") return null;
+  if (r.item.kind === "instructions" || r.item.kind === "agent") return null;
   const installation = r.installation;
   const where = installation ? installedPlaces(installation.files).join(" and ") : "";
   return (
@@ -236,7 +237,7 @@ export function ItemDetailPane({
       void client.invalidateQueries({ queryKey: ["contributions"] });
       navigate({ name: "contributions", contributionId: draft.id });
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : String(e), "danger");
+      toast.show(errorLine("Sharing could not be started", e), "danger");
     } finally {
       setSharing(false);
     }
@@ -309,7 +310,11 @@ export function ItemDetailPane({
                 Edit in My skills
               </Button>
             ) : null}
-            {key && !isLocal && installedFolder && r.item.kind !== "instructions" ? (
+            {key &&
+            !isLocal &&
+            installedFolder &&
+            r.item.kind !== "instructions" &&
+            r.item.kind !== "agent" ? (
               <Button
                 icon="pencil"
                 title="Copies the installed files, with this project's edits, to My skills. It stays linked to the library."
@@ -575,6 +580,9 @@ export function ItemDetailPane({
                       {p.purpose ? <p className="muted">{p.purpose}</p> : null}
                       <p className="prereq-detail">{p.detail}</p>
                       {p.hint ? <p className="prereq-hint">{p.hint}</p> : null}
+                      {p.providedBy && p.status === "missing" ? (
+                        <InstallTool sourceId={r.item.sourceId} toolId={p.providedBy} name={p.name} />
+                      ) : null}
                     </li>
                   ))}
                 </ul>

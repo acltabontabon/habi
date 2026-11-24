@@ -495,7 +495,7 @@ fn library_path_for(
     if let Some(item) = index
         .items
         .iter()
-        .find(|i| i.name == name && i.kind != crate::library::model::ItemKind::Instructions)
+        .find(|i| i.name == name && i.kind.is_skill())
     {
         return (item.path.clone(), Some(item.id.clone()));
     }
@@ -503,7 +503,7 @@ fn library_path_for(
         let root = index
             .items
             .iter()
-            .filter(|i| i.kind != crate::library::model::ItemKind::Instructions)
+            .filter(|i| i.kind.is_skill())
             .find_map(|i| i.path.rsplit_once('/').map(|(d, _)| d.to_string()))
             .unwrap_or_else(|| "skills".into());
         format!("{root}/{name}")
@@ -1693,9 +1693,10 @@ impl<'a> Contributions<'a> {
                     .iter()
                     .find(|i| &i.id == item_id)
                     .ok_or_else(|| HabiError::NotFound(format!("item `{item_id}`")))?;
-                if item.kind == crate::library::model::ItemKind::Instructions {
+                if !item.kind.is_skill() {
                     return Err(HabiError::Unsupported(
-                        "instructions are edited directly in the library repository".into(),
+                        "instructions and subagents are edited directly in the library repository"
+                            .into(),
                     ));
                 }
                 let mut files = BTreeMap::new();

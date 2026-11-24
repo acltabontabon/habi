@@ -49,12 +49,18 @@ const team = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-function home(data: { projects?: unknown[]; sources?: unknown[]; contributions?: unknown[] }) {
+function home(data: {
+  projects?: unknown[];
+  sources?: unknown[];
+  contributions?: unknown[];
+  pending?: { libraries: unknown[]; copies: unknown[] };
+}) {
   invoke.mockImplementation(async (cmd: string) => {
     if (cmd === "app_info") return { gitAvailable: true };
     if (cmd === "recent_projects") return data.projects ?? [];
     if (cmd === "list_sources") return data.sources ?? [];
     if (cmd === "list_contributions") return data.contributions ?? [];
+    if (cmd === "pending_updates") return { libraries: [], copies: [], unreadable: [], ...data.pending };
     return [];
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -85,6 +91,15 @@ function Where() {
 
 describe("home", () => {
   beforeEach(() => invoke.mockReset());
+
+  it("says in one line how much is behind its library, and leads to the one list", async () => {
+    home({
+      projects: [project()],
+      sources: [team()],
+      pending: { libraries: [{ sourceId: "team" }], copies: [{ keys: ["a"] }, { keys: ["b"] }] },
+    });
+    expect(await screen.findByRole("button", { name: /Updates.*3 waiting/ })).toBeInTheDocument();
+  });
 
   it("gives a first run the whole headline and one action", async () => {
     home({});
@@ -169,6 +184,7 @@ describe("home", () => {
         return {
           recommendations: [rec("fits", "relevant", "Uses Spring Boot"), rec("must", "required", "x")],
         };
+      if (cmd === "pending_updates") return { libraries: [], copies: [], unreadable: [] };
       return [];
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -199,6 +215,7 @@ describe("home", () => {
       if (cmd === "app_info") return { gitAvailable: true };
       if (cmd === "recent_projects") return [project()];
       if (cmd === "project_overview") return { recommendations: [rec] };
+      if (cmd === "pending_updates") return { libraries: [], copies: [], unreadable: [] };
       return [];
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

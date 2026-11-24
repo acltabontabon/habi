@@ -27,7 +27,7 @@ const WAYS: { label: string; icon: IconName; start: AddSkillsStart }[] = [
 ];
 
 /**
- * Common things teams write down. Each opens the new-skill dialog already filled in.
+ * Common things teams write down. Each starts a new skill with its title and layout filled in.
  * Add or remove entries freely: the row reflows to 2, 3 or 6 columns (keep a multiple of 6 or 3 for a tidy end).
  */
 const IDEAS: { title: string; template: SkillTemplate; kind: string }[] = [

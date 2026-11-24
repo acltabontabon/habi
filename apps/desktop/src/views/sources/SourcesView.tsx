@@ -37,7 +37,7 @@ import { WaitingLoom, Weaving } from "../../components/Weaving";
 import { api, HabiError, newJobId } from "../../lib/api";
 import { groupOfEntry } from "../../lib/catalog";
 import { type Dye, useDyes } from "../../lib/dye";
-import { compactCount, plural, relativeTime } from "../../lib/format";
+import { compactCount, plural, relativeTime, roleLabel } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import {
   invalidateProjectData,
@@ -73,8 +73,8 @@ function projectNames(names: string[]): string {
   return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
 }
 
-/** Connect your own library: one intent per page. */
-function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: string }) {
+/** Connect your own library: one page, whatever names it. */
+function ConnectOwn({ location }: { location?: string }) {
   const { navigate } = useNav();
   const toast = useToast();
   return (
@@ -82,22 +82,17 @@ function ConnectOwn({ mode, location }: { mode: "git" | "folder"; location?: str
       <header className="connect-head">
         <BackLink fallback={{ name: "sources" }} fallbackLabel="Your libraries" />
         <p className="kicker">Your own library</p>
-        <h1 className="page-title">
-          {mode === "git" ? "Connect a Git repository" : "Use a folder as a library"}
-        </h1>
+        <h1 className="page-title">Connect a library</h1>
         <p className="lead-sm">
-          {mode === "git"
-            ? "A repository of Agent Skills your team keeps. Habi reads it, and you decide when it updates."
-            : "Skill folders on this machine: a checkout, or your own collection."}
+          A repository or a folder of skills. Habi reads it, and you decide when it updates.
         </p>
       </header>
       <ConnectLibrary
-        mode={mode}
         initialLocation={location}
         onCancel={() => navigate({ name: "sources" })}
-        onConnected={(source, count) => {
+        onConnected={(source, count, itemId) => {
           toast.show(`${source.name} connected: ${plural(count, "item")}.`);
-          navigate({ name: "sources", sourceId: source.id });
+          navigate({ name: "sources", sourceId: source.id, itemId });
         }}
       />
     </div>
@@ -169,7 +164,7 @@ function originOf(source: Source, entry: CatalogEntry | undefined): Origin {
 function originLabel(source: Source, origin: Origin): string {
   if (origin === "builders") return "Builder";
   if (origin === "community") return "Community";
-  return source.kind === "directory" ? "Your folder" : "Your team";
+  return source.kind === "directory" ? "Folder" : roleLabel.team;
 }
 
 /**
@@ -242,16 +237,10 @@ function AddLibrary({ catalog = true }: { catalog?: boolean }) {
       items={[
         [
           {
-            label: "Git repository…",
-            hint: "Your team's skills, from any Git host",
+            label: "A repository or a folder…",
+            hint: "Paste an address, or choose a folder on this machine",
             icon: "branch",
-            onSelect: () => navigate({ name: "sources", view: "git" }),
-          },
-          {
-            label: "Folder…",
-            hint: "Skills already on this machine",
-            icon: "folder",
-            onSelect: () => navigate({ name: "sources", view: "folder" }),
+            onSelect: () => navigate({ name: "sources", view: "connect" }),
           },
         ],
         catalog
@@ -397,7 +386,7 @@ function YourLibraries() {
   }, [catalog.data, sources.data, newer]);
 
   if (catalog.isPending || sources.isPending) return <Working>Loading libraries…</Working>;
-  if (sources.isError) return <ErrorNotice error={sources.error} />;
+  if (sources.isError) return <ErrorNotice title="Your libraries could not be read" error={sources.error} />;
 
   const adoptedAny = (skills.data ?? []).some((s) => s.origin.type === "library");
   const explore = (catalog.data ?? []).filter((e) => e.availability !== "connected").length;
@@ -443,11 +432,8 @@ function YourLibraries() {
             >
               Explore the catalog
             </Button>
-            <Button icon="branch" onClick={() => navigate({ name: "sources", view: "git" })}>
-              Connect a Git repository
-            </Button>
-            <Button icon="folder" onClick={() => navigate({ name: "sources", view: "folder" })}>
-              Use a folder
+            <Button icon="branch" onClick={() => navigate({ name: "sources", view: "connect" })}>
+              Connect your own
             </Button>
           </div>
         </div>
@@ -554,7 +540,7 @@ function Explore() {
   useSlashFocus(filter);
 
   if (catalog.isPending) return <Working>Loading the catalog…</Working>;
-  if (catalog.isError) return <ErrorNotice error={catalog.error} />;
+  if (catalog.isError) return <ErrorNotice title="The catalog could not be read" error={catalog.error} />;
 
   // Libraries with something for your projects come first: that is why you would connect one.
   const open = catalog.data
@@ -747,8 +733,17 @@ function LibraryPage({ entryId }: { entryId: string }) {
   }, [connectedAs, navigate]);
 
   if (catalog.isPending) return <Working>Loading libraries…</Working>;
-  if (catalog.isError) return <ErrorNotice error={catalog.error} />;
-  if (!entry) return <Explore />;
+  if (catalog.isError) return <ErrorNotice title="The catalog could not be read" error={catalog.error} />;
+  // Said, not skipped: a catalog page that is gone is not the catalog.
+  if (!entry)
+    return (
+      <>
+        <Notice tone="warn" title="That library is no longer in the catalog">
+          It was removed or renamed. These are the libraries the catalog lists now.
+        </Notice>
+        <Explore />
+      </>
+    );
 
   const cancelled = error instanceof HabiError && error.code === "cancelled";
   const idle = !job && !error;
@@ -964,16 +959,26 @@ export function SourcesView({
 }: {
   sourceId?: string;
   entry?: string;
-  view?: "git" | "folder" | "explore";
+  view?: "connect" | "explore";
   location?: string;
   itemId?: string;
   file?: string;
 }) {
   const sources = useSources();
   if (view === "explore") return <Explore />;
-  if (view) return <ConnectOwn key={location} mode={view} location={location} />;
+  if (view) return <ConnectOwn key={location} location={location} />;
   if (entry) return <LibraryPage key={entry} entryId={entry} />;
   const source = sources.data?.find((s) => s.id === sourceId);
   if (source) return <LibraryView key={source.id} source={source} itemId={itemId} file={file} />;
+  // A library that is gone is said to be gone, not swapped for the list without a word.
+  if (sourceId && sources.isSuccess)
+    return (
+      <>
+        <Notice tone="warn" title="That library is no longer connected">
+          It was disconnected. These are the libraries you have.
+        </Notice>
+        <YourLibraries />
+      </>
+    );
   return <YourLibraries />;
 }

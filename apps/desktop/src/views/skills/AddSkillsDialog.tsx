@@ -24,7 +24,6 @@ import { NO_RULES_PHRASE, plural } from "../../lib/format";
 import { useNav } from "../../lib/nav";
 import { invalidateSkills, useRecentProjects, useSources } from "../../lib/queries";
 import { identifierProblem } from "../../lib/skills";
-import { ConnectLibrary } from "../sources/ConnectLibrary";
 
 export type AddSkillsStart =
   | { source: "choose" }
@@ -36,7 +35,6 @@ export type AddSkillsStart =
 
 type Step =
   | { name: "choose" }
-  | { name: "git"; location?: string }
   | { name: "fetching"; job: string; label: string }
   | { name: "inspecting"; job: string; label: string }
   | { name: "review"; from: ImportFrom; inspection: ImportInspection };
@@ -169,7 +167,7 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
   const toast = useToast();
   const projects = useRecentProjects();
   const sources = useSources();
-  const [step, setStep] = useState<Step>(start.source === "git" ? { name: "git" } : { name: "choose" });
+  const [step, setStep] = useState<Step>({ name: "choose" });
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const [error, setError] = useState<unknown>(null);
   const [importing, setImporting] = useState(false);
@@ -220,7 +218,8 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
     jobRef.current = job;
     setStep({ name: "fetching", job, label: location });
     try {
-      const copy = await api.openGitCopy(location, job);
+      // `owner/repo` and the address of a page are read into the repository.
+      const copy = await api.openGitCopy((await api.readAddress(location)).location, job);
       if (!mounted.current) {
         void api.forgetGitCopy(copy.sourceId).catch(() => {});
         return;
@@ -334,17 +333,15 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
         if (!open && !importing) onClose();
       }}
       title={
-        step.name === "git"
-          ? "Connect a Git library"
-          : review
-            ? focused
-              ? `Edit a copy of ${focused.title}`
-              : fromLibrary || fromGit
-                ? `Copy from ${review.inspection.origin}`
-                : review.from.type === "machine"
-                  ? `Copy ${review.inspection.candidates[0]?.title ?? "a skill"} to My skills`
-                  : `Skills found in ${shortOrigin(review.inspection.origin)}`
-            : "Add skills"
+        review
+          ? focused
+            ? `Edit a copy of ${focused.title}`
+            : fromLibrary || fromGit
+              ? `Copy from ${review.inspection.origin}`
+              : review.from.type === "machine"
+                ? `Copy ${review.inspection.candidates[0]?.title ?? "a skill"} to My skills`
+                : `Skills found in ${shortOrigin(review.inspection.origin)}`
+          : "Add skills"
       }
       description={
         step.name === "choose"
@@ -448,9 +445,10 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
                   id="add-git"
                   className="input mono"
                   value={gitUrl}
-                  placeholder="https://github.com/acme/skills"
+                  placeholder="owner/repo or a Git address"
                   spellCheck={false}
                   autoComplete="off"
+                  autoFocus={start.source === "git"}
                   onChange={(e) => setGitUrl(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -460,28 +458,22 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
                   }}
                 />
               </div>
-              <div className="way-fork">
+              <p className="way-note">Read once, and its skills copied to edit. Nothing stays connected.</p>
+              <div className="way-row">
+                <Button variant="primary" disabled={!gitUrl.trim()} onClick={() => void copyFromGit()}>
+                  Copy skills to edit
+                </Button>
+                {/* To follow its updates is another thing: a library, connected on its own page. */}
                 <button
                   type="button"
-                  className="way-choice"
+                  className="link-quiet"
                   disabled={!gitUrl.trim()}
-                  onClick={() => void copyFromGit()}
+                  onClick={() => {
+                    onClose();
+                    navigate({ name: "sources", view: "connect", location: gitUrl.trim() });
+                  }}
                 >
-                  <span className="way-choice-title">Make my own copy</span>
-                  <span className="way-choice-note">
-                    Read it once and copy skills to edit. Nothing stays connected.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="way-choice"
-                  disabled={!gitUrl.trim()}
-                  onClick={() => setStep({ name: "git", location: gitUrl.trim() })}
-                >
-                  <span className="way-choice-title">Connect as a library</span>
-                  <span className="way-choice-note">
-                    Keep it to browse and update from. Nothing is copied.
-                  </span>
+                  Connect as a library instead
                 </button>
               </div>
             </div>
@@ -524,19 +516,6 @@ export function AddSkillsDialog({ start, onClose }: { start: AddSkillsStart; onC
           label={`Reading ${step.label}`}
           hint="Fetched to look at, not connected. Nothing in it is run."
           onCancel={() => void api.cancelJob(step.job)}
-        />
-      ) : null}
-
-      {step.name === "git" ? (
-        <ConnectLibrary
-          compact
-          initialLocation={step.location}
-          onCancel={() => (start.source === "git" ? onClose() : setStep({ name: "choose" }))}
-          onConnected={(source, count) => {
-            toast.show(`${source.name} connected: ${plural(count, "item")} available.`);
-            onClose();
-            navigate({ name: "sources", sourceId: source.id });
-          }}
         />
       ) : null}
 

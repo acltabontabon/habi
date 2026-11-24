@@ -28,11 +28,42 @@ the lock file or data directory, minor for features, patch for fixes.
 - **More test tools are recognized.** Gauge, Robot Framework, Cucumber, Selenium, TestNG, Spock, Mockito,
   REST Assured, Karate, Gatling, JMeter, k6, Locust, Karma, Jasmine, Mocha, WebdriverIO, Appium, Pact,
   WireMock and Postman collections, from manifests or their own files.
+- **Updates in one place.** One count in the sidebar, shown only while something is behind, and one page
+  behind it: libraries with something newer to fetch, then the copies in each project, on this machine and
+  in My skills that can follow. Each row opens the review it always had. A project whose record cannot be
+  read is named, not skipped.
+- **Tools a library ships.** A library can declare a command-line tool its skills call (`tools:` in
+  `habi-library.yaml`). Habi copies its files to `~/.habi/tools/` and puts the command in `~/.local/bin`,
+  on this machine only, after you have seen every file and accepted the caution. A skill that needs the
+  command offers to install it, and stops saying it is missing once it is on your PATH. Updating asks
+  again, and removing leaves nothing behind. From the command line: `habi machine install`, `status`,
+  `update` and `remove`. Habi never runs the tool and never changes your PATH.
+- **Agents from a library.** A library that names an `agents_root` in `habi-library.yaml` offers its agents
+  (subagents) beside its skills. Each installs as the Markdown file it is, for Claude Code, Cursor and Junie,
+  in a project or on this machine, with the same review, updates and removal as a skill. An agent is shown
+  beside the skills it follows, and installing it offers them. Hooks, a permission mode that stops the tool
+  asking, and an MCP server of its own are cautions.
+- **Paste the address you have.** A library can be connected as `owner/repo`, as `github.com/owner/repo`, or
+  by the address of a branch, folder or `SKILL.md` on GitHub or GitLab: Habi follows that branch or tag and
+  reads that folder. When https is refused and the repository is also reachable over SSH, Habi offers SSH.
 - **OpenAPI tools count.** `openapi-generator`, `@nestjs/swagger` and similar show that a project has an
   OpenAPI specification, as a specification file already did.
 
 ### Changed
 
+- **Plainer words, and errors that say what failed.** A library is *Team* or *Community* everywhere, in
+  those words. Every error names what could not be done on the screen it happened on, and says what to do
+  next when the message alone does not. A library or catalog page that is gone says so, where it used to
+  show a different page without a word. Disconnecting and checking for updates are each in one place, on
+  the library's own page.
+- **One way to connect a library.** A single box takes a Git address, `owner/repo`, a web address or a
+  folder, and one sentence under it says what Habi understood. Each part is changed where it stands: the
+  folder read, the branch or tag followed, the name, whose library it is. The same form is used everywhere.
+  A repository now starts as a community library and a folder as your team's, as the command line always
+  did; say so in the sentence when a repository is your team's. In My skills, a Git address copies skills
+  to edit, and connecting it as a library is a link to this page.
+- **One line about the licence.** A skill whose library states no licence says *no licence stated*, in the same
+  words in the app, the CLI and the install review. Your own and your team's skills no longer carry the line.
 - **Habi is a third smaller and much faster.** Screens that read a project or your libraries answer several
   times faster, and the app no longer waits for your shell's startup files each time it opens.
 - **Shell scripts in a skill are read as the shell reads them.** A `curl … | sh` split over several lines is one

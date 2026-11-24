@@ -192,7 +192,7 @@ function InstructionPicker({
     >
       {error ? <ErrorNotice error={error} title="The draft could not be created" /> : null}
       {document.isPending ? <Working>Reading {file.path}…</Working> : null}
-      {document.isError ? <ErrorNotice error={document.error} /> : null}
+      {document.isError ? <ErrorNotice title="The file could not be read" error={document.error} /> : null}
       {document.data ? (
         <div className="picker">
           <div className="picker-side">
@@ -423,7 +423,9 @@ export function Outline({
                 Make a skill
               </button>
             </div>
-            {isOpen && document.isError ? <ErrorNotice error={document.error} /> : null}
+            {isOpen && document.isError ? (
+              <ErrorNotice title="The file could not be read" error={document.error} />
+            ) : null}
             {isOpen && !document.isError ? (
               <pre className="file-outline-text">
                 {lines.slice(s.startLine - 1, s.endLine).map((text, n) => (

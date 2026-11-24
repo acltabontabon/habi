@@ -55,6 +55,11 @@ repositories and folders, and the public libraries you picked. Those that need y
 waiting, offline, a failed fetch) come first. **Add a library** connects a Git repository, a
 folder, or one from the catalog.
 
+**Updates** appears in the sidebar, with a count, only while something is behind what it came
+from. It lists libraries with something newer to fetch, and the copies in each project, on this
+machine and in My skills that can follow a library. Fetching a library changes no project; each
+copy is updated through its own review.
+
 **Explore** is the catalog: public libraries from the builders of the tools and from the
 community, filtered by either. Opening one shows what is inside before you connect it.
 Connecting fetches a copy; Habi tells you when something newer exists and updates it only when

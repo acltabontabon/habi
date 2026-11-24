@@ -22,6 +22,8 @@ function useRouteLabel(route: Route | undefined): string | null {
       if (route.sourceId || route.entry) return "the library";
       if (route.view === "explore") return "Explore";
       return route.view ? "Add a library" : "Your libraries";
+    case "updates":
+      return "Updates";
     case "settings":
       return "Settings";
     case "about":

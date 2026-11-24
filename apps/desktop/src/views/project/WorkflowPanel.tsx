@@ -17,7 +17,7 @@ export function WorkflowPanel({
   const detail = useItemDetail(r.item.sourceId, r.item.id);
   const [reference, setReference] = useState<string | null>(null);
   if (detail.isPending) return <Working>Loading the steps…</Working>;
-  if (detail.isError) return <ErrorNotice error={detail.error} />;
+  if (detail.isError) return <ErrorNotice title="The steps could not be read" error={detail.error} />;
   const wf = detail.data.item.workflow;
   if (!wf) return <p className="muted">This item does not describe a procedure.</p>;
   const missing = r.readiness.prerequisites.filter(

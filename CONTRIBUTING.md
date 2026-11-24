@@ -50,6 +50,10 @@ change touches what it checks. Installers are built only for a release, from a `
 To work on the UI in a browser against the real core, run
 `cargo run -p habi-core --example dev_bridge` with `HABI_HOME` set to a scratch folder.
 
+To try installs without touching your own agent folders, also set `HABI_USER_HOME` to a
+scratch folder. The CLI, the bridge and the app then read and write `.claude`, `.agents` and
+`.habi` there instead of in your home folder.
+
 ## Making a change
 
 1. Open an issue first for anything larger than a bug fix, so we can agree on the

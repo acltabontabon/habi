@@ -15,6 +15,17 @@ pub enum ItemKind {
     Workflow,
     /// Portable project instructions installed into AGENTS.md.
     Instructions,
+    /// A subagent: one Markdown file an agent tool delegates work to.
+    Agent,
+    /// A command-line tool the library ships and its skills call.
+    Tool,
+}
+
+impl ItemKind {
+    /// A folder with a `SKILL.md`, as opposed to the kinds that are one file.
+    pub fn is_skill(self) -> bool {
+        matches!(self, ItemKind::Skill | ItemKind::Workflow)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
@@ -126,6 +137,25 @@ pub struct ToolRequirement {
     pub commands: Vec<String>,
     pub purpose: Option<String>,
     pub install_hint: Option<String>,
+    /// The id of a tool in the same library whose command is one of
+    /// `commands`: the library ships what this needs.
+    #[serde(default)]
+    pub provided_by: Option<String>,
+}
+
+/// What a library declares of a command-line tool it ships.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ToolSpec {
+    /// The command people type.
+    pub command: String,
+    /// The file the command starts, from the library root.
+    pub entry: String,
+    /// The file it starts on Windows, when that differs.
+    pub entry_windows: Option<String>,
+    /// The paths and globs that make up the tool.
+    pub paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -331,6 +361,31 @@ pub struct LibraryItem {
     /// False if some of the item's files were skipped while reading the
     /// library (too large, symbolic links). Incomplete items are not installable.
     pub complete: bool,
+    /// Set for a tool: its command and the files that make it up.
+    #[serde(default)]
+    pub tool: Option<ToolSpec>,
+}
+
+impl LibraryItem {
+    /// Where one of the item's files is in its library. A skill's files are
+    /// in its folder, a tool's are named from the library root, and the kinds
+    /// that are one file are that file.
+    pub fn library_path(&self, file: &str) -> String {
+        match self.kind {
+            ItemKind::Skill | ItemKind::Workflow => super::join(&self.path, file),
+            ItemKind::Tool => file.to_string(),
+            ItemKind::Instructions | ItemKind::Agent => self.path.clone(),
+        }
+    }
+
+    /// The file to read first: what an agent follows, or what a tool starts.
+    pub fn main_file(&self) -> String {
+        match (&self.tool, self.kind.is_skill()) {
+            (Some(tool), _) => tool.entry.clone(),
+            (None, true) => super::join(&self.path, super::SKILL_FILE),
+            (None, false) => self.path.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
