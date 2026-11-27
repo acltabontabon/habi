@@ -26,7 +26,7 @@ ignore = "0.4.33"
 libc = "0.2.189"
 regex = "1.13.1"
 roxmltree = "0.21.1"
-rusqlite = { version = "0.41.0", features = ["bundled"] }
+rusqlite = { version = "0.43.0", features = ["bundled"] }
 semver = "1.0.28"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
@@ -65,7 +65,7 @@ tauri-plugin-opener = "2.7.0"
 # The operating system's TLS (Security.framework, Schannel) rather than a bundled one.
 # Updates use raw Windows installers and macOS tar archives; legacy ZIP support is unused.
 tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["native-tls", "system-proxy"] }
-notify-debouncer-mini = "0.7.0"
+notify-debouncer-mini = "0.8.0"
 ctrlc = "3.5.2"
 
 [workspace.lints.rust]
